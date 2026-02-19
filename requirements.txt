@@ -1,6 +1,7 @@
-streamlit
 suno-api
+streamlit
 streamlit-js-eval
 pytz
 timezonefinder
 geopy
+pandas
