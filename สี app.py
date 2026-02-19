@@ -2,59 +2,47 @@ import streamlit as st
 from streamlit_js_eval import get_geolocation
 from datetime import datetime
 import pytz
-from timezonefinder import TimezoneFinder # ตัวช่วยหา Timezone จากพิกัด
+from timezonefinder import TimezoneFinder
+from geopy.geocoders import Nominatim # ตัวดึงชื่อที่อยู่
 import pandas as pd
 
-# 1. ตั้งค่าหน้ากระดาษ
-st.set_page_config(page_title="Real-time GPS & Local Time", layout="centered")
+st.set_page_config(page_title="Global GPS Tracker", layout="centered")
+st.markdown("## 🌍 ตรวจสอบพิกัดและเวลาจริง (ทั่วโลก)")
 
-# 2. หัวข้อแอปฯ 
-st.markdown("## 📍 ตรวจสอบตำแหน่งและเวลาท้องถิ่นจริง")
-
-# 3. ดึงพิกัดจาก Browser ผู้ใช้
 location = get_geolocation()
 
 if location is not None:
-    try:
-        # ดึงค่า Lat และ Lon
-        curr_coords = location.get('coords', {})
-        lat = curr_coords.get('latitude')
-        lon = curr_coords.get('longitude')
+    curr_coords = location.get('coords', {})
+    lat = curr_coords.get('latitude')
+    lon = curr_coords.get('longitude')
+    
+    if lat and lon:
+        # 1. หาชื่อ Timezone
+        tf = TimezoneFinder()
+        local_zone = tf.timezone_at(lng=lon, lat=lat)
         
-        if lat and lon:
-            # --- ส่วนสำคัญ: หา Timezone จากพิกัดสดๆ ---
-            tf = TimezoneFinder()
-            local_zone_name = tf.timezone_at(lng=lon, lat=lat) # คืนค่าเป็น 'Asia/Shanghai', 'Asia/Bangkok' เป็นต้น
-            
-            if local_zone_name:
-                # ดึงเวลาปัจจุบันของเขตเวลานั้นๆ
-                actual_tz = pytz.timezone(local_zone_name)
-                now_actual = datetime.now(actual_tz)
-                
-                st.success(f"✅ ตรวจพบตำแหน่งในเขตเวลา: {local_zone_name}")
-                
-                # แสดงพิกัด
-                col1, col2 = st.columns(2)
-                col1.metric("ละติจูด (Lat)", f"{lat:.4f}")
-                col2.metric("ลองจิจูด (Lon)", f"{lon:.4f}")
-                
-                # แสดงเวลาที่ตรงกับพื้นที่นั้นจริงๆ 
-                st.markdown(f"### ⏰ เวลาท้องถิ่น: **{now_actual.strftime('%H:%M:%S น.')}**")
-                st.info(f"📅 วันที่ในพื้นที่: {now_actual.strftime('%d/%m/%Y')}")
-                
-                # แสดงแผนที่
-                map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
-                st.map(map_data, zoom=14)
-                
-            else:
-                st.error("❌ ไม่สามารถระบุเขตเวลาจากพิกัดนี้ได้")
-        else:
-            st.warning("⚠️ กำลังพยายามระบุพิกัดให้แม่นยำที่สุด...")
-            
-    except Exception as e:
-        st.error(f"เกิดข้อผิดพลาด: {e}")
-else:
-    st.info("💡 โปรดอนุญาตให้เข้าถึงตำแหน่ง เพื่อแสดงเวลาท้องถิ่นที่ถูกต้องตามพิกัดของคุณ")
+        # 2. หาชื่อเมือง/จังหวัด (Reverse Geocoding)
+        try:
+            geolocator = Nominatim(user_agent="my_gps_app")
+            loc_data = geolocator.reverse(f"{lat}, {lon}", language='en')
+            address = loc_data.raw.get('address', {})
+            city_name = address.get('city') or address.get('state') or address.get('province')
+        except:
+            city_name = "Unknown City"
 
-st.divider()
-st.caption("แอปจะปรับเวลาอัตโนมัติตามตำแหน่งที่ตรวจพบ เพื่อความถูกต้องของข้อมูล")
+        if local_zone:
+            actual_tz = pytz.timezone(local_zone)
+            now_actual = datetime.now(actual_tz)
+            
+            st.success(f"📍 ตรวจพบตำแหน่งที่: **{city_name}** ({local_zone})")
+            
+            col1, col2 = st.columns(2)
+            col1.metric("Latitude", f"{lat:.4f}")
+            col2.metric("Longitude", f"{lon:.4f}")
+            
+            st.markdown(f"### ⏰ เวลาท้องถิ่น: **{now_actual.strftime('%H:%M:%S น.')}**")
+            st.write(f"📅 วันที่: {now_actual.strftime('%d/%m/%Y')}")
+            
+            st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}), zoom=12)
+else:
+    st.info("💡 กรุณากด 'Allow' เพื่อเช็คพิกัดและเวลาจริงครับ")
