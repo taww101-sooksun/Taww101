@@ -2,3 +2,4 @@ streamlit
 suno-api
 streamlit-js-eval
 pytz
+timezonefinder
