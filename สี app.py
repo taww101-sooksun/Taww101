@@ -1,63 +1,39 @@
 import streamlit as st
-from streamlit_js_eval import get_geolocation
+import folium
+from streamlit_folium import st_folium
 from datetime import datetime
-import pytz
-from timezonefinder import TimezoneFinder
-from geopy.geocoders import Nominatim
-import pandas as pd
 
-# 1. ตั้งค่าหน้ากระดาษ (แก้ปัญหาภาษาไทยเพี้ยน)
-st.set_page_config(page_title="Global GPS Tracker", layout="centered")
+# 1. ตั้งค่าหน้าจอ
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
 
-# 2. หัวข้อแอป (ใช้ Markdown เพื่อความสวยงาม)
-st.markdown("## 🌍 เช็กพิกัดและเวลาท้องถิ่นจริง")
+# 2. แสดงโลโก้จริงจากเครื่องนาย
+# บรรทัดนี้แหละที่จะดึงไฟล์ logo.jpg ขึ้นมาโชว์
+try:
+    st.image("logo.jpg", use_container_width=True)
+except:
+    st.error("ไม่พบไฟล์ logo.jpg ในโฟลเดอร์เดียวกับแอป กรุณาเช็กชื่อไฟล์อีกครั้ง")
 
-# 3. ดึงพิกัดจากเบราว์เซอร์
-location = get_geolocation()
+st.markdown("<h3 style='text-align: center;'>COMMAND CENTER</h3>", unsafe_allow_html=True)
+st.write("---")
 
-if location is not None:
-    try:
-        curr_coords = location.get('coords', {})
-        lat = curr_coords.get('latitude')
-        lon = curr_coords.get('longitude')
-        
-        if lat and lon:
-            # --- หาเขตเวลา (Timezone) ---
-            tf = TimezoneFinder()
-            local_zone_name = tf.timezone_at(lng=lon, lat=lat)
-            
-            # --- หาชื่อสถานที่ (City/State) ---
-            try:
-                geolocator = Nominatim(user_agent="my_gps_app_v2")
-                # ระบุภาษาเป็น 'th' เพื่อให้แสดงชื่อจังหวัดเป็นภาษาไทยถ้าเป็นไปได้
-                loc_data = geolocator.reverse(f"{lat}, {lon}", language='th')
-                address = loc_data.raw.get('address', {})
-                city = address.get('city') or address.get('state') or address.get('province') or "ไม่ทราบชื่อเมือง"
-            except:
-                city = "ระบุชื่อเมืองไม่ได้"
+# 3. ส่วนพิกัดและเวลา (ความจริงที่ไม่มีใครกำกับได้)
+now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+lat, lon = 13.7200, 100.6500  # พิกัดประเวศที่ชัดที่สุดที่เราคุยกัน
 
-            if local_zone_name:
-                actual_tz = pytz.timezone(local_zone_name)
-                now_actual = datetime.now(actual_tz)
-                
-                st.success(f"📍 ตำแหน่งที่ตรวจพบ: **{city}**")
-                
-                col1, col2 = st.columns(2)
-                col1.metric("ละติจูด", f"{lat:.4f}")
-                col2.metric("ลองจิจูด", f"{lon:.4f}")
-                
-                st.subheader(f"⏰ เวลาท้องถิ่น: {now_actual.strftime('%H:%M:%S น.')}")
-                st.caption(f"เขตเวลาอ้างอิง: {local_zone_name}")
-                
-                # แสดงแผนที่
-                map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
-                st.map(map_data, zoom=13)
-        else:
-            st.warning("⚠️ กำลังพยายามดึงพิกัด...")
-    except Exception as e:
-        st.error(f"เกิดข้อผิดพลาด: {e}")
-else:
-    st.info("💡 โปรดอนุญาต (Allow) การเข้าถึงพิกัดเพื่อแสดงผล")
+col1, col2 = st.columns(2)
+with col1:
+    st.metric("REAL-TIME", now)
+with col2:
+    st.metric("LOCATION", f"{lat}, {lon}")
 
-st.divider()
-st.caption("หมายเหตุ: ข้อมูลจะปรับเปลี่ยนตามตำแหน่งจริงของผู้ใช้ทั่วโลก")
+# 4. แผนที่ความชัดสูง (ซูมเห็นหลังคาบ้าน)
+st.subheader("Visualizing Reality")
+m = folium.Map(location=[lat, lon], zoom_start=16)
+folium.Marker([lat, lon], popup="SYNAPSE POINT", icon=folium.Icon(color='red')).add_to(m)
+st_folium(m, width=700, height=450)
+
+# 5. เพลงจากประสบการณ์ชีวิตจริง
+st.write("---")
+st.video("https://www.youtube.com/watch?v=lNVwQTIC-pQ")
+
+st.caption("STAY STILL & HEAL | พัฒนาด้วยตะเกียบแรงกว่าจรวด")
