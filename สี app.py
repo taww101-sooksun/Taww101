@@ -1,64 +1,37 @@
 import streamlit as st
 
-# ตั้งค่าหน้ากระดาษ
-st.set_page_config(page_title="Room Color Simulator", layout="centered")
+st.set_page_config(layout="wide")
 
-st.title("🎨 ระบบทดลองสีห้อง (Streamlit Version)")
+# 1. เตรียม "ค่าเริ่มต้น" ที่ต่างกันไว้ 8 ชุด (ผนัง, กรอบ, ปุ่ม)
+default_colors = [
+    ("#F0F0F0", "#333333", "#FF4B4B"), # แบบที่ 1
+    ("#E3F2FD", "#1565C0", "#0D47A1"), # แบบที่ 2 (โทนฟ้า)
+    ("#F1F8E9", "#33691E", "#558B2F"), # แบบที่ 3 (โทนเขียว)
+    ("#FFF3E0", "#E65100", "#EF6C00"), # แบบที่ 4 (โทนส้ม)
+    ("#FCE4EC", "#880E4F", "#AD1457"), # แบบที่ 5 (โทนชมพู)
+    ("#F3E5F5", "#4A148C", "#6A1B9A"), # แบบที่ 6 (โทนม่วง)
+    ("#EFEBE9", "#3E2723", "#4E342E"), # แบบที่ 7 (โทนน้ำตาล)
+    ("#FAFAFA", "#212121", "#000000"), # แบบที่ 8 (ขาวดำ)
+]
 
-# 1. ส่วนควบคุม (Sidebar หรือ Columns)
-col1, col2, col3 = st.columns(3)
+st.title("🎨 ทดลองสี 8 แบบ (เริ่มด้วยสีที่ต่างกัน)")
 
-with col1:
-    room_color = st.color_picker("สีผนังห้อง", "#E0E0E0")
-with col2:
-    frame_color = st.color_picker("สีกรอบ", "#4A4A4A")
-with col3:
-    btn_color = st.color_picker("สีปุ่มกด", "#007BFF")
+for row in range(2):
+    cols = st.columns(4)
+    for col_idx in range(4):
+        num = (row * 4) + col_idx # ลำดับ index 0-7
+        with cols[col_idx]:
+            # ดึงสีจาก List มาเป็นค่าเริ่มต้น
+            bg_def, fr_def, bt_def = default_colors[num]
+            
+            bg = st.color_picker(f"ผนัง {num+1}", bg_def, key=f"bg{num}")
+            fr = st.color_picker(f"กรอบ {num+1}", fr_def, key=f"fr{num}")
+            bt = st.color_picker(f"ปุ่ม {num+1}", bt_def, key=f"bt{num}")
 
-# 2. ส่วนการแสดงผล (ใช้ CSS ร่วมกับ Markdown)
-# เราจะใช้ค่าตัวแปรจาก Python (room_color, frame_color, btn_color) ไปใส่ใน CSS
-st.markdown(f"""
-    <style>
-    .room-container {{
-        background-color: {room_color};
-        height: 350px;
-        width: 100%;
-        border: 15px solid #333;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border-radius: 10px;
-        transition: 0.3s;
-    }}
-    .window-frame {{
-        width: 200px;
-        height: 150px;
-        border: 10px solid {frame_color};
-        background-color: white;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
-    }}
-    .custom-button {{
-        background-color: {btn_color};
-        color: white;
-        padding: 12px 24px;
-        border: none;
-        border-radius: 8px;
-        font-weight: bold;
-        text-align: center;
-        display: inline-block;
-        box-shadow: 0 4px #999;
-    }}
-    </style>
-
-    <div class="room-container">
-        <div class="window-frame">
-            <div class="custom-button">ปุ่มตัวอย่าง</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# 3. แสดงค่า Code สีที่เลือก (Hex Code)
-st.info(f"**สรุปค่าสี:** ผนัง: `{room_color}` | กรอบ: `{frame_color}` | ปุ่ม: `{btn_color}`")
+            st.markdown(f"""
+                <div style="background-color:{bg}; height:150px; display:flex; justify-content:center; align-items:center; border:5px solid #222; border-radius:10px;">
+                    <div style="width:80px; height:50px; border:5px solid {fr}; background:white; display:flex; justify-content:center; align-items:center;">
+                        <div style="background-color:{bt}; color:white; padding:5px; border-radius:3px; font-size:10px;">ปุ่ม</div>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
