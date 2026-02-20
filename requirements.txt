@@ -7,7 +7,3 @@ geopy
 pandas
 folium
 streamlit-folium
-get_geolocation
-datetime
-Nominatim
-TimezoneFinder
