@@ -1,4 +1,5 @@
 import streamlit as st
+import requests
 from streamlit_js_eval import get_geolocation
 from datetime import datetime
 import pytz
@@ -7,71 +8,69 @@ from geopy.geocoders import Nominatim
 import folium
 from streamlit_folium import st_folium
 
-# 1. ตั้งค่าพื้นฐาน (SYNAPSE STYLE)
+# --- 1. SETTING & STYLE ---
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
 
-# 2. แสดงโลโก้ (ความภูมิใจของนาย)
-try:
-    st.image("logo.jpg", width=200)
-except:
-    st.markdown("<h1 style='color: red; text-align: center;'>S Y N A P S E</h1>", unsafe_allow_html=True)
+st.markdown("""
+    <style>
+    .stApp { background-color: #0e1117; color: #ffffff; }
+    .weather-box { background: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 10px; border: 1px solid #444; }
+    </style>
+    """, unsafe_allow_html=True)
 
-st.markdown("<h3 style='text-align: center;'>COMMAND CENTER</h3>", unsafe_allow_html=True)
+# --- 2. HEADER ---
+try:
+    st.image("logo.jpg", width=180)
+except:
+    st.markdown("<h1 style='color: #00FFCC; text-align: center;'>S Y N A P S E</h1>", unsafe_allow_html=True)
 st.info("STAY STILL & HEAL : 'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-# 3. ระบบดึงพิกัดและความจริงของตำแหน่ง
+# --- 3. CORE LOGIC (GPS & WEATHER) ---
 location = get_geolocation()
 
-if location is not None:
-    curr_coords = location.get('coords', {})
-    lat = curr_coords.get('latitude')
-    lon = curr_coords.get('longitude')
+if location:
+    coords = location.get('coords', {})
+    lat, lon = coords.get('latitude'), coords.get('longitude')
     
     if lat and lon:
-        # --- ดึง "เวลาความจริง" ตามตำแหน่งพิกัด ---
+        # ดึงเวลาความจริง
         tf = TimezoneFinder()
-        local_zone_name = tf.timezone_at(lng=lon, lat=lat)
+        tz_name = tf.timezone_at(lng=lon, lat=lat)
         
-        # ค้นหาชื่อสถานที่ภาษาไทย
-        try:
-            geolocator = Nominatim(user_agent="synapse_final")
-            loc_data = geolocator.reverse(f"{lat}, {lon}", language='th')
-            city_name = loc_data.raw.get('address', {}).get('city') or loc_data.raw.get('address', {}).get('state') or "พิกัดนิรนาม"
-        except:
-            city_name = "กำลังระบุตำแหน่ง..."
-
-        st.success(f"📍 ความจริงปรากฏที่: **{city_name}**")
-
-        # แสดงเวลาท้องถิ่นจริงๆ
-        if local_zone_name:
-            actual_tz = pytz.timezone(local_zone_name)
-            now_actual = datetime.now(actual_tz)
-            st.subheader(f"⏰ เวลาความจริง: {now_actual.strftime('%H:%M:%S น.')}")
-            st.caption(f"เขตเวลา: {local_zone_name} (อัปเดตตามพิกัดจริง)")
-
-        # 4. แผนที่ดาวเทียม (Real-time Tracking)
+        # --- [NEW] ดึงสภาพอากาศความจริง (Real-time Weather) ---
+        weather_url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
+        weather_data = requests.get(weather_url).json()
+        current_temp = weather_data['current_weather']['temperature']
+        wind_speed = weather_data['current_weather']['windspeed']
+        
+        # แสดงข้อมูลความจริงในแถบเดียว
         st.write("---")
-        m = folium.Map(
-            location=[lat, lon], 
-            zoom_start=19, 
-            tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', 
-            attr='Google Satellite'
-        )
-        folium.Marker([lat, lon], popup="ตัวตนของนาย", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
-        st_folium(m, width=700, height=450)
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("🌡️ อุณหภูมิ", f"{current_temp} °C")
+        with col2:
+            st.metric("💨 ลมแรง", f"{wind_speed} km/h")
+        with col3:
+            if tz_name:
+                now_actual = datetime.now(pytz.timezone(tz_name))
+                st.metric("⏰ เวลา", now_actual.strftime('%H:%M'))
+
+        # --- 4. SATELLITE MAP ---
+        m = folium.Map(location=[lat, lon], zoom_start=18, 
+                       tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', 
+                       attr='Google Satellite')
+        folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='crosshairs', prefix='fa')).add_to(m)
+        st_folium(m, width=700, height=350, returned_objects=[])
 
     else:
-        st.warning("⚠️ รอการเชื่อมต่อกับดาวเทียม...")
+        st.warning("📡 กำลังเชื่อมต่อข้อมูลความจริง...")
 else:
-    st.info("💡 โปรดกด 'Allow' เพื่อให้แอปดึง 'เวลาและความจริง' ของนายออกมา")
+    st.info("💡 โปรดกดยืนยัน 'Allow' เพื่อเข้าสู่ Command Center")
 
-# 5. ระบบเพลงวนลูปตลอดกาล (ปิดไม่ได้ถ้าไม่ปิดแอป)
+# --- 5. MUSIC THERAPY ---
 st.write("---")
-st.subheader("Sound Therapy (Looping Forever)")
-# ฝัง Playlist ของนายโดยตรง พร้อมคำสั่ง Loop และ Autoplay
 playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-embed_code = f'<iframe width="100%" height="315" src="https://www.youtube.com/embed/videoseries?list={playlist_id}&loop=1&playlist={playlist_id}&autoplay=1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>'
-st.markdown(embed_code, unsafe_allow_html=True)
+st.markdown(f'<iframe width="100%" height="180" src="https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&loop=1&playlist={playlist_id}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>', unsafe_allow_html=True)
 
 st.divider()
-st.caption("ข้อมูลนี้คือความจริงที่ไม่มีใครกำกับได้ | พัฒนาโดยตะเกียบวาร์ปไปดวงจันทร์")
+st.caption("SYNAPSE V1.5 | 'อยู่นิ่งๆ' เพื่อรับรู้ความจริงที่เกิดขึ้นรอบตัวนาย")
