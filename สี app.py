@@ -36,7 +36,7 @@ st.markdown("""
 
 # --- 2. HEADER ---
 try:
-    st.image("logo.jpg", width=180)
+    st.image("logo.jpg", width=300)
 except:
     st.markdown("<h1 style='text-align: center;'>S Y N A P S E</h1>", unsafe_allow_html=True)
 st.info("STAY STILL & HEAL : 'อยู่นิ่งๆ ไม่เจ็บตัว'")
