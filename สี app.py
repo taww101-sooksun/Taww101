@@ -20,9 +20,9 @@ st.markdown("""
 
 # --- 2. HEADER ---
 try:
-    st.image("logo.jpg", width=180)
+    st.image("logo.jpg", width=300)
 except:
-    st.markdown("<h1 style='color: #00FFCC; text-align: center;'>S Y N A P S E</h1>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #00FFCC; text-align: center;'>S Y N A P S E</h1>", unsafe_allow_html=True)
 st.info("STAY STILL & HEAL : 'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
 # --- 3. CORE LOGIC (GPS & WEATHER) ---
@@ -73,4 +73,4 @@ playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
 st.markdown(f'<iframe width="100%" height="180" src="https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&loop=1&playlist={playlist_id}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>', unsafe_allow_html=True)
 
 st.divider()
-st.caption("SYNAPSE V1.5 | 'อยู่นิ่งๆ' เพื่อรับรู้ความจริงที่เกิดขึ้นรอบตัวนาย")
+st.caption("SYNAPSE V1.5 | 'อยู่นิ่งๆ' เพื่อรับรู้ความจริงที่เกิดขึ้นรอบตัว")
