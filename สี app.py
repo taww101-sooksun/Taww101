@@ -63,7 +63,10 @@ st.markdown("""
     h1, h2, h3, p, span { color: white !important; }
     </style>
     """, unsafe_allow_html=True)
-
+if os.path.exists("logo2.jpg"):
+    st.image("logo2.jpg", width=300)
+else:
+    
 # --- 2. HEADER ---
 try:
     st.image("logo.jpg", width=300)
