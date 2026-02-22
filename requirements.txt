@@ -8,3 +8,4 @@ pandas
 folium
 streamlit-folium
 google-generativeai
+google-generativeai>=0.8.0
