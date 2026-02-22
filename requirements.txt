@@ -7,3 +7,4 @@ geopy
 pandas
 folium
 streamlit-folium
+google-generativeai
