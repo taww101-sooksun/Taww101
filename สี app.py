@@ -21,7 +21,7 @@ user_email = st.text_input("ระบุ Gmail ของคุณเพื่อ
 
 # --- 3. รายชื่อเพื่อนที่อนุญาต (สำคัญมาก!) ---
 # ใส่ Gmail จริงๆ ลงในลิสต์นี้ครับ
-allowed_friends = ["Leehunna789@gmail.com, "ชื่อเพื่อน@gmail.com"]
+allowed_friends = ["Leehunna789@gmail.com"]
 
 if user_email:
     if user_email in allowed_friends:
