@@ -1,18 +1,13 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- 1. ตั้งค่าหน้าตาแอป ---
-st.set_page_config(page_title="AI Proxy Chat", layout="centered")
-
-# --- 2. ดึงกุญแจลับ (ลับเฉพาะ คนอื่นห้ามเห็น) ---
 try:
-    # ชื่อ GEMINI_API_KEY ต้องตรงกับที่ตั้งในหน้า Settings > Secrets
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-pro')
+    # แก้ไขชื่อรุ่นตรงนี้เพื่อให้หายแดง 404
+    model = genai.GenerativeModel('gemini-1.5-flash') 
 except Exception as e:
-    st.error("🚨 ตรวจพบตัวแดง: ยังไม่ได้ใส่กุญแจ GEMINI_API_KEY ในหน้า Secrets")
-    st.info("วิธีแก้: ไปที่ Settings > Secrets แล้วใส่ GEMINI_API_KEY = 'รหัสของคุณ'")
+    st.error(f"ตรวจพบข้อผิดพลาด: {e}")
     st.stop()
 
 # --- 3. ส่วนหน้าตาแอป (UI) ---
@@ -55,4 +50,14 @@ if friend_input:
             st.error(f"เกิดข้อผิดพลาดในการเรียก AI: {e}")
 
 st.divider()
-st.caption("พัฒนาโดย AI เพื่อนยาก | สโลแกน: อยู่นิ่งๆ ไม่เจ็บตัว")
+st.caption("พัฒนาโดย AI เพื่อนยาก | สโลแกน: import streamlit as st
+import google.generativeai as genai
+
+try:
+    api_key = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=api_key)
+    # แก้ไขชื่อรุ่นตรงนี้เพื่อให้หายแดง 404
+    model = genai.GenerativeModel('gemini-1.5-flash') 
+except Exception as e:
+    st.error(f"ตรวจพบข้อผิดพลาด: {e}")
+    st.stop()
