@@ -34,7 +34,7 @@ if not st.session_state.authenticated:
         u_id = st.text_input("Enter ID")
         u_pw = st.text_input("Password", type="password")
         if st.form_submit_button("UNLOCK"):
-            if u_pw == "synapse2026" and u_id: 
+            if u_pw == "9999999" and u_id: 
                 st.session_state.authenticated = True
                 st.session_state.my_id = u_id
                 st.rerun()
