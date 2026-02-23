@@ -51,8 +51,8 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-if os.path.exists("logo.jpg"):
-    st.image("logo.jpg", width=200)
+if os.path.exists("logo2.jpg"):
+    st.image("logo2.jpg", width=300)
 else:
     st.markdown("<h1 style='text-align: center; color: white;'>S Y N A P S E</h1>", unsafe_allow_html=True)
 
@@ -132,6 +132,6 @@ if "active_room" in st.session_state:
 
 st.write("---")
 playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-st.markdown(f'''<iframe width="100%" height="80" src="https://www.youtube.com/embed?listType=playlist&list={playlist_id}&autoplay=1&loop=1&mute=1&playlist={playlist_id}" frameborder="0" allow="autoplay; encrypted-media"></iframe>''', unsafe_allow_html=True)
+st.markdown(f'''<iframe width="100%" height="150" src="https://www.youtube.com/embed?listType=playlist&list={playlist_id}&autoplay=1&loop=1&mute=1&playlist={playlist_id}" frameborder="0" allow="autoplay; encrypted-media"></iframe>''', unsafe_allow_html=True)
 
 st.caption("SYNAPSE V2.1 | NO DATA REMOVED | REAL-TIME TRUTH")
