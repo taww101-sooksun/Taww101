@@ -52,7 +52,7 @@ if not st.session_state.authenticated:
         u_id = st.text_input("Enter ID / ใส่ไอดี")
         u_pw = st.text_input("Password / รหัสผ่าน", type="password")
         if st.form_submit_button("UNLOCK / ปลดล็อค"):
-            if u_pw == "synapse2026" and u_id:
+            if u_pw == "9999999" and u_id:
                 st.session_state.authenticated = True
                 st.session_state.my_id = u_id
                 st.rerun()
@@ -125,7 +125,7 @@ if location:
                     )
                 ).add_to(m)
 
-        st_folium(m, use_container_width=True, height=500, key="global_radar")
+        st_folium(m, use_container_width=True, height=400, key="global_radar")
     else:
         st.warning("🛰️ Searching for Satellites... / กำลังค้นหาสัญญาณดาวเทียม...")
 else:
