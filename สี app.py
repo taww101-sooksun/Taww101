@@ -11,8 +11,6 @@ from firebase_admin import credentials, db
 import os
 
 # --- 1. INITIALIZE FIREBASE ---
-st.set_page_config(page_title="SYNAPSE RADAR", layout="wide")
-
 if not firebase_admin._apps:
     try:
         fb_creds = dict(st.secrets["firebase_service_account"])
@@ -21,19 +19,40 @@ if not firebase_admin._apps:
             'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
         })
     except Exception as e:
-        st.error(f"Firebase Connection Error: {e}")
+        st.error(f"Firebase Error: {e}")
 
-# --- 2. SECURITY GATE ---
+# --- 2. CONFIG & STYLE ---
+st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
+
+# ปรับพื้นหลัง 60 วินาที (60s) ตามสั่ง ลดการกระตุกสายตา
+st.markdown("""
+    <style>
+    @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    .stApp { 
+        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); 
+        background-size: 1200% 1200%; 
+        animation: RainbowFlow 60s ease infinite; 
+    }
+    .stChatFloating { border: 2px solid #00ff00; border-radius: 10px; padding: 10px; background: rgba(0,0,0,0.7); }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 3. LOGO (Size 300) ---
+if os.path.exists("Logo2.jpg"):
+    st.image("Logo2.jpg", width=300)
+else:
+    st.markdown("<h1 style='color: white;'>S Y N A P S E</h1>", unsafe_allow_html=True)
+
+# --- 4. ACCESS CONTROL ---
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    st.markdown("<h2 style='text-align: center;'>🔐 ACCESS CONTROL</h2>", unsafe_allow_html=True)
     with st.form("Login"):
-        u_id = st.text_input("Enter ID")
-        u_pw = st.text_input("Password", type="password")
-        if st.form_submit_button("UNLOCK"):
-            if u_pw == "synapse2026" and u_id: 
+        u_id = st.text_input("ID / ไอดี")
+        u_pw = st.text_input("Password / รหัสผ่าน", type="password")
+        if st.form_submit_button("UNLOCK / ปลดล็อค"):
+            if u_pw == "synapse2026" and u_id:
                 st.session_state.authenticated = True
                 st.session_state.my_id = u_id
                 st.rerun()
@@ -41,96 +60,91 @@ if not st.session_state.authenticated:
 
 my_id = st.session_state.my_id
 
-# --- 3. UI STYLE ---
-st.markdown("""
-    <style>
-    @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-    .stApp { background: linear-gradient(270deg, #1e1e1e, #2d3436, #000000); background-size: 400% 400%; animation: RainbowFlow 30s ease infinite; color: white; }
-    .stMetric { background-color: rgba(255, 255, 255, 0.1) !important; border-radius: 10px; border: 1px solid #00ff00; }
-    </style>
-    """, unsafe_allow_html=True)
-
-st.title("📡 SYNAPSE RADAR SYSTEM")
-st.write(f"Logged in as: **{my_id}** | สโลแกน: *อยู่นิ่งๆ ไม่เจ็บตัว*")
-
-# ดึงข้อมูลผู้ใช้ทั้งหมดจาก Firebase
+# --- 5. DATA FETCH (Real-time) ---
 all_users = db.reference('/users').get() or {}
 friend_options = [u for u in all_users.keys() if u != my_id]
 
-# --- 4. CHAT SYSTEM (เน้นแชท ไม่เน้นโทร) ---
-with st.sidebar:
-    st.header("💬 MESSENGER")
-    chat_target = st.selectbox("เลือกเพื่อน", ["-- Select --"] + friend_options)
-    if chat_target != "-- Select --":
-        ids = sorted([my_id, chat_target])
-        chat_id = f"chat_{ids[0]}_{ids[1]}"
-        
-        msgs = db.reference(f'/messages/{chat_id}').order_by_child('timestamp').limit_to_last(10).get()
-        if msgs:
-            for m_id, m_data in msgs.items():
-                sender = "ME" if m_data['sender'] == my_id else m_data['sender']
-                st.write(f"**{sender}:** {m_data['text']}")
-        
-        with st.form("send_msg", clear_on_submit=True):
-            m_text = st.text_input("Message...")
-            if st.form_submit_button("SEND"):
-                db.reference(f'/messages/{chat_id}').push({
-                    'sender': my_id, 'text': m_text, 'timestamp': datetime.now().isoformat()
-                })
-                st.rerun()
-
-# --- 5. GPS & TACTICAL MAP ---
+# --- 6. TACTICAL RADAR (Map 500px) ---
+st.subheader("📡 RADAR SYSTEM / ระบบเรดาร์")
 location = get_geolocation()
+
 if location:
     coords = location.get('coords', {})
     lat, lon = coords.get('latitude'), coords.get('longitude')
     
     if lat and lon:
-        # อัปเดตตำแหน่งตัวเองขึ้น Cloud
+        # อัปเดตตำแหน่ง (Update Location)
         db.reference(f'/users/{my_id}/location').update({
             'lat': lat, 'lon': lon, 'last_update': datetime.now().strftime('%H:%M:%S')
         })
 
-        # สร้างแผนที่ Hybrid
         m = folium.Map(location=[lat, lon], zoom_start=16, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
 
-        # วนลูปปักหมุดทุกคนในระบบ
         for user_id, user_data in all_users.items():
             if 'location' in user_data:
-                u_lat = user_data['location'].get('lat')
-                u_lon = user_data['location'].get('lon')
-                u_time = user_data['location'].get('last_update', 'N/A')
-                
+                u_lat, u_lon = user_data['location'].get('lat'), user_data['location'].get('lon')
                 if u_lat and u_lon:
-                    # ตั้งค่าสีและไอคอน: แดง=เรา, น้ำเงิน=เพื่อน
                     is_me = (user_id == my_id)
-                    marker_color = 'red' if is_me else 'blue'
-                    icon_type = 'star' if is_me else 'user'
-                    label_name = f"YOU ({user_id})" if is_me else user_id
-
-                    # ปักหมุด
+                    color = 'red' if is_me else 'blue'
+                    # ปักมุด (Marker)
                     folium.Marker(
                         [u_lat, u_lon],
-                        popup=f"ID: {user_id}<br>Time: {u_time}",
-                        tooltip=label_name,
-                        icon=folium.Icon(color=marker_color, icon=icon_type, prefix='fa')
+                        tooltip=f"{user_id}",
+                        icon=folium.Icon(color=color, icon='user', prefix='fa')
                     ).add_to(m)
-
-                    # เพิ่มข้อความชื่อลอยบนแผนที่ (จะได้เห็นชัดๆ ว่ามุดไหนของใคร)
+                    # ชื่อลอย (Floating Name)
                     folium.map.Marker(
                         [u_lat, u_lon],
                         icon=folium.features.DivIcon(
                             icon_size=(150,36),
-                            icon_anchor=(0,0),
-                            html=f'<div style="font-size: 12pt; color: {marker_color}; font-weight: bold; text-shadow: 2px 2px black;">{label_name}</div>',
+                            html=f'<div style="font-size: 12pt; color: {color}; font-weight: bold; text-shadow: 2px 2px black;">{user_id}</div>',
                         )
                     ).add_to(m)
 
-        # แสดงผลแผนที่
-        st_folium(m, use_container_width=True, height=600)
+        # แผนที่ขนาด 500 ตามสั่ง (Height 500)
+        st_folium(m, use_container_width=True, height=500, key="synapse_map")
     else:
-        st.warning("🛰️ กำลังจับสัญญาณดาวเทียม...")
-else:
-    st.info("💡 โปรดเปิด GPS เพื่อใช้งานระบบแผนที่")
+        st.warning("🛰️ Waiting for GPS... / รอสัญญาณดาวเทียม...")
 
-st.caption("SYNAPSE V2.3 | REAL-TIME FRIEND TRACKER | NO LIES")
+# --- 7. MESSENGER & NOTIFICATION ---
+st.write("---")
+st.subheader("💬 MESSENGER / แชท")
+
+col1, col2 = st.columns([1, 2])
+
+with col1:
+    chat_target = st.selectbox("Select Friend / เลือกเพื่อน", ["-- Select --"] + friend_options)
+    # ปุ่มเชื่อมต่อระบุชัดเจน (Connection Status)
+    if chat_target != "-- Select --":
+        st.success(f"✅ CONNECTED TO: {chat_target} / เชื่อมต่อแล้ว")
+    else:
+        st.info("📡 STANDBY / รอการเชื่อมต่อ")
+
+with col2:
+    if chat_target != "-- Select --":
+        ids = sorted([my_id, chat_target])
+        chat_id = f"chat_{ids[0]}_{ids[1]}"
+        
+        # ดึงข้อความมาแสดง
+        raw_msgs = db.reference(f'/messages/{chat_id}').get()
+        if raw_msgs:
+            sorted_msgs = sorted(raw_msgs.values(), key=lambda x: x.get('timestamp', ''))
+            for m in sorted_msgs[-5:]:
+                align = "right" if m['sender'] == my_id else "left"
+                st.markdown(f"<div style='text-align: {align};'><b>{m['sender']}:</b> {m['text']}</div>", unsafe_allow_html=True)
+        
+        with st.form("send", clear_on_submit=True):
+            m_text = st.text_input("Type here... / พิมพ์ที่นี่")
+            if st.form_submit_button("SEND / ส่ง"):
+                if m_text:
+                    db.reference(f'/messages/{chat_id}').push({
+                        'sender': my_id, 'text': m_text, 'timestamp': datetime.now().isoformat()
+                    })
+                    st.rerun()
+
+# --- 8. YOUTUBE (Height 150) ---
+st.write("---")
+yt_url = "https://www.youtube.com/embed?listType=playlist&list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO&autoplay=1&mute=1"
+st.markdown(f'<iframe width="100%" height="150" src="{yt_url}" frameborder="0" allow="autoplay; encrypted-media"></iframe>', unsafe_allow_html=True)
+
+st.caption("SYNAPSE V2.4 | STABLE RADAR | NO LIES")
