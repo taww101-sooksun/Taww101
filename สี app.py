@@ -22,118 +22,118 @@ if not firebase_admin._apps:
     except Exception as e:
         st.error(f"Firebase Error: {e}")
 
-# --- 2. CONFIG & SLOW RAINBOW (180s) ---
-st.set_page_config(page_title="SYNAPSE PURITY", layout="wide")
+# --- 2. THEME & AUTO-LOGIN SETUP ---
+st.set_page_config(page_title="SYNAPSE AUTO-PILOT", layout="wide")
+
+# ระบบจดจำ User อัตโนมัติ (ถ้าเคยพิมพ์ชื่อไว้ครั้งหนึ่งแล้วจะไม่ถามอีก)
+if 'my_id' not in st.session_state:
+    st.session_state.my_id = None
+
 st.markdown("""
     <style>
     @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
     .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 180s ease infinite; }
-    .status-box { background: rgba(0,0,0,0.8); padding: 15px; border-radius: 10px; border: 1px solid #00ff00; color: #00ff00; font-family: monospace; }
+    .status-box { background: rgba(0,0,0,0.85); padding: 15px; border-radius: 12px; border: 2px solid #00ff00; color: #00ff00; font-family: 'Courier New', monospace; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 3. LOGO ---
-st.image("https://raw.githubusercontent.com/taww101/taww101/main/logo2.jpg", width=300)
+st.image("https://raw.githubusercontent.com/taww101/taww101/main/logo2.jpg", width=250)
 
-# --- 4. ACCESS CONTROL ---
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
-    with st.form("Login"):
-        u_id = st.text_input("ID / ไอดี")
-        u_pw = st.text_input("Password", type="password")
-        if st.form_submit_button("SYSTEM UNLOCK"):
-            if u_pw == "synapse2026" and u_id:
-                st.session_state.authenticated = True
-                st.session_state.my_id = u_id
-                st.rerun()
+# --- 4. AUTO-LOGIN LOGIC ---
+if not st.session_state.my_id:
+    st.subheader("🚀 INITIALIZE SYSTEM / เริ่มต้นระบบ")
+    input_id = st.text_input("ENTER YOUR CALLSIGN (ชื่อเรียกของคุณ):", placeholder="เช่น Commander-1")
+    if st.button("CONNECT SYSTEM"):
+        if input_id:
+            st.session_state.my_id = input_id
+            st.rerun()
     st.stop()
 
 my_id = st.session_state.my_id
 
-# --- 5. DATA FETCH & FILTER (ล้างขยะพิกัดเก่า) ---
-all_users = db.reference('/users').get() or {}
-current_ts = time.time()
-active_users = {}
-
-for uid, udata in all_users.items():
-    last_sync = udata.get('location', {}).get('last_sync', 0)
-    if (current_ts - last_sync) < 300: # กรองเฉพาะ 5 นาทีล่าสุด
-        active_users[uid] = udata
-
-friend_list = [u for u in active_users.keys() if u != my_id]
-
-# --- 6. LIVE RADAR FRAGMENT ---
-@st.fragment(run_every=10)
-def purity_radar(users_to_show):
+# --- 5. GPS & DATA CORE ---
+@st.fragment(run_every=5) # ปรับเหลือ 5 วินาทีเพื่อให้มุด "ติดตาม" ได้ลื่นขึ้น
+def auto_pilot_radar():
     location = get_geolocation()
+    all_users = db.reference('/users').get() or {}
+    current_ts = time.time()
+    
+    # กรองคนออนไลน์ (3 นาทีล่าสุด)
+    active_users = {uid: data for uid, data in all_users.items() 
+                    if (current_ts - data.get('location', {}).get('last_sync', 0)) < 180}
+
     if location:
         coords = location.get('coords', {})
         lat, lon = coords.get('latitude'), coords.get('longitude')
+        
         if lat and lon:
+            # คำนวณเวลาอัตโนมัติตามพิกัด
             tf = TimezoneFinder()
             tz_name = tf.timezone_at(lng=lon, lat=lat)
-            # แสดงเวลาตามตำแหน่งจริงทั่วโลก
-            time_here = datetime.now(pytz.timezone(tz_name)).strftime('%H:%M:%S')
+            time_local = datetime.now(pytz.timezone(tz_name)).strftime('%H:%M:%S')
             time_utc = datetime.now(pytz.utc).strftime('%H:%M:%S UTC')
-            
+
+            # ⚡ บังคับเขียนข้อมูล (Force Write) ทุกครั้งที่ขยับ
             db.reference(f'/users/{my_id}/location').update({
                 'lat': lat, 'lon': lon,
                 'last_sync': time.time(),
-                'time_local': time_here,
+                'time_local': time_local,
                 'time_uk': time_utc
             })
 
-            m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
-            for uid, udata in users_to_show.items():
+            # แผนที่ (Fixed Zoom เพื่อความนิ่ง)
+            m = folium.Map(location=[lat, lon], zoom_start=18, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
+            
+            for uid, udata in active_users.items():
                 loc = udata.get('location', {})
-                if loc.get('lat') and loc.get('lon'):
+                u_lat, u_lon = loc.get('lat'), loc.get('lon')
+                if u_lat and u_lon:
                     color = 'red' if uid == my_id else 'blue'
-                    folium.Marker([loc['lat'], loc['lon']], icon=folium.Icon(color=color, icon='screenshot', prefix='glyphicon')).add_to(m)
-                    folium.map.Marker([loc['lat'], loc['lon']], icon=folium.features.DivIcon(
+                    # หมุดเน้นความชัดเจน
+                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color=color, icon='screenshot', prefix='glyphicon')).add_to(m)
+                    # ชื่อลอยบนหัวหมุด
+                    folium.map.Marker([u_lat, u_lon], icon=folium.features.DivIcon(
                         icon_size=(150,36),
-                        html=f'<div style="font-size: 11pt; color: {color}; font-weight: bold; text-shadow: 2px 2px black;">{uid}</div>'
+                        html=f'<div style="font-size: 12pt; color: {color}; font-weight: bold; text-shadow: 2px 2px black;">{uid}</div>'
                     )).add_to(m)
 
-            st_folium(m, use_container_width=True, height=500, key="radar_v35")
+            st_folium(m, use_container_width=True, height=500, key=f"radar_sync_{time.time()}")
+            
             st.markdown(f"""
             <div class="status-box">
-                <b>📍 YOUR LOCATION TIME:</b> {time_here}<br>
-                <b>🇬🇧 GLOBAL TIME (UTC):</b> {time_utc}<br>
-                <b>🛰️ STATUS:</b> ONLINE (TRUTH ONLY)
+                <b>🛰️ COMMANDER:</b> {my_id} | <b>STATUS:</b> ONLINE<br>
+                <b>📍 LOCAL TIME:</b> {time_local}<br>
+                <b>🌍 GLOBAL UTC:</b> {time_utc}
             </div>
             """, unsafe_allow_html=True)
-
-purity_radar(active_users)
-
-# --- 7. SECURE CHAT (Fixed AttributeError) ---
-st.write("---")
-chat_target = st.selectbox("💬 CHAT WITH:", ["-- Select Friend --"] + friend_list)
-
-if chat_target != "-- Select Friend --":
-    ids = sorted([my_id, chat_target])
-    chat_id = f"chat_{ids[0]}_{ids[1]}"
-    
-    # แก้ไขจุดที่เกิด Error: ตรวจสอบการมีอยู่ของข้อมูลก่อนเรียกใช้
-    chat_ref = db.reference(f'/messages/{chat_id}')
-    try:
-        msgs_data = chat_ref.limit_to_last(5).get()
-        if msgs_data:
-            for m in sorted(msgs_data.values(), key=lambda x: x.get('timestamp', '')):
-                st.write(f"**{m['sender']}:** {m['text']}")
         else:
-            st.info("No messages yet. / ยังไม่มีข้อความ")
-    except Exception:
-        st.info("Start a conversation! / เริ่มคุยกันเลย!")
+            st.warning("🛰️ Searching for GPS Satellite...")
+    else:
+        st.info("💡 Please 'Allow' Location Access / โปรดกดยอมรับตำแหน่ง")
+
+auto_pilot_radar()
+
+# --- 6. SIMPLE CHAT ---
+st.write("---")
+friend_list = [u for u in all_users.keys() if u != my_id and (current_ts - all_users[u].get('location', {}).get('last_sync', 0)) < 300]
+target = st.selectbox("💬 QUICK CHAT:", ["-- Online Friends --"] + friend_list)
+
+if target != "-- Online Friends --":
+    ids = sorted([my_id, target])
+    chat_id = f"chat_{ids[0]}_{ids[1]}"
+    chat_ref = db.reference(f'/messages/{chat_id}')
     
-    with st.form("msg_v35", clear_on_submit=True):
-        txt = st.text_input("Type Message / พิมพ์ข้อความ")
-        if st.form_submit_button("SEND / ส่ง"):
-            if txt:
-                chat_ref.push({
-                    'sender': my_id, 'text': txt, 'timestamp': datetime.now().isoformat()
-                })
+    msgs = chat_ref.limit_to_last(5).get()
+    if msgs:
+        for m in sorted(msgs.values(), key=lambda x: x.get('timestamp', '')):
+            st.write(f"**{m['sender']}:** {m['text']}")
+            
+    with st.form("quick_send", clear_on_submit=True):
+        msg_txt = st.text_input("Message...")
+        if st.form_submit_button("SEND"):
+            if msg_txt:
+                chat_ref.push({'sender': my_id, 'text': msg_txt, 'timestamp': datetime.now().isoformat()})
                 st.rerun()
 
-st.caption("SYNAPSE V3.5 | GLOBAL POSITIONING | NO LIES")
+st.caption("SYNAPSE V3.6 | AUTO-PILOT ENABLED | REAL-TIME TRUTH")
