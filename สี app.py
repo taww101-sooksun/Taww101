@@ -46,7 +46,7 @@ my_id = st.session_state.my_id
 st.markdown("""
     <style>
     @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 15s ease infinite; }
+    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 180s ease infinite; }
     .stMetric { background-color: rgba(0, 0, 0, 0.8) !important; padding: 5px !important; border-radius: 10px; border: 1px solid white; }
     div[data-testid="stMetricValue"] > div { font-size: 1.5rem !important; } /* ย่อขนาดตัวเลขให้เล็กลงหน่อยไม่กินที่ */
     </style>
@@ -66,7 +66,7 @@ with st.expander("🔍 ค้นหาและโทรหาเพื่อน
     all_users = db.reference('/users').get()
     friend_options = [u for u in all_users.keys() if u != my_id] if all_users else []
     target = st.selectbox("เลือกเพื่อน", ["-- Select --"] + friend_options)
-    if st.button("📞 CALL NOW"):
+    if st.button("📞 CALL NOW📞"):
         if target != "-- Select --":
             room_id = f"SYNAPSE-{uuid.uuid4().hex[:6]}"
             db.reference(f'/calls/{target}').set({'from': my_id, 'room': room_id, 'status': 'calling'})
@@ -77,14 +77,14 @@ with st.expander("🔍 ค้นหาและโทรหาเพื่อน
 try:
     call_data = db.reference(f'/calls/{my_id}').get()
     if call_data and call_data.get('status') == 'calling':
-        st.warning(f"🚨📞 สายเรียกเข้าจาก: {call_data.get('from')}")
+        st.warning(f"🚨 📢สายเรียกเข้าจาก: {call_data.get('from')}")
         col_a, col_r = st.columns(2)
         if col_a.button("✅ รับสาย✅"):
             st.session_state.active_room = call_data.get('room')
             st.session_state.call_target = call_data.get('from')
             db.reference(f'/calls/{my_id}').update({'status': 'connected'})
             st.rerun()
-        if col_r.button("📵ไม่รับ📵"):
+        if col_r.button("❌ ไม่รับ"❌):
             db.reference(f'/calls/{my_id}').delete()
             st.rerun()
 except: pass
@@ -118,14 +118,14 @@ if location:
             if f_data:
                 folium.Marker([f_data['lat'], f_data['lon']], icon=folium.Icon(color='red', icon='eye', prefix='fa')).add_to(m)
         
-        st_folium(m, use_container_width=True, height=400)
+        st_folium(m, use_container_width=True, height=300)
     else: st.warning("🛰️ กำลังรับสัญญาณดาวเทียม...")
 else: st.info("💡 โปรดอนุญาต GPS")
 
 # --- 8. ACTIVE CALL ---
 if "active_room" in st.session_state:
-    st.markdown(f'<iframe src="https://meet.jit.si/{st.session_state.active_room}" allow="camera; microphone; fullscreen" width="100%" height="500" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
-    if st.button("❌ ❌END CALL❌"):
+    st.markdown(f'<iframe src="https://meet.jit.si/{st.session_state.active_room}" allow="camera; microphone; fullscreen" width="100%" height="300" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
+    if st.button("❌ END CALL❌"):
         db.reference(f'/calls/{st.session_state.call_target}').delete()
         del st.session_state.active_room
         st.rerun()
@@ -136,7 +136,7 @@ st.write("---")
 # เพิ่ม loop=1 และ playlist ID เพื่อให้วนลูป
 playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
 st.markdown(f'''
-    <iframe width="100%" height="150" 
+    <iframe width="100%" height="300" 
     src="https://www.youtube.com/embed?listType=playlist&list={playlist_id}&autoplay=1&loop=1&mute=1&playlist={playlist_id}" 
     frameborder="0" allow="autoplay; encrypted-media"></iframe>
     ''', unsafe_allow_html=True)
