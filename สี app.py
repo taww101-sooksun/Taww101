@@ -54,8 +54,8 @@ st.markdown("""
 
 # --- 4. HEADER & LOGO CHECK ---
 # ตรวจสอบไฟล์โลโก้ ถ้าไม่มีให้ใช้ Text Header แทน
-if os.path.exists("logo.jpg"):
-    st.image("logo.jpg", width=200)
+if os.path.exists("logo2.jpg"):
+    st.image("logo2.jpg", width=300)
 else:
     st.markdown("<h1 style='text-align: center; color: white;'>S Y N A P S E</h1>", unsafe_allow_html=True)
 
@@ -77,7 +77,7 @@ with st.expander("🔍 ค้นหาและโทรหาเพื่อน
 try:
     call_data = db.reference(f'/calls/{my_id}').get()
     if call_data and call_data.get('status') == 'calling':
-        st.warning(f"🚨 สายเรียกเข้าจาก: {call_data.get('from')}")
+        st.warning(f"🚨📞 สายเรียกเข้าจาก: {call_data.get('from')}")
         col_a, col_r = st.columns(2)
         if col_a.button("✅ รับสาย"):
             st.session_state.active_room = call_data.get('room')
