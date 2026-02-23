@@ -22,7 +22,7 @@ if not firebase_admin._apps:
     except Exception as e:
         st.error(f"Firebase Error: {e}")
 
-# --- 2. THEME & SLOW RAINBOW (180s) ---
+# --- 2. CONFIG & SLOW RAINBOW (180s) ---
 st.set_page_config(page_title="SYNAPSE PURITY", layout="wide")
 st.markdown("""
     <style>
@@ -32,7 +32,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. LOGO (จาก GitHub ของนาย) ---
+# --- 3. LOGO ---
 st.image("https://raw.githubusercontent.com/taww101/taww101/main/logo2.jpg", width=300)
 
 # --- 4. ACCESS CONTROL ---
@@ -52,95 +52,88 @@ if not st.session_state.authenticated:
 
 my_id = st.session_state.my_id
 
-# --- 5. DATA CLEANING & FETCH (ล้างขยะพิกัดเก่า) ---
+# --- 5. DATA FETCH & FILTER (ล้างขยะพิกัดเก่า) ---
 all_users = db.reference('/users').get() or {}
 current_ts = time.time()
-
-# กรองเฉพาะคนที่ Online จริง (พิกัดต้องไม่เก่าเกิน 5 นาที)
 active_users = {}
+
 for uid, udata in all_users.items():
-    loc_data = udata.get('location', {})
-    last_sync = loc_data.get('last_sync', 0)
-    # ถ้าซิงค์ล่าสุดไม่เกิน 300 วินาที ให้ถือว่า Active
-    if (current_ts - last_sync) < 300:
+    last_sync = udata.get('location', {}).get('last_sync', 0)
+    if (current_ts - last_sync) < 300: # กรองเฉพาะ 5 นาทีล่าสุด
         active_users[uid] = udata
 
 friend_list = [u for u in active_users.keys() if u != my_id]
 
-# --- 6. LIVE RADAR FRAGMENT (เน้น GPS 2 ภาษา) ---
+# --- 6. LIVE RADAR FRAGMENT ---
 @st.fragment(run_every=10)
 def purity_radar(users_to_show):
     location = get_geolocation()
     if location:
         coords = location.get('coords', {})
         lat, lon = coords.get('latitude'), coords.get('longitude')
-        
         if lat and lon:
-            # คำนวณเวลา 2 ภาษา (TH / UK-UTC)
             tf = TimezoneFinder()
             tz_name = tf.timezone_at(lng=lon, lat=lat)
-            time_th = datetime.now(pytz.timezone(tz_name)).strftime('%H:%M:%S')
-            time_uk = datetime.now(pytz.utc).strftime('%H:%M:%S UTC')
+            # แสดงเวลาตามตำแหน่งจริงทั่วโลก
+            time_here = datetime.now(pytz.timezone(tz_name)).strftime('%H:%M:%S')
+            time_utc = datetime.now(pytz.utc).strftime('%H:%M:%S UTC')
             
-            # อัปเดตพิกัดสดใหม่ลง Cloud
             db.reference(f'/users/{my_id}/location').update({
                 'lat': lat, 'lon': lon,
                 'last_sync': time.time(),
-                'time_th': time_th,
-                'time_uk': time_uk
+                'time_local': time_here,
+                'time_uk': time_utc
             })
 
-            # แผนที่ (Zoom 17 ให้เห็นมุดชัดๆ)
             m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
-            
             for uid, udata in users_to_show.items():
                 loc = udata.get('location', {})
-                u_lat, u_lon = loc.get('lat'), loc.get('lon')
-                if u_lat and u_lon:
+                if loc.get('lat') and loc.get('lon'):
                     color = 'red' if uid == my_id else 'blue'
-                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color=color, icon='screenshot', prefix='glyphicon')).add_to(m)
-                    # ชื่อบ่งบอกมุด
-                    folium.map.Marker([u_lat, u_lon], icon=folium.features.DivIcon(
+                    folium.Marker([loc['lat'], loc['lon']], icon=folium.Icon(color=color, icon='screenshot', prefix='glyphicon')).add_to(m)
+                    folium.map.Marker([loc['lat'], loc['lon']], icon=folium.features.DivIcon(
                         icon_size=(150,36),
                         html=f'<div style="font-size: 11pt; color: {color}; font-weight: bold; text-shadow: 2px 2px black;">{uid}</div>'
                     )).add_to(m)
 
-            st_folium(m, use_container_width=True, height=500, key="radar_purity")
-            
-            # แสดงเวลา 2 ภาษา
+            st_folium(m, use_container_width=True, height=500, key="radar_v35")
             st.markdown(f"""
             <div class="status-box">
-                <b>🇹🇭 TIME (TH):</b> {time_th}<br>
-                <b>🇬🇧 TIME (UK/UTC):</b> {time_uk}<br>
-                <b>🛰️ GPS STATUS:</b> ACTIVE (REAL-TIME)
+                <b>📍 YOUR LOCATION TIME:</b> {time_here}<br>
+                <b>🇬🇧 GLOBAL TIME (UTC):</b> {time_utc}<br>
+                <b>🛰️ STATUS:</b> ONLINE (TRUTH ONLY)
             </div>
             """, unsafe_allow_html=True)
-        else:
-            st.warning("🛰️ Searching for GPS signal... / กำลังค้นหาสัญญาณ...")
-    else:
-        st.info("💡 Please enable GPS / โปรดเปิด GPS เพื่อระบุตัวตน")
 
 purity_radar(active_users)
 
-# --- 7. CLEAN CHAT ---
+# --- 7. SECURE CHAT (Fixed AttributeError) ---
 st.write("---")
-chat_target = st.selectbox("💬 CHAT WITH (ONLINE ONLY):", ["-- Select Friend --"] + friend_list)
+chat_target = st.selectbox("💬 CHAT WITH:", ["-- Select Friend --"] + friend_list)
 
 if chat_target != "-- Select Friend --":
     ids = sorted([my_id, chat_target])
     chat_id = f"chat_{ids[0]}_{ids[1]}"
-    msgs = db.reference(f'/messages/{chat_id}').limit_to_last(5).get()
-    if msgs:
-        for m in sorted(msgs.values(), key=lambda x: x.get('timestamp', '')):
-            st.write(f"**{m['sender']}:** {m['text']}")
     
-    with st.form("send_msg", clear_on_submit=True):
-        txt = st.text_input("Transmission... / พิมพ์ข้อความ")
+    # แก้ไขจุดที่เกิด Error: ตรวจสอบการมีอยู่ของข้อมูลก่อนเรียกใช้
+    chat_ref = db.reference(f'/messages/{chat_id}')
+    try:
+        msgs_data = chat_ref.limit_to_last(5).get()
+        if msgs_data:
+            for m in sorted(msgs_data.values(), key=lambda x: x.get('timestamp', '')):
+                st.write(f"**{m['sender']}:** {m['text']}")
+        else:
+            st.info("No messages yet. / ยังไม่มีข้อความ")
+    except Exception:
+        st.info("Start a conversation! / เริ่มคุยกันเลย!")
+    
+    with st.form("msg_v35", clear_on_submit=True):
+        txt = st.text_input("Type Message / พิมพ์ข้อความ")
         if st.form_submit_button("SEND / ส่ง"):
             if txt:
-                db.reference(f'/messages/{chat_id}').push({
+                chat_ref.push({
                     'sender': my_id, 'text': txt, 'timestamp': datetime.now().isoformat()
                 })
                 st.rerun()
 
-st.caption("SYNAPSE V3.4 | PURITY SYSTEM | NO OLD DATA | REAL-TIME TRUTH")
+st.caption("SYNAPSE V3.5 | GLOBAL POSITIONING | NO LIES")
