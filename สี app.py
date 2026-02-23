@@ -84,7 +84,7 @@ try:
             st.session_state.call_target = call_data.get('from')
             db.reference(f'/calls/{my_id}').update({'status': 'connected'})
             st.rerun()
-        if col_r.button("❌ ไม่รับ"❌):
+        if col_r.button("❌ ไม่รับ📵"):
             db.reference(f'/calls/{my_id}').delete()
             st.rerun()
 except: pass
