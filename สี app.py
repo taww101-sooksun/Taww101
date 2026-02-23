@@ -118,7 +118,7 @@ if location:
             if f_data:
                 folium.Marker([f_data['lat'], f_data['lon']], icon=folium.Icon(color='red', icon='eye', prefix='fa')).add_to(m)
         
-        st_folium(m, use_container_width=True, height=500)
+        st_folium(m, use_container_width=True, height=400)
     else: st.warning("🛰️ กำลังรับสัญญาณดาวเทียม...")
 else: st.info("💡 โปรดอนุญาต GPS")
 
