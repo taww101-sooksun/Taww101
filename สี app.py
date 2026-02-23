@@ -79,7 +79,7 @@ def map_engine():
             })
             
             # วาดแผนที่ (ใช้ Key คงที่เพื่อไม่ให้กะพริบ)
-            m = folium.Map(location=[lat, lon], zoom_start=30, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
+            m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
             folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='screenshot', prefix='glyphicon')).add_to(m)
             
             # แสดงแผนที่
@@ -104,7 +104,7 @@ def clock_engine():
 
 # --- 6. UI LAYOUT ---
 if os.path.exists("logo2.jpg"):
-    st.image("logo2.jpg", width=400)
+    st.image("logo2.jpg", width=200)
 
 clock_engine() # นาฬิกาทำงานอิสระ ไม่กวนแผนที่
 map_engine()   # แผนที่ทำงานอิสระ ไม่กวนนาฬิกา
