@@ -37,9 +37,9 @@ col1, col2 = st.columns([1, 5])
 with col1:
     # พยายามหาไฟล์โลโก้ทุดชื่อที่เป็นไปได้
     if os.path.exists("logo3.jpg"):
-        st.image("logo3.jpg", width=120)
+        st.image("logo3.jpg", width=300)
     elif os.path.exists("logo.png"):
-        st.image("logo.png", width=120)
+        st.image("logo.png", width=300)
     else:
         st.write("### 🌐 SYNAPSE") # ถ้าหาไฟล์ไม่เจอจริงๆ ให้ขึ้นชื่อแทนแอปจะได้ไม่โล่ง
 with col2:
