@@ -32,7 +32,6 @@ col1, col2 = st.columns([1, 6])
 with col1:
     if os.path.exists("logo3.jpg"):
         st.image("logo3.jpg", width=300)
-    else:
 
 tab1, tab2, tab3 = st.tabs(["🚀 เช็คอิน", "📊 แผนที่", "💬 แชท"])
 
