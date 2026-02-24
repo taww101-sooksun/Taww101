@@ -94,8 +94,7 @@ with tab2:
             else:
                 st.info("ยังไม่มีใครออนไลน์ ลองไปเช็คอินใน Tab 1 นะเพื่อน")
         except Exception as e:
-            st.error(f"Map Error: {e}")
-            
+            st.error(f"Map Error: {e}") 
  th tab3:
     st.header("💬 ห้องสนทนา")
     if firebase_admin._apps:
