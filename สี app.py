@@ -120,3 +120,34 @@ m = folium.Map(
             st.error(f"ไม่สามารถดึงข้อมูลจากฐานข้อมูลได้: {e}")
     else:
         st.error("ฐานข้อมูลไม่ทำงาน ตรวจสอบการตั้งค่า Secrets อีกครั้งนะเพื่อน")
+with tab3:
+    st.header("💬 ห้องสนทนากลุ่ม")
+    
+    if firebase_admin._apps:
+        # 1. ส่วนการพิมพ์ข้อความ
+        with st.form("chat_form", clear_on_submit=True):
+            chat_user = st.text_input("ชื่อผู้ส่ง:", value=user_id if 'user_id' in locals() else "")
+            chat_msg = st.text_input("ข้อความ:")
+            submit = st.form_submit_button("ส่งข้อความ")
+            
+            if submit and chat_user and chat_msg:
+                chat_ref = db.reference('chats')
+                chat_ref.push({
+                    'name': chat_user,
+                    'msg': chat_msg,
+                    'time': str(datetime.datetime.now().strftime("%H:%M"))
+                })
+
+        # 2. ส่วนการแสดงผลข้อความ
+        st.divider()
+        all_chats = db.reference('chats').order_by_key().limit_to_last(20).get()
+        
+        if all_chats:
+            for cid, data in reversed(all_chats.items()):
+                # ตกแต่งหน้าตาแชตให้น่าอ่าน
+                st.markdown(f"**{data['name']}** ({data['time']}):  \n{data['msg']}")
+                st.write("---")
+        else:
+            st.info("ยังไม่มีข้อความ คุยกันได้นะเพื่อน!")
+    else:
+        st.error("เชื่อมต่อฐานข้อมูลไม่ได้ ระบบแชตจึงไม่ทำงาน")
