@@ -27,9 +27,12 @@ def get_time_by_coords(lon):
     actual_time = datetime.datetime.utcnow() + datetime.timedelta(hours=offset)
     return actual_time.strftime("%H:%M")
 
-# --- ส่วนหัว ---
-st.title("🌐 SYNAPSE - True Location Time")
-location = get_geolocation()
+# --- ส่วนหัวและโลโก้ ---
+col1, col2 = st.columns([1, 6])
+with col1:
+    if os.path.exists("logo3.jpg"):
+        st.image("logo3.jpg", width=300)
+    else:
 
 tab1, tab2, tab3 = st.tabs(["🚀 เช็คอิน", "📊 แผนที่", "💬 แชท"])
 
