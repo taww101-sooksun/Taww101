@@ -29,7 +29,7 @@ if not firebase_admin._apps:
 col1, col2 = st.columns([1, 6])
 with col1:
     if os.path.exists("logo3.jpg"):
-        st.image("logo3.jpg", width=300)
+        st.image("logo3.jpg", width=100)
     else:
         st.write("🌐")
 with col2:
@@ -37,12 +37,12 @@ with col2:
 
 location = get_geolocation()
 
-# 3. สร้าง 3 Tab
+# 3. สร้าง 3 Tab (บรรทัดพวกนี้ต้องอยู่ชิดซ้ายสุด)
 tab1, tab2, tab3 = st.tabs(["🚀 สำหรับเพื่อน", "📊 Dashboard", "💬 ห้องสนทนา"])
 
 with tab1:
     st.header("เริ่มการเดินทางของคุณ")
-    user_id = st.text_input("ระบุชื่อหรือรหัสของคุณ:", placeholder="เช่น Ta101", key="user_input")
+    user_id = st.text_input("ระบุชื่อของคุณ:", placeholder="เช่น Ta101", key="user_input")
     if st.button("Start Journey", key="main_start_btn"):
         if user_id and location and 'coords' in location:
             try:
@@ -58,49 +58,46 @@ with tab1:
             except Exception as e:
                 st.error(f"Error: {e}")
         else:
-            st.warning("กรุณาใส่ชื่อและรอสัญญาณ GPS สักครู่ครับ")
+            st.warning("กรุณาใส่ชื่อและรอสัญญาณ GPS สักครู่")
 
 with tab2:
-    st.header("📊 Dashboard - แผนที่ติดตาม")
+    st.header("📊 แผนที่ติดตามตำแหน่ง")
     if firebase_admin._apps:
         try:
             users_ref = db.reference('users').get()
             if users_ref:
                 map_points = []
-                all_coords = [] # เก็บพิกัดทุกคนไว้คำนวณขอบเขต
+                all_coords = []
                 for k, v in users_ref.items():
                     if isinstance(v, dict) and 'lat' in v and 'lon' in v:
-                        lat, lon = float(v['lat']), float(v['lon'])
-                        map_points.append({'lat': lat, 'lon': lon, 'name': k})
-                        all_coords.append([lat, lon])
+                        lp = [float(v['lat']), float(v['lon'])]
+                        map_points.append({'lat': lp[0], 'lon': lp[1], 'name': k})
+                        all_coords.append(lp)
                 
                 if map_points:
-                    # สร้างแผนที่ (ใช้พิกัดคนแรกเป็นจุดเริ่มต้นก่อน)
                     m = folium.Map(location=[map_points[0]['lat'], map_points[0]['lon']], 
                                    zoom_start=18, tiles="OpenStreetMap")
-                    
                     for p in map_points:
                         folium.Marker([p['lat'], p['lon']], popup=p['name'], tooltip=p['name'],
                                       icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
                     
-                    # --- จุดสำคัญ: สั่งให้แผนที่ขยายให้เห็นหมุดทุกคน ---
                     if len(all_coords) > 1:
-                        m.fit_bounds(all_coords) 
-                    # ------------------------------------------
+                        m.fit_bounds(all_coords)
                     
                     st_folium(m, width=None, height=500)
                 else:
-                    st.info("ยังไม่มีข้อมูลพิกัดในระบบ")
+                    st.info("ไม่มีพิกัดในระบบ")
             else:
-                st.info("ยังไม่มีใครออนไลน์ ลองไปเช็คอินใน Tab 1 นะเพื่อน")
+                st.info("ยังไม่มีข้อมูลพิกัด")
         except Exception as e:
-            st.error(f"Map Error: {e}") 
- th tab3:
+            st.error(f"Map Error: {e}")
+
+with tab3:
     st.header("💬 ห้องสนทนา")
     if firebase_admin._apps:
         with st.form("chat_form", clear_on_submit=True):
-            name_val = user_id if user_id else ""
-            c_user = st.text_input("ชื่อ:", value=name_val)
+            current_n = user_id if user_id else ""
+            c_user = st.text_input("ชื่อ:", value=current_n)
             c_msg = st.text_input("ข้อความ:")
             if st.form_submit_button("ส่ง") and c_user and c_msg:
                 db.reference('chats').push({
