@@ -61,29 +61,41 @@ with tab1:
             st.warning("กรุณาใส่ชื่อและรอสัญญาณ GPS สักครู่ครับ")
 
 with tab2:
-    st.header("📊 แผนที่ติดตามตำแหน่ง")
+    st.header("📊 Dashboard - แผนที่ติดตาม")
     if firebase_admin._apps:
         try:
             users_ref = db.reference('users').get()
             if users_ref:
                 map_points = []
+                all_coords = [] # เก็บพิกัดทุกคนไว้คำนวณขอบเขต
                 for k, v in users_ref.items():
                     if isinstance(v, dict) and 'lat' in v and 'lon' in v:
-                        map_points.append({'lat': float(v['lat']), 'lon': float(v['lon']), 'name': k})
+                        lat, lon = float(v['lat']), float(v['lon'])
+                        map_points.append({'lat': lat, 'lon': lon, 'name': k})
+                        all_coords.append([lat, lon])
                 
                 if map_points:
-                    m = folium.Map(location=[map_points[0]['lat'], map_points[0]['lon']], zoom_start=16, tiles="CartoDB voyager")
+                    # สร้างแผนที่ (ใช้พิกัดคนแรกเป็นจุดเริ่มต้นก่อน)
+                    m = folium.Map(location=[map_points[0]['lat'], map_points[0]['lon']], 
+                                   zoom_start=18, tiles="OpenStreetMap")
+                    
                     for p in map_points:
-                        folium.Marker([p['lat'], p['lon']], popup=p['name'], tooltip=p['name']).add_to(m)
+                        folium.Marker([p['lat'], p['lon']], popup=p['name'], tooltip=p['name'],
+                                      icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
+                    
+                    # --- จุดสำคัญ: สั่งให้แผนที่ขยายให้เห็นหมุดทุกคน ---
+                    if len(all_coords) > 1:
+                        m.fit_bounds(all_coords) 
+                    # ------------------------------------------
+                    
                     st_folium(m, width=None, height=500)
                 else:
-                    st.info("ไม่มีพิกัดในระบบ")
+                    st.info("ยังไม่มีข้อมูลพิกัดในระบบ")
             else:
-                st.info("ยังไม่มีข้อมูลพิกัด")
+                st.info("ยังไม่มีใครออนไลน์ ลองไปเช็คอินใน Tab 1 นะเพื่อน")
         except Exception as e:
             st.error(f"Map Error: {e}")
-
-with tab3:
+th tab3:
     st.header("💬 ห้องสนทนา")
     if firebase_admin._apps:
         with st.form("chat_form", clear_on_submit=True):
