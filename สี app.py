@@ -93,8 +93,14 @@ with tab2:
                 if map_points:
                     center_lat = map_points[0]['lat']
                     center_lon = map_points[0]['lon']
-                    # ใช้ Tiles="OpenStreetMap" เพื่อให้มีสีสันและชื่อถนนชัดเจน
-                    m = folium.Map(location=[center_lat, center_lon], zoom_start=15, tiles="OpenStreetMap")
+                    # เปลี่ยนบรรทัดที่ 87 เป็นชุดนี้ครับ
+m = folium.Map(
+    location=[center_lat, center_lon], 
+    zoom_start=16, 
+    tiles="CartoDB voyager", 
+    attr="© CartoDB"
+)
+
                     
                     for point in map_points:
                         folium.Marker(
