@@ -9,7 +9,7 @@ if not firebase_admin._apps:
     fb_conf = st.secrets["firebase"]
     creds = credentials.Certificate(dict(fb_conf))
     firebase_admin.initialize_app(creds, {
-        'databaseURL': 'https://console.firebase.google.com/u/0/project/notty-101/database/notty-101-default-rtdb/data/~2F?hl=th-TH # ใส่ URL ของ DB ตัวเอง
+        'databaseURL': 'https://console.firebase.google.com/u/0/project/notty-101/database/notty-101-default-rtdb/data/~2F?hl=th-TH/' # ใส่ URL ของ DB ตัวเอง
     })
 
 st.title("🌐 SYNAPSE - Music Therapy")
