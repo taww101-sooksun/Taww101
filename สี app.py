@@ -3,23 +3,36 @@ import firebase_admin
 from firebase_admin import credentials, db
 import datetime
 
-# 1. เชื่อมต่อ Firebase (ใช้กุญแจจากที่ซ่อน Secrets)
-if not firebase_admin._apps:
-    # ดึงข้อมูล JSON จาก Streamlit Secrets
-    fb_conf = st.secrets["firebase"]
-    creds = credentials.Certificate(dict(fb_conf))
-    firebase_admin.initialize_app(creds, {
-        'databaseURL': 'https://console.firebase.google.com/u/0/project/notty-101/database/notty-101-default-rtdb/data/~2F?hl=th-TH/' # ใส่ URL ของ DB ตัวเอง
-    })
+with tab2:
+    st.header("📊 สถานะและการติดตามพิกัด")
+    
+    # 1. ดึงข้อมูลทุกคนจาก Firebase
+    users_ref = db.reference('users').get()
+    
+    if users_ref:
+        import pandas as pd
+        map_data = []
+        
+        for uid, info in users_ref.items():
+            # เช็กว่ามีพิกัดส่งมาจริงไหม (ถ้าไม่มีให้ข้ามไปก่อน)
+            if 'lat' in info and 'lon' in info:
+                map_data.append({
+                    'name': uid,
+                    'latitude': info['lat'],
+                    'longitude': info['lon']
+                })
+        
+        if map_data:
+            df = pd.DataFrame(map_data)
+            # 2. คำสั่งวาดแผนที่ (ทำได้จริง!)
+            st.map(df) 
+            # 3. โชว์ตารางรายละเอียดข้างล่างแผนที่
+            st.table(df)
+        else:
+            st.warning("พบบันทึกชื่อผู้ใช้ แต่ยังไม่มีข้อมูลพิกัด (Lat/Lon) ส่งเข้ามาครับ")
+    else:
+        st.write("ยังไม่มีใครเชื่อมต่อเข้ามาครับ")
 
-st.title("🌐 SYNAPSE - Music Therapy")
-
-# แบ่งหน้าจอเป็น 2 ฝั่ง (ฝั่งคนใช้ กับ ฝั่งเราดู)
-tab1, tab2 = st.tabs(["🚀 สำหรับเพื่อน", "📊 Dashboard ของเรา"])
-
-with tab1:
-    st.header("เริ่มการเดินทางของคุณ")
-    user_id = st.text_input("ระบุชื่อหรือรหัสของคุณ:", placeholder="เช่น A001")
     
     if st.button("Start Journey"):
         if user_id:
