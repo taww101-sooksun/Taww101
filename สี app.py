@@ -96,7 +96,7 @@ with tab2:
         except Exception as e:
             st.error(f"Map Error: {e}")
             
-th tab3:
+ th tab3:
     st.header("💬 ห้องสนทนา")
     if firebase_admin._apps:
         with st.form("chat_form", clear_on_submit=True):
