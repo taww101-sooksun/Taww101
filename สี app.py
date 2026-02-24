@@ -4,9 +4,14 @@ from firebase_admin import credentials, db
 import datetime
 import pandas as pd
 import os
-from streamlit_js_eval import get_geolocation  # ตัวดึง GPS จริง
+from streamlit_js_eval import get_geolocation
+import folium
+from streamlit_folium import st_folium
 
-# 1. เชื่อมต่อ Firebase (ใช้กุญแจจาก Secrets)
+# 1. ตั้งค่าหน้าเว็บ
+st.set_page_config(page_title="SYNAPSE", layout="wide")
+
+# 2. เชื่อมต่อ Firebase
 if not firebase_admin._apps:
     try:
         fb_conf = st.secrets["firebase"]
@@ -15,51 +20,32 @@ if not firebase_admin._apps:
             'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
         })
     except Exception as e:
-        st.error(f"การเชื่อมต่อ Firebase มีปัญหา: {e}")
+        st.error(f"Firebase Error: {e}")
 
 st.title("🌐 SYNAPSE - Music Therapy")
 
-# --- ส่วนดึงพิกัด GPS จริง ---
-# ตัวนี้จะเด้งถาม "Allow location access?" บนหน้าจอมือถือ/คอม
+# 3. ดึงพิกัด GPS จริงจาก Browser
 location = get_geolocation()
 
 tab1, tab2 = st.tabs(["🚀 สำหรับเพื่อน", "📊 Dashboard ของเรา"])
 
 with tab1:
     st.header("เริ่มการเดินทางของคุณ")
-    user_id = st.text_input("ระบุชื่อหรือรหัสของคุณ:", placeholder="เช่น A001")
+    user_id = st.text_input("ระบุชื่อหรือรหัสของคุณ:", placeholder="เช่น Ta101", key="user_input")
     
-    if st.button("Start Journey"):
+    if st.button("Start Journey", key="main_start_btn"):
         if user_id:
-            location = get_geolocation()
-            # --- ส่วนที่วางต่อจากบรรทัดที่ 34 ---
-
-tab1, tab2 = st.tabs(["🚀 สำหรับเพื่อน", "📊 Dashboard ของเรา"])
-
-with tab1:
-    st.header("เริ่มการเดินทางของคุณ")
-    user_id = st.text_input("ระบุชื่อหรือรหัสของคุณ:", placeholder="เช่น Ta101")
-    
-    if st.button("Start Journey"):
-        if user_id:
-            # 1. เช็กก่อนว่ามีข้อมูลพิกัดส่งมาจาก Browser หรือยัง
             if location and 'coords' in location:
                 try:
                     lat = location['coords']['latitude']
                     lon = location['coords']['longitude']
-                    
                     now = datetime.datetime.now()
-                    current_hour = now.hour
                     
-                    # 2. ตรรกะเลือกเพลง (ไฟล์ต้องอยู่ข้าง app.py ใน GitHub)
-                    if 6 <= current_hour < 12:
-                        song_path = "test_morning.mp3"
-                        status = "เช้าอันสดใส"
-                    else:
-                        song_path = "test_evening.mp3"
-                        status = "เย็นที่ผ่อนคลาย"
+                    # เลือกเพลงตามเวลา (ไฟล์อยู่ที่หน้าแรกของ GitHub)
+                    song_path = "test_morning.mp3" if 6 <= now.hour < 12 else "test_evening.mp3"
+                    status = "เช้าอันสดใส" if 6 <= now.hour < 12 else "เย็นที่ผ่อนคลาย"
 
-                    # 3. ส่ง "พิกัดจริง" เข้า Firebase
+                    # ส่งข้อมูลไป Firebase
                     ref = db.reference(f'users/{user_id}')
                     ref.set({
                         'last_seen': str(now),
@@ -68,43 +54,51 @@ with tab1:
                         'status': status
                     })
 
-                    st.success(f"เชื่อมต่อสำเร็จ! พิกัดของคุณคือ: {lat}, {lon}")
+                    st.success(f"เชื่อมต่อสำเร็จ! พิกัดปัจจุบัน: {lat}, {lon}")
                     
-                    # 4. เล่นเพลง
                     if os.path.exists(song_path):
                         st.audio(song_path)
                     else:
-                        st.error(f"ไม่พบไฟล์ {song_path} ใน GitHub ของคุณ")
-                
+                        st.error(f"ไม่พบไฟล์ {song_path} ใน GitHub (เช็คตัวเล็กตัวใหญ่ด้วยนะ)")
                 except Exception as e:
-                    st.error("เกิดข้อผิดพลาดในการประมวลผลพิกัด")
+                    st.error(f"เกิดข้อผิดพลาด: {e}")
             else:
-                # ถ้า GPS ยังไม่มา หรือยังไม่ได้กด Allow
-                st.warning("⚠️ รอสักครู่ครับเพื่อน! ระบบกำลังดึง GPS กรุณากด 'Allow' ที่หน้าจอ หรือรอให้สัญญาณมาถึงก่อนนะครับ")
+                st.warning("⚠️ กรุณากด 'Allow' เพื่อเปิด GPS หรือรอสัญญาณสักครู่ครับ")
         else:
-            st.warning("กรุณาใส่ชื่อก่อนนะครับเพื่อน")
+            st.warning("กรุณาใส่ชื่อก่อนนะครับ")
 
 with tab2:
-    st.header("📊 สถานะและการติดตามพิกัด")
+    st.header("📊 แผนที่ติดตามตำแหน่ง (เห็นชื่อถนน)")
     users_ref = db.reference('users').get()
     
     if users_ref:
-        map_data = []
+        map_points = []
         for uid, info in users_ref.items():
             if isinstance(info, dict) and 'lat' in info and 'lon' in info:
-                map_data.append({
-                    'User': uid,
-                    'latitude': float(info['lat']),
-                    'longitude': float(info['lon']),
-                    'Status': info.get('status', 'N/A')
+                map_points.append({
+                    'lat': float(info['lat']),
+                    'lon': float(info['lon']),
+                    'name': uid
                 })
         
-        if map_data:
-            df = pd.DataFrame(map_data)
-            st.map(df) # แผนที่จะขึ้นตรงนี้!
-            st.dataframe(df) # แสดงตารางตรวจสอบพิกัด
+        if map_points:
+            # สร้างแผนที่ Folium (Zoom เห็นถนนชัดเจน)
+            center_lat = map_points[0]['lat']
+            center_lon = map_points[0]['lon']
+            m = folium.Map(location=[center_lat, center_lon], zoom_start=15) # zoom 15 จะเห็นถนนชัดมาก
+            
+            for point in map_points:
+                folium.Marker(
+                    [point['lat'], point['lon']], 
+                    popup=point['name'],
+                    tooltip=point['name']
+                ).add_to(m)
+            
+            # แสดงแผนที่
+            st_folium(m, width=None, height=500)
+            st.write("รายชื่อผู้ใช้ปัจจุบัน:")
+            st.dataframe(pd.DataFrame(map_points))
         else:
-            st.info("มีรายชื่อในระบบ แต่ยังไม่มีข้อมูลพิกัด (Lat/Lon)")
+            st.info("ยังไม่มีข้อมูลพิกัดในระบบ")
     else:
-        st.write("ยังไม่มีใครเชื่อมต่อเข้ามาครับ")
-
+        st.write("ยังไม่มีใครออนไลน์ครับ")
