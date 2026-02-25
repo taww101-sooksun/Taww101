@@ -141,7 +141,6 @@ with tab3:
             },
             async_processing=True,
         )
-
                 ]},
                 media_stream_constraints={"video": True, "audio": True}
             )
