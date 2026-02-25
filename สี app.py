@@ -32,20 +32,6 @@ with c1: st.markdown(f"🛰️ **GPS:** {'🟢 CONNECTED' if location else '🔴
 with c2: st.markdown("🎵 **MUSIC:** 🟢 ONLINE")
 with c3: st.markdown(f"🔥 **DB:** {'🟢 SYNCED' if firebase_admin._apps else '🔴 ERROR'}")
 st.markdown("</div>", unsafe_allow_html=True)
-# --- 3. ส่วนหัว (Header) และโลโก้ ---
-st.markdown("<h1 style='text-align: center; color: #4facfe;'>🌐 SYNAPSE</h1>", unsafe_allow_html=True)
-
-# ตรวจสอบไฟล์โลโก้ (Logo3.jpg)
-if os.path.exists("logo3.jpg"):
-    col_l, col_m, col_r = st.columns([1,1,1])
-    with col_m:
-        st.image("logo3.jpg", width=300)
-elif os.path.exists("logo3.jpg"):
-    col_l, col_m, col_r = st.columns([1,1,1])
-    with col_m:
-        st.image("logo3.jpg", width=150)
-
-location = get_geolocation()
 
 # --- 5. แท็บการใช้งาน ---
 tab1, tab2, tab3 = st.tabs(["🚀 Experience", "📊 Global Map", "💬 Community"])
