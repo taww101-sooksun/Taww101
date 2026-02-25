@@ -18,4 +18,5 @@ folium
 streamlit-folium
 firebase-admin
 timezonefinder
+streamlit-webrtc
 
