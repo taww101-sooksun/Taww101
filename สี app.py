@@ -116,25 +116,64 @@ with tab2:
                 st_folium(m, width=None, height=450)
 
 with tab3:
-    st.subheader("🎥 Live Call (ระบบห้องส่วนตัว)")
+    st.subheader("🎥 Live Call & Chat")
     
-    room_name = st.text_input("🔑 ระบุชื่อห้องที่จะคอล:", value="private-room-01")
+    # 1. กำหนดชื่อห้อง (พิมพ์ให้เหมือนเพื่อนเพื่อเข้าห้องเดียวกัน)
+    room_name = st.text_input("🔑 ระบุชื่อห้องที่จะเข้า:", value="private-room-01")
     
     if user_display_name:
-        st.write(f"กำลังเข้าสู่ห้อง: **{room_name}** ในชื่อ **{user_display_name}**")
+        st.info(f"ผู้ใช้: {user_display_name} | ห้อง: {room_name}")
         
-        # ส่วนนี้ต้องเยื้องเข้ามา 2 ระดับ (จาก with และ จาก if)
+        # --- [1] ระบบ Video Call ---
+        # ต้องรันผ่าน HTTPS เท่านั้นถึงจะเปิดกล้องได้
         webrtc_streamer(
             key=f"call-{room_name}",
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-            media_stream_constraints={"video": True, "audio": True},
-            video_html_attrs={
-                "style": {"width": "100%", "border-radius": "15px", "border": "2px solid #4facfe"},
-                "autoPlay": True,
-            } # ปิดปีกกาตรงนี้
-        ) # ปิดวงเล็บตรงนี้
+            rtc_configuration={
+                "iceServers": [
+                    {"urls": ["stun:stun.l.google.com:19302"]},
+                    {"urls": ["stun:stun1.l.google.com:19302"]},
+                    {"urls": ["stun:stun2.l.google.com:19302"]}
+                ]
+            },
+            media_stream_constraints={"video": True, "audio": True}
+        )
+
+        st.markdown("---")
+        
+        # --- [2] ระบบ Chat Room ---
+        st.subheader(f"💬 Chat: {room_name}")
+        
+        # ดึงข้อมูลจาก Firebase ตามชื่อห้อง
+        chat_ref = db.reference(f'chats/{room_name}')
+        messages = chat_ref.order_by_key().limit_to_last(15).get()
+
+        # แสดงข้อความแชท (ถ้ามี)
+        if messages:
+            for msg_id, data in messages.items():
+                is_me = data.get('name') == user_display_name
+                bg_color = "#4facfe" if is_me else "#1a1c24"
+                align = "right" if is_me else "left"
+                
+                st.markdown(f"""
+                    <div style='text-align: {align}; margin-bottom: 10px;'>
+                        <div style='display: inline-block; background-color: {bg_color}; padding: 8px 15px; border-radius: 15px; color: white;'>
+                            <small style='color: #ddd;'>{data.get('name')}</small><br>{data.get('msg')}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        # ช่องพิมพ์ข้อความ
+        user_msg = st.chat_input("พิมพ์ข้อความของคุณที่นี่...")
+        if user_msg:
+            chat_ref.push({
+                'name': user_display_name,
+                'msg': user_msg,
+                'time': datetime.datetime.now().strftime("%H:%M")
+            })
+            st.rerun() # รีเฟรชหน้าเพื่อให้ข้อความใหม่ขึ้นทันที
+            
     else:
-        # else ตัวนี้ต้องตรงกับ if ข้างบน
-        st.warning("⚠️ กรุณาระบุชื่อผู้ใช้ที่หน้าแรกก่อนใช้งานระบบคอล")
+        st.warning("⚠️ โปรดระบุชื่อผู้ใช้ที่แท็บ 🚀 Experience ก่อนเข้าใช้งาน")
+
 
    
