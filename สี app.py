@@ -7,8 +7,21 @@ from streamlit_js_eval import get_geolocation
 import folium
 from streamlit_folium import st_folium
 
-# --- 1. ตั้งค่าหน้าเว็บ ---
-st.set_page_config(page_title="SYNAPSE - Fixed", layout="wide")
+# --- 1. ตั้งค่าหน้าเว็บและการออกแบบ (Premium Dark UI) ---
+st.set_page_config(page_title="SYNAPSE - Stable", layout="wide")
+
+st.markdown("""
+    <style>
+    .main { background-color: #0e1117; }
+    .stApp { color: #ffffff; }
+    .stButton>button {
+        width: 100%; border-radius: 20px;
+        background: linear-gradient(45deg, #00f2fe 0%, #4facfe 100%);
+        color: white; border: none; font-weight: bold;
+    }
+    .stTabs [aria-selected="true"] { background-color: #4facfe !important; }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- 2. เชื่อมต่อ Firebase ---
 if not firebase_admin._apps:
@@ -22,77 +35,74 @@ if not firebase_admin._apps:
                 'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
             })
     except Exception as e:
-        st.error(f"Firebase Setup Error: {e}")
+        st.error(f"Firebase Error: {e}")
 
-# ฟังก์ชันคำนวณเวลา
 def get_time_by_coords(lon):
     if lon is None: return datetime.datetime.now()
     offset = round(float(lon) / 15)
     return datetime.datetime.utcnow() + datetime.timedelta(hours=offset)
 
 # --- 3. ส่วนหัว ---
-col1, col2 = st.columns([1, 5])
-with col1:
-    if os.path.exists("logo3.jpg"): st.image("logo3.jpg", width=300)
-    else: st.write("### 🌐 SYNAPSE")
-with col2:
-    st.title("SYNAPSE - Music Therapy")
+st.markdown("<h1 style='text-align: center; color: #4facfe;'>🌐 SYNAPSE</h1>", unsafe_allow_html=True)
 
 location = get_geolocation()
 
-# --- 4. ระบบแจ้งเตือนแชท ---
+# --- 4. ระบบเช็คแจ้งเตือน (แบบตัวหนังสือเท่านั้น ไม่ใช้เสียงเพื่อป้องกันเพลงดับ) ---
 if 'last_chat_count' not in st.session_state:
     st.session_state.last_chat_count = 0
 
-def check_notifications():
+def check_notifications_silent():
     try:
         chats = db.reference('chats').get()
         if chats:
             current_count = len(chats)
             if current_count > st.session_state.last_chat_count:
                 if st.session_state.last_chat_count != 0:
-                    st.toast("💬 มีข้อความใหม่!", icon="🔔")
-                    if os.path.exists("notification.mp3"):
-                        st.audio("notification.mp3", format="audio/mp3", autoplay=True)
+                    st.toast("💬 มีข้อความใหม่ในห้องสนทนา!", icon="🔔") # แจ้งเตือนแค่ภาพพอ
                 st.session_state.last_chat_count = current_count
     except: pass
 
-check_notifications()
+check_notifications_silent()
 
 # --- 5. แท็บการใช้งาน ---
-tab1, tab2, tab3 = st.tabs(["🚀 เช็คอิน & ฟังเพลง", "📊 แผนที่", "💬 ห้องสนทนา"])
+tab1, tab2, tab3 = st.tabs(["🚀 Experience", "📊 Global Map", "💬 Community"])
 
 with tab1:
-    user_display_name = st.text_input("ระบุชื่อของคุณ:", placeholder="เช่น Ta101")
-    admin_key = st.text_input("รหัสผ่านผู้ดูแล (ถ้ามี):", type="password")
+    col1, col2 = st.columns(2)
+    with col1: user_display_name = st.text_input("👤 ชื่อผู้ใช้:", placeholder="ระบุชื่อของคุณ")
+    with col2: admin_key = st.text_input("🔑 รหัสลับ:", type="password")
 
-    if st.button("Start Journey"):
+    if st.button("START JOURNEY"):
         if user_display_name and location and 'coords' in location:
             lat, lon = location['coords']['latitude'], location['coords']['longitude']
-            true_time_str = get_time_by_coords(lon).strftime("%H:%M")
+            time_str = get_time_by_coords(lon).strftime("%H:%M")
             if firebase_admin._apps:
-                db.reference(f'users/{user_display_name}').set({'last_seen': true_time_str, 'lat': lat, 'lon': lon})
-                st.success(f"เช็คอินสำเร็จ! เวลาพิกัดโลก: {true_time_str}")
+                db.reference(f'users/{user_display_name}').set({'last_seen': time_str, 'lat': lat, 'lon': lon})
+                st.success(f"เชื่อมต่อสำเร็จ! เวลา: {time_str}")
 
-    # ส่วนเพลง YouTube
-    st.write("---")
+    st.markdown("---")
+    
+    # ส่วนของเพลง YouTube (เพิ่ม Parameter เพื่อความเสถียรสูงสุด)
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+    embed_url = f"https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&loop=1&playlist={playlist_id}&enablejsapi=1"
+    
     if user_display_name == "Ta101" and admin_key == "@0970801941":
-        st.subheader("🎛️ แผงควบคุมดีเจ (Admin Only)")
-        playlist_url = "https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-        st.components.v1.html(
-            f'<iframe width="100%" height="315" src="{playlist_url}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>',
-            height=350,
-        )
-    elif user_display_name != "":
-        st.subheader("🎧 เพลงบำบัดสำหรับคุณ")
-        playlist_url = "https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-        st.components.v1.html(
-            f'<iframe width="100%" height="315" src="{playlist_url}" frameborder="0" allowfullscreen></iframe>',
-            height=350,
-        )
+        st.markdown("<h3 style='color: #00f2fe;'>🎧 Admin Console Active</h3>", unsafe_allow_html=True)
+    else:
+        st.markdown("<h3 style='color: #888;'>🎧 Streaming Therapy...</h3>", unsafe_allow_html=True)
+
+    st.components.v1.html(
+        f'''
+        <div style="border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+            <iframe width="100%" height="250" src="{embed_url}" 
+            frameborder="0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+        </div>
+        ''',
+        height=270,
+    )
 
 with tab2:
-    st.header("📊 แผนที่พิกัดจริง")
+    st.subheader("📍 ตำแหน่งผู้ใช้งาน")
     if firebase_admin._apps:
         users_ref = db.reference('users').get()
         if users_ref:
@@ -101,22 +111,20 @@ with tab2:
                 if isinstance(v, dict) and 'lat' in v:
                     valid_users.append({'name': k, 'lat': v['lat'], 'lon': v['lon'], 'time': v.get('last_seen', '--:--')})
             if valid_users:
-                m = folium.Map(location=[valid_users[0]['lat'], valid_users[0]['lon']], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attr="Google")
-                for u in valid_users:
-                    folium.Marker([u['lat'], u['lon']], popup=f"{u['name']} ({u['time']})").add_to(m)
-                # แก้ไขตรงนี้ให้ถูกต้องแล้วครับ
-                st_folium(m, width=700, height=500)
+                m = folium.Map(location=[valid_users[0]['lat'], valid_users[0]['lon']], zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google")
+                for u in valid_users: folium.Marker([u['lat'], u['lon']], popup=u['name']).add_to(m)
+                st_folium(m, width=None, height=450)
 
 with tab3:
-    st.header("💬 ห้องสนทนา")
+    st.subheader("💬 สนทนาแบบเรียลไทม์")
     with st.form("chat_form", clear_on_submit=True):
-        c_msg = st.text_input("พิมพ์ข้อความ:")
-        if st.form_submit_button("ส่ง") and user_display_name and c_msg:
-            lon = location['coords']['longitude'] if location else None
-            db.reference('chats').push({'name': user_display_name, 'msg': c_msg, 'time': get_time_by_coords(lon).strftime("%H:%M")})
+        c_msg = st.text_input("พิมพ์ข้อความ...")
+        if st.form_submit_button("SEND"):
+            if user_display_name and c_msg:
+                lon = location['coords']['longitude'] if location else None
+                db.reference('chats').push({'name': user_display_name, 'msg': c_msg, 'time': get_time_by_coords(lon).strftime("%H:%M")})
     
-    chats = db.reference('chats').order_by_key().limit_to_last(15).get()
+    chats = db.reference('chats').order_by_key().limit_to_last(10).get()
     if chats:
         for _, data in reversed(chats.items()):
-            st.write(f"**{data.get('name')}** ({data.get('time')}): {data.get('msg')}")
-            st.divider()
+            st.markdown(f"<div style='background-color: #1a1c24; padding: 10px; border-radius: 10px; margin-bottom: 5px; border-left: 5px solid #4facfe;'><b style='color: #4facfe;'>{data.get('name')}</b>: {data.get('msg')}</div>", unsafe_allow_html=True)
