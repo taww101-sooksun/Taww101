@@ -114,48 +114,47 @@ with tab3:
                         pair = sorted([user_display_name, f_name])
                         st.session_state.private_room = f"secret_{pair[0]}_{pair[1]}"
                         st.session_state.target_name = f_name
-        else: st.write("ไม่มีคนออนไลน์")
+        else:
+            st.write("ไม่มีคนออนไลน์")
 
     with col_c:
         room = st.session_state.get('private_room', None)
         target = st.session_state.get('target_name', None)
         if room and target:
             st.info(f"🔒 คุยกับ: {target}")
-            # คอลเวอร์ชัน v11 ทะลุกำแพง
-                    # --- วางอันใหม่นี้ลงไปแทน (v12 ทะลุกำแพง) ---
-        webrtc_streamer(
-            key=f"call-v12-{room}", 
-            mode=WebRtcMode.SENDRECV,
-            rtc_configuration={
-                "iceServers": [
-                    {"urls": ["stun:stun.l.google.com:19302"]},
-                    {"urls": ["stun:stun1.l.google.com:19302"]},
-                    {"urls": ["stun:stun2.l.google.com:19302"]},
-                    {"urls": ["stun:global.stun.twilio.com:3478"]},
-                    {"urls": ["stun:stun.services.mozilla.com"]}
-                ]
-            },
-            media_stream_constraints={
-                "video": True, 
-                "audio": True
-            },
-            async_processing=True,
-        )
-                ]},
-                media_stream_constraints={"video": True, "audio": True}
+            # --- แก้ไขส่วน Video Call v12 และจัดระเบียบย่อหน้าใหม่ ---
+            webrtc_streamer(
+                key=f"call-v12-{room}",
+                mode=WebRtcMode.SENDRECV,
+                rtc_configuration={
+                    "iceServers": [
+                        {"urls": ["stun:stun.l.google.com:19302"]},
+                        {"urls": ["stun:stun1.l.google.com:19302"]},
+                        {"urls": ["stun:stun2.l.google.com:19302"]},
+                        {"urls": ["stun:global.stun.twilio.com:3478"]},
+                        {"urls": ["stun:stun.services.mozilla.com"]}
+                    ]
+                },
+                media_stream_constraints={"video": True, "audio": True},
+                async_processing=True
             )
+            
+            st.markdown("---")
             chat_ref = db.reference(f'chats/{room}')
             msg_in = st.chat_input(f"ส่งข้อความหา {target}...")
             if msg_in:
                 chat_ref.push({'name': user_display_name, 'msg': msg_in})
                 st.rerun()
+                
             msgs = chat_ref.order_by_key().limit_to_last(15).get()
             if msgs:
                 for m_id in msgs:
                     d = msgs[m_id]
                     align = "right" if d.get('name') == user_display_name else "left"
                     st.markdown(f"<div style='text-align:{align};'><b>{d.get('name')}</b>: {d.get('msg')}</div>", unsafe_allow_html=True)
+            
             if st.button("🗑️ ล้างห้องนี้"):
                 chat_ref.delete()
                 st.rerun()
-        else: st.write("👈 เลือกเพื่อนด้านซ้ายเพื่อแชทลับ")
+        else:
+            st.write("👈 เลือกเพื่อนด้านซ้ายเพื่อแชทลับ")
