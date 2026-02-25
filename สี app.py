@@ -8,8 +8,8 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
 
-# --- 1. การตั้งค่าหน้าเว็บและการออกแบบ ---
-st.set_page_config(page_title="SYNAPSE - Premium Control", layout="wide")
+# --- 1. การตั้งค่าหน้าเว็บและการออกแบบ (SYNAPSE STYLE) ---
+st.set_page_config(page_title="SYNAPSE - Final Control", layout="wide")
 
 st.markdown("""
     <style>
@@ -70,27 +70,34 @@ st.markdown("</div>", unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["🚀 Experience", "📊 Global Map", "💬 Community"])
 
 with tab1:
-    user_display_name = st.text_input("👤 ระบุชื่อผู้ใช้:", placeholder="พิมพ์ชื่อของคุณที่นี่")
+    # ใช้ session_state จำชื่อเราไว้ไม่ให้เพี้ยน
+    if 'my_name' not in st.session_state:
+        st.session_state.my_name = ""
+        
+    name_input = st.text_input("👤 ระบุชื่อผู้ใช้:", value=st.session_state.my_name, placeholder="พิมพ์ชื่อของคุณ...")
     if st.button("🚀 UPDATE MY STATUS"):
-        if user_display_name and location:
-            user_ref = db.reference(f'users/{user_display_name}')
+        if name_input and location:
+            st.session_state.my_name = name_input
+            user_ref = db.reference(f'users/{name_input}')
             user_ref.set({
                 'lat': location['coords']['latitude'],
                 'lon': location['coords']['longitude'],
                 'time': datetime.datetime.now().strftime("%H:%M")
             })
-            st.success("บันทึกข้อมูลสำเร็จ!")
+            st.success(f"สวัสดีคุณ {name_input}! บันทึกพิกัดจริงเรียบร้อย")
+            
     st.markdown("---")
     playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
     embed_url = f"https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&mute=1"
     st.components.v1.html(f'<iframe width="100%" height="200" src="{embed_url}" frameborder="0" allow="autoplay; encrypted-media"></iframe>', height=220)
 
 with tab2:
-    st.subheader("📍 แผนที่พิกัดจริง")
+    st.subheader("📍 Real-time Location Map")
     if firebase_admin._apps:
-        if st.button("🗑️ Reset Map (ล้างทุกคน)"):
+        if st.button("🗑️ Reset Map (ล้างพิกัดทั้งหมด)"):
             db.reference('users').delete()
             st.rerun()
+            
         users = db.reference('users').get()
         if users:
             center = [location['coords']['latitude'], location['coords']['longitude']] if location else [13.75, 100.5]
@@ -101,60 +108,80 @@ with tab2:
             st_folium(m, width="100%", height=500)
 
 with tab3:
-    st.subheader("👥 รายชื่อผู้ใช้ & แชทลับ")
-    all_users = db.reference('users').get()
-    col_u, col_c = st.columns([1, 2])
+    st.subheader("👥 Private Chat & Call")
+    my_name = st.session_state.get('my_name', "")
+    
+    if not my_name:
+        st.warning("⚠️ เพื่อนต้องไปใส่ชื่อที่หน้า 🚀 Experience ก่อนนะ ถึงจะเริ่มแชทได้")
+    else:
+        all_users = db.reference('users').get()
+        col_u, col_c = st.columns([1, 2])
 
-    with col_u:
-        st.write("📱 เลือกเพื่อนที่จะคุย")
-        if all_users:
-            for f_name in all_users.keys():
-                if f_name != user_display_name:
-                    if st.button(f"💬 {f_name}", key=f"chat-{f_name}"):
-                        pair = sorted([user_display_name, f_name])
-                        st.session_state.private_room = f"secret_{pair[0]}_{pair[1]}"
-                        st.session_state.target_name = f_name
-        else:
-            st.write("ไม่มีคนออนไลน์")
+        with col_u:
+            st.write("📱 เลือกเพื่อนที่จะแชทด้วย:")
+            if all_users:
+                for f_name in all_users.keys():
+                    if f_name != my_name:
+                        if st.button(f"💬 {f_name}", key=f"chat-{f_name}"):
+                            pair = sorted([my_name, f_name])
+                            st.session_state.private_room = f"secret_{pair[0]}_{pair[1]}"
+                            st.session_state.target_name = f_name
+            else:
+                st.write("ยังไม่มีใครออนไลน์...")
 
-    with col_c:
-        room = st.session_state.get('private_room', None)
-        target = st.session_state.get('target_name', None)
-        if room and target:
-            st.info(f"🔒 คุยกับ: {target}")
-            # --- Video Call v12 (จัดระเบียบย่อหน้าใหม่ 100%) ---
-            webrtc_streamer(
-                key=f"call-v12-{room}",
-                mode=WebRtcMode.SENDRECV,
-                rtc_configuration={
-                    "iceServers": [
-                        {"urls": ["stun:stun.l.google.com:19302"]},
-                        {"urls": ["stun:stun1.l.google.com:19302"]},
-                        {"urls": ["stun:stun2.l.google.com:19302"]},
-                        {"urls": ["stun:global.stun.twilio.com:3478"]},
-                        {"urls": ["stun:stun.services.mozilla.com"]}
-                    ]
-                },
-                media_stream_constraints={"video": True, "audio": True},
-                async_processing=True
-            )
+        with col_c:
+            room = st.session_state.get('private_room', None)
+            target = st.session_state.get('target_name', None)
             
-            st.markdown("---")
-            chat_ref = db.reference(f'chats/{room}')
-            msg_in = st.chat_input(f"ส่งข้อความหา {target}...")
-            if msg_in:
-                chat_ref.push({'name': user_display_name, 'msg': msg_in})
-                st.rerun()
+            if room and target:
+                st.info(f"🔒 ห้องแชทลับ: {my_name} ⚡ {target}")
                 
-            msgs = chat_ref.order_by_key().limit_to_last(15).get()
-            if msgs:
-                for m_id in msgs:
-                    d = msgs[m_id]
-                    align = "right" if d.get('name') == user_display_name else "left"
-                    st.markdown(f"<div style='text-align:{align};'><b>{d.get('name')}</b>: {d.get('msg')}</div>", unsafe_allow_html=True)
-            
-            if st.button("🗑️ ล้างห้องนี้"):
-                chat_ref.delete()
-                st.rerun()
-        else:
-            st.write("👈 เลือกเพื่อนด้านซ้ายเพื่อแชทลับ")
+                # --- Video Call v12 ---
+                webrtc_streamer(
+                    key=f"call-v12-{room}",
+                    mode=WebRtcMode.SENDRECV,
+                    rtc_configuration={
+                        "iceServers": [
+                            {"urls": ["stun:stun.l.google.com:19302"]},
+                            {"urls": ["stun:global.stun.twilio.com:3478"]},
+                            {"urls": ["stun:stun.services.mozilla.com"]}
+                        ]
+                    },
+                    media_stream_constraints={"video": True, "audio": True},
+                    async_processing=True
+                )
+                
+                st.markdown("---")
+                chat_ref = db.reference(f'chats/{room}')
+                
+                # ช่องส่งข้อความ
+                msg_in = st.chat_input(f"ส่งข้อความหา {target}...")
+                if msg_in:
+                    chat_ref.push({
+                        'name': my_name,
+                        'msg': msg_in,
+                        'ts': datetime.datetime.now().timestamp()
+                    })
+                    st.rerun()
+                
+                # แสดงแชทแบบแยกฝั่ง
+                msgs = chat_ref.order_by_child('ts').limit_to_last(20).get()
+                if msgs:
+                    for m_id in msgs:
+                        d = msgs[m_id]
+                        is_me = d.get('name') == my_name
+                        align = "right" if is_me else "left"
+                        bg = "rgba(0, 242, 254, 0.4)" if is_me else "rgba(255, 255, 255, 0.1)"
+                        st.markdown(f"""
+                            <div style='text-align: {align}; margin-bottom: 10px;'>
+                                <div style='display: inline-block; background: {bg}; padding: 8px 15px; border-radius: 15px;'>
+                                    <small style='opacity:0.6;'>{d.get('name')}</small><br>{d.get('msg')}
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                
+                if st.button("🗑️ ล้างแชทห้องนี้"):
+                    chat_ref.delete()
+                    st.rerun()
+            else:
+                st.write("👈 เลือกเพื่อนด้านซ้ายเพื่อเปิดห้องลับ")
