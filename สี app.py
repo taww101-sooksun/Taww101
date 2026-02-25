@@ -122,13 +122,26 @@ with tab3:
         if room and target:
             st.info(f"🔒 คุยกับ: {target}")
             # คอลเวอร์ชัน v11 ทะลุกำแพง
-            webrtc_streamer(
-                key=f"call-v11-{room}",
-                mode=WebRtcMode.SENDRECV,
-                rtc_configuration={"iceServers": [
+                    # --- วางอันใหม่นี้ลงไปแทน (v12 ทะลุกำแพง) ---
+        webrtc_streamer(
+            key=f"call-v12-{room}", 
+            mode=WebRtcMode.SENDRECV,
+            rtc_configuration={
+                "iceServers": [
                     {"urls": ["stun:stun.l.google.com:19302"]},
                     {"urls": ["stun:stun1.l.google.com:19302"]},
+                    {"urls": ["stun:stun2.l.google.com:19302"]},
+                    {"urls": ["stun:global.stun.twilio.com:3478"]},
                     {"urls": ["stun:stun.services.mozilla.com"]}
+                ]
+            },
+            media_stream_constraints={
+                "video": True, 
+                "audio": True
+            },
+            async_processing=True,
+        )
+
                 ]},
                 media_stream_constraints={"video": True, "audio": True}
             )
