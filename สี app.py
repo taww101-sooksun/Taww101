@@ -116,27 +116,34 @@ with tab2:
                 st_folium(m, width=None, height=450)
 
 with tab3:
-    st.subheader("🎥 Live Call (ระบบห้องส่วนตัว)")
+    st.subheader("🎥 Live Call & Chat (Community)")
     
-    room_name = st.text_input("🔑 ระบุชื่อห้องที่จะคอล:", value="private-room-01")
+    # 1. กำหนดชื่อห้อง
+    room_name = st.text_input("🔑 ระบุชื่อห้องที่จะเข้า:", value="private-room-01")
     
     if user_display_name:
-        st.write(f"กำลังเข้าสู่ห้อง: **{room_name}** ในชื่อ **{user_display_name}**")
+        st.write(f"กำลังเข้าสู่ห้อง: **{room_name}**")
         
-        # ส่วนนี้ต้องเยื้องเข้ามา 2 ระดับ (จาก with และ จาก if)
-        webrtc_streamer(        # --- ส่วนที่ต่อเติม (วางต่อจาก webrtc_streamer) ---
-        st.markdown("---")
-        st.subheader(f"💬 Chat Room: {room_name}")
+        # 2. ส่วนของระบบคอล (Video Call)
+        webrtc_streamer(
+            key=f"call-{room_name}",
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            media_stream_constraints={"video": True, "audio": True},
+            video_html_attrs={
+                "style": {"width": "100%", "border-radius": "15px", "border": "2px solid #4facfe"},
+                "autoPlay": True,
+            }
+        )
 
-        # 1. ดึงข้อความจาก Firebase (ระบุตามชื่อห้องที่เราพิมพ์)
-        chat_ref = db.reference(f'chats/{room_name}')
+        st.markdown("---")
         
-        # ดึงมาโชว์ 10 ข้อความล่าสุด
+        # 3. ส่วนของระบบแชท (Chat Room)
+        chat_ref = db.reference(f'chats/{room_name}')
         messages = chat_ref.order_by_key().limit_to_last(10).get()
 
+        # แสดงข้อความแชท
         if messages:
             for msg_id, data in messages.items():
-                # กำหนดสี: ถ้าเราพิมพ์เป็นสีฟ้า เพื่อนพิมพ์เป็นสีเทาเข้ม
                 is_me = data.get('name') == user_display_name
                 bg_color = "#4facfe" if is_me else "#1a1c24"
                 align = "right" if is_me else "left"
@@ -149,26 +156,17 @@ with tab3:
                     </div>
                 """, unsafe_allow_html=True)
 
-        # 2. ช่องพิมพ์ข้อความ (ใช้ st.chat_input จะสวยและพิมพ์ง่ายกว่า)
-        user_msg = st.chat_input("พิมพ์ข้อความของคุณที่นี่...")
+        # ช่องพิมพ์ข้อความ
+        user_msg = st.chat_input("พิมพ์ข้อความของคุณ...")
         if user_msg:
             chat_ref.push({
                 'name': user_display_name,
                 'msg': user_msg,
                 'time': datetime.datetime.now().strftime("%H:%M")
             })
-            st.rerun() # รีเฟรชเพื่อให้ข้อความที่เพิ่งส่งเด้งขึ้นมา
-
-            key=f"call-{room_name}",
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-            media_stream_constraints={"video": True, "audio": True},
-            video_html_attrs={
-                "style": {"width": "100%", "border-radius": "15px", "border": "2px solid #4facfe"},
-                "autoPlay": True,
-            } # ปิดปีกกาตรงนี้
-        ) # ปิดวงเล็บตรงนี้
+            st.rerun()
     else:
-        # else ตัวนี้ต้องตรงกับ if ข้างบน
-        st.warning("⚠️ กรุณาระบุชื่อผู้ใช้ที่หน้าแรกก่อนใช้งานระบบคอล")
+        st.warning("⚠️ กรุณาระบุชื่อผู้ใช้ที่หน้า Experience ก่อนใช้งาน")
+
 
    
