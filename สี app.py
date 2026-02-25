@@ -120,7 +120,7 @@ with tab2:
                 m = folium.Map(location=[valid_users[0]['lat'], valid_users[0]['lon']], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attr="Google")
                 for u in valid_users:
                     folium.Marker([u['lat'], u['lon']], popup=f"{u['name']} ({u['time']})").add_to(m)
-                st_folium(m, width500, height=500)
+                st_folium(m, width700, height=500)
 
 with tab3:
     st.header("💬 ห้องสนทนา📝")
