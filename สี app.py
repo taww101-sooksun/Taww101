@@ -89,26 +89,83 @@ with tab2:
             st_folium(m, width="100%", height=500)
 
 with tab3:
-    st.subheader("🎥 Live Community")
-    room_id = st.text_input("🔑 ห้อง:", value="private-room-01")
-    if user_display_name:
-        webrtc_streamer(
-            key=f"call-final-{room_id}",
-            mode=WebRtcMode.SENDRECV,
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-            media_stream_constraints={"video": True, "audio": True}
-        )
-        st.markdown("---")
-        chat_ref = db.reference(f'chats/{room_id}')
-        user_msg = st.chat_input("ส่งข้อความ...")
-        if user_msg:
-            chat_ref.push({'name': user_display_name, 'msg': user_msg, 'time': datetime.datetime.now().strftime("%H:%M")})
-            st.rerun()
-        
-        msgs = chat_ref.order_by_key().limit_to_last(15).get()
-        if msgs:
-            for m_id in msgs:
-                data = msgs[m_id]
-                is_me = data.get('name') == user_display_name
-                align = "right" if is_me else "left"
-                st.markdown(f"<div style='text-align:{align};'><b>{data.get('name')}</b>: {data.get('msg')}</div>", unsafe_allow_html=True)
+    st.subheader("👥 รายชื่อผู้ใช้งาน (Private Chat)")
+    
+    # ดึงรายชื่อคนทั้งหมดจาก Firebase
+    all_users = db.reference('users').get()
+    
+    # สร้าง Layout 2 คอลัมน์ (ซ้าย: รายชื่อเพื่อน, ขวา: ห้องแชท)
+    col_list, col_chat = st.columns([1, 2])
+    
+    with col_list:
+        st.markdown("### 📱 เลือกเพื่อนที่ออนไลน์")
+        if all_users:
+            for friend_name in all_users.keys():
+                # ไม่แสดงชื่อตัวเองในรายชื่อเพื่อน
+                if friend_name != user_display_name:
+                    # ปุ่มกดเพื่อเลือกคุยกับเพื่อนคนนี้
+                    if st.button(f"💬 คุยกับ {friend_name}", key=f"user-{friend_name}"):
+                        # สร้าง ID ห้องลับโดยเรียงลำดับชื่อ (เพื่อให้ทั้งสองคนได้ ID ห้องเดียวกันเสมอ)
+                        pair = sorted([user_display_name, friend_name])
+                        st.session_state.current_private_room = f"secret_{pair[0]}_{pair[1]}"
+                        st.session_state.chat_target = friend_name
+        else:
+            st.write("ยังไม่มีใครออนไลน์เลยเพื่อน...")
+
+    with col_chat:
+        # ตรวจสอบว่าเลือกใครคุยอยู่หรือไม่
+        target = st.session_state.get('chat_target', None)
+        room_id = st.session_state.get('current_private_room', None)
+
+        if target and room_id:
+            st.markdown(f"### 🔒 แชทลับกับ: {target}")
+            
+            # --- ระบบ Video Call (แยกห้องตาม ID ห้องลับ) ---
+            webrtc_streamer(
+                key=f"call-{room_id}",
+                mode=WebRtcMode.SENDRECV,
+                rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+                media_stream_constraints={"video": True, "audio": True}
+            )
+
+            st.markdown("---")
+            
+            # --- ระบบ Chat ลับ ---
+            chat_ref = db.reference(f'chats/{room_id}')
+            
+            # ดึงข้อความ (เรียงจากเก่าไปใหม่)
+            messages = chat_ref.order_by_key().limit_to_last(15).get()
+            
+            # พื้นที่แสดงข้อความ
+            chat_box = st.container()
+            with chat_box:
+                if messages:
+                    for m_id in messages:
+                        data = messages[m_id]
+                        is_me = data.get('name') == user_display_name
+                        align = "right" if is_me else "left"
+                        bg = "rgba(79, 172, 254, 0.4)" if is_me else "rgba(255, 255, 255, 0.1)"
+                        st.markdown(f"""
+                            <div style='text-align: {align}; margin-bottom: 10px;'>
+                                <span style='background: {bg}; padding: 8px 15px; border-radius: 15px; display: inline-block;'>
+                                    <b>{data.get('name')}</b>: {data.get('msg')}
+                                </span>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+            # ช่องพิมพ์ข้อความลับ
+            user_input = st.chat_input(f"ส่งข้อความหา {target}...")
+            if user_input:
+                chat_ref.push({
+                    'name': user_display_name,
+                    'msg': user_input,
+                    'time': datetime.datetime.now().strftime("%H:%M")
+                })
+                st.rerun()
+
+            # ปุ่มลบประวัติเฉพาะห้องนี้
+            if st.button("🗑️ ล้างแชทนี้"):
+                chat_ref.delete()
+                st.rerun()
+        else:
+            st.info("👈 เลือกรายชื่อเพื่อนด้านซ้ายเพื่อเริ่มคุยกันแบบส่วนตัว")
