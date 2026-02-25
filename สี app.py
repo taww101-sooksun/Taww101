@@ -8,7 +8,7 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
 
-# --- 1. ตั้งค่าหน้าเว็บและดีไซน์ ---
+# --- 1. การตั้งค่าหน้าเว็บและการออกแบบ ---
 st.set_page_config(page_title="SYNAPSE - Premium Control", layout="wide")
 
 st.markdown("""
@@ -48,7 +48,7 @@ if not firebase_admin._apps:
     except Exception as e:
         st.error(f"Error: {e}")
 
-# --- 3. ตรวจสอบพิกัด ---
+# --- 3. ดึงพิกัดจริง ---
 location = get_geolocation()
 
 # --- 4. ส่วนหัวและโลโก้ ---
@@ -122,7 +122,7 @@ with tab3:
         target = st.session_state.get('target_name', None)
         if room and target:
             st.info(f"🔒 คุยกับ: {target}")
-            # --- แก้ไขส่วน Video Call v12 และจัดระเบียบย่อหน้าใหม่ ---
+            # --- Video Call v12 (จัดระเบียบย่อหน้าใหม่ 100%) ---
             webrtc_streamer(
                 key=f"call-v12-{room}",
                 mode=WebRtcMode.SENDRECV,
