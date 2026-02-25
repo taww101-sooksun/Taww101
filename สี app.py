@@ -81,4 +81,69 @@ with tab1:
             })
             st.success("บันทึกข้อมูลสำเร็จ!")
     st.markdown("---")
-    playlist_id = "PL6S211
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+    embed_url = f"https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&mute=1"
+    st.components.v1.html(f'<iframe width="100%" height="200" src="{embed_url}" frameborder="0" allow="autoplay; encrypted-media"></iframe>', height=220)
+
+with tab2:
+    st.subheader("📍 แผนที่พิกัดจริง")
+    if firebase_admin._apps:
+        if st.button("🗑️ Reset Map (ล้างทุกคน)"):
+            db.reference('users').delete()
+            st.rerun()
+        users = db.reference('users').get()
+        if users:
+            center = [location['coords']['latitude'], location['coords']['longitude']] if location else [13.75, 100.5]
+            m = folium.Map(location=center, zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google")
+            for name, info in users.items():
+                if isinstance(info, dict) and 'lat' in info:
+                    folium.Marker([info['lat'], info['lon']], popup=name).add_to(m)
+            st_folium(m, width="100%", height=500)
+
+with tab3:
+    st.subheader("👥 รายชื่อผู้ใช้ & แชทลับ")
+    all_users = db.reference('users').get()
+    col_u, col_c = st.columns([1, 2])
+
+    with col_u:
+        st.write("📱 เลือกเพื่อนที่จะคุย")
+        if all_users:
+            for f_name in all_users.keys():
+                if f_name != user_display_name:
+                    if st.button(f"💬 {f_name}", key=f"chat-{f_name}"):
+                        pair = sorted([user_display_name, f_name])
+                        st.session_state.private_room = f"secret_{pair[0]}_{pair[1]}"
+                        st.session_state.target_name = f_name
+        else: st.write("ไม่มีคนออนไลน์")
+
+    with col_c:
+        room = st.session_state.get('private_room', None)
+        target = st.session_state.get('target_name', None)
+        if room and target:
+            st.info(f"🔒 คุยกับ: {target}")
+            # คอลเวอร์ชัน v11 ทะลุกำแพง
+            webrtc_streamer(
+                key=f"call-v11-{room}",
+                mode=WebRtcMode.SENDRECV,
+                rtc_configuration={"iceServers": [
+                    {"urls": ["stun:stun.l.google.com:19302"]},
+                    {"urls": ["stun:stun1.l.google.com:19302"]},
+                    {"urls": ["stun:stun.services.mozilla.com"]}
+                ]},
+                media_stream_constraints={"video": True, "audio": True}
+            )
+            chat_ref = db.reference(f'chats/{room}')
+            msg_in = st.chat_input(f"ส่งข้อความหา {target}...")
+            if msg_in:
+                chat_ref.push({'name': user_display_name, 'msg': msg_in})
+                st.rerun()
+            msgs = chat_ref.order_by_key().limit_to_last(15).get()
+            if msgs:
+                for m_id in msgs:
+                    d = msgs[m_id]
+                    align = "right" if d.get('name') == user_display_name else "left"
+                    st.markdown(f"<div style='text-align:{align};'><b>{d.get('name')}</b>: {d.get('msg')}</div>", unsafe_allow_html=True)
+            if st.button("🗑️ ล้างห้องนี้"):
+                chat_ref.delete()
+                st.rerun()
+        else: st.write("👈 เลือกเพื่อนด้านซ้ายเพื่อแชทลับ")
