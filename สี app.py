@@ -116,25 +116,27 @@ with tab2:
                 st_folium(m, width=None, height=450)
 
 with tab3:
-    st.subheader("💬 Community & 🎥 Live Call")
+    st.subheader("🎥 Live Call (ระบบห้องส่วนตัว)")
     
-    # ส่วนของ Video Call
-    webrtc_streamer(
-        key="synapse-call",
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-        media_stream_constraints={"video": True, "audio": True},
-        video_html_attrs={"style": {"width": "100%", "border-radius": "15px", "border": "2px solid #4facfe"}, "autoPlay": True},
-    )
+    # กำหนดชื่อห้อง (เพื่อนสามารถล็อกชื่อในโค้ด หรือให้คนพิมพ์ใส่เองก็ได้)
+    room_name = st.text_input("🔑 ระบุชื่อห้องที่จะคอล:", value="private-room-01", help="ต้องใส่ชื่อห้องให้เหมือนกับเพื่อนถึงจะคุยกันได้")
     
-    st.write("---")
-    with st.form("chat_form", clear_on_submit=True):
-        c_msg = st.text_input("พิมพ์ข้อความ...")
-        if st.form_submit_button("SEND"):
-            if user_display_name and c_msg:
-                lon = location['coords']['longitude'] if location else None
-                db.reference('chats').push({'name': user_display_name, 'msg': c_msg, 'time': get_time_by_coords(lon).strftime("%H:%M")})
-    
-    chats = db.reference('chats').order_by_key().limit_to_last(10).get()
-    if chats:
-        for _, data in reversed(chats.items()):
+    if user_display_name:
+        st.write(f"กำลังเข้าสู่ห้อง: **{room_name}** ในชื่อ **{user_display_name}**")
+        
+        # ระบบคอลที่ระบุ key ตามชื่อห้อง
+        webrtc_streamer(
+            key=f"call-{room_name}", # ถ้าชื่อห้องเปลี่ยน ระบบจะแยกท่อสัญญาณกันทันที
+            rtc_configuration={
+                "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
+            },
+            media_stream_constraints={"video": True, "audio": True},
+            video_html_attrs={
+                "style": {"width": "100%", "border-radius": "15px", "border": "2px solid #4facfe"},
+                "autoPlay": True,
+            },
+        )
+    else:
+        st.warning("⚠️ กรุณาระบุชื่อผู้ใช้ที่หน้าแรกก่อนใช้งานระบบคอล")
+
             st.markdown(f"<div style='background-color: #1a1c24; padding: 10px; border-radius: 10px; margin-bottom: 5px; border-left: 5px solid #4facfe;'><b>{data.get('name')}</b>: {data.get('msg')}</div>", unsafe_allow_html=True)
