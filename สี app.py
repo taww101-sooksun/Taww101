@@ -139,4 +139,4 @@ with tab3:
  else:
        st.warning("⚠️ กรุณาระบุชื่อผู้ใช้ที่หน้าแรกก่อนใช้งานระบบคอล")
 
-       st.markdown(f"<div style='background-color: #1a1c24; padding: 10px; border-radius: 10px; margin-bottom: 5px; border-left: 5px solid #4facfe;'><b>{data.get('name')}</b>: {data.get('msg')}</div>", unsafe_allow_html=True)
+
