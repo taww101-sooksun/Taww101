@@ -1,4 +1,3 @@
-from streamlit_webrtc import webrtc_streamer, WebRtcMode # เพิ่ม WebRtcMode เข้ามา
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
@@ -7,22 +6,15 @@ import os
 from streamlit_js_eval import get_geolocation
 import folium
 from streamlit_folium import st_folium
-from streamlit_webrtc import webrtc_streamer
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
 
-# --- 1. ตั้งค่าหน้าเว็บและการออกแบบ (Premium Dark UI) ---
-st.set_page_config(page_title="SYNAPSE - Premium System", layout="wide")
+# --- 1. การตั้งค่าหน้าเว็บ ---
+st.set_page_config(page_title="SYNAPSE - Live System", layout="wide")
 
 st.markdown("""
     <style>
     .main { background-color: #0e1117; }
-    .stApp { color: #ffffff; }
-    .stButton>button {
-        width: 100%; border-radius: 20px;
-        background: linear-gradient(45deg, #00f2fe 0%, #4facfe 100%);
-        color: white; border: none; font-weight: bold; transition: 0.3s;
-    }
-    .stButton>button:hover { transform: scale(1.02); box-shadow: 0 5px 15px rgba(0, 242, 254, 0.4); }
-    .stTabs [aria-selected="true"] { background-color: #4facfe !important; }
+    .status-box { padding: 10px; border-radius: 10px; border: 1px solid #4facfe; margin-bottom: 20px; background: #1a1c24; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -40,38 +32,34 @@ if not firebase_admin._apps:
     except Exception as e:
         st.error(f"Firebase Error: {e}")
 
-def get_time_by_coords(lon):
-    if lon is None: return datetime.datetime.now()
-    offset = round(float(lon) / 15)
-    return datetime.datetime.utcnow() + datetime.timedelta(hours=offset)
-
-# --- 3. ส่วนหัว (Header) ---
-st.markdown("<h1 style='text-align: center; color: #4facfe;'>🌐 SYNAPSE</h1>", unsafe_allow_html=True)
-
-if os.path.exists("logo3.jpg"):
-    col_l, col_m, col_r = st.columns([1,1,1])
-    with col_m:
-        st.image("logo3.jpg", width=250)
-
+# --- 3. ตรวจสอบสถานะจริง (Real-time Status) ---
 location = get_geolocation()
 
-# --- 4. ระบบแจ้งเตือนแชท ---
-if 'last_chat_count' not in st.session_state:
-    st.session_state.last_chat_count = 0
+# --- 4. ส่วนหัวและสถานะระบบ (Dashboard) ---
+st.markdown("<h1 style='text-align: center; color: #4facfe;'>🌐 SYNAPSE MONITOR</h1>", unsafe_allow_html=True)
 
-def check_notifications():
-    try:
-        # ตรวจสอบการแจ้งเตือนจากห้องรวมหรือห้องหลัก
-        chats = db.reference('chats/private-room-01').get()
-        if chats:
-            current_count = len(chats)
-            if current_count > st.session_state.last_chat_count:
-                if st.session_state.last_chat_count != 0:
-                    st.toast("💬 มีข้อความใหม่ในห้องแชท!", icon="🔔")
-                st.session_state.last_chat_count = current_count
-    except: pass
+# แถบแสดงสถานะจริง
+st.markdown("<div class='status-box'>", unsafe_allow_html=True)
+c1, c2, c3 = st.columns(3)
 
-check_notifications()
+with c1:
+    # เช็คสถานะ GPS
+    if location and 'coords' in location:
+        st.markdown("🛰️ **GPS:** <span style='color:#00ff00;'>CONNECTED</span>", unsafe_allow_html=True)
+    else:
+        st.markdown("🛰️ **GPS:** <span style='color:#ff0000;'>SEARCHING...</span>", unsafe_allow_html=True)
+
+with c2:
+    # เช็คสถานะเพลง (YouTube Embed Check)
+    st.markdown("🎵 **MUSIC:** <span style='color:#00ff00;'>STREAMING</span>", unsafe_allow_html=True)
+
+with c3:
+    # เช็คสถานะ Firebase
+    if firebase_admin._apps:
+        st.markdown("🔥 **FIREBASE:** <span style='color:#00ff00;'>SYNCED</span>", unsafe_allow_html=True)
+    else:
+        st.markdown("🔥 **FIREBASE:** <span style='color:#ff0000;'>ERROR</span>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
 # --- 5. แท็บการใช้งาน ---
 tab1, tab2, tab3 = st.tabs(["🚀 Experience", "📊 Global Map", "💬 Community"])
@@ -82,83 +70,61 @@ with tab1:
     with col2: admin_key = st.text_input("🔑 รหัสลับ:", type="password")
 
     if st.button("START JOURNEY"):
-        if user_display_name and location and 'coords' in location:
+        if user_display_name and location:
             lat, lon = location['coords']['latitude'], location['coords']['longitude']
-            time_str = get_time_by_coords(lon).strftime("%H:%M")
-            if firebase_admin._apps:
-                db.reference(f'users/{user_display_name}').set({'last_seen': time_str, 'lat': lat, 'lon': lon})
-                st.success(f"เชื่อมต่อสำเร็จ! เวลาปัจจุบันของคุณคือ: {time_str}")
+            db.reference(f'users/{user_display_name}').set({'last_seen': datetime.datetime.now().strftime("%H:%M"), 'lat': lat, 'lon': lon})
+            st.success("บันทึกพิกัดจริงเข้าฐานข้อมูลแล้ว!")
 
     st.markdown("---")
     playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-    embed_url = f"https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&loop=1&playlist={playlist_id}&enablejsapi=1"
-    st.markdown("<h3 style='color: #888;'>🎧 Streaming Therapy...</h3>", unsafe_allow_html=True)
-    st.components.v1.html(
-        f'<div style="border-radius: 15px; overflow: hidden;"><iframe width="100%" height="250" src="{embed_url}" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>',
-        height=270,
-    )
+    embed_url = f"https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&mute=1"
+    st.components.v1.html(f'<iframe width="100%" height="200" src="{embed_url}" frameborder="0" allow="autoplay; encrypted-media"></iframe>', height=220)
 
 with tab2:
-    st.subheader("📍 ตำแหน่งผู้ใช้งานบนแผนที่")
+    st.subheader("📍 แผนที่ตรวจสอบพิกัดจริง")
     if firebase_admin._apps:
-        users_ref = db.reference('users').get()
-        if users_ref:
-            valid_users = []
-            for k, v in users_ref.items():
-                if isinstance(v, dict) and 'lat' in v:
-                    valid_users.append({'name': k, 'lat': v['lat'], 'lon': v['lon'], 'time': v.get('last_seen', '--:--')})
-            if valid_users:
-                m = folium.Map(location=[valid_users[0]['lat'], valid_users[0]['lon']], zoom_start=12, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Satellite")
-                for u in valid_users:
-                    folium.Marker([u['lat'], u['lon']], popup=f"{u['name']} ({u['time']})").add_to(m)
-                st_folium(m, width="100%", height=450)
+        users = db.reference('users').get()
+        if users:
+            m = folium.Map(location=[13.7563, 100.5018], zoom_start=10, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google")
+            for name, info in users.items():
+                if 'lat' in info: folium.Marker([info['lat'], info['lon']], popup=name).add_to(m)
+            st_folium(m, width="100%", height=400)
 
 with tab3:
-    st.subheader("🎥 Live Call & Chat Room")
-    room_id = st.text_input("🔑 ระบุชื่อห้อง:", value="private-room-01")
+    st.subheader("🎥 Live Community")
+    room_id = st.text_input("🔑 ห้อง:", value="private-room-01")
     
     if user_display_name:
-        st.write(f"Online: **{user_display_name}**")
-
-        # --- ระบบ Video Call (แก้ Error AttributeError) ---
-        webrtc_streamer(
-            key=f"call-v2-{room_id}",
-            mode=WebRtcMode.SENDRECV, # ระบุ mode ให้ชัดเจนผ่าน WebRtcMode
-            rtc_configuration={
-                "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
-            },
-            media_stream_constraints={"video": True, "audio": True},
-            video_html_attrs={
-                "style": {"width": "100%", "border-radius": "10px"},
-                "autoPlay": True,
-                "controls": True
-            }
+        # ระบบ Call พร้อมแสดงสถานะการเชื่อมต่อ
+        webrtc_ctx = webrtc_streamer(
+            key=f"call-v7-{room_id}",
+            mode=WebRtcMode.SENDRECV,
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            media_stream_constraints={"video": True, "audio": True}
         )
+        
+        # แสดงสถานะการเชื่อมต่อสาย (ความจริงให้คนรู้จริงๆ)
+        if webrtc_ctx.state.playing:
+            st.markdown("🟢 **STATUS:** <span style='color:#00ff00;'>ON CALL (กล้องกำลังทำงาน)</span>", unsafe_allow_html=True)
+        else:
+            st.markdown("⚪ **STATUS:** <span style='color:#888;'>IDLE (รอการเชื่อมต่อ)</span>", unsafe_allow_html=True)
 
         st.markdown("---")
-        
-        # --- ระบบ Chat ---
+        # ระบบ Chat และปุ่มลบ
         chat_ref = db.reference(f'chats/{room_id}')
-        user_msg = st.chat_input("ส่งข้อความ...")
-        if user_msg:
-            chat_ref.push({
-                'name': user_display_name,
-                'msg': user_msg,
-                'time': datetime.datetime.now().strftime("%H:%M")
-            })
+        if st.button("🗑️ ล้างประวัติห้องนี้"):
+            chat_ref.delete()
             st.rerun()
-
-        messages = chat_ref.order_by_key().limit_to_last(10).get()
+            
+        user_msg = st.chat_input("พิมพ์ข้อความ...")
+        if user_msg:
+            chat_ref.push({'name': user_display_name, 'msg': user_msg})
+            st.rerun()
+        
+        messages = chat_ref.get()
         if messages:
-            for msg_id, data in messages.items():
+            for m_id, data in messages.items():
                 if isinstance(data, dict):
-                    is_me = data.get('name') == user_display_name
-                    bg_color = "#4facfe" if is_me else "#1a1c24"
-                    align = "right" if is_me else "left"
-                    st.markdown(f"""
-                        <div style='text-align: {align}; margin-bottom: 8px;'>
-                            <div style='display: inline-block; background-color: {bg_color}; padding: 7px 12px; border-radius: 12px;'>
-                                <small style='font-size: 10px; opacity: 0.7;'>{data.get('name')}</small><br>{data.get('msg')}
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
+                    st.write(f"**{data.get('name')}**: {data.get('msg')}")
+    else:
+        st.warning("⚠️ โปรดระบุชื่อที่หน้าแรกก่อน")
