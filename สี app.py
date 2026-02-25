@@ -10,25 +10,23 @@ from streamlit_folium import st_folium
 # --- 1. ตั้งค่าหน้าเว็บ ---
 st.set_page_config(page_title="SYNAPSE - Complete System", layout="wide")
 
-# --- 2. เชื่อมต่อ Firebase ---
-if not firebase_admin._apps:
-    try:
-        if "firebase" in st.secrets:
-            fb_dict = dict(st.secrets["firebase"])
-            if "private_key" in fb_dict:
-                fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
-            creds = credentials.Certificate(fb_dict)
-            firebase_admin.initialize_app(creds, {
-                'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
-            })
-    except Exception as e:
-        st.error(f"Firebase Setup Error: {e}")
+with tab2:
+    st.header("📊 แผนที่พิกัดจริง (Google Maps)")
+    if firebase_admin._apps:
+        users_ref = db.reference('users').get()
+        if users_ref:
+            valid_users = []
+            for k, v in users_ref.items():
+                if isinstance(v, dict) and 'lat' in v:
+                    valid_users.append({'name': k, 'lat': v['lat'], 'lon': v['lon'], 'time': v.get('last_seen', '--:--')})
+            if valid_users:
+                # สร้างแผนที่
+                m = folium.Map(location=[valid_users[0]['lat'], valid_users[0]['lon']], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attr="Google")
+                for u in valid_users:
+                    folium.Marker([u['lat'], u['lon']], popup=f"{u['name']} ({u['time']})").add_to(m)
+                # ตรงนี้แหละครับที่ต้องแก้ เติมเครื่องหมาย = หลัง width
+                st_folium(m, width=700, height=500) 
 
-# ฟังก์ชันคำนวณเวลาจากพิกัดโลก
-def get_time_by_coords(lon):
-    if lon is None: return datetime.datetime.now()
-    offset = round(float(lon) / 15)
-    return datetime.datetime.utcnow() + datetime.timedelta(hours=offset)
 
 # --- 3. ส่วนหัวและโลโก้ ---
 col1, col2 = st.columns([1, 5])
