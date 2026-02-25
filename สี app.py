@@ -114,50 +114,42 @@ with tab2:
 
 with tab3:
     st.subheader("🎥 Live Call & Chat Room")
-    room_name = st.text_input("🔑 ระบุชื่อห้อง:", value="private-room-01")
     
-    # ตรวจสอบชื่อผู้ใช้ก่อน (ป้องกัน AttributeError)
+    # ดึงค่าห้องแชท
+    room_id = st.text_input("🔑 ระบุชื่อห้อง:", value="private-room-01")
+    
+    # เช็คก่อนว่ามีชื่อผู้ใช้หรือยัง
     if user_display_name:
-        st.write(f"กำลังออนไลน์: **{user_display_name}**")
-        
-        # --- ระบบ Video Call (ปรับใหม่ให้เสถียรขึ้น) ---
-        try:
-            webrtc_streamer(
-                key=f"video-call-{room_name}", # เปลี่ยน key ให้ไม่ซ้ำเดิม
-                mode="sendrecv", # บังคับโหมดส่งและรับข้อมูล
-                rtc_configuration={
-                    "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
-                },
-                media_stream_constraints={
-                    "video": True,
-                    "audio": True
-                },
-                async_processing=True # ช่วยให้รันบนมือถือได้ลื่นขึ้น
-            )
-        except Exception as e:
-            st.error(f"ไม่สามารถเริ่มระบบคอลได้: {e}")
+        st.success(f"Online: {user_display_name}")
+
+        # --- ระบบ Video Call (ปรับแก้จุดที่ทำให้เกิด AttributeError) ---
+        ctx = webrtc_streamer(
+            key=f"call-{room_id}",
+            mode="sendrecv", # ส่งทั้งภาพและเสียง
+            rtc_configuration={
+                "iceServers": [
+                    {"urls": ["stun:stun.l.google.com:19302"]},
+                    {"urls": ["stun:stun1.l.google.com:19302"]}
+                ]
+            },
+            media_stream_constraints={
+                "video": True,
+                "audio": True
+            },
+            video_html_attrs={
+                "style": {"width": "100%", "border-radius": "10px"},
+                "autoPlay": True,
+                "controls": True
+            }
+        )
 
         st.markdown("---")
         
         # --- ระบบ Chat ---
-        chat_ref = db.reference(f'chats/{room_name}')
-        messages = chat_ref.order_by_key().limit_to_last(15).get()
-
-        if messages:
-            for msg_id, data in messages.items():
-                if isinstance(data, dict): # เช็คว่าเป็นข้อมูลที่ถูกต้องไหม
-                    is_me = data.get('name') == user_display_name
-                    bg_color = "#4facfe" if is_me else "#1a1c24"
-                    align = "right" if is_me else "left"
-                    st.markdown(f"""
-                        <div style='text-align: {align}; margin-bottom: 10px;'>
-                            <div style='display: inline-block; background-color: {bg_color}; padding: 8px 15px; border-radius: 15px; color: white;'>
-                                <small style='color: #ddd;'>{data.get('name')}</small><br>{data.get('msg')}
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
-
-        user_msg = st.chat_input("พิมพ์ข้อความ...")
+        chat_ref = db.reference(f'chats/{room_id}')
+        
+        # ช่องพิมพ์ข้อความ (เอาไว้ข้างบนเพื่อให้พิมพ์ง่ายบนมือถือ)
+        user_msg = st.chat_input("ส่งข้อความ...")
         if user_msg:
             chat_ref.push({
                 'name': user_display_name,
@@ -165,5 +157,23 @@ with tab3:
                 'time': datetime.datetime.now().strftime("%H:%M")
             })
             st.rerun()
+
+        # แสดงข้อความ
+        messages = chat_ref.order_by_key().limit_to_last(10).get()
+        if messages:
+            for msg_id, data in messages.items():
+                if isinstance(data, dict):
+                    is_me = data.get('name') == user_display_name
+                    bg_color = "#4facfe" if is_me else "#1a1c24"
+                    align = "right" if is_me else "left"
+                    st.markdown(f"""
+                        <div style='text-align: {align}; margin-bottom: 8px;'>
+                            <div style='display: inline-block; background-color: {bg_color}; padding: 7px 12px; border-radius: 12px;'>
+                                <small style='font-size: 10px; opacity: 0.7;'>{data.get('name')}</small><br>{data.get('msg')}
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
     else:
-        st.warning("⚠️ โปรดพิมพ์ชื่อผู้ใช้ในแท็บ Experience ก่อนนะเพื่อน")
+        st.warning("⚠️ เพื่อน! กลับไปใส่ชื่อที่หน้า Experience ก่อนนะ")
+
+    
