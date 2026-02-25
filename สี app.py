@@ -34,9 +34,9 @@ def get_time_by_coords(lon):
 col1, col2 = st.columns([1, 5])
 with col1:
     if os.path.exists("logo3.jpg"): st.image("logo3.jpg", width=400)
-    else: st.write("### 🌐 SYNAPSE")
+    else: st.write("🇹🇭### 🌐 SYNAPSE🇹🇭")
 with col2:
-    st.title("SYNAPSE - Music Therapy")
+    st.title("SYNAPSE - Music Therapy อยู่นิ้งๆ ไม่เจ็บตัว")
 
 location = get_geolocation()
 
@@ -63,7 +63,7 @@ def check_notifications():
 check_notifications()
 
 # --- 5. สร้าง 3 Tab หลัก ---
-tab1, tab2, tab3 = st.tabs(["🚀 เช็คอิน & ฟังเพลง", "📊 แผนที่", "💬 ห้องสนทนา"])
+tab1, tab2, tab3 = st.tabs(["🚀📝 เช็คอิน & ฟังเพลง", "📊 แผนที่", "💬 ห้องสนทนา"])
 
 with tab1:
     # ส่วนกรอกข้อมูลทางเข้า
@@ -123,7 +123,7 @@ with tab2:
                 st_folium(m, width=700, height=500)
 
 with tab3:
-    st.header("💬 ห้องสนทนา")
+    st.header("💬 ห้องสนทนา📝")
     with st.form("chat_form", clear_on_submit=True):
         c_msg = st.text_input("พิมพ์ข้อความของคุณที่นี่:")
         if st.form_submit_button("ส่ง") and user_display_name and c_msg:
