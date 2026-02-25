@@ -124,7 +124,41 @@ with tab3:
         st.write(f"กำลังเข้าสู่ห้อง: **{room_name}** ในชื่อ **{user_display_name}**")
         
         # ส่วนนี้ต้องเยื้องเข้ามา 2 ระดับ (จาก with และ จาก if)
-        webrtc_streamer(
+        webrtc_streamer(        # --- ส่วนที่ต่อเติม (วางต่อจาก webrtc_streamer) ---
+        st.markdown("---")
+        st.subheader(f"💬 Chat Room: {room_name}")
+
+        # 1. ดึงข้อความจาก Firebase (ระบุตามชื่อห้องที่เราพิมพ์)
+        chat_ref = db.reference(f'chats/{room_name}')
+        
+        # ดึงมาโชว์ 10 ข้อความล่าสุด
+        messages = chat_ref.order_by_key().limit_to_last(10).get()
+
+        if messages:
+            for msg_id, data in messages.items():
+                # กำหนดสี: ถ้าเราพิมพ์เป็นสีฟ้า เพื่อนพิมพ์เป็นสีเทาเข้ม
+                is_me = data.get('name') == user_display_name
+                bg_color = "#4facfe" if is_me else "#1a1c24"
+                align = "right" if is_me else "left"
+                
+                st.markdown(f"""
+                    <div style='text-align: {align}; margin-bottom: 10px;'>
+                        <div style='display: inline-block; background-color: {bg_color}; padding: 8px 15px; border-radius: 15px; color: white;'>
+                            <small style='color: #ddd;'>{data.get('name')}</small><br>{data.get('msg')}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        # 2. ช่องพิมพ์ข้อความ (ใช้ st.chat_input จะสวยและพิมพ์ง่ายกว่า)
+        user_msg = st.chat_input("พิมพ์ข้อความของคุณที่นี่...")
+        if user_msg:
+            chat_ref.push({
+                'name': user_display_name,
+                'msg': user_msg,
+                'time': datetime.datetime.now().strftime("%H:%M")
+            })
+            st.rerun() # รีเฟรชเพื่อให้ข้อความที่เพิ่งส่งเด้งขึ้นมา
+
             key=f"call-{room_name}",
             rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
             media_stream_constraints={"video": True, "audio": True},
