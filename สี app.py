@@ -116,37 +116,25 @@ with tab2:
                 st_folium(m, width=None, height=450)
 
 with tab3:
-    st.subheader("🎥 Live Call & Chat")
+    st.subheader("🎥 Live Call (ระบบห้องส่วนตัว)")
     
-    room_name = st.text_input("🔑 ระบุชื่อห้องที่จะเข้า:", value="private-room-01")
+    room_name = st.text_input("🔑 ระบุชื่อห้องที่จะคอล:", value="private-room-01")
     
     if user_display_name:
-        # --- 1. ระบบ Call (จบในชุดของมันเอง ไม่ต้องมุดเพิ่ม) ---
+        st.write(f"กำลังเข้าสู่ห้อง: **{room_name}** ในชื่อ **{user_display_name}**")
+        
+        # ส่วนนี้ต้องเยื้องเข้ามา 2 ระดับ (จาก with และ จาก if)
         webrtc_streamer(
             key=f"call-{room_name}",
             rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-            media_stream_constraints={"video": True, "audio": True}
-        )
-
-        st.markdown("---")
-        
-        # --- 2. ระบบ Chat (วางต่อท้าย ไม่ไปแทรกใน Call) ---
-        chat_ref = db.reference(f'chats/{room_name}')
-        messages = chat_ref.order_by_key().limit_to_last(10).get()
-
-        if messages:
-            for msg_id, data in messages.items():
-                is_me = data.get('name') == user_display_name
-                bg_color = "#4facfe" if is_me else "#1a1c24"
-                st.markdown(f"<div style='background-color: {bg_color}; padding: 10px; border-radius: 10px; margin-bottom: 5px;'><b>{data.get('name')}</b>: {data.get('msg')}</div>", unsafe_allow_html=True)
-
-        user_msg = st.chat_input("พิมพ์ข้อความ...")
-        if user_msg:
-            chat_ref.push({'name': user_display_name, 'msg': user_msg, 'time': datetime.datetime.now().strftime("%H:%M")})
-            st.rerun()
+            media_stream_constraints={"video": True, "audio": True},
+            video_html_attrs={
+                "style": {"width": "100%", "border-radius": "15px", "border": "2px solid #4facfe"},
+                "autoPlay": True,
+            } # ปิดปีกกาตรงนี้
+        ) # ปิดวงเล็บตรงนี้
     else:
-        st.warning("⚠️ กรุณาระบุชื่อผู้ใช้ที่หน้าแรกก่อน")
-
-
+        # else ตัวนี้ต้องตรงกับ if ข้างบน
+        st.warning("⚠️ กรุณาระบุชื่อผู้ใช้ที่หน้าแรกก่อนใช้งานระบบคอล")
 
    
