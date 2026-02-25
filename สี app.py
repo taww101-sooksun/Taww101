@@ -1,3 +1,4 @@
+from streamlit_webrtc import webrtc_streamer, WebRtcMode # เพิ่ม WebRtcMode เข้ามา
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
@@ -114,28 +115,19 @@ with tab2:
 
 with tab3:
     st.subheader("🎥 Live Call & Chat Room")
-    
-    # ดึงค่าห้องแชท
     room_id = st.text_input("🔑 ระบุชื่อห้อง:", value="private-room-01")
     
-    # เช็คก่อนว่ามีชื่อผู้ใช้หรือยัง
     if user_display_name:
-        st.success(f"Online: {user_display_name}")
+        st.write(f"Online: **{user_display_name}**")
 
-        # --- ระบบ Video Call (ปรับแก้จุดที่ทำให้เกิด AttributeError) ---
-        ctx = webrtc_streamer(
-            key=f"call-{room_id}",
-            mode="sendrecv", # ส่งทั้งภาพและเสียง
+        # --- ระบบ Video Call (แก้ Error AttributeError) ---
+        webrtc_streamer(
+            key=f"call-v2-{room_id}",
+            mode=WebRtcMode.SENDRECV, # ระบุ mode ให้ชัดเจนผ่าน WebRtcMode
             rtc_configuration={
-                "iceServers": [
-                    {"urls": ["stun:stun.l.google.com:19302"]},
-                    {"urls": ["stun:stun1.l.google.com:19302"]}
-                ]
+                "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
             },
-            media_stream_constraints={
-                "video": True,
-                "audio": True
-            },
+            media_stream_constraints={"video": True, "audio": True},
             video_html_attrs={
                 "style": {"width": "100%", "border-radius": "10px"},
                 "autoPlay": True,
@@ -147,8 +139,6 @@ with tab3:
         
         # --- ระบบ Chat ---
         chat_ref = db.reference(f'chats/{room_id}')
-        
-        # ช่องพิมพ์ข้อความ (เอาไว้ข้างบนเพื่อให้พิมพ์ง่ายบนมือถือ)
         user_msg = st.chat_input("ส่งข้อความ...")
         if user_msg:
             chat_ref.push({
@@ -158,7 +148,6 @@ with tab3:
             })
             st.rerun()
 
-        # แสดงข้อความ
         messages = chat_ref.order_by_key().limit_to_last(10).get()
         if messages:
             for msg_id, data in messages.items():
@@ -173,7 +162,3 @@ with tab3:
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
-    else:
-        st.warning("⚠️ เพื่อน! กลับไปใส่ชื่อที่หน้า Experience ก่อนนะ")
-
-    
