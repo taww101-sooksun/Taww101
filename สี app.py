@@ -36,7 +36,7 @@ with col1:
     if os.path.exists("logo3.jpg"): st.image("logo3.jpg", width=400)
     else: st.write("🇹🇭### 🌐 SYNAPSE🇹🇭")
 with col2:
-    st.title("SYNAPSE - Music Therapy อยู่นิ้งๆ ไม่เจ็บตัว")
+    st.title("SYNAPSE - Music -Therapy   - อยู่นิ้งๆ   - ไม่เจ็บตัว")
 
 location = get_geolocation()
 
