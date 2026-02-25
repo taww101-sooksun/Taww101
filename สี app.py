@@ -128,3 +128,29 @@ with tab3:
     if chats:
         for _, data in reversed(chats.items()):
             st.markdown(f"<div style='background-color: #1a1c24; padding: 10px; border-radius: 10px; margin-bottom: 5px; border-left: 5px solid #4facfe;'><b style='color: #4facfe;'>{data.get('name')}</b>: {data.get('msg')}</div>", unsafe_allow_html=True)
+# --- ส่วนที่ 1: เพิ่มคำสั่งนี้ไว้ที่ "บนสุด" ของไฟล์ app.py (รวมกับพวก import อันอื่น) ---
+from streamlit_webrtc import webrtc_streamer
+
+# --- ส่วนที่ 2: วางโค้ดนี้ไว้ "ล่างสุด" ของไฟล์ ในส่วนของ tab3 (ห้องสนทนา) ---
+with tab3:
+    st.markdown("---")
+    st.subheader("🎥 ระบบคอลสด (Live Video Call)")
+    st.write("เปิดกล้องและไมค์เพื่อคุยกับเพื่อนในระบบ")
+    
+    # ระบบคอล WebRTC
+    webrtc_streamer(
+        key="synapse-call",
+        rtc_configuration={
+            "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]
+        },
+        media_stream_constraints={
+            "video": True,
+            "audio": True,
+        },
+        video_html_attrs={
+            "style": {"width": "100%", "margin": "0 auto", "border-radius": "15px", "border": "2px solid #4facfe"},
+            "controls": False,
+            "autoPlay": True,
+        },
+    )
+    st.caption("⚠️ หมายเหตุ: การคอลจะทำงานได้ดีบน Browser ที่รองรับ HTTPS เท่านั้น")
