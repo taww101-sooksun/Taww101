@@ -36,7 +36,7 @@ with col1:
     if os.path.exists("logo3.jpg"): st.image("logo3.jpg", width=400)
     else: st.write("🇹🇭### 🌐 SYNAPSE🇹🇭")
 with col2:
-    st.title("SYNAPSE - Music -Therapy   - อยู่นิ้งๆ   - ไม่เจ็บตัว")
+    st.title("SYNAPSE - Music - Therapy ")
 
 location = get_geolocation()
 
@@ -68,7 +68,7 @@ tab1, tab2, tab3 = st.tabs(["🚀📝 เช็คอิน & ฟังเพล
 with tab1:
     # ส่วนกรอกข้อมูลทางเข้า
     user_display_name = st.text_input("ระบุชื่อของคุณ:", placeholder="เช่น Ta101", key="user_input")
-    admin_key = st.text_input("รหัสผ่านผู้ดูแล (ถ้ามี):", type="password", help="ใส่รหัสเพื่อคุมเพลง")
+    admin_key = st.text_input("❌ห้ามใส่❌รหัสผ่านผู้ดูแล(ถ้ามี):", type="password", help="ใส่รหัสเพื่อคุมเพลง")
 
     if st.button("Start Journey"):
         if user_display_name and location and 'coords' in location:
@@ -120,7 +120,7 @@ with tab2:
                 m = folium.Map(location=[valid_users[0]['lat'], valid_users[0]['lon']], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}", attr="Google")
                 for u in valid_users:
                     folium.Marker([u['lat'], u['lon']], popup=f"{u['name']} ({u['time']})").add_to(m)
-                st_folium(m, width=700, height=500)
+                st_folium(m, width500, height=500)
 
 with tab3:
     st.header("💬 ห้องสนทนา📝")
