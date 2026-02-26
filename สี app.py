@@ -5,8 +5,6 @@ import datetime
 import pytz
 import os
 import time
-import random
-import string
 import pandas as pd
 from streamlit_js_eval import get_geolocation
 import folium
@@ -15,10 +13,10 @@ from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from streamlit_autorefresh import st_autorefresh
 
 # ==========================================
-# 1. SETUP & THEME
+# 1. SETUP & THEME (เน้นความจริงและสวยงาม)
 # ==========================================
-st.set_page_config(page_title="SYNAPSE V2", layout="wide")
-st_autorefresh(interval=5000, key="global_refresh")
+st.set_page_config(page_title="SYNAPSE ULTIMATE", layout="wide")
+st_autorefresh(interval=5000, key="global_refresh") # รีเฟรชหน้าจอทุก 5 วินาทีเพื่ออัปเดตเวลา/แชท
 
 st.markdown("""
     <style>
@@ -35,14 +33,15 @@ st.markdown("""
         margin-bottom: 15px;
     }
     .clock-box {
-        background: rgba(0,0,0,0.5); border: 1px solid #00f2fe;
-        padding: 5px; border-radius: 5px; text-align: center; font-size: 12px;
+        background: rgba(0,0,0,0.6); border: 1px solid #00f2fe;
+        padding: 10px; border-radius: 8px; text-align: center;
     }
+    .clock-time { color: #ff00de; font-size: 20px; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. FIREBASE & LOGO
+# 2. FIREBASE CONNECTION
 # ==========================================
 if not firebase_admin._apps:
     try:
@@ -52,94 +51,78 @@ if not firebase_admin._apps:
                 fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
             creds = credentials.Certificate(fb_dict)
             firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
-    except: pass
+    except Exception as e:
+        st.error(f"ระบบฐานข้อมูลขัดข้อง: {e}")
 
+# ==========================================
+# 3. LOGO & WORLD CLOCK (ไฮไลต์หน้าจอ)
+# ==========================================
 col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
 with col_l2:
     if os.path.exists("logo3.jpg"):
-        st.image("logo3.jpg", width=400)
+        st.image("logo3.jpg", width=400) # โลโก้ 400px ตามสั่ง
+    else:
+        st.markdown('<div style="text-align:center;">[ Missing logo3.jpg ]</div>', unsafe_allow_html=True)
     st.markdown('<div class="neon-header">SYNAPSE</div>', unsafe_allow_html=True)
 
-# ==========================================
-# 3. WORLD CLOCK (นาฬิกาทั่วโลก)
-# ==========================================
-st.markdown("### 🌐 GLOBAL WORLD TIME")
+# แถบนาฬิกาโลก
+st.markdown("### 🌐 GLOBAL REAL-TIME MONITOR")
 c1, c2, c3, c4 = st.columns(4)
 zones = {'BANGKOK': 'Asia/Bangkok', 'NEW YORK': 'America/New_York', 'LONDON': 'Europe/London', 'TOKYO': 'Asia/Tokyo'}
-cols = [c1, c2, c3, c4]
-for col, (city, zone) in zip(cols, zones.items()):
+for col, (city, zone) in zip([c1, c2, c3, c4], zones.items()):
     now = datetime.datetime.now(pytz.timezone(zone)).strftime('%H:%M:%S')
-    col.markdown(f"<div class='clock-box'><b>{city}</b><br><span style='color:#ff00de;'>{now}</span></div>", unsafe_allow_html=True)
+    col.markdown(f"""
+        <div class='clock-box'>
+            <small>{city}</small><br>
+            <span class='clock-time'>{now}</span>
+        </div>
+    """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. SIDEBAR & AUDIO
+# 4. SIDEBAR (เพลงและการควบคุม)
 # ==========================================
-audio_file = "ฉันผิดเองที่เดินหนี้ความจริง.mp3"
 with st.sidebar:
-    st.markdown("### 🛰️ NETWORK")
-    if os.path.exists(audio_file): st.audio(audio_file, format="audio/mp3", loop=True)
+    st.markdown("### 🛰️ NETWORK CENTER")
+    audio_file = "ฉันผิดเองที่เดินหนี้ความจริง.mp3"
+    if os.path.exists(audio_file):
+        st.audio(audio_file, format="audio/mp3", loop=True)
     st.markdown("---")
-    st.write(f"SYSTEM SYNC: {datetime.datetime.now().strftime('%H:%M:%S')}")
+    st.write(f"SYSTEM UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")
 
 # ==========================================
-# 5. MAIN TABS
+# 5. MAIN NAVIGATION (TABS)
 # ==========================================
-tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "💬 การสื่อสาร", "📊 บันทึก", "🔐 SEC", "📺 สื่อมวลชน", "🧹 ระบบ"])
+tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "💬 การสื่อสาร", "📊 บันทึก", "🔐 ปลอดภัย", "📺 สื่อ", "🧹 ระบบ"])
 
-# --- TAB 1: CORE (GPS กลับมาแล้ว) ---
+# --- TAB 1: แกนหลัก (GPS & Login) ---
 with tabs[0]:
-    st.markdown('<div class="terminal-container">[ SATELLITE_LINK_PROTOCOL ]</div>', unsafe_allow_html=True)
-    name = st.text_input("ระบุชื่อรหัสของคุณ:", value=st.session_state.get('my_name', 'Agent_X'))
-    st.session_state.my_name = name
+    st.markdown('<div class="terminal-container">[ SATELLITE_LINK_INITIATED ]</div>', unsafe_allow_html=True)
+    user_id = st.text_input("รหัสประจำตัว (User ID):", value=st.session_state.get('user_id', 'Agent_001'))
+    st.session_state.user_id = user_id
     
-    if st.button("🚀 INITIATE GPS TRACKING"):
+    if st.button("🛰️ ดึงพิกัด GPS ปัจจุบัน"):
         loc = get_geolocation()
         if loc:
-            lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-            db.reference(f'users/{name}').set({
+            lat = loc['coords']['latitude']
+            lon = loc['coords']['longitude']
+            db.reference(f'users/{user_id}').set({
                 'lat': lat, 'lon': lon,
-                'time': datetime.datetime.now().strftime('%H:%M:%S'),
+                'last_seen': datetime.datetime.now().strftime('%H:%M:%S'),
                 'status': 'ONLINE'
             })
-            st.success(f"พิกัดถูกส่งเข้าดาวเทียม: {lat}, {lon}")
+            st.success(f"บันทึกพิกัดสำเร็จ: {lat}, {lon}")
         else:
-            st.warning("กรุณากดอนุญาตให้เข้าถึงพิกัด (GPS)")
+            st.warning("โปรดอนุญาตให้เข้าถึงตำแหน่งที่ตั้งในเบราว์เซอร์ของคุณ")
 
-# --- TAB 2: RADAR (โชว์มุดบนแผนที่) ---
+# --- TAB 2: เรดาร์ (แผนที่มุด GPS) ---
 with tabs[1]:
-    st.markdown('<div class="terminal-container">[ GLOBAL_LIVE_RADAR ]</div>', unsafe_allow_html=True)
-    users = db.reference('users').get()
-    m = folium.Map(location=[13.75, 100.5], zoom_start=2, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google")
-    if users:
-        for u_name, info in users.items():
-            if isinstance(info, dict) and 'lat' in info:
-                folium.Marker([info['lat'], info['lon']], popup=u_name, icon=folium.Icon(color='red', icon='info-sign')).add_to(m)
-    st_folium(m, width="100%", height=500)
-
-# --- TAB 3: COMMS (แชทใช้งานได้) ---
-with tabs[2]:
-    st.markdown('<div class="terminal-container">[ SECURE_CHAT ]</div>', unsafe_allow_html=True)
-    with st.form("chat_form", clear_on_submit=True):
-        msg = st.text_input("พิมพ์ข้อความลับ...")
-        if st.form_submit_button("TRANSMIT") and msg:
-            db.reference('global_chat').push({'user': st.session_state.my_name, 'msg': msg, 'ts': time.time()})
+    st.markdown('<div class="terminal-container">[ RADAR_LIVE_FEED ]</div>', unsafe_allow_html=True)
+    m = folium.Map(location=[13.75, 100.5], zoom_start=4, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
     
-    chats = db.reference('global_chat').order_by_child('ts').limit_to_last(8).get()
-    if chats:
-        for v in reversed(chats.values()):
-            st.write(f"**{v.get('user')}**: {v.get('msg')}")
-
-# --- TAB 5: SEC ---
-with tabs[4]:
-    if st.button("🔑 GENERATE KEY"):
-        st.code(''.join(random.choices(string.ascii_uppercase + string.digits, k=16)))
-
-# --- TAB 6: MEDIA ---
-with tabs[5]:
-    st.video("https://www.youtube.com/watch?v=F3zR5W0Bv0U")
-
-# --- TAB 7: SYS ---
-with tabs[6]:
-    if st.button("💣 WIPE SYSTEM"):
-        db.reference('users').delete()
-        st.success("ข้อมูลพิกัดถูกล้างแล้ว")
+    try:
+        all_users = db.reference('users').get()
+        if all_users:
+            for u, data in all_users.items():
+                if isinstance(data, dict) and 'lat' in data:
+                    folium.Marker(
+                        [data['lat'], data
