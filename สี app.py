@@ -68,7 +68,7 @@ def display_global_header():
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         if os.path.exists("logo3.jpg"):
-            st.image("logo3.jpg", width=150)
+            st.image("logo3.jpg", width=400)
         st.markdown('<div class="neon-header">S Y N A P S E</div>', unsafe_allow_html=True)
 
 # ==========================================
