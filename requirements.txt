@@ -19,4 +19,6 @@ streamlit-folium
 firebase-admin
 timezonefinder
 streamlit-webrtc
+streamlit
+streamlit-autorefresh
 
