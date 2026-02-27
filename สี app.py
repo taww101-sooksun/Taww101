@@ -68,7 +68,6 @@ for col, (city, zone) in zip([c1, c2, c3, c4], zones.items()):
     now = datetime.datetime.now(pytz.timezone(zone)).strftime('%H:%M:%S')
     col.markdown(f"<div class='clock-box'><small>{city}</small><br><span class='clock-time'>{now}</span></div>", unsafe_allow_html=True)
 
-
 # ==========================================
 # 2. AUTOMATIC HIDDEN AUDIO (27 MINS)
 # ==========================================
