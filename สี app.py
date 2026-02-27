@@ -86,19 +86,6 @@ st.components.v1.html(f"""
         }}, {{ once: true }});
     </script>
 """, height=0)
-# ==========================================
-# 3. LOGO & WORLD CLOCK
-# ==========================================
-col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
-with col_l2:
-with st.sidebar:
-    st.markdown("<h1 style='text-align:center;'>CONTROL CENTER</h2>", unsafe_allow_html=True)
-    if os.path.exists("logo3.jpg"):
-        st.image("logo3.jpg", use_container_width=True)# ==========================================
-# 1. CORE SYSTEM CONFIGURATION (NEON THEME)
-# ==========================================
-st.set_page_config(page_title="SYNAPSE QUANTUM CONTROL", layout="wide")
-st_autorefresh(interval=5000, key="global_refresh")
 
 st.markdown("""
     <style>
