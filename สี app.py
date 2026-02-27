@@ -87,15 +87,12 @@ st.components.v1.html(f"""
     </script>
 """, height=0)
 st.markdown("---")
-    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-    embed_url = f"https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&mute=1"
-    <style>
-    .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
-    .neon-header { 
-        font-size: 55px; font-weight: 900; text-align: center;
-        color: #fff; text-shadow: 0 0 10px #00f2fe, 0 0 20px #ff00de;
-        border: 4px double #00f2fe; padding: 20px; background: rgba(0,0,0,0.8);
-        border-radius: 20px; margin-bottom: 30px;
+with st.sidebar:
+    st.markdown("### 🛰️ NETWORK CENTER")
+    audio_file = "ฉันผิดเองที่เดินหนี้ความจริง.mp3"
+    if os.path.exists(audio_file):
+        st.audio(audio_file, format="audio/mp3", loop=True)
+    st.write(f"UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")    
     }
     div.stButton > button {
         background: linear-gradient(135deg, #00f2fe 0%, #000 50%, #ff00de 100%);
