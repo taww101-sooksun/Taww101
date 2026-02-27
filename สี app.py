@@ -27,7 +27,7 @@ st.markdown("""
     
     /* หัวข้อหลัก: สีแดงสดตัดฟ้า */
     .neon-header { 
-        font-size: 20px; font-weight: 900; text-align: center;
+        font-size: 50px; font-weight: 900; text-align: center;
         color: #fff; text-shadow: 0 0 5px #ff1744, 0 0 10px #00f2fe;
         border: 4px double #ff1744; padding: 20px; background: rgba(0,0,0,0.85);
         border-radius: 20px; margin-bottom: 30px;
@@ -42,12 +42,12 @@ st.markdown("""
 
     div.stButton > button {
         background: linear-gradient(135deg, #ff1744 0%, #000 50%, #ff00de 100%);
-        color: white !important; border: 2px solid #fff; border-radius: 20px;
-        height: 20px; font-weight: bold; width: 100%; transition: 0.5s;
+        color: white !important; border: 2px solid #fff; border-radius: 10px;
+        height: 50px; font-weight: bold; width: 100%; transition: 0.5s;
         animation: breathing 3s infinite ease-in-out;
     }
     div.stButton > button:hover {
-        box-shadow: 0 0 20px #ff00de; transform: scale(1.02);
+        box-shadow: 0 0 35px #ff00de; transform: scale(1.02);
         background: #fff; color: #000 !important;
     }
     div.stButton > button:active { transform: scale(0.95); }
@@ -63,13 +63,7 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
-# --- 4. HEADER SECTION ---
-if os.path.exists("logo3.jpg"):
-    col_l, col_m, col_r = st.columns([1, 1, 1])
-    with col_m:
-        st.image("logo3.jpg", use_container_width=True)
-else:
-    st.markdown("<h1 style='text-align: center; color: #00f2fe; text-shadow: 0 0 20px rgba(0,242,254,0.5);'>SYNAPSE CONTROL</h1>", unsafe_allow_html=True)
+
 # ==========================================
 # 2. AUTOMATIC HIDDEN AUDIO
 # ==========================================
@@ -86,34 +80,6 @@ st.components.v1.html(f"""
         }}, {{ once: true }});
     </script>
 """, height=0)
-st.markdown("---")
-with st.sidebar:
-    st.markdown("### 🛰️ NETWORK CENTER")
-    audio_file = "ฉันผิดเองที่เดินหนี้ความจริง.mp3"
-    if os.path.exists(audio_file):
-        st.audio(audio_file, format="audio/mp3", loop=True)
-    st.write(f"UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")    
-    div.stButton > button {
-        background: linear-gradient(135deg, #00f2fe 0%, #000 50%, #ff00de 100%);
-        color: white !important; border: 2px solid #fff; border-radius: 5px;
-        height: 50px; font-weight: bold; width: 100%; transition: 0.5s;
-        box-shadow: 0 0 10px #00f2fe;
-    }
-    div.stButton > button:hover { box-shadow: 0 0 30px #ff00de; transform: scale(1.02); }
-    .bubble-me { background: rgba(0, 242, 254, 0.15); border: 1px solid #00f2fe; padding: 12px; border-radius: 15px 15px 0 15px; margin-bottom: 10px; color: #fff; }
-    .bubble-others { background: rgba(255, 71, 71, 0.15); border: 1px solid #ff4747; padding: 12px; border-radius: 15px 15px 15px 0; margin-bottom: 10px; color: #fff; }
-    .terminal-container { border: 1px solid #00f2fe; padding: 20px; border-radius: 10px; background: rgba(0, 242, 254, 0.05); border-left: 8px solid #00f2fe; }
-    </style>
-    """, unsafe_allow_html=True    
-
-st.markdown("### 🌐 GLOBAL REAL-TIME MONITOR")
-c1, c2, c3, c4 = st.columns(4)
-zones = {'BANGKOK': 'Asia/Bangkok', 'NEW YORK': 'America/New_York', 'LONDON': 'Europe/London', 'TOKYO': 'Asia/Tokyo'}
-for col, (city, zone) in zip([c1, c2, c3, c4], zones.items()):
-    now = datetime.datetime.now(pytz.timezone(zone)).strftime('%H:%M:%S')
-    col.markdown(f"<div class='clock-box'><small>{city}</small><br><span class='clock-time'>{now}</span></div>", unsafe_allow_html=True)
-
-
 
 # ==========================================
 # 3. FIREBASE INFRASTRUCTURE
