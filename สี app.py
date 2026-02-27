@@ -93,7 +93,6 @@ with st.sidebar:
     if os.path.exists(audio_file):
         st.audio(audio_file, format="audio/mp3", loop=True)
     st.write(f"UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")    
-    
     div.stButton > button {
         background: linear-gradient(135deg, #00f2fe 0%, #000 50%, #ff00de 100%);
         color: white !important; border: 2px solid #fff; border-radius: 5px;
