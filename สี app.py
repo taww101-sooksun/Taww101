@@ -91,9 +91,36 @@ st.components.v1.html(f"""
 # ==========================================
 col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
 with col_l2:
+with st.sidebar:
+    st.markdown("<h1 style='text-align:center;'>CONTROL CENTER</h2>", unsafe_allow_html=True)
     if os.path.exists("logo3.jpg"):
-        st.image("logo3.jpg", width=400)
-    st.markdown('<div class="neon-header">SYNAPSE</div>', unsafe_allow_html=True)
+        st.image("logo3.jpg", use_container_width=True)# ==========================================
+# 1. CORE SYSTEM CONFIGURATION (NEON THEME)
+# ==========================================
+st.set_page_config(page_title="SYNAPSE QUANTUM CONTROL", layout="wide")
+st_autorefresh(interval=5000, key="global_refresh")
+
+st.markdown("""
+    <style>
+    .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
+    .neon-header { 
+        font-size: 55px; font-weight: 900; text-align: center;
+        color: #fff; text-shadow: 0 0 10px #00f2fe, 0 0 20px #ff00de;
+        border: 4px double #00f2fe; padding: 20px; background: rgba(0,0,0,0.8);
+        border-radius: 20px; margin-bottom: 30px;
+    }
+    div.stButton > button {
+        background: linear-gradient(135deg, #00f2fe 0%, #000 50%, #ff00de 100%);
+        color: white !important; border: 2px solid #fff; border-radius: 5px;
+        height: 50px; font-weight: bold; width: 100%; transition: 0.5s;
+        box-shadow: 0 0 10px #00f2fe;
+    }
+    div.stButton > button:hover { box-shadow: 0 0 30px #ff00de; transform: scale(1.02); }
+    .bubble-me { background: rgba(0, 242, 254, 0.15); border: 1px solid #00f2fe; padding: 12px; border-radius: 15px 15px 0 15px; margin-bottom: 10px; color: #fff; }
+    .bubble-others { background: rgba(255, 71, 71, 0.15); border: 1px solid #ff4747; padding: 12px; border-radius: 15px 15px 15px 0; margin-bottom: 10px; color: #fff; }
+    .terminal-container { border: 1px solid #00f2fe; padding: 20px; border-radius: 10px; background: rgba(0, 242, 254, 0.05); border-left: 8px solid #00f2fe; }
+    </style>
+    """, unsafe_allow_html=True    
 
 st.markdown("### 🌐 GLOBAL REAL-TIME MONITOR")
 c1, c2, c3, c4 = st.columns(4)
