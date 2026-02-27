@@ -24,7 +24,10 @@ st.markdown("""
     <style>
     /* พื้นหลังหลัก */
     .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
-    
+    with st.sidebar:
+    st.markdown("<h1 style='text-align:center;'>CONTROL CENTER</h2>", unsafe_allow_html=True)
+    if os.path.exists("logo3.jpg"):
+        st.image("logo3.jpg", use_container_width=True)
     /* หัวข้อหลัก: สีแดงสดตัดฟ้า */
     .neon-header { 
         font-size: 20px; font-weight: 900; text-align: center;
