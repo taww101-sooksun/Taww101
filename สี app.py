@@ -20,12 +20,11 @@ st.set_page_config(page_title="SYNAPSE QUANTUM CONTROL", layout="wide")
 st_autorefresh(interval=5000, key="global_refresh")
 
 # ตกแต่ง UI แบบฉบับกองบัญชาการ สีสด แสงหายใจ
-st.markdown("""
-    <style>
-    /* พื้นหลังหลัก */
-    .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
-    with st.sidebar:
-    st.markdown("<h1 style='text-align:center;'>CONTROL CENTER</h1>", unsafe_allow_html=True)
+# ==========================================
+# 4. SIDEBAR : CONTROL CENTER
+# ==========================================
+with st.sidebar:
+    st.markdown("<h1 style='text-align:center;'>CONTROL CENTER</h2>", unsafe_allow_html=True)
     if os.path.exists("logo3.jpg"):
         st.image("logo3.jpg", use_container_width=True)
     /* หัวข้อหลัก: สีแดงสดตัดฟ้า */
