@@ -84,12 +84,7 @@ st.components.v1.html(f"""
         window.parent.document.addEventListener('click', function() {{
             audio.play();
         }}, {{ once: true }});
-    </script>
-""", height=0)
-st.markdown("---")
-    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-    embed_url = f"https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&mute=1"
-    st.components.v1.html(f'<iframe width="100%" height="250" src="{embed_url}" frameborder="0" style="border-radius:15px;" allow="autoplay; encrypted-media"></iframe>', height=270)
+    
 # ==========================================
 # 3. FIREBASE INFRASTRUCTURE
 # ==========================================
