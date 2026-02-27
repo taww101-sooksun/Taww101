@@ -27,7 +27,7 @@ st.markdown("""
     
     /* หัวข้อหลัก: สีแดงสดตัดฟ้า */
     .neon-header { 
-        font-size: 50px; font-weight: 900; text-align: center;
+        font-size: 20px; font-weight: 900; text-align: center;
         color: #fff; text-shadow: 0 0 5px #ff1744, 0 0 10px #00f2fe;
         border: 4px double #ff1744; padding: 20px; background: rgba(0,0,0,0.85);
         border-radius: 20px; margin-bottom: 30px;
@@ -42,12 +42,12 @@ st.markdown("""
 
     div.stButton > button {
         background: linear-gradient(135deg, #ff1744 0%, #000 50%, #ff00de 100%);
-        color: white !important; border: 2px solid #fff; border-radius: 10px;
-        height: 50px; font-weight: bold; width: 100%; transition: 0.5s;
+        color: white !important; border: 2px solid #fff; border-radius: 20px;
+        height: 20px; font-weight: bold; width: 100%; transition: 0.5s;
         animation: breathing 3s infinite ease-in-out;
     }
     div.stButton > button:hover {
-        box-shadow: 0 0 35px #ff00de; transform: scale(1.02);
+        box-shadow: 0 0 20px #ff00de; transform: scale(1.02);
         background: #fff; color: #000 !important;
     }
     div.stButton > button:active { transform: scale(0.95); }
