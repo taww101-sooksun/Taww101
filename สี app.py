@@ -86,7 +86,15 @@ st.components.v1.html(f"""
         }}, {{ once: true }});
     </script>
 """, height=0)
+==========================================
+with st.sidebar:
+    st.markdown("### 🛰️ NETWORK CENTER")
+    audio_file = "ฉันผิดเองที่เดินหนี้ความจริง.mp3"
+    if os.path.exists(audio_file):
+        st.audio(audio_file, format="audio/mp3", loop=True)
+    st.write(f"UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")
 
+# ==========================================
 # ==========================================
 # 3. FIREBASE INFRASTRUCTURE
 # ==========================================
