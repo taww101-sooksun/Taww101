@@ -2,8 +2,11 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
 import datetime
+import pytz
 import os
 import time
+import pandas as pd
+import random
 from streamlit_js_eval import get_geolocation
 import folium
 from streamlit_folium import st_folium
@@ -16,47 +19,54 @@ from streamlit_autorefresh import st_autorefresh
 st.set_page_config(page_title="SYNAPSE QUANTUM CONTROL", layout="wide")
 st_autorefresh(interval=5000, key="global_refresh")
 
-# ตกแต่ง UI แบบฉบับกองบัญชาการ ปุ่มเยอะ ลวดลายจัดเต็ม
+# ตกแต่ง UI แบบฉบับกองบัญชาการ สีสด แสงหายใจ
 st.markdown("""
     <style>
-    /* พื้นหลังและฟอนต์สไตล์ Hacker Dark Mode */
+    /* พื้นหลังหลัก */
     .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
     
-    /* หัวข้อหลักแบบเรืองแสงสะท้อนแสง */
+    /* หัวข้อหลัก: สีแดงสดตัดฟ้า */
     .neon-header { 
-        font-size: 55px; font-weight: 900; text-align: center;
-        color: #fff; text-shadow: 0 0 10px #00f2fe, 0 0 20px #ff00de;
-        border: 4px double #00f2fe; padding: 20px; background: rgba(0,0,0,0.8);
+        font-size: 50px; font-weight: 900; text-align: center;
+        color: #fff; text-shadow: 0 0 5px #ff1744, 0 0 10px #00f2fe;
+        border: 4px double #ff1744; padding: 20px; background: rgba(0,0,0,0.85);
         border-radius: 20px; margin-bottom: 30px;
     }
     
-    /* ปุ่มกดสไตล์ Futuristic พร้อมเอฟเฟกต์ */
+    /* ปุ่มกด: เอฟเฟกต์แสงหายใจ (บ่งบอกว่ากดได้) */
+    @keyframes breathing {
+        0% { box-shadow: 0 0 5px #ff1744; }
+        50% { box-shadow: 0 0 20px #ff1744; }
+        100% { box-shadow: 0 0 5px #ff1744; }
+    }
+
     div.stButton > button {
-        background: linear-gradient(135deg, #00f2fe 0%, #000 50%, #ff00de 100%);
-        color: white !important; border: 2px solid #fff; border-radius: 5px;
+        background: linear-gradient(135deg, #ff1744 0%, #000 50%, #ff00de 100%);
+        color: white !important; border: 2px solid #fff; border-radius: 10px;
         height: 50px; font-weight: bold; width: 100%; transition: 0.5s;
-        box-shadow: 0 0 10px #00f2fe;
+        animation: breathing 3s infinite ease-in-out;
     }
     div.stButton > button:hover {
-        box-shadow: 0 0 30px #ff00de; transform: scale(1.02);
+        box-shadow: 0 0 35px #ff00de; transform: scale(1.02);
+        background: #fff; color: #000 !important;
     }
+    div.stButton > button:active { transform: scale(0.95); }
     
-    /* กล่องข้อความแชทสีฟ้า/แดง */
-    .bubble-me { background: rgba(0, 242, 254, 0.15); border: 1px solid #00f2fe; padding: 12px; border-radius: 15px 15px 0 15px; margin-bottom: 10px; color: #fff; }
-    .bubble-others { background: rgba(255, 71, 71, 0.15); border: 1px solid #ff4747; padding: 12px; border-radius: 15px 15px 15px 0; margin-bottom: 10px; color: #fff; }
+    /* กล่องข้อความแชท */
+    .bubble-me { background: rgba(0, 242, 254, 0.15); border: 2px solid #00f2fe; padding: 12px; border-radius: 15px 15px 0 15px; margin-bottom: 10px; color: #fff; }
+    .bubble-others { background: rgba(255, 23, 68, 0.15); border: 2px solid #ff1744; padding: 12px; border-radius: 15px 15px 15px 0; margin-bottom: 10px; color: #fff; }
     
-    /* กรอบข้อมูลลวดลาย Terminal */
+    /* กรอบข้อมูลนิ่งๆ (Static) */
     .terminal-container {
-        border: 1px solid #00f2fe; padding: 20px; border-radius: 10px;
-        background: rgba(0, 242, 254, 0.05); border-left: 8px solid #00f2fe;
+        border: 1px solid rgba(0, 242, 254, 0.5); padding: 20px; border-radius: 10px;
+        background: rgba(0, 5, 15, 0.9); border-left: 8px solid #00f2fe;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. AUTOMATIC HIDDEN AUDIO (27 MINS)
+# 2. AUTOMATIC HIDDEN AUDIO
 # ==========================================
-# ลิงก์ตรงจาก Google Drive (ความจริงคือไฟล์ ID 1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a)
 direct_link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
 
 st.components.v1.html(f"""
@@ -65,8 +75,6 @@ st.components.v1.html(f"""
     </audio>
     <script>
         var audio = document.getElementById("synapse-audio");
-        audio.volume = 0.5;
-        // ปลดล็อกการเล่นอัตโนมัติเมื่อมีการสัมผัสหน้าจอ 1 ครั้ง
         window.parent.document.addEventListener('click', function() {{
             audio.play();
         }}, {{ once: true }});
@@ -99,20 +107,18 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown("### 🎵 AUDIO FREQUENCY")
-    # ตัวเล่นเพลงสำรองใน Sidebar เผื่อ Browser บล็อก
     st.audio(direct_link, format="audio/mpeg", loop=True)
-    st.caption("STATUS: STREAMING (27 MINS)")
     
     st.markdown("---")
     st.markdown("### 🛡️ QUICK COMMANDS")
-    st.button("🔍 SCAN NETWORK")
-    st.button("🔐 ENCRYPT ALL")
-    st.button("📡 PING SATELLITE")
+    if st.button("🔍 SCAN NETWORK"):
+        st.toast("กำลังวิเคราะห์โหนดโครงข่าย...")
+    
     st.markdown("---")
     st.write(f"SYSTEM UPTIME: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 # ==========================================
-# 5. MAIN INTERFACE (TABS 1-7)
+# 5. MAIN INTERFACE
 # ==========================================
 st.markdown('<div class="neon-header">S Y N A P S E _ O V E R L O R D</div>', unsafe_allow_html=True)
 
@@ -135,102 +141,100 @@ with tabs[0]:
                 'status': 'ACTIVE'
             })
             st.success("GLOBAL POSITIONING SYNCHRONIZED.")
-        else:
-            st.warning("PLEASE ENABLE GPS TO PROCEED.")
 
 # --- TAB 2: RADAR (GLOBAL MAP) ---
 with tabs[1]:
     st.markdown('<div class="terminal-container"><h3>[ GLOBAL_SURVEILLANCE_RADAR ]</h3></div>', unsafe_allow_html=True)
     users = db.reference('users').get()
+    m = folium.Map(location=[13.75, 100.5], zoom_start=2, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
     if users:
-        # แผนที่โลกแบบละเอียด (Global Fix)
-        m = folium.Map(location=[13.75, 100.5], zoom_start=2, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
         for name, info in users.items():
             if isinstance(info, dict) and 'lat' in info:
-                # สีกำหนดตัวตน
-                m_color = 'cadetblue' if name == st.session_state.my_name else 'red'
+                f_color = 'cadetblue' if name == st.session_state.my_name else 'red'
                 folium.Marker(
                     [info['lat'], info['lon']], 
-                    popup=f"<b>User:</b> {name}<br><b>Time:</b> {info.get('gps_time')}",
-                    icon=folium.Icon(color=m_color, icon='info-sign')
+                    tooltip=f"Agent: {name}",
+                    icon=folium.Icon(color=f_color, icon='user', prefix='fa')
                 ).add_to(m)
-        st_folium(m, width="100%", height=600)
+    st_folium(m, width="100%", height=600)
 
 # --- TAB 3: COMMS (CHAT & CALL) ---
 with tabs[2]:
     st.markdown('<div class="terminal-container"><h3>[ ENCRYPTED_COMM_PROTOCOL ]</h3></div>', unsafe_allow_html=True)
-    
-    # 3.1 VIDEO CALL (WebRTC)
-    st.markdown("#### 📹 SATELLITE VIDEO FEED")
-    webrtc_streamer(
-        key="synapse-vcall",
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-        media_stream_constraints={"video": True, "audio": True}
-    )
+    webrtc_streamer(key="synapse-vcall", mode=WebRtcMode.SENDRECV)
     
     st.markdown("---")
-    
-    # 3.2 SECURE CHAT (สีฟ้า-แดง)
-    col_u, col_c = st.columns([1, 2])
-    with col_u:
-        st.write("📡 ONLINE NODES")
-        if users:
-            for f_name in users.keys():
-                if f_name != st.session_state.my_name:
-                    if st.button(f"CONNECT TO {f_name}", key=f"btn-{f_name}"):
-                        pair = sorted([st.session_state.my_name, f_name])
-                        st.session_state.private_room = f"sec_{pair[0]}_{pair[1]}"
-                        st.session_state.target_name = f_name
-                        st.rerun()
+    chat_mode = st.radio("เลือกช่องทางการสื่อสาร:", ["🌐 ห้องสาธารณะ (Global)", "🔒 ห้องส่วนตัว (Private)"], horizontal=True)
 
-    with col_c:
-        room = st.session_state.get('private_room')
-        target = st.session_state.get('target_name')
-        if room:
-            st.write(f"🔒 SECURE CHANNEL: {target}")
-            chat_ref = db.reference(f'chats/{room}')
-            msg_input = st.chat_input("TRANSMIT MESSAGE...")
-            if msg_input:
-                chat_ref.push({'name': st.session_state.my_name, 'msg': msg_input, 'ts': time.time()})
-            
-            msgs = chat_ref.order_by_child('ts').limit_to_last(15).get()
-            if msgs:
-                for m_id in msgs:
-                    d = msgs[m_id]
-                    is_me = d.get('name') == st.session_state.my_name
-                    style = "bubble-me" if is_me else "bubble-others"
-                    align = "right" if is_me else "left"
-                    st.markdown(f"<div style='text-align:{align};'><div class='{style}' style='display:inline-block;'><small>{d.get('name')}</small><br>{d.get('msg')}</div></div>", unsafe_allow_html=True)
+    if chat_mode == "🌐 ห้องสาธารณะ (Global)":
+        msg_input = st.chat_input("คุยรวมกับทุกคน...")
+        if msg_input:
+            db.reference('global_chat').push({'name': st.session_state.my_name, 'msg': msg_input, 'ts': time.time()})
+        
+        raw_msgs = db.reference('global_chat').get()
+        if raw_msgs:
+            # เรียงลำดับด้วย Python เพื่อป้องกัน Error
+            sorted_msgs = sorted(raw_msgs.values(), key=lambda x: x.get('ts', 0))
+            for d in sorted_msgs[-15:]:
+                is_me = d.get('name') == st.session_state.my_name
+                style = "bubble-me" if is_me else "bubble-others"
+                align = "right" if is_me else "left"
+                st.markdown(f"<div style='text-align:{align};'><div class='{style}' style='display:inline-block;'><small>{d.get('name')}</small><br>{d.get('msg')}</div></div>", unsafe_allow_html=True)
+
+    else:
+        col_u, col_c = st.columns([1, 2])
+        with col_u:
+            st.write("📡 ONLINE NODES")
+            if users:
+                for f_name in users.keys():
+                    if f_name != st.session_state.my_name:
+                        if st.button(f"CONNECT TO {f_name}", key=f"pbtn-{f_name}"):
+                            pair = sorted([st.session_state.my_name, f_name])
+                            st.session_state.private_room = f"priv_{pair[0]}_{pair[1]}"
+                            st.session_state.target_name = f_name
+                            st.rerun()
+        with col_c:
+            room = st.session_state.get('private_room')
+            if room:
+                st.write(f"🔒 SECURE CHANNEL: {st.session_state.target_name}")
+                p_msg = st.chat_input("ส่งข้อความลับ...")
+                if p_msg:
+                    db.reference(f'private_rooms/{room}').push({'name': st.session_state.my_name, 'msg': p_msg, 'ts': time.time()})
+                
+                raw_p_msgs = db.reference(f'private_rooms/{room}').get()
+                if raw_p_msgs:
+                    sorted_p_msgs = sorted(raw_p_msgs.values(), key=lambda x: x.get('ts', 0))
+                    for d in sorted_p_msgs[-10:]:
+                        align = "right" if d.get('name') == st.session_state.my_name else "left"
+                        st.markdown(f"<div style='text-align:{align};'><div class='bubble-me' style='display:inline-block; border-color:#ff00de;'><small>{d.get('name')}</small><br>{d.get('msg')}</div></div>", unsafe_allow_html=True)
 
 # --- TAB 4: DATA LOG ---
 with tabs[3]:
     st.markdown('<div class="terminal-container"><h3>[ METADATA_ANALYSIS ]</h3></div>', unsafe_allow_html=True)
     if users:
         st.json(users)
-    if st.button("🗑️ CLEAR ACCESS LOGS (ถังขยะ)"):
+    if st.button("🗑️ CLEAR ACCESS LOGS"):
         db.reference('users').delete()
         st.rerun()
 
 # --- TAB 5: SECURITY ---
 with tabs[4]:
     st.markdown('<div class="terminal-container"><h3>[ SECURITY_OVERRIDE ]</h3></div>', unsafe_allow_html=True)
-    st.write("สถานะการเข้ารหัส: **AES-256 BIT ACTIVE**")
     st.progress(100, "SIGNAL INTEGRITY")
     st.code("QUANTUM_KEY: SH-256-X99-SYNPSE-ALPHA", language="text")
 
 # --- TAB 6: MEDIA ---
 with tabs[5]:
     st.markdown('<div class="terminal-container"><h3>[ VISUAL_STREAMS ]</h3></div>', unsafe_allow_html=True)
-    st.video("https://www.youtube.com/watch?v=f0h8PjdZzrw") # ตัวอย่างวิดีโอเท่ๆ
+    st.video("https://www.youtube.com/watch?v=f0h8PjdZzrw")
 
-# --- TAB 7: SYSTEM (TRASH & RESET) ---
+# --- TAB 7: SYSTEM ---
 with tabs[6]:
     st.markdown('<div class="terminal-container"><h3>[ KERNEL_DESTRUCTION ]</h3></div>', unsafe_allow_html=True)
-    st.error("🚨 DANGER: FACTORY DATA RESET")
-    if st.button("💣 WIPE ALL CHATS (ล้างแชท)"):
-        db.reference('chats').delete()
-        st.success("ประวัติแชทถูกลบเรียบร้อย!")
-    if st.button("🧼 FULL FACTORY RESET (ล้างเครื่อง)"):
+    if st.button("💣 WIPE ALL CHATS"):
+        db.reference('private_rooms').delete()
+        db.reference('global_chat').delete()
+        st.success("ล้างประวัติแชททั้งหมดแล้ว!")
+    if st.button("🧼 FULL FACTORY RESET"):
         db.reference('/').delete()
-        st.error("ข้อมูลทั้งหมดในฐานข้อมูลถูกล้างเรียบร้อย!")
+        st.error("ระบบถูกรีเซ็ตค่าเริ่มต้น!")
