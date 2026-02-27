@@ -21,7 +21,7 @@ st_autorefresh(interval=5000, key="global_refresh")
 
 # ตกแต่ง UI แบบฉบับกองบัญชาการ สีสด แสงหายใจ
 # ==========================================
-# 4. SIDEBAR : CONTROL CENTER
+# . SIDEBAR : CONTROL CENTER
 # ==========================================
 with st.sidebar:
     st.markdown("<h1 style='text-align:center;'>CONTROL CENTER</h2>", unsafe_allow_html=True)
@@ -32,7 +32,7 @@ with st.sidebar:
         font-size: 20px; font-weight: 900; text-align: center;
         color: #fff; text-shadow: 0 0 20px #ff1744, 0 0 20px #00f2fe;
         border: 4px double #ff1744; padding: 20px; background: rgba(0,0,0,0.85);
-        border-radius: 20px; margin-bottom: 30px;
+        border-radius: 20px; margin-bottom: 10px;
     }
     
     /* ปุ่มกด: เอฟเฟกต์แสงหายใจ (บ่งบอกว่ากดได้) */
