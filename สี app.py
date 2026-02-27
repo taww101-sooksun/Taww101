@@ -86,8 +86,9 @@ st.components.v1.html(f"""
         }}, {{ once: true }});
     </script>
 """, height=0)
-
-st.markdown("""
+st.markdown("---")
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+    embed_url = f"https://www.youtube.com/embed/videoseries?list={playlist_id}&autoplay=1&mute=1"
     <style>
     .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
     .neon-header { 
