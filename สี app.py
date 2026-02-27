@@ -27,8 +27,8 @@ st.markdown("""
     
     /* หัวข้อหลัก: สีแดงสดตัดฟ้า */
     .neon-header { 
-        font-size: 50px; font-weight: 900; text-align: center;
-        color: #fff; text-shadow: 0 0 5px #ff1744, 0 0 10px #00f2fe;
+        font-size: 20px; font-weight: 900; text-align: center;
+        color: #fff; text-shadow: 0 0 20px #ff1744, 0 0 20px #00f2fe;
         border: 4px double #ff1744; padding: 20px; background: rgba(0,0,0,0.85);
         border-radius: 20px; margin-bottom: 30px;
     }
