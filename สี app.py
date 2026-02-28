@@ -43,7 +43,7 @@ st.markdown("""
     div.stButton > button {
         background: linear-gradient(135deg, #ff1744 0%, #000 50%, #ff00de 100%);
         color: white !important; border: 2px solid #fff; border-radius: 10px;
-        height: 50px; font-weight: bold; width: 100%; transition: 0.5s;
+        height: 20px; font-weight: bold; width: 100%; transition: 0.5s;
         animation: breathing 3s infinite ease-in-out;
     }
     div.stButton > button:hover {
@@ -67,7 +67,7 @@ st.markdown("""
 col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
 with col_l2:
     if os.path.exists("logo3.jpg"):
-        st.image("logo3.jpg", width=400)
+        st.image("logo3.jpg", width=500)
     st.markdown('<div class="neon-header">SYNAPSE</div>', unsafe_allow_html=True)
 
 st.markdown("### 🌐 GLOBAL REAL-TIME MONITOR")
