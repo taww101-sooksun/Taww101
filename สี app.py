@@ -184,7 +184,7 @@ my_id = st.session_state.my_id
 # --- 3. STYLE & RAINBOW (Compact Mode) ---
 st.markdown("""
     <style>
-    @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    @keyframes RainbowFlow { 50% { background-position: 50% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
     .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 60s ease infinite; }
     .stMetric { background-color: rgba(0, 0, 0, 0.8) !important; padding: 5px !important; border-radius: 10px; border: 1px solid white; }
     div[data-testid="stMetricValue"] > div { font-size: 1.5rem !important; } /* ย่อขนาดตัวเลขให้เล็กลงหน่อยไม่กินที่ */
