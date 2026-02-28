@@ -57,14 +57,42 @@ users_data = db.reference('users').get()
 # ==========================================
 # 3. UI HEADER & CLOCKS
 # ==========================================
-col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
-with col_l2: st.markdown('<div class="neon-header">SYNAPSE</div>', unsafe_allow_html=True)
-
-c1, c2, c3, c4 = st.columns(4)
-zones = {'BANGKOK': 'Asia/Bangkok', 'NEW YORK': 'America/New_York', 'LONDON': 'Europe/London', 'TOKYO': 'Asia/Tokyo'}
-for col, (city, zone) in zip([c1, c2, c3, c4], zones.items()):
-    now = datetime.datetime.now(pytz.timezone(zone)).strftime('%H:%M:%S')
-    col.markdown(f"<div class='clock-box'><small>{city}</small><br><b style='color:#ff1744;'>{now}</b></div>", unsafe_allow_html=True)
+# --- TAB 3: COMMS (ฉบับแก้ไข Error KeyError) ---
+with tabs[2]:
+    st.markdown('<div class="terminal-container"><h3>[ ENCRYPTED_COMM_PROTOCOL ]</h3></div>', unsafe_allow_html=True)
+    
+    # ดึงชื่อจาก Session ถ้ายังไม่มีให้ใช้ 'Guest_Agent' ไปก่อน กันแอปพัง
+    current_user = st.session_state.get('my_name', 'Guest_Agent')
+    
+    msg_input = st.chat_input("ส่งข้อความถึงกองบัญชาการ...")
+    if msg_input:
+        # ส่งขึ้น Firebase โดยใช้ชื่อที่ดึงมา
+        db.reference('global_chat').push({
+            'name': current_user, 
+            'msg': msg_input, 
+            'ts': time.time()
+        })
+    
+    raw_msgs = db.reference('global_chat').get()
+    if raw_msgs:
+        # เรียงลำดับตามเวลา (ts)
+        for d in sorted(raw_msgs.values(), key=lambda x: x.get('ts', 0))[-15:]:
+            # ใช้ .get() เพื่อดึงค่า 'name' ถ้าไม่มีให้โชว์ว่า 'Unknown' (กัน Error ซ้ำซ้อน)
+            sender = d.get('name', 'Unknown')
+            
+            # เช็คเงื่อนไขการวางตำแหน่งข้อความ
+            is_me = (sender == current_user)
+            align = "right" if is_me else "left"
+            style = "bubble-me" if is_me else "bubble-others"
+            
+            st.markdown(f"""
+                <div style='text-align:{align};'>
+                    <div class='{style}' style='display:inline-block; max-width:80%;'>
+                        <small style='color:#00f2fe;'>{sender}</small><br>
+                        {d.get('msg', '[ไม่มีข้อความ]')}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
 # ==========================================
 # 4. MAIN INTERFACE (TABS)
