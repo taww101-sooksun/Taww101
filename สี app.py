@@ -93,6 +93,19 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
+# ==========================================
+col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
+with col_l2:
+    if os.path.exists("logo3.jpg"):
+        st.image("logo3.jpg", width=400)
+    st.markdown('<div class="neon-header">SYNAPSE</div>', unsafe_allow_html=True)
+
+st.markdown("### 🌐 GLOBAL REAL-TIME MONITOR")
+c1, c2, c3, c4 = st.columns(4)
+zones = {'BANGKOK': 'Asia/Bangkok', 'NEW YORK': 'America/New_York', 'LONDON': 'Europe/London', 'TOKYO': 'Asia/Tokyo'}
+for col, (city, zone) in zip([c1, c2, c3, c4], zones.items()):
+    now = datetime.datetime.now(pytz.timezone(zone)).strftime('%H:%M:%S')
+    col.markdown(f"<div class='clock-box'><small>{city}</small><br><span class='clock-time'>{now}</span></div>", unsafe_allow_html=True)
 
 # ==========================================
 # 2. AUDIO & FIREBASE (โครงสร้างเดิม)
