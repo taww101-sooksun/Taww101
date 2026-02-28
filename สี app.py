@@ -1,4 +1,4 @@
-import streamlit as st
+ไม่ชัดimport streamlit as st
 ฃ
 # --- 1. ตัวเชื่อมสถานะ (หัวใจหลัก) ---# --- เริ่มรันระบบ ---
 setup_ui()          # เรียกใช้หน้าตา
