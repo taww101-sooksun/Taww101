@@ -1,204 +1,130 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
-import datetime
-import pytz
-import os
-import time
-import pandas as pd
-import random
-from streamlit_js_eval import get_geolocation
 import folium
 from streamlit_folium import st_folium
-from streamlit_webrtc import webrtc_streamer, WebRtcMode
-from streamlit_autorefresh import st_autorefresh
+import datetime
+import time
 
 # ==========================================
-# 1. CORE SYSTEM CONFIGURATION (NEON THEME)
+# 1. SETTING & UI (อยู่นิ่งๆ ไม่เจ็บตัว)
 # ==========================================
-st.set_page_config(page_title="SYNAPSE QUANTUM CONTROL", layout="wide")
-st_autorefresh(interval=5000, key="global_refresh")
+st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
 
-# ลิงก์เพลงหลัก (ยักษ์ในตัวฉัน)
-direct_link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
-
-# ตกแต่ง UI แบบฉบับกองบัญชาการ สีสด แสงหายใจ (ตามคลิปที่เพื่อนส่งมา)
 st.markdown("""
     <style>
-    .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
-    
-    .neon-header { 
-        font-size: 40px; font-weight: 900; text-align: center;
-        color: #fff; text-shadow: 0 0 15px #ff1744, 0 0 20px #00f2fe;
-        border: 10px double #ff1744; padding: 20px; background: rgba(0,0,0,0.85);
-        border-radius: 20px; margin-bottom: 30px;
+    .stApp { background: #000; color: #00f2fe; }
+    .box-button {
+        border: 2px solid #ff1744; padding: 20px; border-radius: 15px;
+        text-align: center; background: rgba(255, 23, 68, 0.1);
+        box-shadow: 0 0 15px #ff1744; transition: 0.3s;
     }
-    
-    @keyframes breathing {
-        0% { box-shadow: 0 0 5px #ff1744; }
-        50% { box-shadow: 0 0 25px #ff1744; }
-        100% { box-shadow: 0 0 5px #ff1744; }
-    }
-
-    div.stButton > button {
-        background: linear-gradient(135deg, #ff1744 0%, #000 50%, #ff00de 100%);
-        color: white !important; border: 2px solid #fff; border-radius: 10px;
-        height: 50px; font-weight: bold; width: 100%; transition: 0.5s;
-        animation: breathing 3s infinite ease-in-out;
-    }
-    
-    .clock-box {
-        background: rgba(0, 242, 254, 0.1); border: 1px solid #00f2fe;
-        padding: 10px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px #00f2fe;
-    }
-    .clock-time { font-size: 20px; font-weight: bold; color: #ff1744; }
-    
-    .bubble-me { background: rgba(0, 242, 254, 0.15); border: 2px solid #00f2fe; padding: 12px; border-radius: 15px 15px 0 15px; margin-bottom: 10px; color: #fff; }
-    .bubble-others { background: rgba(255, 23, 68, 0.15); border: 2px solid #ff1744; padding: 12px; border-radius: 15px 15px 15px 0; margin-bottom: 10px; color: #fff; }
-    
-    .terminal-container {
-        border: 1px solid rgba(0, 242, 254, 0.5); padding: 20px; border-radius: 10px;
-        background: rgba(0, 5, 15, 0.9); border-left: 8px solid #00f2fe;
-    }
+    .neon-text { text-shadow: 0 0 10px #00f2fe; color: #fff; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 🔊 ระบบเพลงแอบเล่น (Auto-play) ---
-st.components.v1.html(f"""
-    <audio id="synapse-audio" loop autoplay style="display:none;"><source src="{direct_link}" type="audio/mpeg"></audio>
-    <script>
-        var audio = document.getElementById("synapse-audio");
-        window.parent.document.addEventListener('click', function() {{ audio.play(); }}, {{ once: true }});
-    </script>
-""", height=0)
+# ==========================================
+# 2. AUDIO SYSTEM (ยักษ์ในตัวฉัน - Auto Play)
+# ==========================================
+def play_system_audio():
+    audio_link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
+    st.components.v1.html(f"""
+        <audio id="bg-audio" loop autoplay><source src="{audio_link}" type="audio/mpeg"></audio>
+        <script>document.addEventListener('click', function() {{ document.getElementById('bg-audio').play(); }}, {{once: true}});</script>
+    """, height=0)
+
+play_system_audio()
 
 # ==========================================
-# 2. FIREBASE INITIALIZATION
+# 3. FIREBASE & SESSION (ตัวเชื่อมข้อมูล)
 # ==========================================
 if not firebase_admin._apps:
     try:
-        if "firebase" in st.secrets:
-            fb_dict = dict(st.secrets["firebase"])
-            if "private_key" in fb_dict: fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
-            creds = credentials.Certificate(fb_dict)
-            firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
-    except Exception as e: st.error(f"SYSTEM_ERROR: {e}")
+        fb_dict = dict(st.secrets["firebase"])
+        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+        creds = credentials.Certificate(fb_dict)
+        firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
+    except: pass
+
+if 'nav_level' not in st.session_state: st.session_state.nav_level = "HOME"
+if 'my_name' not in st.session_state: st.session_state.my_name = "Agent_Unknown"
 
 # ==========================================
-# 3. TOP UI (LOGO & CLOCKS)
+# 4. LOGIC FUNCTIONS (กล่องความสามารถ)
 # ==========================================
-col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
-with col_l2:
-    if os.path.exists("logo3.jpg"): st.image("logo3.jpg", width=500)
-    st.markdown('<div class="neon-header">SYNAPSE</div>', unsafe_allow_html=True)
 
-st.markdown("### 🌐 GLOBAL REAL-TIME MONITOR")
-c1, c2, c3, c4 = st.columns(4)
-zones = {'BANGKOK': 'Asia/Bangkok', 'NEW YORK': 'America/New_York', 'LONDON': 'Europe/London', 'TOKYO': 'Asia/Tokyo'}
-for col, (city, zone) in zip([c1, c2, c3, c4], zones.items()):
-    now = datetime.datetime.now(pytz.timezone(zone)).strftime('%H:%M:%S')
-    col.markdown(f"<div class='clock-box'><small>{city}</small><br><span class='clock-time'>{now}</span></div>", unsafe_allow_html=True)
+# 4.1 ระบบสีหมุดอัจฉริยะ (Dynamic Marker Color)
+def get_marker_color(info, name):
+    if name == st.session_state.my_name: return "cadetblue" # เราเอง
+    battery = info.get('battery', 100)
+    status = info.get('status', 'OFFLINE')
+    if battery < 20: return "red"       # แบตต่ำ
+    if status == "ACTIVE": return "green" # ออนไลน์
+    return "gray"                       # ขาดการติดต่อ
 
-# ==========================================
-# 4. SIDEBAR
-# ==========================================
-with st.sidebar:
-    st.markdown("### 🛰️ NETWORK CENTER")
-    if os.path.exists("logo3.jpg"): st.image("logo3.jpg", use_container_width=True)
-    st.markdown("---")
-    st.markdown("### 🎵 AUDIO FREQUENCY")
-    st.audio(direct_link, format="audio/mpeg", loop=True)
-    st.markdown("---")
-    if st.button("🔍 SCAN NETWORK"): st.toast("กำลังวิเคราะห์โหนดโครงข่าย...")
-    st.write(f"UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")
-
-# ==========================================
-# 5. MAIN INTERFACE (FULL TABS)
-# ==========================================
-st.markdown('<div class="neon-header" style="font-size:20px; border:none; background:none;">S Y N A P S E _ O V E R L O R D</div>', unsafe_allow_html=True)
-tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "📊 DATA LOG", "🔐 SECURITY", "📺 MEDIA", "🧹 SYSTEM"])
-
-# --- TAB 1: CORE ---
-with tabs[0]:
-    st.markdown('<div class="terminal-container"><h3>[ PROTOCOL_IDENTIFICATION ]</h3></div>', unsafe_allow_html=True)
-    st.session_state.my_name = st.text_input("ระบุชื่อรหัสของคุณ:", value=st.session_state.get('my_name', 'Guest'))
-    if st.button("🚀 INITIATE QUANTUM LINK"):
-        loc = get_geolocation()
-        if loc:
-            raw_time = loc.get('timestamp', datetime.datetime.now().timestamp())
-            local_time = datetime.datetime.fromtimestamp(raw_time/1000).strftime('%Y-%m-%d %H:%M:%S')
-            db.reference(f'users/{st.session_state.my_name}').set({'lat': loc['coords']['latitude'], 'lon': loc['coords']['longitude'], 'gps_time': local_time, 'status': 'ACTIVE'})
-            st.success("GLOBAL POSITIONING SYNCHRONIZED.")
-
-# --- TAB 2: RADAR ---
-with tabs[1]:
-    st.markdown('<div class="terminal-container"><h3>[ GLOBAL_SURVEILLANCE_RADAR ]</h3></div>', unsafe_allow_html=True)
+# 4.2 แผนที่เรดาร์ (Radar Scanner)
+def render_radar():
+    st.subheader("🛰️ RADAR SCANNER (REAL-TIME)")
+    m = folium.Map(location=[13.75, 100.5], zoom_start=6, tiles="cartodbpositron")
     users = db.reference('users').get()
-    m = folium.Map(location=[13.75, 100.5], zoom_start=2, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
     if users:
         for name, info in users.items():
             if isinstance(info, dict) and 'lat' in info:
-                f_color = 'cadetblue' if name == st.session_state.my_name else 'red'
-                folium.Marker([info['lat'], info['lon']], tooltip=f"Agent: {name}", icon=folium.Icon(color=f_color, icon='user', prefix='fa')).add_to(m)
-    st_folium(m, width="100%", height=600)
+                color = get_marker_color(info, name)
+                folium.Marker(
+                    [info['lat'], info['lon']],
+                    tooltip=f"Agent: {name} | Bat: {info.get('battery', '??')}%",
+                    icon=folium.Icon(color=color, icon='user', prefix='fa')
+                ).add_to(m)
+    st_folium(m, width="100%", height=500)
 
-# --- TAB 3: COMMS ---
-with tabs[2]:
-    st.markdown('<div class="terminal-container"><h3>[ ENCRYPTED_COMM_PROTOCOL ]</h3></div>', unsafe_allow_html=True)
-    webrtc_streamer(key="synapse-vcall", mode=WebRtcMode.SENDRECV)
-    st.markdown("---")
-    chat_mode = st.radio("เลือกช่องทางการสื่อสาร:", ["🌐 ห้องสาธารณะ (Global)", "🔒 ห้องส่วนตัว (Private)"], horizontal=True)
+# ==========================================
+# 5. NAVIGATION SYSTEM (ระบบแยกห้อง)
+# ==========================================
 
-    if chat_mode == "🌐 ห้องสาธารณะ (Global)":
-        msg_input = st.chat_input("คุยรวมกับทุกคน...")
-        if msg_input: db.reference('global_chat').push({'name': st.session_state.my_name, 'msg': msg_input, 'ts': time.time()})
-        raw_msgs = db.reference('global_chat').get()
-        if raw_msgs:
-            for d in sorted(raw_msgs.values(), key=lambda x: x.get('ts', 0))[-15:]:
-                align = "right" if d['name'] == st.session_state.my_name else "left"
-                style = "bubble-me" if d['name'] == st.session_state.my_name else "bubble-others"
-                st.markdown(f"<div style='text-align:{align};'><div class='{style}' style='display:inline-block;'><small>{d['name']}</small><br>{d['msg']}</div></div>", unsafe_allow_html=True)
-    else:
-        col_u, col_c = st.columns([1, 2])
-        with col_u:
-            st.write("📡 ONLINE NODES")
-            if users:
-                for f_name in users.keys():
-                    if f_name != st.session_state.my_name:
-                        if st.button(f"CONNECT TO {f_name}", key=f"pbtn-{f_name}"):
-                            pair = sorted([st.session_state.my_name, f_name])
-                            st.session_state.private_room = f"priv_{pair[0]}_{pair[1]}"
-                            st.session_state.target_name = f_name
-                            st.rerun()
-        with col_c:
-            room = st.session_state.get('private_room')
-            if room:
-                st.write(f"🔒 SECURE CHANNEL: {st.session_state.target_name}")
-                p_msg = st.chat_input("ส่งข้อความลับ...")
-                if p_msg: db.reference(f'private_rooms/{room}').push({'name': st.session_state.my_name, 'msg': p_msg, 'ts': time.time()})
-                raw_p_msgs = db.reference(f'private_rooms/{room}').get()
-                if raw_p_msgs:
-                    for d in sorted(raw_p_msgs.values(), key=lambda x: x.get('ts', 0))[-10:]:
-                        align = "right" if d['name'] == st.session_state.my_name else "left"
-                        st.markdown(f"<div style='text-align:{align};'><div class='bubble-me' style='display:inline-block; border-color:#ff00de;'><small>{d['name']}</small><br>{d['msg']}</div></div>", unsafe_allow_html=True)
+# ปุ่มย้อนกลับ
+if st.session_state.nav_level != "HOME":
+    if st.button("⬅️ BACK TO MAIN MENU"):
+        st.session_state.nav_level = "HOME"
+        st.rerun()
 
-# --- TAB 4-7: DATA, SEC, MEDIA, SYS ---
-with tabs[3]:
-    st.markdown('<div class="terminal-container"><h3>[ METADATA_ANALYSIS ]</h3></div>', unsafe_allow_html=True)
-    if users: st.json(users)
-with tabs[4]:
-    st.markdown('<div class="terminal-container"><h3>[ SECURITY_OVERRIDE ]</h3></div>', unsafe_allow_html=True)
-    st.progress(100, "SIGNAL INTEGRITY")
-    st.code("QUANTUM_KEY: SH-256-X99-SYNPSE-ALPHA")
-with tabs[5]:
-    st.markdown('<div class="terminal-container"><h3>[ VISUAL_STREAMS ]</h3></div>', unsafe_allow_html=True)
-    st.video("https://www.youtube.com/watch?v=f0h8PjdZzrw")
-with tabs[6]:
-    st.markdown('<div class="terminal-container"><h3>[ KERNEL_DESTRUCTION ]</h3></div>', unsafe_allow_html=True)
-    if st.button("💣 WIPE ALL CHATS"):
-        db.reference('private_rooms').delete()
-        db.reference('global_chat').delete()
-        st.success("ล้างประวัติแชททั้งหมดแล้ว!")
-    if st.button("🧼 FULL FACTORY RESET"):
-        db.reference('/').delete()
-        st.error("ระบบถูกรีเซ็ตค่าเริ่มต้น!")
+# --- หน้าแรก (4 กรอบหลัก) ---
+if st.session_state.nav_level == "HOME":
+    st.markdown("<h1 class='neon-text'>SYNAPSE MAIN COMMAND</h1>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("🛰️ 1. GPS SYSTEMS", use_container_width=True):
+            st.session_state.nav_level = "GPS_MENU"
+            st.rerun()
+    with c2: st.button("💬 2. COMMUNICATIONS", use_container_width=True)
+    with c1: st.button("📊 3. DATA ANALYSIS", use_container_width=True)
+    with c2: st.button("🧹 4. SYSTEM TOOLS", use_container_width=True)
+
+# --- หน้าเมนู GPS (10 กรอบย่อย) ---
+elif st.session_state.nav_level == "GPS_MENU":
+    st.markdown("<h2 class='neon-text'>GPS STRATEGIC UNITS</h2>", unsafe_allow_html=True)
+    
+    # วนลูปสร้าง 10 กรอบ (1.1 - 1.10)
+    cols = st.columns(2)
+    features = [
+        "1.1 Signal Pulse", "1.2 Radar Tracking", "1.3 Tactical Ruler", 
+        "1.4 Velocity Monitor", "1.5 Geofence Alarm", "1.6 ETA Calculator",
+        "1.7 Satellite Switch", "1.8 Breadcrumb Trail", "1.9 Elevation Profile",
+        "1.10 Area Density"
+    ]
+    
+    for i, title in enumerate(features):
+        with cols[i % 2]:
+            if st.button(title, use_container_width=True):
+                st.session_state.nav_level = f"FEATURE_{i+1}"
+                st.rerun()
+
+# --- หน้าแสดงผลความสามารถ 1.2 (Radar) ---
+elif st.session_state.nav_level == "FEATURE_2":
+    render_radar()
+    st.info("สีหมุด: ฟ้า(เรา) | เขียว(ออนไลน์) | แดง(แบตต่ำ) | เทา(ออฟไลน์)")
+
+else:
+    st.warning(f"FEATURE {st.session_state.nav_level} IS UNDER CONSTRUCTION")
+    st.image("https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHJueGZ4ZzR6ZHg0eGZ4ZzR6ZHg0eGZ4ZzR6ZHg0eGZ4ZyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKMGpxxcaNlkP84/giphy.gif")
+
