@@ -3,138 +3,74 @@ import firebase_admin
 from firebase_admin import credentials, db
 import folium
 from streamlit_folium import st_folium
-from geopy.distance import geodesic # ต้องติดตั้ง pip install geopy
-import pandas as pd
-import numpy as np
+from geopy.distance import geodesic
 
 # ==========================================
-# 1. SETUP & THEME (อยู่นิ่งๆ ไม่เจ็บตัว)
-# ==========================================
-st.set_page_config(page_title="SYNAPSE COMMAND 10-UNITS", layout="wide")
-
-st.markdown("""
-    <style>
-    .stApp { background: #000; color: #00f2fe; }
-    .neon-box { border: 1px solid #00f2fe; padding: 15px; border-radius: 10px; background: rgba(0, 242, 254, 0.1); box-shadow: 0 0 15px #00f2fe; margin-bottom: 10px; }
-    .stButton>button { width: 100%; border: 1px solid #ff1744; background: rgba(255, 23, 68, 0.1); color: white; border-radius: 10px; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# ==========================================
-# 2. FIREBASE (ของจริง)
+# 1. การเชื่อมต่อด้วย Key จริงที่คุณให้มา
 # ==========================================
 if not firebase_admin._apps:
     try:
+        # ดึงจาก st.secrets["firebase"] ตามรูปแบบที่คุณส่งมา
         fb_dict = dict(st.secrets["firebase"])
         fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
         creds = credentials.Certificate(fb_dict)
-        firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
-    except: pass
-
-if 'nav_level' not in st.session_state: st.session_state.nav_level = "HOME"
-if 'my_name' not in st.session_state: st.session_state.my_name = "Agent_01" # เปลี่ยนเป็นชื่อใน Firebase ของคุณ
-
-# ดึงข้อมูลสดจาก Firebase
-all_users = db.reference('users').get()
+        firebase_admin.initialize_app(creds, {
+            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
+        })
+    except Exception as e:
+        st.error(f"การเชื่อมต่อล้มเหลว: {e}")
 
 # ==========================================
-# 3. NAVIGATION CONTROLLER
+# 2. ฟังก์ชันดึงข้อมูล "แบบไม่มโน"
 # ==========================================
-if st.session_state.nav_level != "HOME":
-    if st.button("⬅️ กลับสู่เมนูหลัก"):
-        st.session_state.nav_level = "GPS_MENU" if "F_" in st.session_state.nav_level else "HOME"
-        st.rerun()
+# สมมติชื่อ Agent ของคุณ (ต้องตรงกับ Key ใน Firebase)
+agent_name = "Agent_01" 
 
-# --- หน้าแรก ---
-if st.session_state.nav_level == "HOME":
-    st.markdown("<h1 style='text-align:center;'>CENTRAL COMMAND</h1>", unsafe_allow_html=True)
-    if st.button("🛰️ เข้าสู่ระบบ GPS 10 UNIT", use_container_width=True):
-        st.session_state.nav_level = "GPS_MENU"
-        st.rerun()
-
-# --- เมนู 10 กรอบย่อย ---
-elif st.session_state.nav_level == "GPS_MENU":
-    st.write("### 🌐 เลือกยูนิตปฏิบัติการ")
-    cols = st.columns(2)
-    units = ["1.1 Signal Pulse", "1.2 Radar Tracking", "1.3 Tactical Ruler", "1.4 Velocity Monitor", "1.5 Geofence Alarm", "1.6 ETA Calculator", "1.7 Satellite Switch", "1.8 Breadcrumb Trail", "1.9 Elevation Profile", "1.10 Area Density"]
-    for i, name in enumerate(units):
-        with cols[i % 2]:
-            if st.button(name):
-                st.session_state.nav_level = f"F_{i+1}"
-                st.rerun()
+def get_real_data():
+    ref = db.reference(f'users/{agent_name}')
+    return ref.get()
 
 # ==========================================
-# 4. IMPLEMENTATION: 10 REAL FEATURES
+# 3. หน้าแสดงผลความจริง (1.4 Velocity - ตัวอย่าง)
 # ==========================================
+data = get_real_data()
 
-# 1.1 Signal Pulse (เช็คการเชื่อมต่อจริง)
-elif st.session_state.nav_level == "F_1":
-    st.subheader("📡 1.1 SIGNAL PULSE")
-    my_data = all_users.get(st.session_state.my_name) if all_users else None
-    if my_data:
-        st.success(f"เชื่อมต่อกับ {st.session_state.my_name} สำเร็จ")
-        st.json(my_data)
-    else: st.error("ไม่พบสัญญาณ Agent")
+st.title("🛰️ COMMAND CENTER: THE REALITY")
 
-# 1.2 Radar Tracking (แผนที่รวมมิตร)
-elif st.session_state.nav_level == "F_2":
-    st.subheader("🛰️ 1.2 RADAR TRACKING")
-    m = folium.Map(location=[13.75, 100.5], zoom_start=6)
-    if all_users:
-        for name, info in all_users.items():
-            folium.Marker([info['lat'], info['lon']], tooltip=name).add_to(m)
-    st_folium(m, width="100%", height=500)
+if data:
+    st.write(f"📡 กำลังดึงข้อมูลจาก Agent: **{agent_name}**")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # ความจริงเรื่องความเร็ว
+        if 'speed' in data:
+            st.metric("ความเร็ว (จริง)", f"{data['speed']} KM/H")
+        else:
+            st.warning("⚠️ ไม่พบฟิลด์ 'speed' ในฐานข้อมูลของคุณ")
 
-# 1.3 Tactical Ruler (วัดระยะจริง)
-elif st.session_state.nav_level == "F_3":
-    st.subheader("📏 1.3 TACTICAL RULER")
-    if all_users and st.session_state.my_name in all_users:
-        me = all_users[st.session_state.my_name]
-        for name, info in all_users.items():
-            if name != st.session_state.my_name:
-                d = geodesic((me['lat'], me['lon']),(info['lat'], info['lon'])).km
-                st.metric(f"ห่างจาก {name}", f"{d:.2f} KM")
+    with col2:
+        # ความจริงเรื่องแบตเตอรี่
+        if 'battery' in data:
+            st.metric("แบตเตอรี่ (จริง)", f"{data['battery']}%")
+        else:
+            st.warning("⚠️ ไม่พบฟิลด์ 'battery' ในฐานข้อมูลของคุณ")
 
-# 1.4 Velocity Monitor (คำนวณความเร็วจาก Firebase)
-elif st.session_state.nav_level == "F_4":
-    st.subheader("🌡️ 1.4 VELOCITY MONITOR")
-    v = all_users[st.session_state.my_name].get('speed', 0) if all_users else 0
-    st.write(f"ความเร็วปัจจุบัน: **{v} KM/H**")
-    st.progress(min(v/120, 1.0))
+    # แสดงโครงสร้างทั้งหมดที่มี "จริงๆ" เพื่อให้เพื่อนรู้ว่าในฐานข้อมูลมีอะไรบ้าง
+    with st.expander("🔍 ชำแหละโครงสร้าง JSON ของคุณ"):
+        st.json(data)
 
-# 1.5 Geofence (เขตป้องกัน)
-elif st.session_state.nav_level == "F_5":
-    st.subheader("🚧 1.5 GEOFENCE ALARM")
-    m = folium.Map(location=[13.75, 100.5], zoom_start=12)
-    folium.Circle([13.75, 100.5], radius=5000, color='red', fill=True).add_to(m)
-    st_folium(m, width="100%", height=400)
-    st.warning("รัศมีเฝ้าระวัง 5 KM รอบกองบัญชาการ")
+else:
+    st.error(f"❌ ไม่พบ Agent ชื่อ '{agent_name}' กรุณาเช็คชื่อใน Firebase Console อีกครั้ง")
 
-# 1.6 ETA Calculator (เวลาถึงเป้าหมาย)
-elif st.session_state.nav_level == "F_6":
-    st.subheader("🕒 1.6 ETA CALCULATOR")
-    st.info("กำลังคำนวณเส้นทางจราจรจริง...")
-    st.write("เป้าหมายถัดไป: **HQ-01** | เวลาที่คาดว่าจะถึง: **12 นาที**")
+# ==========================================
+# 4. แผนที่เรดาร์พิกัดจริง
+# ==========================================
+st.subheader("📍 พิกัดล่าสุดบนแผนที่")
+if data and 'lat' in data and 'lon' in data:
+    m = folium.Map(location=[data['lat'], data['lon']], zoom_start=15)
+    folium.Marker([data['lat'], data['lon']], popup="ตำแหน่งจริง").add_to(m)
+    st_folium(m, width=700, height=400)
+else:
+    st.info("ไม่สามารถแสดงแผนที่ได้ เนื่องจากไม่มีข้อมูล lat/lon")
 
-# 1.7 Satellite Switch (ดาวเทียมจริง)
-elif st.session_state.nav_level == "F_7":
-    st.subheader("🗺️ 1.7 SATELLITE VIEW")
-    st_folium(folium.Map(location=[13.75, 100.5], zoom_start=16, tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', attr='Google'), width="100%", height=500)
-
-# 1.8 Breadcrumb Trail (ประวัติพิกัด)
-elif st.session_state.nav_level == "F_8":
-    st.subheader("👣 1.8 BREADCRUMB TRAIL")
-    st.write("เส้นทางการเคลื่อนที่ล่าสุด")
-    st.line_chart(np.random.randn(10, 2)) # ตรงนี้ควรดึง List พิกัดจาก Firebase มาพล็อตกราฟ
-
-# 1.9 Elevation (ความสูงจริง)
-elif st.session_state.nav_level == "F_9":
-    st.subheader("📉 1.9 ELEVATION PROFILE")
-    alt = all_users[st.session_state.my_name].get('alt', 0) if all_users else 0
-    st.metric("ระดับความสูงจากน้ำทะเล", f"{alt} เมตร")
-
-# 1.10 Area Density (ความหนาแน่นทีม)
-elif st.session_state.nav_level == "F_10":
-    st.subheader("👥 1.10 AREA DENSITY")
-    count = len(all_users) if all_users else 0
-    st.write(f"จำนวน Agent ออนไลน์ในพื้นที่: **{count} นาย**")
