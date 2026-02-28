@@ -6,6 +6,7 @@ import pytz
 import os
 import time
 import pandas as pd
+import random
 from streamlit_js_eval import get_geolocation
 import folium
 from streamlit_folium import st_folium
@@ -13,41 +14,56 @@ from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from streamlit_autorefresh import st_autorefresh
 
 # ==========================================
-# 1. CORE SYSTEM CONFIGURATION
+# 1. CORE SYSTEM CONFIGURATION (NEON THEME)
 # ==========================================
 st.set_page_config(page_title="SYNAPSE QUANTUM CONTROL", layout="wide")
 st_autorefresh(interval=5000, key="global_refresh")
 
-# ลิงก์เพลงหลัก (ยักษ์ในตัวฉัน หรือเพลงที่เพื่อนเลือก)
+# ลิงก์เพลงหลัก (ยักษ์ในตัวฉัน)
 direct_link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
 
+# ตกแต่ง UI แบบฉบับกองบัญชาการ สีสด แสงหายใจ (ตามคลิปที่เพื่อนส่งมา)
 st.markdown("""
     <style>
     .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
+    
     .neon-header { 
         font-size: 40px; font-weight: 900; text-align: center;
-        color: #fff; text-shadow: 0 0 10px #ff1744, 0 0 10px #00f2fe;
+        color: #fff; text-shadow: 0 0 15px #ff1744, 0 0 20px #00f2fe;
         border: 10px double #ff1744; padding: 20px; background: rgba(0,0,0,0.85);
         border-radius: 20px; margin-bottom: 30px;
     }
+    
     @keyframes breathing {
         0% { box-shadow: 0 0 5px #ff1744; }
-        50% { box-shadow: 0 0 20px #ff1744; }
+        50% { box-shadow: 0 0 25px #ff1744; }
         100% { box-shadow: 0 0 5px #ff1744; }
     }
+
     div.stButton > button {
         background: linear-gradient(135deg, #ff1744 0%, #000 50%, #ff00de 100%);
         color: white !important; border: 2px solid #fff; border-radius: 10px;
-        height: 45px; font-weight: bold; width: 100%; transition: 0.5s;
+        height: 50px; font-weight: bold; width: 100%; transition: 0.5s;
         animation: breathing 3s infinite ease-in-out;
     }
-    .clock-box { background: rgba(0, 242, 254, 0.1); border: 1px solid #00f2fe; padding: 10px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px #00f2fe; }
+    
+    .clock-box {
+        background: rgba(0, 242, 254, 0.1); border: 1px solid #00f2fe;
+        padding: 10px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px #00f2fe;
+    }
     .clock-time { font-size: 20px; font-weight: bold; color: #ff1744; }
-    .terminal-container { border: 1px solid rgba(0, 242, 254, 0.5); padding: 20px; border-radius: 10px; background: rgba(0, 5, 15, 0.9); border-left: 8px solid #00f2fe; }
+    
+    .bubble-me { background: rgba(0, 242, 254, 0.15); border: 2px solid #00f2fe; padding: 12px; border-radius: 15px 15px 0 15px; margin-bottom: 10px; color: #fff; }
+    .bubble-others { background: rgba(255, 23, 68, 0.15); border: 2px solid #ff1744; padding: 12px; border-radius: 15px 15px 15px 0; margin-bottom: 10px; color: #fff; }
+    
+    .terminal-container {
+        border: 1px solid rgba(0, 242, 254, 0.5); padding: 20px; border-radius: 10px;
+        background: rgba(0, 5, 15, 0.9); border-left: 8px solid #00f2fe;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 🔊 ระบบเพลงแอบเล่น (Auto-play on click) ---
+# --- 🔊 ระบบเพลงแอบเล่น (Auto-play) ---
 st.components.v1.html(f"""
     <audio id="synapse-audio" loop autoplay style="display:none;"><source src="{direct_link}" type="audio/mpeg"></audio>
     <script>
@@ -84,51 +100,43 @@ for col, (city, zone) in zip([c1, c2, c3, c4], zones.items()):
     col.markdown(f"<div class='clock-box'><small>{city}</small><br><span class='clock-time'>{now}</span></div>", unsafe_allow_html=True)
 
 # ==========================================
-# 4. SIDEBAR (ซ่อมส่วนที่ทำให้เพลงหาย)
+# 4. SIDEBAR
 # ==========================================
 with st.sidebar:
     st.markdown("### 🛰️ NETWORK CENTER")
     if os.path.exists("logo3.jpg"): st.image("logo3.jpg", use_container_width=True)
     st.markdown("---")
     st.markdown("### 🎵 AUDIO FREQUENCY")
-    # ตัวเล่นเพลงใน Sidebar สำหรับกดเปิด-ปิดเอง
     st.audio(direct_link, format="audio/mpeg", loop=True)
     st.markdown("---")
     if st.button("🔍 SCAN NETWORK"): st.toast("กำลังวิเคราะห์โหนดโครงข่าย...")
     st.write(f"UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")
 
 # ==========================================
-# 5. MAIN TABS
+# 5. MAIN INTERFACE (FULL TABS)
 # ==========================================
+st.markdown('<div class="neon-header" style="font-size:20px; border:none; background:none;">S Y N A P S E _ O V E R L O R D</div>', unsafe_allow_html=True)
 tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "📊 DATA LOG", "🔐 SECURITY", "📺 MEDIA", "🧹 SYSTEM"])
 
+# --- TAB 1: CORE ---
 with tabs[0]:
     st.markdown('<div class="terminal-container"><h3>[ PROTOCOL_IDENTIFICATION ]</h3></div>', unsafe_allow_html=True)
     st.session_state.my_name = st.text_input("ระบุชื่อรหัสของคุณ:", value=st.session_state.get('my_name', 'Guest'))
     if st.button("🚀 INITIATE QUANTUM LINK"):
         loc = get_geolocation()
         if loc:
-            db.reference(f'users/{st.session_state.my_name}').set({'lat': loc['coords']['latitude'], 'lon': loc['coords']['longitude'], 'status': 'ACTIVE', 'ts': time.time()})
-            st.success("LINK ESTABLISHED.")
+            raw_time = loc.get('timestamp', datetime.datetime.now().timestamp())
+            local_time = datetime.datetime.fromtimestamp(raw_time/1000).strftime('%Y-%m-%d %H:%M:%S')
+            db.reference(f'users/{st.session_state.my_name}').set({'lat': loc['coords']['latitude'], 'lon': loc['coords']['longitude'], 'gps_time': local_time, 'status': 'ACTIVE'})
+            st.success("GLOBAL POSITIONING SYNCHRONIZED.")
 
+# --- TAB 2: RADAR ---
 with tabs[1]:
+    st.markdown('<div class="terminal-container"><h3>[ GLOBAL_SURVEILLANCE_RADAR ]</h3></div>', unsafe_allow_html=True)
     users = db.reference('users').get()
     m = folium.Map(location=[13.75, 100.5], zoom_start=2, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
     if users:
         for name, info in users.items():
             if isinstance(info, dict) and 'lat' in info:
-                folium.Marker([info['lat'], info['lon']], tooltip=name).add_to(m)
-    st_folium(m, width="100%", height=500)
-
-with tabs[2]:
-    st.markdown('<div class="terminal-container"><h3>[ COMMS_CENTER ]</h3></div>', unsafe_allow_html=True)
-    msg = st.chat_input("TRANSMIT...")
-    if msg: db.reference('global_chat').push({'name': st.session_state.my_name, 'msg': msg, 'ts': time.time()})
-    raw = db.reference('global_chat').get()
-    if raw:
-        for d in sorted(raw.values(), key=lambda x: x.get('ts', 0))[-10:]:
-            st.write(f"**{d['name']}**: {d['msg']}")
-
-with tabs[6]:
-    st.markdown('<div class="terminal-container"><h3>[ KERNEL_DESTRUCTION ]</h3></div>', unsafe_allow_html=True)
-    if st.button("💣 WIPE CHATS"): db.reference('global_chat').delete(); st.rerun()
+                f_color = 'cadetblue' if name == st.session_state.my_name else 'red'
+                folium.Marker([info['lat'], info['lon']], tooltip=f"Agent: {name}", icon=
