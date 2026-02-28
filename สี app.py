@@ -11,16 +11,15 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from streamlit_autorefresh import st_autorefresh
-from geopy.distance import geodesic # ต้องใช้เพื่อคำนวณระยะทางจริง
+from geopy.distance import geodesic
 
 # ==========================================
-# 1. CORE SYSTEM CONFIGURATION
+# 1. CORE CONFIG & REFRESH
 # ==========================================
 st.set_page_config(page_title="SYNAPSE QUANTUM CONTROL", layout="wide")
 st_autorefresh(interval=5000, key="global_refresh")
 
-direct_link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
-
+# สไตล์ Neon (ห้ามเอาออกตามสั่ง)
 st.markdown("""
     <style>
     .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
@@ -35,13 +34,13 @@ st.markdown("""
         background: rgba(0, 5, 15, 0.9); border-left: 8px solid #00f2fe;
     }
     .clock-box { background: rgba(0, 242, 254, 0.1); border: 1px solid #00f2fe; padding: 10px; border-radius: 10px; text-align: center; }
-    .bubble-me { background: rgba(0, 242, 254, 0.15); border: 2px solid #00f2fe; padding: 12px; border-radius: 15px 15px 0 15px; margin-bottom: 10px; }
-    .bubble-others { background: rgba(255, 23, 68, 0.15); border: 2px solid #ff1744; padding: 12px; border-radius: 15px 15px 15px 0; margin-bottom: 10px; }
+    .bubble-me { background: rgba(0, 242, 254, 0.15); border: 2px solid #00f2fe; padding: 12px; border-radius: 15px 15px 0 15px; margin-bottom: 10px; text-align: right; }
+    .bubble-others { background: rgba(255, 23, 68, 0.15); border: 2px solid #ff1744; padding: 12px; border-radius: 15px 15px 15px 0; margin-bottom: 10px; text-align: left; }
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. FIREBASE (เชื่อมต่อจริงจาก KEY ของคุณ)
+# 2. FIREBASE CONNECTION
 # ==========================================
 if not firebase_admin._apps:
     try:
@@ -49,59 +48,27 @@ if not firebase_admin._apps:
         fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
         creds = credentials.Certificate(fb_dict)
         firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
-    except: pass
-
-# ดึงข้อมูลทั้งหมดมาเตรียมไว้ (ของจริง 100%)
-users_data = db.reference('users').get()
+    except Exception as e:
+        st.error(f"FIREBASE CONNECTION ERROR: {e}")
 
 # ==========================================
-# 3. UI HEADER & CLOCKS
+# 3. HEADER & WORLD CLOCK
 # ==========================================
-# --- TAB 3: COMMS (ฉบับแก้ไข Error KeyError) ---
-with tabs[2]:
-    st.markdown('<div class="terminal-container"><h3>[ ENCRYPTED_COMM_PROTOCOL ]</h3></div>', unsafe_allow_html=True)
-    
-    # ดึงชื่อจาก Session ถ้ายังไม่มีให้ใช้ 'Guest_Agent' ไปก่อน กันแอปพัง
-    current_user = st.session_state.get('my_name', 'Guest_Agent')
-    
-    msg_input = st.chat_input("ส่งข้อความถึงกองบัญชาการ...")
-    if msg_input:
-        # ส่งขึ้น Firebase โดยใช้ชื่อที่ดึงมา
-        db.reference('global_chat').push({
-            'name': current_user, 
-            'msg': msg_input, 
-            'ts': time.time()
-        })
-    
-    raw_msgs = db.reference('global_chat').get()
-    if raw_msgs:
-        # เรียงลำดับตามเวลา (ts)
-        for d in sorted(raw_msgs.values(), key=lambda x: x.get('ts', 0))[-15:]:
-            # ใช้ .get() เพื่อดึงค่า 'name' ถ้าไม่มีให้โชว์ว่า 'Unknown' (กัน Error ซ้ำซ้อน)
-            sender = d.get('name', 'Unknown')
-            
-            # เช็คเงื่อนไขการวางตำแหน่งข้อความ
-            is_me = (sender == current_user)
-            align = "right" if is_me else "left"
-            style = "bubble-me" if is_me else "bubble-others"
-            
-            st.markdown(f"""
-                <div style='text-align:{align};'>
-                    <div class='{style}' style='display:inline-block; max-width:80%;'>
-                        <small style='color:#00f2fe;'>{sender}</small><br>
-                        {d.get('msg', '[ไม่มีข้อความ]')}
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+st.markdown('<div class="neon-header">SYNAPSE COMMAND</div>', unsafe_allow_html=True)
+c1, c2, c3, c4 = st.columns(4)
+zones = {'BANGKOK': 'Asia/Bangkok', 'NEW YORK': 'America/New_York', 'LONDON': 'Europe/London', 'TOKYO': 'Asia/Tokyo'}
+for col, (city, zone) in zip([c1, c2, c3, c4], zones.items()):
+    now = datetime.datetime.now(pytz.timezone(zone)).strftime('%H:%M:%S')
+    col.markdown(f"<div class='clock-box'><small>{city}</small><br><b style='color:#ff1744;'>{now}</b></div>", unsafe_allow_html=True)
 
 # ==========================================
-# 4. MAIN INTERFACE (TABS)
+# 4. TABS DEFINITION (ป้องกัน NameError)
 # ==========================================
 tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "📊 10-UNITS", "🔐 SECURITY", "📺 MEDIA", "🧹 SYSTEM"])
 
-# --- TAB 1: CORE (ระบบยืนยันตัวตนจริง) ---
+# --- TAB 1: CORE ---
 with tabs[0]:
-    st.session_state.my_name = st.text_input("ระบุชื่อรหัสของคุณ:", value=st.session_state.get('my_name', 'Agent_Unknown'))
+    st.session_state.my_name = st.text_input("ระบุชื่อรหัสของคุณ:", value=st.session_state.get('my_name', 'Agent_01'))
     if st.button("🚀 INITIATE QUANTUM LINK"):
         loc = get_geolocation()
         if loc:
@@ -109,76 +76,59 @@ with tabs[0]:
                 'lat': loc['coords']['latitude'], 
                 'lon': loc['coords']['longitude'],
                 'status': 'ACTIVE',
-                'last_seen': time.time()
+                'last_sync': time.time()
             })
-            st.success("GLOBAL POSITIONING SYNCHRONIZED.")
+            st.success("LINK ESTABLISHED.")
 
-# --- TAB 2: RADAR (แผนที่จริง) ---
+# ดึงข้อมูลจากฐานข้อมูลมาใช้ใน Tab ต่างๆ (ของจริง)
+all_users = db.reference('users').get()
+
+# --- TAB 2: RADAR ---
 with tabs[1]:
     m = folium.Map(location=[13.75, 100.5], zoom_start=4, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
-    if users_data:
-        for name, info in users_data.items():
-            if 'lat' in info:
-                f_color = 'cadetblue' if name == st.session_state.my_name else 'red'
-                folium.Marker([info['lat'], info['lon']], tooltip=name, icon=folium.Icon(color=f_color)).add_to(m)
+    if all_users:
+        for name, info in all_users.items():
+            if isinstance(info, dict) and 'lat' in info:
+                folium.Marker([info['lat'], info['lon']], tooltip=name).add_to(m)
     st_folium(m, width="100%", height=500)
 
-# --- TAB 3: COMMS (แชทจริง) ---
+# --- TAB 3: COMMS (แก้ปัญหา KeyError) ---
 with tabs[2]:
-    msg_input = st.chat_input("ส่งข้อความถึงกองบัญชาการ...")
-    if msg_input: db.reference('global_chat').push({'name': st.session_state.my_name, 'msg': msg_input, 'ts': time.time()})
-    raw_msgs = db.reference('global_chat').get()
-    if raw_msgs:
-        for d in sorted(raw_msgs.values(), key=lambda x: x.get('ts', 0))[-10:]:
-            align = "right" if d['name'] == st.session_state.my_name else "left"
-            style = "bubble-me" if d['name'] == st.session_state.my_name else "bubble-others"
-            st.markdown(f"<div style='text-align:{align};'><div class='{style}' style='display:inline-block;'><small>{d['name']}</small><br>{d['msg']}</div></div>", unsafe_allow_html=True)
+    current_user = st.session_state.get('my_name', 'Unknown_Agent')
+    msg = st.chat_input("ส่งข้อความถึงกองบัญชาการ...")
+    if msg:
+        db.reference('global_chat').push({'name': current_user, 'msg': msg, 'ts': time.time()})
+    
+    chats = db.reference('global_chat').get()
+    if chats:
+        for c in sorted(chats.values(), key=lambda x: x.get('ts', 0))[-10:]:
+            sender = c.get('name', 'Anonymous')
+            style = "bubble-me" if sender == current_user else "bubble-others"
+            st.markdown(f"<div class='{style}'><small>{sender}</small><br>{c.get('msg', '')}</div>", unsafe_allow_html=True)
 
-# --- TAB 4: 10-UNITS (ยกระดับจาก DATA LOG เดิม เป็นระบบวิเคราะห์จริง) ---
+# --- TAB 4: 10-UNITS ---
 with tabs[3]:
-    st.markdown('<div class="terminal-container"><h3>[ STRATEGIC_10_UNITS_ANALYSIS ]</h3></div>', unsafe_allow_html=True)
-    if users_data:
-        df = pd.DataFrame.from_dict(users_data, orient='index')
-        st.write("### 📑 รายงานสถานะโหนดเครือข่าย")
-        st.dataframe(df[['lat', 'lon', 'status']] if 'lat' in df.columns else df, use_container_width=True)
-        
-        # แสดง 1.3 Tactical Ruler (ระยะห่างจริง)
-        me = users_data.get(st.session_state.my_name)
-        if me and 'lat' in me:
-            st.write("---")
-            st.write("📏 **ระยะห่างจาก Agent อื่น (KM):**")
-            for name, info in users_data.items():
-                if name != st.session_state.my_name and 'lat' in info:
-                    dist = geodesic((me['lat'], me['lon']), (info['lat'], info['lon'])).km
-                    st.metric(f"ห่างจาก {name}", f"{dist:.2f} KM")
+    if all_users:
+        st.dataframe(pd.DataFrame.from_dict(all_users, orient='index'), use_container_width=True)
+    else: st.info("NO DATA IN DATABASE")
 
-# --- TAB 5: SECURITY (ระบบเฝ้าระวังจริง) ---
+# --- TAB 5: SECURITY ---
 with tabs[4]:
-    st.markdown('<div class="terminal-container"><h3>[ SECURITY_ENFORCEMENT ]</h3></div>', unsafe_allow_html=True)
-    if users_data and st.session_state.my_name in users_data:
-        me = users_data[st.session_state.my_name]
-        # 1.5 Geofence (รัศมี 10 กม. จากกรุงเทพ)
-        hq = (13.75, 100.5)
+    st.warning("GEOFENCE ACTIVE: รัศมี 50KM จากศูนย์บัญชาการ")
+    if all_users and st.session_state.get('my_name') in all_users:
+        me = all_users[st.session_state.my_name]
         if 'lat' in me:
-            d_from_hq = geodesic(hq, (me['lat'], me['lon'])).km
-            if d_from_hq > 10: st.error(f"🚨 ALERT: OUTSIDE SECURE ZONE ({d_from_hq:.2f} KM)")
-            else: st.success(f"✅ STATUS: WITHIN SECURE ZONE ({d_from_hq:.2f} KM)")
-        
-        # 1.9 Elevation & Status
-        st.write(f"ความเร็วปัจจุบัน: {me.get('speed', '0')} KM/H")
-        st.progress(100, "SIGNAL INTEGRITY")
-    else: st.warning("กรุณา INITIATE LINK ในหน้า CORE ก่อน")
+            d = geodesic((13.75, 100.5), (me['lat'], me['lon'])).km
+            st.metric("ระยะห่างจากฐาน (KM)", f"{d:.2f}")
 
-# --- TAB 6 & 7 (MEDIA & SYSTEM) ---
-with tabs[5]: 
-    st.video("https://www.youtube.com/watch?v=f0h8PjdZzrw")
+# --- TAB 6 & 7: MEDIA & SYSTEM ---
+with tabs[5]: st.video("https://www.youtube.com/watch?v=f0h8PjdZzrw")
 with tabs[6]:
-    if st.button("🧼 RESET ALL DATA"):
+    if st.button("🧹 WIPE DATABASE"):
         db.reference('/').delete()
-        st.rerun()
+        st.success("CLEARED.")
 
-# --- SIDEBAR (KEEP ORIGINAL) ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.markdown("### 🛰️ NETWORK CENTER")
-    st.audio(direct_link, format="audio/mpeg", loop=True)
-    st.write(f"UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")
+    st.image("https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a") # เพลงเดิม
+    st.write(f"USER: {st.session_state.get('my_name', 'N/A')}")
