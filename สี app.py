@@ -1,169 +1,138 @@
 import streamlit as st
 import firebase_admin
-from firebase_admin import credentials, firestore, storage
-import hashlib
-from datetime import datetime, timedelta
-import uuid
-import streamlit.components.v1 as components
-import re
+from firebase_admin import credentials, db
+import datetime
+import pytz
+import os
+import time
+import pandas as pd
+from streamlit_js_eval import get_geolocation
+import folium
+from streamlit_folium import st_folium
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
+from streamlit_autorefresh import st_autorefresh
 
-# --- 1. ตั้งค่าการเชื่อมต่อ Firebase ---
-if not firebase_admin._apps:
-    try:
-        # ใช้ข้อมูลจาก Streamlit Secrets
-        cred_dict = dict(st.secrets["firebase_service_account"])
-        cred = credentials.Certificate(cred_dict)
-        firebase_admin.initialize_app(cred, {
-            'storageBucket': st.secrets["firebase_config"]["storageBucket"]
-        })
-    except Exception as e:
-        st.error(f"❌ เชื่อมต่อฐานข้อมูลไม่สำเร็จ: {e}")
-        st.stop()
+# ==========================================
+# 1. SETUP & THEME
+# ==========================================
+st.set_page_config(page_title="SYNAPSE ULTIMATE", layout="wide")
+st_autorefresh(interval=5000, key="global_refresh")
 
-db = firestore.client()
-bucket = storage.bucket()
-
-# --- 2. ฟังก์ชันเสริม (Helper Functions) ---
-def hash_password(password):
-    return hashlib.sha256(str.encode(password)).hexdigest()
-
-def get_thai_time():
-    return datetime.utcnow() + timedelta(hours=7)
-
-def get_youtube_id(url):
-    pattern = r'(?:v=|\/)([0-9A-Za-z_-]{11}).*'
-    match = re.search(pattern, url)
-    return match.group(1) if match else None
-
-# --- 3. ธีมสุดหรู (Luxury Theme) ---
-def set_luxury_theme(room_type):
-    themes = {
-        "home":  {"bg": "#001219", "text": "#FFD700", "accent": "#D4AF37"},
-        "red":   {"bg": "#3d0000", "text": "#FFFFFF", "accent": "#FF4D4D"},
-        "blue":  {"bg": "#002147", "text": "#FFFFFF", "accent": "#00A8E8"},
-        "green": {"bg": "#0a2910", "text": "#FFFFFF", "accent": "#38B000"},
-        "black": {"bg": "#121212", "text": "#FFFFFF", "accent": "#E5E5E5"}
+st.markdown("""
+    <style>
+    .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
+    .neon-header { 
+        font-size: 35px; font-weight: 900; text-align: center;
+        color: #fff; text-shadow: 0 0 10px #00f2fe, 0 0 20px #ff00de;
+        border: 2px solid #00f2fe; padding: 10px; background: rgba(0,0,0,0.8);
+        border-radius: 10px; margin-bottom: 20px; letter-spacing: 10px;
     }
-    cfg = themes.get(room_type, themes["home"])
-    st.markdown(f"""
-        <style>
-        .stApp {{ background: {cfg['bg']}; color: {cfg['text']}; }}
-        .post-box {{
-            border: 1px solid {cfg['accent']};
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px; border-radius: 12px; margin-bottom: 10px;
-        }}
-        .stButton>button {{
-            background: {cfg['accent']}; color: black !important;
-            font-weight: bold; border-radius: 8px; width: 100%;
-        }}
-        </style>
+    .terminal-container {
+        border: 1px solid #00f2fe; padding: 15px; border-radius: 8px;
+        background: rgba(0, 242, 254, 0.05); border-left: 5px solid #ff00de;
+        margin-bottom: นั่ง;
+    }
+    .clock-box {
+        background: rgba(0,0,0,0.6); border: 1px solid #00f2fe;
+        padding: 10px; border-radius: 8px; text-align: center;
+    }
+    .clock-time { color: #ff00de; font-size: 20px; font-weight: bold; }
+    </style>
     """, unsafe_allow_html=True)
 
-# --- 4. ฟังก์ชันแสดงโพสต์และระบบ Like ---
-def render_posts(room_id):
-    posts_ref = db.collection(f'posts_{room_id}').order_by('time', direction='DESCENDING').limit(20)
-    docs = posts_ref.stream()
-    
-    for doc in docs:
-        p = doc.to_dict()
-        pid = doc.id
-        st.markdown(f'''<div class="post-box">
-            <b>👤 {p.get("user", "ไม่ระบุชื่อ")}</b> | <small>{p.get("time").strftime("%H:%M") if p.get("time") else ""}</small><br>
-            {p.get("text", "")}
-        </div>''', unsafe_allow_html=True)
-        
-        if p.get('type') == 'youtube':
-            st.video(p['media'])
-        elif p.get('media'):
-            if p.get('type') == 'video': st.video(p['media'])
-            else: st.image(p['media'])
-        
-        # ระบบ Like แบบ Real-time
-        likes = p.get('likes', [])
-        if st.button(f"❤️ {len(likes)}", key=f"like_{room_id}_{pid}"):
-            ref = db.collection(f'posts_{room_id}').document(pid)
-            if st.session_state.user in likes:
-                ref.update({'likes': firestore.ArrayRemove([st.session_state.user])})
-            else:
-                ref.update({'likes': firestore.ArrayUnion([st.session_state.user])})
-            st.rerun()
+# ==========================================
+# 2. FIREBASE CONNECTION
+# ==========================================
+if not firebase_admin._apps:
+    try:
+        if "firebase" in st.secrets:
+            fb_dict = dict(st.secrets["firebase"])
+            if "private_key" in fb_dict:
+                fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+            creds = credentials.Certificate(fb_dict)
+            firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
+    except Exception as e:
+        st.error(f"DATABASE ERROR: {e}")
 
-# --- 5. ระบบจัดการหน้าจอ (Logic) ---
-if 'user' not in st.session_state:
-    set_luxury_theme("home")
-    st.title("🛡️ Synapse Login")
-    u = st.text_input("ชื่อผู้ใช้ (Username)")
-    p = st.text_input("รหัสผ่าน (Password)", type="password")
-    
-    col1, col2 = st.columns(2)
-    if col1.button("เข้าสู่ระบบ"):
-        user_doc = db.collection('users').document(u).get()
-        if user_doc.exists and user_doc.to_dict().get('pw') == hash_password(p):
-            st.session_state.user = u
-            st.session_state.page = "home"
-            st.rerun()
-        else: st.error("❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
-        
-    if col2.button("ลงทะเบียนใหม่"):
-        if u and p:
-            db.collection('users').document(u).set({'pw': hash_password(p)})
-            st.success("✅ ลงทะเบียนสำเร็จ! กรุณากดเข้าสู่ระบบ")
+# ==========================================
+# 3. LOGO & WORLD CLOCK
+# ==========================================
+col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
+with col_l2:
+    if os.path.exists("logo3.jpg"):
+        st.image("logo3.jpg", width=400)
+    st.markdown('<div class="neon-header">SYNAPSE</div>', unsafe_allow_html=True)
 
-else:
-    # --- หน้าหลัก (Home) ---
-    if st.session_state.page == "home":
-        set_luxury_theme("home")
-        st.title(f"ยินดีต้อนรับ, {st.session_state.user}")
-        
-        st.markdown("<p style='color:#FFD700;'>🎬 เพลย์ลิสต์แนะนำจาก Synapse</p>", unsafe_allow_html=True)
-        components.html('<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO" frameborder="0" allowfullscreen></iframe>', height=220)
-        
-        st.subheader("📂 เลือกห้องสนทนา")
-        c1, c2 = st.columns(2)
-        if c1.button("🔴 YouTube Zone"): st.session_state.page = "red"; st.rerun()
-        if c2.button("🔵 Facebook (โทรฟรี)"): st.session_state.page = "blue"; st.rerun()
-        if c1.button("🟢 ห้องแชทลับ"): st.session_state.page = "green"; st.rerun()
-        if c2.button("⚫ ห้อง X เรียลไทม์"): st.session_state.page = "black"; st.rerun()
-        if st.button("🚪 ออกจากระบบ"): del st.session_state.user; st.rerun()
+st.markdown("### 🌐 GLOBAL REAL-TIME MONITOR")
+c1, c2, c3, c4 = st.columns(4)
+zones = {'BANGKOK': 'Asia/Bangkok', 'NEW YORK': 'America/New_York', 'LONDON': 'Europe/London', 'TOKYO': 'Asia/Tokyo'}
+for col, (city, zone) in zip([c1, c2, c3, c4], zones.items()):
+    now = datetime.datetime.now(pytz.timezone(zone)).strftime('%H:%M:%S')
+    col.markdown(f"<div class='clock-box'><small>{city}</small><br><span class='clock-time'>{now}</span></div>", unsafe_allow_html=True)
 
-    # --- หน้าห้องต่างๆ (Red, Blue, Green, Black) ---
-    elif st.session_state.page in ["red", "blue", "green", "black"]:
-        set_luxury_theme(st.session_state.page)
-        room = st.session_state.page
-        st.header(f"ยินดีต้อนรับสู่ห้อง {room.upper()}")
-        if st.button("⬅️ กลับหน้าหลัก"): st.session_state.page = "home"; st.rerun()
+# ==========================================
+# 4. SIDEBAR
+# ==========================================
+with st.sidebar:
+    st.markdown("### 🛰️ NETWORK CENTER")
+    audio_file = "ยักษ์ในตัวฉัน.mp3"
+    if os.path.exists(audio_file):
+        st.audio(audio_file, format="audio/mp3", loop=True)
+    st.write(f"UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")
 
-        # ส่วนฟอร์มโพสต์
-        with st.expander("📝 เขียนโพสต์ใหม่"):
-            with st.form(f"form_{room}", clear_on_submit=True):
-                msg = st.text_area("ข้อความของคุณ...")
-                yt_link = ""
-                if room == "red":
-                    yt_link = st.text_input("ลิงก์ YouTube (ถ้ามี)")
-                
-                file = st.file_uploader("แนบไฟล์รูป/วิดีโอ", type=['jpg','png','mp4'])
-                
-                if st.form_submit_button("🚀 ส่งโพสต์"):
-                    if msg or yt_link or file:
-                        m_url, m_type = None, None
-                        yt_id = get_youtube_id(yt_link)
-                        
-                        if yt_id:
-                            m_url, m_type = f"https://www.youtube.com/watch?v={yt_id}", "youtube"
-                        elif file:
-                            path = f"{room}/{uuid.uuid4()}_{file.name}"
-                            blob = bucket.blob(path)
-                            blob.upload_from_string(file.getvalue(), content_type=file.type)
-                            blob.make_public()
-                            m_url, m_type = blob.public_url, ("video" if "video" in file.type else "image")
-                        
-                        db.collection(f'posts_{room}').add({
-                            'user': st.session_state.user, 'text': msg,
-                            'media': m_url, 'type': m_type,
-                            'likes': [], 'time': get_thai_time()
-                        })
-                        st.rerun()
-        
-        # แสดงโพสต์ในห้องนั้นๆ
-        render_posts(room)
+# ==========================================
+# 5. MAIN NAVIGATION
+# ==========================================
+tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "💬 การสื่อสาร", "📊 บันทึก", "🔐 SEC", "📺 สื่อ", "🧹 ระบบ"])
+
+# --- TAB 1: CORE (GPS) ---
+with tabs[0]:
+    st.markdown('<div class="terminal-container">[ GPS_INIT ]</div>', unsafe_allow_html=True)
+    user_id = st.text_input("USER CODENAME:", value=st.session_state.get('user_id', 'Agent_001'))
+    st.session_state.user_id = user_id
+    if st.button("🛰️ ดึงพิกัด GPS"):
+        loc = get_geolocation()
+        if loc:
+            db.reference(f'users/{user_id}').set({
+                'lat': loc['coords']['latitude'], 
+                'lon': loc['coords']['longitude'],
+                'ts': time.time()
+            })
+            st.success("POSITION UPDATED")
+
+# --- TAB 2: RADAR (FIXED SYNTAX) ---
+with tabs[1]:
+    st.markdown('<div class="terminal-container">[ RADAR_LIVE ]</div>', unsafe_allow_html=True)
+    m = folium.Map(location=[13.75, 100.5], zoom_start=4, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
+    try:
+        users = db.reference('users').get()
+        if users:
+            for u, data in users.items():
+                if isinstance(data, dict) and 'lat' in data and 'lon' in data:
+                    folium.Marker(
+                        location=[data['lat'], data['lon']], 
+                        popup=u,
+                        icon=folium.Icon(color='red', icon='info-sign')
+                    ).add_to(m)
+    except: pass
+    st_folium(m, width="100%", height=500)
+
+# --- TAB 3: COMMS ---
+with tabs[2]:
+    st.markdown('<div class="terminal-container">[ SECURE_CHAT ]</div>', unsafe_allow_html=True)
+    webrtc_streamer(key="v-call", mode=WebRtcMode.SENDRECV)
+    with st.form("chat_system", clear_on_submit=True):
+        input_msg = st.text_input("TRANSMIT MESSAGE:")
+        if st.form_submit_button("SEND") and input_msg:
+            db.reference('global_chat').push({'user': st.session_state.user_id, 'msg': input_msg, 'ts': time.time()})
+    raw_chat = db.reference('global_chat').get()
+    if raw_chat:
+        msg_list = sorted([v for v in raw_chat.values()], key=lambda x: x.get('ts', 0), reverse=True)
+        for m in msg_list[:8]:
+            st.write(f"📌 **{m.get('user')}**: {m.get('msg')}")
+
+# --- TAB 7: SYS ---
+with tabs[6]:
+    if st.button("🔥 WIPE ALL"):
+        db.reference('users').delete()
+        st.success("CLEARED")
