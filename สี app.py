@@ -170,4 +170,52 @@ with tabs[1]:
 
 # --- TAB 3: COMMS ---
 with tabs[2]:
-    st.markdown('<div
+    st.markdown('<div class="terminal-container"><h3>[ ENCRYPTED_COMM_PROTOCOL ]</h3></div>', unsafe_allow_html=True)
+    webrtc_streamer(key="synapse-vcall", mode=WebRtcMode.SENDRECV)
+    st.markdown("---")
+    chat_mode = st.radio("เลือกช่องทางการสื่อสาร:", ["🌐 ห้องสาธารณะ (Global)", "🔒 ห้องส่วนตัว (Private)"], horizontal=True)
+
+    if chat_mode == "🌐 ห้องสาธารณะ (Global)":
+        msg_input = st.chat_input("คุยรวมกับทุกคน...")
+        if msg_input:
+            db.reference('global_chat').push({'name': st.session_state.my_name, 'msg': msg_input, 'ts': time.time()})
+        raw_msgs = db.reference('global_chat').get()
+        if raw_msgs:
+            for d in sorted(raw_msgs.values(), key=lambda x: x.get('ts', 0))[-15:]:
+                align = "right" if d['name'] == st.session_state.my_name else "left"
+                style = "bubble-me" if d['name'] == st.session_state.my_name else "bubble-others"
+                st.markdown(f"<div style='text-align:{align};'><div class='{style}' style='display:inline-block;'><small>{d['name']}</small><br>{d['msg']}</div></div>", unsafe_allow_html=True)
+    else:
+        col_u, col_c = st.columns([1, 2])
+        with col_u:
+            st.write("📡 ONLINE NODES")
+            if users:
+                for f_name in users.keys():
+                    if f_name != st.session_state.my_name:
+                        if st.button(f"CONNECT TO {f_name}", key=f"pbtn-{f_name}"):
+                            pair = sorted([st.session_state.my_name, f_name])
+                            st.session_state.private_room = f"priv_{pair[0]}_{pair[1]}"
+                            st.session_state.target_name = f_name
+                            st.rerun()
+        with col_c:
+            room = st.session_state.get('private_room')
+            if room:
+                st.write(f"🔒 SECURE CHANNEL: {st.session_state.target_name}")
+                p_msg = st.chat_input("ส่งข้อความลับ...")
+                if p_msg:
+                    db.reference(f'private_rooms/{room}').push({'name': st.session_state.my_name, 'msg': p_msg, 'ts': time.time()})
+                raw_p_msgs = db.reference(f'private_rooms/{room}').get()
+                if raw_p_msgs:
+                    for d in sorted(raw_p_msgs.values(), key=lambda x: x.get('ts', 0))[-10:]:
+                        align = "right" if d['name'] == st.session_state.my_name else "left"
+                        st.markdown(f"<div style='text-align:{align};'><div class='bubble-me' style='display:inline-block; border-color:#ff00de;'><small>{d['name']}</small><br>{d['msg']}</div></div>", unsafe_allow_html=True)
+
+# --- TAB 7: SYSTEM ---
+with tabs[6]:
+    if st.button("💣 WIPE ALL CHATS"):
+        db.reference('private_rooms').delete()
+        db.reference('global_chat').delete()
+        st.success("ล้างประวัติแชททั้งหมดแล้ว!")
+    if st.button("🧼 FULL FACTORY RESET"):
+        db.reference('/').delete()
+        st.error("ระบบถูกรีเซ็ตค่าเริ่มต้น!")
