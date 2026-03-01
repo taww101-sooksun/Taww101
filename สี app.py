@@ -55,6 +55,17 @@ if 'logged_in' not in st.session_state:
 if not st.session_state.logged_in:
     st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>🔐 SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
     
-    # แก้ไขบรรทัดที่ 60: ปิดวงเล็บ [1, 2, 1] ให้เรียบร้อยแล้วครับ
+    # ตรวจสอบบรรทัดนี้: ปิดวงเล็บครบ [1, 2, 1]
     col1, col2, col3 = st.columns([1, 2, 1])
-    with col2
+    # ตรวจสอบบรรทัดนี้: ใส่ : หลัง with col2 เรียบร้อย
+    with col2:
+        u_id = st.text_input("ชื่อโค้ดเนม (ID)")
+        u_pw = st.text_input("รหัสผ่าน", type="password")
+        # ตรวจสอบบรรทัดนี้: ใส่ : หลัง if st.button
+        if st.button("UNLOCK SYSTEM"):
+            if u_pw == "9999999" and u_id:
+                st.session_state.logged_in = True
+                st.session_state.user_id = u_id
+                st.rerun()
+            else:
+                st.error("
