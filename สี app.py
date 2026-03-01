@@ -1,109 +1,169 @@
 import streamlit as st
-from datetime import datetime
+import firebase_admin
+from firebase_admin import credentials, db
+import datetime
+import pytz
+import os
+import time
+import pandas as pd
+from streamlit_js_eval import get_geolocation
+import folium
+from streamlit_folium import st_folium
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
+from streamlit_autorefresh import st_autorefresh
 
-# --- [ 1. ตั้งค่าหน้าสถานี ] ---
-st.set_page_config(page_title="สถานีอยู่นิ่งๆ ไม่เจ็บตัว", page_icon="📻", layout="centered")
-
-# ระบบเก็บโพสต์ชั่วคราว (Session State)
-if 'public_posts' not in st.session_state:
-    st.session_state.public_posts = []
+# ==========================================
+# 1. SETUP & THEME
+# ==========================================
+st.set_page_config(page_title="SYNAPSE ULTIMATE", layout="wide")
+# รีเฟรชหน้าจอทุก 5 วินาทีเพื่อให้ข้อมูลนาฬิกาและแชทอัปเดต
+st_autorefresh(interval=5000, key="global_refresh")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #0E1117; color: #FFFFFF; text-align: center; }
-    .post-box {
-        background-color: #262730;
-        padding: 15px;
-        border-radius: 10px;
-        border-left: 5px solid #FFD700;
-        margin-bottom: 10px;
-        text-align: left;
+    .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
+    .neon-header { 
+        font-size: 35px; font-weight: 900; text-align: center;
+        color: #fff; text-shadow: 0 0 10px #00f2fe, 0 0 20px #ff00de;
+        border: 2px solid #00f2fe; padding: 10px; background: rgba(0,0,0,0.8);
+        border-radius: 10px; margin-bottom: 20px; letter-spacing: 10px;
     }
+    .terminal-container {
+        border: 1px solid #00f2fe; padding: 15px; border-radius: 8px;
+        background: rgba(0, 242, 254, 0.05); border-left: 5px solid #ff00de;
+        margin-bottom: 10px;
+    }
+    .clock-box {
+        background: rgba(0,0,0,0.6); border: 1px solid #00f2fe;
+        padding: 10px; border-radius: 8px; text-align: center;
+    }
+    .clock-time { color: #ff00de; font-size: 20px; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
-# 🌍 โลโก้ (ดึงจากเน็ตชัวร์ที่สุด)
-st.image("https://img.freepik.com/free-vector/world-map-globe-isolated_24877-60511.jpg", width=250)
+# ==========================================
+# 2. FIREBASE CONNECTION
+# ==========================================
+if not firebase_admin._apps:
+    try:
+        if "firebase" in st.secrets:
+            fb_dict = dict(st.secrets["firebase"])
+            if "private_key" in fb_dict:
+                fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+            creds = credentials.Certificate(fb_dict)
+            firebase_admin.initialize_app(creds, {
+                'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
+            })
+    except Exception as e:
+        st.error(f"DATABASE ERROR: {e}")
 
-st.markdown("<h2 style='color: #FFD700;'>📻 STATION: อยู่นิ่งๆ ไม่เจ็บตัว</h2>", unsafe_allow_html=True)
-
-# ✨ 1. ตัวหนังสือวิ่งบนสุด
-st.markdown("""<marquee style="color: white; font-weight: bold; background: #050505; padding: 12px; border-radius: 10px; border: 1px solid #FFD700;">📢 ยินดีต้อนรับเข้าสู่สถานี อยู่นิ่งๆ ไม่เจ็บตัว ...เพื่อนๆ เข้ามาพิมพ์คุยกันทักทายกันได้เลยครับ ✨</marquee>""", unsafe_allow_html=True)
-
-# --- [ 2. ส่วน YouTube 3 จุด ] ---
-st.write("---")
-# 1. Playlist
-playlist_url = "https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-st.markdown(f'<iframe width="100%" height="400" src="{playlist_url}" frameborder="0" allowfullscreen style="border-radius:15px; border: 2px solid #333;"></iframe>', unsafe_allow_html=True)
-
-# ✨ 2. ตัวหนังสือวิ่งคั่น YouTube 1
-st.markdown("<marquee style='background: #FFD700; color: black; padding: 8px; font-weight: bold; border-radius: 5px; margin-top: 10px;'>🔴 กำลังรับฟังผลงานเพลงจากช่อง S.S.S Music 🔴</marquee>", unsafe_allow_html=True)
-
-st.write("---")
-# 2. วิดีโอเพลง
-st.video("https://youtu.be/cbcuYnyr828?si=gCdCngKZztQVVZCe")
-
-# ✨ 3. ตัวหนังสือวิ่งคั่น YouTube 2
-st.markdown("<marquee style='background: #FF0000; color: white; padding: 8px; font-weight: bold; border-radius: 5px; margin-bottom: 10px;'>📺 ยินดีต้อนรับสู่ช่อง อยู่นิ้งๆไม่เจ็บตัว 🎬</marquee>", unsafe_allow_html=True)
-
-# 3. วิดีโอช่อง
-st.video("https://youtu.be/Bb3Jtsik3nY?si=Qyz3WtZLcxML3uF_")
-
-# --- [ 3. กระดานโพสต์คุยกัน (Public Board) ] ---
-st.write("---")
-st.subheader("💬 กระดานคุยกันของเพื่อนๆ")
-col_n, col_m = st.columns([1, 2])
-with col_n:
-    user_name = st.text_input("ชื่อของคุณ", placeholder="ชื่ออะไรดี?", key="input_name")
-with col_m:
-    user_msg = st.text_input("ข้อความ", placeholder="พิมพ์ทักทายเพื่อนๆ...", key="input_msg")
-
-if st.button("🚀 ส่งข้อความลงกระดาน"):
-    if user_name and user_msg:
-        now = datetime.now().strftime("%H:%M")
-        st.session_state.public_posts.insert(0, {"name": user_name, "msg": user_msg, "time": now})
-        st.balloons()
+# ==========================================
+# 3. LOGO & WORLD CLOCK
+# ==========================================
+col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
+with col_l2:
+    if os.path.exists("logo3.jpg"):
+        st.image("logo3.jpg", width=400)
     else:
-        st.warning("ใส่ชื่อกับข้อความด้วยนะเพื่อน")
+        st.markdown('<div class="neon-header">SYNAPSE</div>', unsafe_allow_html=True)
 
-# แสดงโพสต์ล่าสุด (5 โพสต์)
-for p in st.session_state.public_posts[:5]:
-    st.markdown(f"""<div class="post-box"><b>👤 {p['name']}</b> <small>({p['time']})</small><br>{p['msg']}</div>""", unsafe_allow_html=True)
+st.markdown("### 🌐 GLOBAL REAL-TIME MONITOR")
+c1, c2, c3, c4 = st.columns(4)
+zones = {'BANGKOK': 'Asia/Bangkok', 'NEW YORK': 'America/New_York', 'LONDON': 'Europe/London', 'TOKYO': 'Asia/Tokyo'}
+for col, (city, zone) in zip([c1, c2, c3, c4], zones.items()):
+    now = datetime.datetime.now(pytz.timezone(zone)).strftime('%H:%M:%S')
+    col.markdown(f"<div class='clock-box'><small>{city}</small><br><span class='clock-time'>{now}</span></div>", unsafe_allow_html=True)
 
-# --- [ 4. ส่วนอัปโหลด & แชร์ ] ---
-st.write("---")
-# ✨ 4. ตัวหนังสือวิ่งส่วนอัปโหลด
-st.markdown("<marquee style='background: #0000FF; color: white; padding: 8px; font-weight: bold; border-radius: 5px;'>📸 พื้นที่อัปโหลดรูปภาพและวิดีโอส่วนตัวของคุณ 📸</marquee>", unsafe_allow_html=True)
+# ==========================================
+# 4. SIDEBAR
+# ==========================================
+with st.sidebar:
+    st.markdown("### 🛰️ NETWORK CENTER")
+    audio_file = "ยักษ์ในตัวฉัน.mp3"
+    if os.path.exists(audio_file):
+        st.audio(audio_file, format="audio/mp3", loop=True)
+    else:
+        st.info("🎵 ไม่พบไฟล์เสียง ยักษ์ในตัวฉัน.mp3")
+    st.write(f"UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")
+    st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
-c1, c2 = st.columns(2)
-with c1:
-    up_img = st.file_uploader("แปะรูป", type=["jpg", "png"], key="upload_img")
-    if up_img:
-        st.image(up_img)
+# ==========================================
+# 5. MAIN NAVIGATION (Tabs)
+# ==========================================
+tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "💬 การสื่อสาร", "📊 บันทึก", "🔐 SEC", "📺 สื่อ", "🧹 ระบบ"])
 
-with c2:
-    up_vid = st.file_uploader("แปะวิดีโอ", type=["mp4"], key="upload_vid")
-    if up_vid:
-        st.video(up_vid)
+# --- TAB 1: CORE (GPS) ---
+with tabs[0]:
+    st.markdown('<div class="terminal-container">[ GPS_INIT ]</div>', unsafe_allow_html=True)
+    # ใช้ session_state เพื่อจำชื่อ User
+    if 'user_id' not in st.session_state:
+        st.session_state.user_id = 'Agent_001'
+        
+    user_id = st.text_input("USER CODENAME:", value=st.session_state.user_id)
+    st.session_state.user_id = user_id
+    
+    if st.button("🛰️ ดึงพิกัด GPS"):
+        loc = get_geolocation()
+        if loc:
+            db.reference(f'users/{user_id}').set({
+                'lat': loc['coords']['latitude'], 
+                'lon': loc['coords']['longitude'],
+                'ts': time.time()
+            })
+            st.success(f"POSITION UPDATED FOR {user_id}")
+        else:
+            st.warning("กรุณาเปิด GPS และอนุญาตการเข้าถึงพิกัด")
 
-# --- [ 5. ปุ่มลูกเล่น & LINE ] ---
-st.write("---")
-col1, col2, col3 = st.columns(3)
-with col1:
-    if st.button('🎊 ฉลอง'):
-        st.balloons()
-with col2:
-    if st.button('❄️ หิมะตก'):
-        st.snow()
-with col3:
-    if st.button('📞 เข้าห้องคอล'):
-        st.info("ลิงก์ห้องคอล: https://meet.jit.si/OyuNingRoom")
+# --- TAB 2: RADAR (Map) ---
+with tabs[1]:
+    st.markdown('<div class="terminal-container">[ RADAR_LIVE ]</div>', unsafe_allow_html=True)
+    # เริ่มต้นแผนที่ที่ไทย
+    m = folium.Map(location=[13.75, 100.5], zoom_start=6, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
+    
+    try:
+        users_data = db.reference('users').get()
+        if users_data:
+            for u, data in users_data.items():
+                if isinstance(data, dict) and 'lat' in data and 'lon' in data:
+                    folium.Marker(
+                        location=[data['lat'], data['lon']], 
+                        popup=u,
+                        icon=folium.Icon(color='red', icon='info-sign')
+                    ).add_to(m)
+    except Exception as e:
+        st.error(f"Radar Error: {e}")
+        
+    st_folium(m, width="100%", height=500)
 
-# ✨ 5. ตัวหนังสือวิ่งปิดท้าย
-st.markdown("<marquee style='color: #00FF00; font-family: Courier; font-size: 20px; background: #000; padding: 10px; border-radius: 10px; border: 1px solid #00FF00;'>🚀 ขอบคุณที่แวะมาจอยกันที่สถานี อยู่นิ่งๆ ไม่เจ็บตัว... เพลงดี มิตรภาพเด่น... 🎧 🎶</marquee>", unsafe_allow_html=True)
+# --- TAB 3: COMMS (Chat & Call) ---
+with tabs[2]:
+    st.markdown('<div class="terminal-container">[ SECURE_CHAT ]</div>', unsafe_allow_html=True)
+    
+    # ระบบ Video Call เบื้องต้น (WebRTC)
+    webrtc_streamer(key="v-call", mode=WebRtcMode.SENDRECV)
+    
+    # ระบบ Chat ผ่าน Firebase
+    with st.form("chat_system", clear_on_submit=True):
+        input_msg = st.text_input("TRANSMIT MESSAGE:")
+        if st.form_submit_button("SEND") and input_msg:
+            db.reference('global_chat').push({
+                'user': st.session_state.user_id, 
+                'msg': input_msg, 
+                'ts': time.time()
+            })
+    
+    # ดึงข้อความแชทมาแสดง
+    raw_chat = db.reference('global_chat').get()
+    if raw_chat:
+        # เรียงลำดับเวลา ล่าสุดอยู่บน
+        msg_list = sorted([v for v in raw_chat.values()], key=lambda x: x.get('ts', 0), reverse=True)
+        for m in msg_list[:8]:
+            st.write(f"📌 **{m.get('user')}**: {m.get('msg')}")
 
-line_link = "https://line.me/ti/p/e-8n-__If_" 
-st.link_button("🟢 ทัก LINE มาคุยกัน", line_link, use_container_width=True)
-
-st.sidebar.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
-st.caption("© 2026 สถานีเพลงออนไลน์ | อยู่นิ่งๆ ไม่เจ็บตัว")
+# --- TAB 7: SYS (Cleanup) ---
+with tabs[6]:
+    st.subheader("🧹 System Maintenance")
+    if st.button("🔥 WIPE ALL USERS"):
+        db.reference('users').delete()
+        st.success("CLEARED ALL USER DATA")
+        st.rerun()
