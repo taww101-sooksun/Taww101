@@ -2,66 +2,81 @@ import streamlit as st
 from datetime import datetime
 
 # --- [ 1. ตั้งค่าหน้าสถานี ] ---
-st.set_page_config(page_title="สถานีอยู่นิ่งๆ ไม่เจ็บตัว", page_icon="📻", layout="wide")
+st.set_page_config(page_title="สถานีอยู่นิ่งๆ ไม่เจ็บตัว", page_icon="📻", layout="centered")
 
-# ระบบเก็บโพสต์ชั่วคราว
-if 'posts' not in st.session_state:
-    st.session_state.posts = []
+# ระบบเก็บโพสต์ (ถ้าคนเข้าเยอะๆ จะเห็นข้อความกันหมด)
+if 'public_posts' not in st.session_state:
+    st.session_state.public_posts = []
 
-# --- [ 2. เมนูแยกส่วนด้านข้าง (Sidebar) ] ---
-# แก้ไขจุดที่ Error: ใช้ลิงก์รูปแทนไฟล์ในเครื่อง
-st.sidebar.image("https://img.freepik.com/free-vector/world-map-globe-isolated_24877-60511.jpg", width=150)
-st.sidebar.title("เมนูสถานี")
-choice = st.sidebar.radio("เลือกส่วนที่ต้องการ:", ["🎵 หน้าสถานีเพลง", "💬 กระดานคุยกัน", "📞 ห้องโทรคอลสด"])
+st.markdown("""
+    <style>
+    .stApp { background-color: #0E1117; color: #FFFFFF; text-align: center; }
+    .post-box {
+        background-color: #262730;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 5px solid #FFD700;
+        margin-bottom: 10px;
+        text-align: left;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-st.sidebar.write("---")
-st.sidebar.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+# 🌍 โลโก้ (ใช้รูปจากเน็ตเพื่อกัน Error 404)
+st.image("https://img.freepik.com/free-vector/world-map-globe-isolated_24877-60511.jpg", width=250)
 
-# --- [ 3. ส่วนที่ 1: หน้าสถานีเพลง ] ---
-if choice == "🎵 หน้าสถานีเพลง":
-    st.markdown("<h2 style='color: #FFD700; text-align: center;'>📻 STATION: อยู่นิ่งๆ ไม่เจ็บตัว</h2>", unsafe_allow_html=True)
-    st.markdown("""<marquee style="color: white; font-weight: bold; background: #050505; padding: 12px; border-radius: 10px; border: 1px solid #FFD700;">📢 ยินดีต้อนรับ! เลือกเมนูซ้ายมือเพื่อโพสต์คุยหรือโทรคอลกับเพื่อนๆ ได้เลยครับ ✨</marquee>""", unsafe_allow_html=True)
-    
-    st.write("---")
-    # Playlist YouTube
-    playlist_url = "https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-    st.markdown(f'<iframe width="100%" height="500" src="{playlist_url}" frameborder="0" allowfullscreen style="border-radius:15px; border: 2px solid #333;"></iframe>', unsafe_allow_html=True)
-    
-    st.markdown("<marquee style='background: #FFD700; color: black; padding: 8px; font-weight: bold;'>🔴 กำลังรับฟังเพลงจากช่อง S.S.S Music 🔴</marquee>", unsafe_allow_html=True)
+st.markdown("<h2 style='color: #FFD700;'>📻 STATION: อยู่นิ่งๆ ไม่เจ็บตัว</h2>", unsafe_allow_html=True)
 
-# --- [ 4. ส่วนที่ 2: กระดานคุยกัน ] ---
-elif choice == "💬 กระดานคุยกัน":
-    st.header("💬 กระดานข้อความสาธารณะ")
-    st.info("พิมพ์ทิ้งไว้ เพื่อนคนอื่นที่เข้ามาก็จะเห็นข้อความคุณครับ")
-    
-    col_n, col_m = st.columns([1, 2])
-    with col_n:
-        name = st.text_input("ชื่อของคุณ", key="user_name")
-    with col_m:
-        msg = st.text_input("ข้อความ", key="user_msg")
-    
-    if st.button("🚀 ส่งโพสต์"):
-        if name and msg:
-            st.session_state.posts.insert(0, {"name": name, "msg": msg, "time": datetime.now().strftime("%H:%M")})
-            st.balloons()
-            st.rerun() # สั่งให้แอปโหลดใหม่เพื่อโชว์ข้อความทันที
+# ✨ 1. ตัวหนังสือวิ่งบนสุด
+st.markdown("""<marquee style="color: white; font-weight: bold; background: #050505; padding: 12px; border-radius: 10px; border: 1px solid #FFD700;">📢 ยินดีต้อนรับเข้าสู่สถานี อยู่นิ่งๆ ไม่เจ็บตัว ...เพื่อนๆ เข้ามาพิมพ์คุยกันทักทายกันได้เลยครับ ✨</marquee>""", unsafe_allow_html=True)
 
-    st.write("---")
-    for p in st.session_state.posts[:15]:
-        st.markdown(f"**{p['name']}** <small>({p['time']})</small>: {p['msg']}")
-        st.write("---")
-
-# --- [ 5. ส่วนที่ 3: ห้องโทรคอล (Video Call) ] ---
-elif choice == "📞 ห้องโทรคอลสด":
-    st.header("📞 ระบบวิดีโอคอล (Jitsi Meet)")
-    st.write("คุยเห็นหน้ากันได้ฟรี ไม่ต้องใช้ API Key ครับ")
-    
-    room_name = "OyuNingNing_Room_2026"
-    call_url = f"https://meet.jit.si/{room_name}"
-    
-    st.link_button("🔥 กดเพื่อเข้าสู่ห้องคอล (Video Call) 🔥", call_url, use_container_width=True)
-    st.image("https://img.freepik.com/free-vector/video-calling-concept-illustration_114360-1282.jpg", width=400)
-
-# --- [ 6. ตัววิ่งปิดท้าย ] ---
+# --- [ 2. ส่วน YouTube 3 จุด ] ---
 st.write("---")
-st.markdown("<marquee style='color: #00FF00; font-family: Courier; background: #000; padding: 10px; border-radius: 10px;'>🚀 ขอบคุณที่แวะมาจอยกันที่สถานี อยู่นิ่งๆ ไม่เจ็บตัว... เพลงดี มิตรภาพเด่น... 🎧 🎶</marquee>", unsafe_allow_html=True)
+# 1. Playlist
+playlist_url = "https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+st.markdown(f'<iframe width="100%" height="400" src="{playlist_url}" frameborder="0" allowfullscreen style="border-radius:15px; border: 2px solid #333;"></iframe>', unsafe_allow_html=True)
+
+# ✨ 2. ตัวหนังสือวิ่งคั่น YouTube 1
+st.markdown("<marquee style='background: #FFD700; color: black; padding: 8px; font-weight: bold; border-radius: 5px; margin-top: 10px;'>🔴 กำลังรับฟังผลงานเพลงจากช่อง S.S.S Music 🔴</marquee>", unsafe_allow_html=True)
+
+st.write("---")
+# 2. วิดีโอเพลง
+st.video("https://youtu.be/cbcuYnyr828?si=gCdCngKZztQVVZCe")
+
+# ✨ 3. ตัวหนังสือวิ่งคั่น YouTube 2
+st.markdown("<marquee style='background: #FF0000; color: white; padding: 8px; font-weight: bold; border-radius: 5px; margin-bottom: 10px;'>📺 ยินดีต้อนรับสู่ช่อง อยู่นิ้งๆไม่เจ็บตัว 🎬</marquee>", unsafe_allow_html=True)
+
+# 3. วิดีโอช่อง
+st.video("https://youtu.be/Bb3Jtsik3nY?si=Qyz3WtZLcxML3uF_")
+
+# --- [ 3. กระดานโพสต์คุยกัน (Public Board) ] ---
+st.write("---")
+st.subheader("💬 กระดานคุยกันของเพื่อนๆ (Public)")
+col_n, col_m = st.columns([1, 2])
+with col_n:
+    user_name = st.text_input("ชื่อของคุณ", placeholder="ชื่ออะไรดี?")
+with col_m:
+    user_msg = st.text_input("ข้อความ", placeholder="พิมพ์ทักทายเพื่อนๆ...")
+
+if st.button("🚀 ส่งข้อความลงกระดาน"):
+    if user_name and user_msg:
+        now = datetime.now().strftime("%H:%M")
+        st.session_state.public_posts.insert(0, {"name": user_name, "msg": user_msg, "time": now})
+        st.balloons()
+    else:
+        st.warning("ใส่ชื่อกับข้อความด้วยนะเพื่อน")
+
+# แสดงโพสต์ 5 อันล่าสุด
+for p in st.session_state.public_posts[:5]:
+    st.markdown(f"""<div class="post-box"><b>👤 {p['name']}</b> <small>({p['time']})</small><br>{p['msg']}</div>""", unsafe_allow_html=True)
+
+# --- [ 4. ส่วนอัปโหลด & แชร์ ] ---
+st.write("---")
+# ✨ 4. ตัวหนังสือวิ่งส่วนอัปโหลด
+st.markdown("<marquee style='background: #0000FF; color: white; padding: 8px; font-weight: bold; border-radius: 5px;'>📸 พื้นที่อัปโหลดรูปภาพและวิดีโอส่วนตัวของคุณ 📸</marquee>", unsafe_allow_html=True)
+
+c1, c2 = st.columns(2)
+with c1:
+    up_img = st.file_uploader("แปะรูป", type=["jpg", "png"], key="img_1")
+    if up_img: st.image(up_img)
+with c2:
