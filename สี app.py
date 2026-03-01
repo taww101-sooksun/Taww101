@@ -1,130 +1,66 @@
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, db
-import datetime
-import pytz
-import os
-import time
-import pandas as pd
-from streamlit_js_eval import get_geolocation
-import folium
-from streamlit_folium import st_folium
-from streamlit_autorefresh import st_autorefresh
+from datetime import datetime
 
-# ==========================================
-# 1. SETUP & THEME (แก้ Error ตัวหนังสือยึกยือ)
-# ==========================================
-st.set_page_config(page_title="SYNAPSE GLOBAL", layout="wide")
-st_autorefresh(interval=10000, key="global_refresh")
+# --- [ 1. ตั้งค่าหน้าสถานี ] ---
+st.set_page_config(page_title="สถานีอยู่นิ่งๆ ไม่เจ็บตัว", page_icon="📻", layout="wide")
 
-st.markdown("""
-    <style>
-    .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
-    .neon-header { 
-        font-size: 35px; font-weight: 900; text-align: center;
-        color: #fff; text-shadow: 0 0 10px #00f2fe, 0 0 20px #ff00de;
-        border: 2px solid #00f2fe; padding: 10px; background: rgba(0,0,0,0.8);
-        border-radius: 10px; margin-bottom: 20px; letter-spacing: 10px;
-    }
-    .login-box {
-        border: 2px solid #ff00de; padding: 30px; border-radius: 15px;
-        background: rgba(0,0,0,0.9); text-align: center; max-width: 500px; margin: auto;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+# ระบบเก็บโพสต์ชั่วคราว
+if 'posts' not in st.session_state:
+    st.session_state.posts = []
 
-# ==========================================
-# 2. FIREBASE CONNECTION
-# ==========================================
-if not firebase_admin._apps:
-    try:
-        fb_dict = dict(st.secrets["firebase"])
-        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
-        creds = credentials.Certificate(fb_dict)
-        firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
-    except: pass
+# --- [ 2. เมนูแยกส่วนด้านข้าง (Sidebar) ] ---
+st.sidebar.image("globe.jpg", width=150)
+st.sidebar.title("เมนูสถานี")
+choice = st.sidebar.radio("เลือกส่วนที่ต้องการ:", ["🎵 หน้าสถานีเพลง", "💬 กระดานคุยกัน", "📞 ห้องโทรคอลสด"])
 
-# ==========================================
-# 3. 🛡️ หน้าด่านลงชื่อเข้าใช้ (LOGIN GATE)
-# ==========================================
-if 'logged_in' not in st.session_state:
-    st.markdown('<div style="height:100px;"></div>', unsafe_allow_html=True)
-    st.markdown('<div class="neon-header">SYNAPSE GATEWAY</div>', unsafe_allow_html=True)
+st.sidebar.write("---")
+st.sidebar.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+
+# --- [ 3. ส่วนที่ 1: หน้าสถานีเพลง ] ---
+if choice == "🎵 หน้าสถานีเพลง":
+    st.markdown("<h2 style='color: #FFD700; text-align: center;'>📻 STATION: อยู่นิ่งๆ ไม่เจ็บตัว</h2>", unsafe_allow_html=True)
+    st.markdown("""<marquee style="color: white; font-weight: bold; background: #050505; padding: 12px; border-radius: 10px; border: 1px solid #FFD700;">📢 ยินดีต้อนรับ! เลือกเมนูซ้ายมือเพื่อโพสต์คุยหรือโทรคอลกับเพื่อนๆ ได้เลยครับ ✨</marquee>""", unsafe_allow_html=True)
     
-    with st.container():
-        st.markdown('<div class="login-box">', unsafe_allow_html=True)
-        u_id = st.text_input("ระบุชื่อรหัส AGENT ของคุณ:", placeholder="เช่น Ta101, Neo...")
-        u_color = st.color_picker("เลือกสีหมุดประจำตัว (สำหรับแสดงทั่วโลก):", "#00f2fe")
-        
-        if st.button("🔓 INITIALIZE CONNECTION", use_container_width=True):
-            if u_id:
-                st.session_state.logged_in = True
-                st.session_state.user_id = u_id
-                st.session_state.user_color = u_color
-                st.rerun()
-            else:
-                st.warning("⚠️ กรุณาระบุชื่อก่อนเข้าสู่โครงข่าย")
-        st.markdown('</div>', unsafe_allow_html=True)
-    st.stop() # หยุดหน้าอื่นไว้จนกว่าจะ Login
-
-# ==========================================
-# 4. หน้าจอหลัก (COMMAND CENTER) เมื่อ Login แล้ว
-# ==========================================
-user_id = st.session_state.user_id
-user_color = st.session_state.user_color
-
-# ส่วนหัว (World Clock)
-st.markdown(f'<div class="neon-header">COMMAND CENTER: {user_id}</div>', unsafe_allow_html=True)
-
-# ดึงพิกัดจริงส่งเข้า Firebase ทันที
-loc = get_geolocation()
-if loc:
-    db.reference(f'users/{user_id}').update({
-        'lat': loc['coords']['latitude'], 
-        'lon': loc['coords']['longitude'],
-        'color': user_color,
-        'ts': time.time()
-    })
-
-# ระบบเพลงและโลโก้ใน Sidebar
-with st.sidebar:
-    if os.path.exists("logo3.jpg"): st.image("logo3.jpg")
-    audio_file = "ยักษ์ในตัวฉัน.mp3"
-    if os.path.exists(audio_file): st.audio(audio_file, format="audio/mp3", loop=True)
-    st.markdown(f"AGENT: <b style='color:{user_color};'>{user_id}</b>", unsafe_allow_html=True)
-
-# 🚀 TABS ใช้งานจริง
-tabs = st.tabs(["🛰️ เรดาร์โลก", "💬 แชตแยก", "📊 ข้อมูล", "🧹 ระบบ"])
-
-with tabs[0]: # RADAR (พิกัดตรง + แยกสีตามที่คนเลือก)
-    users = db.reference('users').get()
-    center = [13.75, 100.5]
-    if users and user_id in users:
-        center = [users[user_id].get('lat'), users[user_id].get('lon')]
-
-    m = folium.Map(location=center, zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
-    if users:
-        for u, data in users.items():
-            if isinstance(data, dict) and 'lat' in data:
-                # ใช้สีที่ Agent คนนั้นเลือกไว้มาปักหมุด
-                p_color = data.get('color', '#ff0000') 
-                folium.CircleMarker(
-                    location=[data['lat'], data['lon']], radius=10,
-                    popup=u, color=p_color, fill=True, fill_color=p_color
-                ).add_to(m)
-    st_folium(m, width="100%", height=500)
-
-with tabs[1]: # แชต
-    st.subheader("🗨️ GLOBAL COMMS")
-    msg = st.chat_input("TRANSMIT MESSAGE...")
-    if msg: db.reference('global_chat').push({'user': user_id, 'msg': msg, 'ts': time.time()})
+    st.write("---")
+    playlist_url = "https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+    st.markdown(f'<iframe width="100%" height="500" src="{playlist_url}" frameborder="0" allowfullscreen style="border-radius:15px; border: 2px solid #333;"></iframe>', unsafe_allow_html=True)
     
-    chat_data = db.reference('global_chat').get()
-    if chat_data:
-        for c in list(chat_data.values())[-5:]:
-            st.write(f"📌 **{c.get('user')}**: {c.get('msg')}")
+    st.markdown("<marquee style='background: #FFD700; color: black; padding: 8px; font-weight: bold;'>🔴 กำลังรับฟังเพลงจากช่อง S.S.S Music 🔴</marquee>", unsafe_allow_html=True)
 
-with tabs[3]: # ล้างระบบ
-    if st.button("🔥 WIPE DATABASE"):
-        db.reference('/').delete()
-        st.rerun()
+# --- [ 4. ส่วนที่ 2: กระดานคุยกัน ] ---
+elif choice == "💬 กระดานคุยกัน":
+    st.header("💬 กระดานข้อความสาธารณะ")
+    st.info("พิมพ์ทิ้งไว้ เพื่อนคนอื่นที่เข้ามาก็จะเห็นข้อความคุณครับ")
+    
+    col_n, col_m = st.columns([1, 2])
+    with col_n:
+        name = st.text_input("ชื่อของคุณ")
+    with col_m:
+        msg = st.text_input("ข้อความ")
+    
+    if st.button("🚀 ส่งโพสต์"):
+        if name and msg:
+            st.session_state.posts.insert(0, {"name": name, "msg": msg, "time": datetime.now().strftime("%H:%M")})
+            st.balloons()
+    
+    st.write("---")
+    for p in st.session_state.posts[:15]:
+        st.markdown(f"**{p['name']}** ({p['time']}): {p['msg']}")
+        st.write("---")
+
+# --- [ 5. ส่วนที่ 3: ห้องโทรคอล (Video Call) ] ---
+elif choice == "📞 ห้องโทรคอลสด":
+    st.header("📞 ระบบวิดีโอคอล (คุยเห็นหน้า)")
+    st.write("เราใช้ระบบ Jitsi Meet เพื่อความปลอดภัยและไม่ต้องใช้กุญแจ API ครับ")
+    
+    room_name = "OyuNingNingMaiJebTua_Room" # ตั้งชื่อห้องของคุณเองได้เลย
+    call_url = f"https://meet.jit.si/{room_name}"
+    
+    st.warning("คำแนะนำ: เมื่อกดปุ่มด้านล่าง ระบบจะเปิดหน้าต่างใหม่เพื่อเข้าห้องคอล")
+    st.link_button("🔥 กดเพื่อเข้าสู่ห้องคอล (Video Call) 🔥", call_url, use_container_width=True)
+    
+    st.image("https://img.freepik.com/free-vector/video-calling-concept-illustration_114360-1282.jpg", width=400)
+
+# --- [ 6. ส่วนปิดท้าย (ตัววิ่งเขียว) ] ---
+st.write("---")
+st.markdown("<marquee style='color: #00FF00; font-family: Courier; background: #000; padding: 10px; border-radius: 10px;'>🚀 ขอบคุณที่แวะมาจอยกันที่สถานี อยู่นิ่งๆ ไม่เจ็บตัว... เพลงดี มิตรภาพเด่น... 🎧 🎶</marquee>", unsafe_allow_html=True)
