@@ -28,7 +28,6 @@ st.markdown(f"""
         padding: 10px; border-radius: 10px; margin-bottom: 5px;
         background: rgba(255,255,255,0.05);
     }}
-    /* ปรับแต่งสีปุ่มให้ตรงกับสีที่เลือก */
     .stButton>button {{ 
         border: 1px solid {st.session_state.theme_color} !important; 
         color: {st.session_state.theme_color} !important; 
@@ -49,12 +48,13 @@ if not firebase_admin._apps:
     except Exception as e:
         st.error(f"DATABASE ERROR: {e}")
 
-# --- 3. LOGIN SYSTEM (แก้ไขจุดที่พัง) ---
+# --- 3. LOGIN SYSTEM ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
     st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>🔐 SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
     
-    # แก้ไขจาก st.center() เป็นการใช้ Columns แทน เพื่อให้รันผ่าน
-    col1, col2, col3 = st.columns([1, 2, 1
+    # แก้ไขบรรทัดที่ 60: ปิดวงเล็บ [1, 2, 1] ให้เรียบร้อยแล้วครับ
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2
