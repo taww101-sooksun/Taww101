@@ -9,7 +9,8 @@ if 'posts' not in st.session_state:
     st.session_state.posts = []
 
 # --- [ 2. เมนูแยกส่วนด้านข้าง (Sidebar) ] ---
-st.sidebar.image("globe.jpg", width=150)
+# แก้ไขจุดที่ Error: ใช้ลิงก์รูปแทนไฟล์ในเครื่อง
+st.sidebar.image("https://img.freepik.com/free-vector/world-map-globe-isolated_24877-60511.jpg", width=150)
 st.sidebar.title("เมนูสถานี")
 choice = st.sidebar.radio("เลือกส่วนที่ต้องการ:", ["🎵 หน้าสถานีเพลง", "💬 กระดานคุยกัน", "📞 ห้องโทรคอลสด"])
 
@@ -22,6 +23,7 @@ if choice == "🎵 หน้าสถานีเพลง":
     st.markdown("""<marquee style="color: white; font-weight: bold; background: #050505; padding: 12px; border-radius: 10px; border: 1px solid #FFD700;">📢 ยินดีต้อนรับ! เลือกเมนูซ้ายมือเพื่อโพสต์คุยหรือโทรคอลกับเพื่อนๆ ได้เลยครับ ✨</marquee>""", unsafe_allow_html=True)
     
     st.write("---")
+    # Playlist YouTube
     playlist_url = "https://www.youtube.com/embed/videoseries?list=PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
     st.markdown(f'<iframe width="100%" height="500" src="{playlist_url}" frameborder="0" allowfullscreen style="border-radius:15px; border: 2px solid #333;"></iframe>', unsafe_allow_html=True)
     
@@ -34,33 +36,32 @@ elif choice == "💬 กระดานคุยกัน":
     
     col_n, col_m = st.columns([1, 2])
     with col_n:
-        name = st.text_input("ชื่อของคุณ")
+        name = st.text_input("ชื่อของคุณ", key="user_name")
     with col_m:
-        msg = st.text_input("ข้อความ")
+        msg = st.text_input("ข้อความ", key="user_msg")
     
     if st.button("🚀 ส่งโพสต์"):
         if name and msg:
             st.session_state.posts.insert(0, {"name": name, "msg": msg, "time": datetime.now().strftime("%H:%M")})
             st.balloons()
-    
+            st.rerun() # สั่งให้แอปโหลดใหม่เพื่อโชว์ข้อความทันที
+
     st.write("---")
     for p in st.session_state.posts[:15]:
-        st.markdown(f"**{p['name']}** ({p['time']}): {p['msg']}")
+        st.markdown(f"**{p['name']}** <small>({p['time']})</small>: {p['msg']}")
         st.write("---")
 
 # --- [ 5. ส่วนที่ 3: ห้องโทรคอล (Video Call) ] ---
 elif choice == "📞 ห้องโทรคอลสด":
-    st.header("📞 ระบบวิดีโอคอล (คุยเห็นหน้า)")
-    st.write("เราใช้ระบบ Jitsi Meet เพื่อความปลอดภัยและไม่ต้องใช้กุญแจ API ครับ")
+    st.header("📞 ระบบวิดีโอคอล (Jitsi Meet)")
+    st.write("คุยเห็นหน้ากันได้ฟรี ไม่ต้องใช้ API Key ครับ")
     
-    room_name = "OyuNingNingMaiJebTua_Room" # ตั้งชื่อห้องของคุณเองได้เลย
+    room_name = "OyuNingNing_Room_2026"
     call_url = f"https://meet.jit.si/{room_name}"
     
-    st.warning("คำแนะนำ: เมื่อกดปุ่มด้านล่าง ระบบจะเปิดหน้าต่างใหม่เพื่อเข้าห้องคอล")
     st.link_button("🔥 กดเพื่อเข้าสู่ห้องคอล (Video Call) 🔥", call_url, use_container_width=True)
-    
     st.image("https://img.freepik.com/free-vector/video-calling-concept-illustration_114360-1282.jpg", width=400)
 
-# --- [ 6. ส่วนปิดท้าย (ตัววิ่งเขียว) ] ---
+# --- [ 6. ตัววิ่งปิดท้าย ] ---
 st.write("---")
 st.markdown("<marquee style='color: #00FF00; font-family: Courier; background: #000; padding: 10px; border-radius: 10px;'>🚀 ขอบคุณที่แวะมาจอยกันที่สถานี อยู่นิ่งๆ ไม่เจ็บตัว... เพลงดี มิตรภาพเด่น... 🎧 🎶</marquee>", unsafe_allow_html=True)
