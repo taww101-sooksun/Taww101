@@ -4,7 +4,7 @@ from datetime import datetime
 # --- [ 1. ตั้งค่าหน้าสถานี ] ---
 st.set_page_config(page_title="สถานีอยู่นิ่งๆ ไม่เจ็บตัว", page_icon="📻", layout="centered")
 
-# ระบบเก็บโพสต์ (Session State)
+# ระบบเก็บโพสต์ชั่วคราว (Session State)
 if 'public_posts' not in st.session_state:
     st.session_state.public_posts = []
 
@@ -22,7 +22,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 🌍 โลโก้ (ดึงจากเน็ตเพื่อกัน Error 404)
+# 🌍 โลโก้ (ดึงจากเน็ตชัวร์ที่สุด)
 st.image("https://img.freepik.com/free-vector/world-map-globe-isolated_24877-60511.jpg", width=250)
 
 st.markdown("<h2 style='color: #FFD700;'>📻 STATION: อยู่นิ่งๆ ไม่เจ็บตัว</h2>", unsafe_allow_html=True)
@@ -54,9 +54,9 @@ st.write("---")
 st.subheader("💬 กระดานคุยกันของเพื่อนๆ")
 col_n, col_m = st.columns([1, 2])
 with col_n:
-    user_name = st.text_input("ชื่อของคุณ", placeholder="ชื่ออะไรดี?", key="name_input")
+    user_name = st.text_input("ชื่อของคุณ", placeholder="ชื่ออะไรดี?", key="input_name")
 with col_m:
-    user_msg = st.text_input("ข้อความ", placeholder="พิมพ์ทักทายเพื่อนๆ...", key="msg_input")
+    user_msg = st.text_input("ข้อความ", placeholder="พิมพ์ทักทายเพื่อนๆ...", key="input_msg")
 
 if st.button("🚀 ส่งข้อความลงกระดาน"):
     if user_name and user_msg:
@@ -66,7 +66,7 @@ if st.button("🚀 ส่งข้อความลงกระดาน"):
     else:
         st.warning("ใส่ชื่อกับข้อความด้วยนะเพื่อน")
 
-# แสดงโพสต์ล่าสุด
+# แสดงโพสต์ล่าสุด (5 โพสต์)
 for p in st.session_state.public_posts[:5]:
     st.markdown(f"""<div class="post-box"><b>👤 {p['name']}</b> <small>({p['time']})</small><br>{p['msg']}</div>""", unsafe_allow_html=True)
 
@@ -77,12 +77,12 @@ st.markdown("<marquee style='background: #0000FF; color: white; padding: 8px; fo
 
 c1, c2 = st.columns(2)
 with c1:
-    up_img = st.file_uploader("แปะรูป", type=["jpg", "png"], key="img_up")
+    up_img = st.file_uploader("แปะรูป", type=["jpg", "png"], key="upload_img")
     if up_img:
         st.image(up_img)
 
-with c2: # จุดที่เคย Error (บรรทัดที่ 82) - แก้ไขย่อหน้าให้แล้ว
-    up_vid = st.file_uploader("แปะวิดีโอ", type=["mp4"], key="vid_up")
+with c2:
+    up_vid = st.file_uploader("แปะวิดีโอ", type=["mp4"], key="upload_vid")
     if up_vid:
         st.video(up_vid)
 
