@@ -9,153 +9,205 @@ from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from streamlit_autorefresh import st_autorefresh
 
 # ==========================================
-# 1. SETUP & THEME (สีธีมต้องนิ่งและคุมทั้งแอป)
+# 1. SETUP & THEME (ตั้งค่าเริ่มต้นและรีเฟรชหน้าจอ)
 # ==========================================
-st.set_page_config(page_title="SYNAPSE ULTIMATE", layout="wide")
-st_autorefresh(interval=5000, key="global_refresh") # รีเฟรชอัตโนมัติทุก 5 วิ
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
+# รีเฟรชอัตโนมัติทุก 5 วินาที เพื่อให้แชตและพิกัดอัปเดตแบบ Real-time
+st_autorefresh(interval=5000, key="global_refresh") 
 
 if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#00f2fe"
 
-# --- SIDEBAR: LOGIN & COLOR PICKER ---
+# --- SIDEBAR: การเข้าถึงและตั้งค่าส่วนตัว ---
 with st.sidebar:
     st.markdown("### 🔐 ACCESS CONTROL")
     user_id = st.text_input("CODENAME:", value="Agent_001")
-    # สีธีมที่จะกลายเป็นสีหมุด GPS ของคุณด้วย
+    # เลือกสีประจำตัว ซึ่งจะไปผูกกับสีข้อความแชตและสีหมุด GPS
     st.session_state.theme_color = st.color_picker("เลือกสีประจำตัว / สีหมุด", st.session_state.theme_color)
     
     st.write("---")
     st.write(f"USER: **{user_id}**")
     st.write(f"STATUS: **ONLINE**")
-    st.write(f'**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+    st.write(f'**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"') # สโลแกนประจำตัวคุณ
     
-    # เพิ่มนาฬิกาโลกใน Sidebar ให้ดูเท่ๆ
+    # นาฬิกาโลก
     st.markdown("---")
     st.markdown("### 🌍 WORLD CLOCK")
-    for city, zone in {'Bangkok': 'Asia/Bangkok', 'New York': 'America/New_York'}.items():
+    zones = {'Bangkok': 'Asia/Bangkok', 'New York': 'America/New_York', 'London': 'Europe/London', 'Tokyo': 'Asia/Tokyo'}
+    for city, zone in zones.items():
         t = datetime.datetime.now(pytz.timezone(zone)).strftime('%H:%M:%S')
         st.write(f"**{city}:** {t}")
 
-# --- CSS CUSTOM STYLE (ฉีดสีธีมให้ทำงานจริง) ---
+# --- CSS CUSTOM STYLE (ปรับแต่งหน้าตาให้เป็นธีม Hacker/Neon) ---
 st.markdown(f"""
     <style>
-    .stApp {{ background: #000; color: {st.session_state.theme_color}; }}
+    .stApp {{ background: #000; color: {st.session_state.theme_color}; font-family: 'Courier New', Courier, monospace; }}
     .neon-text {{ 
-        color: #fff; text-shadow: 0 0 10px {st.session_state.theme_color}, 0 0 20px {st.session_state.theme_color};
-        text-align: center; font-weight: bold;
+        color: #fff; 
+        text-shadow: 0 0 10px {st.session_state.theme_color}, 0 0 20px {st.session_state.theme_color};
+        text-align: center; 
+        font-weight: 900;
+        border: 2px solid {st.session_state.theme_color}; 
+        padding: 15px; 
+        background: rgba(0,0,0,0.8);
+        border-radius: 15px; 
+        margin-bottom: 25px; 
+        letter-spacing: 5px;
     }}
     .stTabs [data-baseweb="tab-list"] {{ gap: 10px; }}
     .stTabs [data-baseweb="tab"] {{
         border: 1px solid {st.session_state.theme_color};
         padding: 10px 20px; border-radius: 10px 10px 0 0;
     }}
-    .chat-msg {{ border-left: 3px solid {st.session_state.theme_color}; padding-left: 10px; margin-bottom: 5px; }}
+    .chat-msg {{ 
+        border-left: 3px solid {st.session_state.theme_color}; 
+        padding-left: 10px; 
+        margin-bottom: 5px; 
+        background-color: rgba(255,255,255,0.05);
+    }}
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. LOGO & HEADER (จัดวางกึ่งกลาง)
+# 2. LOGO & HEADER
 # ==========================================
-col_l1, col_l2, col_l3 = st.columns([1, 2, 1])
-with col_l2:
-    try:
-        st.image("logo3.jpg", use_container_width=True)
-    except:
-        st.error("⚠️ ไม่พบไฟล์ logo3.jpg ในระบบ")
-
 st.markdown(f"<h1 class='neon-text'>SYNAPSE COMMAND CENTER</h1>", unsafe_allow_html=True)
 
 # ==========================================
-# 3. FIREBASE CONNECTION (เช็กการเชื่อมต่อ)
+# 3. FIREBASE CONNECTION
 # ==========================================
+# เช็กว่าเชื่อมต่อหรือยัง เพื่อป้องกัน Error การ Initialized ซ้ำซ้อน
 if not firebase_admin._apps:
     try:
         fb_dict = dict(st.secrets["firebase"])
+        # จัดการเรื่อง newline ใน private_key เพื่อป้องกัน Error ตอนอ่านค่าจาก TOML
         fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
         creds = credentials.Certificate(fb_dict)
         firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
     except Exception as e:
-        st.error(f"Firebase Error: {e}")
+        st.error(f"⚠️ DATABASE CONNECTION ERROR: {e}\n(กรุณาตรวจสอบไฟล์ .streamlit/secrets.toml)")
 
 # ==========================================
-# 4. MAIN MENU TABS (ทุกเมนูต้องใช้งานได้จริง)
+# 4. MAIN MENU TABS
 # ==========================================
-tab_gps, tab_chat, tab_call = st.tabs(["🛰️ GPS & RADAR", "💬 COMMS (แชต)", "📞 VOICE CALL"])
+tab_gps, tab_chat, tab_call = st.tabs(["🛰️ GPS & RADAR", "💬 COMMS (แชต)", "📞 VOICE / VIDEO CALL"])
 
-# --- [TAB: GPS] แก้ปัญหาหมุดหาย และ สีหมุดตามคนเลือก ---
+# --- [TAB 1: GPS & RADAR] ---
 with tab_gps:
     col_map_ctrl, col_map_display = st.columns([1, 3])
     
     with col_map_ctrl:
         st.subheader("📡 ระบบระบุพิกัด")
+        st.write("กดปุ่มด้านล่างเพื่อส่งตำแหน่งปัจจุบันของคุณเข้าสู่ระบบเรดาร์")
+        
+        # ฟังก์ชันอ่าน GPS (ใช้งานได้จริงเมื่อรันบน HTTPS หรือ Localhost)
+        loc = get_geolocation() 
+        
         if st.button("🛰️ TRANSMIT MY LOCATION"):
-            loc = get_geolocation()
-            if loc:
-                # ส่งพิกัด + สีธีมที่เลือก เข้าไปเก็บใน Firebase
-                db.reference(f'users/{user_id}').set({
-                    'lat': loc['coords']['latitude'], 
-                    'lon': loc['coords']['longitude'],
-                    'color': st.session_state.theme_color,
-                    'last_update': time.time()
-                })
-                st.success("ส่งพิกัดสำเร็จ!")
+            if loc and 'coords' in loc:
+                try:
+                    # บันทึกข้อมูลลง Firebase
+                    db.reference(f'users/{user_id}').set({
+                        'lat': loc['coords']['latitude'], 
+                        'lon': loc['coords']['longitude'],
+                        'color': st.session_state.theme_color,
+                        'last_update': time.time()
+                    })
+                    st.success("ส่งพิกัดสำเร็จ!")
+                except Exception as e:
+                    st.error(f"ไม่สามารถบันทึกข้อมูลได้: {e}")
+            else:
+                st.warning("กำลังค้นหาพิกัด... หรือคุณยังไม่อนุญาตให้เข้าถึง GPS ในเบราว์เซอร์")
     
     with col_map_display:
-        # ดึงข้อมูลทุกคนจาก Firebase มาปักหมุด (หมุดจะไม่หายเพราะดึงใหม่ทุกครั้ง)
-        m = folium.Map(location=[13.75, 100.5], zoom_start=6)
-        all_users = db.reference('users').get()
-        if all_users:
-            for name, data in all_users.items():
-                if isinstance(data, dict) and 'lat' in data:
-                    u_color = data.get('color', st.session_state.theme_color)
-                    folium.CircleMarker(
-                        location=[data['lat'], data['lon']],
-                        radius=10, popup=f"Agent: {name}",
-                        color=u_color, fill=True, fill_color=u_color, fill_opacity=0.7
-                    ).add_to(m)
-        st_folium(m, width="100%", height=500)
+        # สร้างแผนที่ Folium
+        m = folium.Map(location=[13.75, 100.5], zoom_start=5, tiles="cartodbdark_matter")
+        
+        try:
+            all_users = db.reference('users').get()
+            if all_users:
+                for name, data in all_users.items():
+                    if isinstance(data, dict) and 'lat' in data and 'lon' in data:
+                        u_color = data.get('color', '#ffffff')
+                        folium.CircleMarker(
+                            location=[data['lat'], data['lon']],
+                            radius=8, 
+                            popup=f"Agent: {name}",
+                            color=u_color, 
+                            fill=True, 
+                            fill_color=u_color, 
+                            fill_opacity=0.8
+                        ).add_to(m)
+        except Exception:
+            pass # ซ่อน Error กรณีที่เชื่อมต่อฐานข้อมูลไม่ได้ในครั้งแรก
+            
+        st_folium(m, width="100%", height=500, key="radar_map")
 
-# --- [TAB: COMMS] แชตกลุ่ม & แชตส่วนตัว ---
+# --- [TAB 2: COMMS / แชต] ---
 with tab_chat:
-    users_data = db.reference('users').get()
+    try:
+        users_data = db.reference('users').get()
+    except:
+        users_data = {}
+        
     target_list = ["🌐 Global Group"]
     if users_data:
         target_list += [u for u in users_data.keys() if u != user_id]
     
-    target = st.selectbox("เลือกช่องทางสื่อสาร:", target_list)
-    
-    # กำหนดเส้นทางห้องแชต
+    col_chat1, col_chat2 = st.columns([1, 2])
+    with col_chat1:
+        target = st.selectbox("เลือกช่องทางสื่อสาร:", target_list)
+        
+    # กำหนด Path ใน Firebase ตามห้องที่เลือก
     if target == "🌐 Global Group":
         path = 'chats/global'
     else:
         room_id = "_".join(sorted([user_id, target]))
         path = f'chats/private/{room_id}'
 
-    # แสดงข้อความแชต
     st.subheader(f"📟 Room: {target}")
-    chat_container = st.container(height=400)
-    messages = db.reference(path).order_by_child('ts').get()
+    chat_container = st.container(height=350)
     
-    if messages:
-        for m_id, m in messages.items():
-            u_name = m.get('user', 'Unknown')
-            u_msg = m.get('msg', '')
-            txt_color = st.session_state.theme_color if u_name == user_id else "#ff00de"
-            chat_container.markdown(f"<div class='chat-msg'><b style='color:{txt_color}'>{u_name}:</b> {u_msg}</div>", unsafe_allow_html=True)
+    try:
+        # ดึงข้อความและเรียงตาม timestamp
+        messages = db.reference(path).order_by_child('ts').get()
+        if messages:
+            # แปลงจาก OrderedDict เป็น List แล้วเรียงตาม ts (เพื่อความชัวร์ในการแสดงผลจริง)
+            sorted_msgs = sorted(messages.values(), key=lambda x: x.get('ts', 0))
+            for m in sorted_msgs:
+                u_name = m.get('user', 'Unknown')
+                u_msg = m.get('msg', '')
+                # ถ้าเราเป็นคนพิมพ์ ใช้สีเรา ถ้าคนอื่น ใช้สีชมพูสะท้อนแสง
+                txt_color = st.session_state.theme_color if u_name == user_id else "#ff00de"
+                chat_container.markdown(f"<div class='chat-msg'><b style='color:{txt_color}'>{u_name}:</b> {u_msg}</div>", unsafe_allow_html=True)
+    except Exception as e:
+        chat_container.error("ยังไม่มีข้อความ หรือเชื่อมต่อฐานข้อมูลไม่ได้")
 
     # ฟอร์มส่งข้อความ
     with st.form("chat_form", clear_on_submit=True):
-        msg_input = st.text_input("ระบุข้อความ...")
-        if st.form_submit_button("SEND 🛰️") and msg_input:
-            db.reference(path).push({
-                'user': user_id, 'msg': msg_input, 'ts': time.time()
-            })
-            st.rerun()
+        col_input, col_btn = st.columns([4, 1])
+        with col_input:
+            msg_input = st.text_input("TRANSMIT MESSAGE:", label_visibility="collapsed", placeholder="พิมพ์ข้อความที่นี่...")
+        with col_btn:
+            submit_btn = st.form_submit_button("SEND 🚀", use_container_width=True)
+            
+        if submit_btn and msg_input:
+            try:
+                db.reference(path).push({
+                    'user': user_id, 
+                    'msg': msg_input, 
+                    'ts': time.time()
+                })
+                st.rerun() # รีโหลดหน้าเพื่อแสดงข้อความทันที
+            except Exception as e:
+                st.error("ส่งข้อความไม่สำเร็จ")
 
-# --- [TAB: CALL] ระบบคอล (WebRTC) ---
+# --- [TAB 3: VOICE & VIDEO CALL] ---
 with tab_call:
-    st.markdown("### 📞 ระบบสื่อสารด้วยเสียงและภาพ (Peer-to-Peer)")
-    st.info("กรุณากด 'Start' และอนุญาตให้เข้าถึงไมค์/กล้อง เพื่อเริ่มการโทร")
+    st.markdown("### 📞 ระบบสื่อสารด้วยเสียงและภาพ (WebRTC Peer-to-Peer)")
+    st.info("💡 ความจริง: กด 'Start' และเบราว์เซอร์จะขอสิทธิ์เข้าถึงกล้องและไมค์ของคุณ (ใช้งานได้ลื่นไหลสุดเมื่ออยู่บน Network เดียวกัน หรือมี TURN Server)")
+    
+    # ใช้งาน WebRTC ได้จริงตามคำสั่งนี้ (ใช้ Google STUN Server ฟรี)
     webrtc_streamer(
         key="synapse-vcall",
         mode=WebRtcMode.SENDRECV,
@@ -164,7 +216,7 @@ with tab_call:
     )
 
 # ==========================================
-# 5. FOOTER (รักษาสโลแกน)
+# 5. FOOTER
 # ==========================================
 st.write("---")
-st.caption(f"SYNAPSE SYSTEM v2.0 | Logged in as: {user_id} | Theme: {st.session_state.theme_color}")
+st.caption(f"SYNAPSE SYSTEM v3.0 | Logged in as: {user_id} | อยู่นิ่งๆ ไม่เจ็บตัว 🤫")
