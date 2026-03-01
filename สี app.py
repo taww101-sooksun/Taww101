@@ -13,30 +13,54 @@ from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from streamlit_autorefresh import st_autorefresh
 
 # ==========================================
-# 1. SETUP & THEME
+# 1. SETUP & THEME SELECTOR (จุดที่เพิ่มเข้ามา)
 # ==========================================
 st.set_page_config(page_title="SYNAPSE ULTIMATE", layout="wide")
 st_autorefresh(interval=5000, key="global_refresh")
 
-st.markdown("""
+# ระบบเลือกสี
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#00f2fe" 
+
+with st.sidebar:
+    st.markdown("### 🎨 ปรับแต่งสีระบบ")
+    picked_color = st.color_picker("เลือกสีนีออนของคุณ", st.session_state.theme_color)
+    st.session_state.theme_color = picked_color
+    st.write(f"สีปัจจุบัน: {picked_color}")
+    st.write("---")
+    st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+    
+    st.markdown("### 🛰️ NETWORK CENTER")
+    audio_file = "ยักษ์ในตัวฉัน.mp3"
+    if os.path.exists(audio_file):
+        st.audio(audio_file, format="audio/mp3", loop=True)
+    st.write(f"UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")
+
+# CSS ฉีดสีตามที่เลือก (แก้จุด 'นั่ง' เป็น 20px แล้ว)
+st.markdown(f"""
     <style>
-    .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; font-family: 'Courier New', Courier, monospace; }
-    .neon-header { 
+    .stApp {{ background: radial-gradient(circle, #001 0%, #000 100%); color: {st.session_state.theme_color}; font-family: 'Courier New', Courier, monospace; }}
+    .neon-header {{ 
         font-size: 35px; font-weight: 900; text-align: center;
-        color: #fff; text-shadow: 0 0 10px #00f2fe, 0 0 20px #ff00de;
-        border: 2px solid #00f2fe; padding: 10px; background: rgba(0,0,0,0.8);
+        color: #fff; text-shadow: 0 0 10px {st.session_state.theme_color}, 0 0 20px #ff00de;
+        border: 2px solid {st.session_state.theme_color}; padding: 10px; background: rgba(0,0,0,0.8);
         border-radius: 10px; margin-bottom: 20px; letter-spacing: 10px;
-    }
-    .terminal-container {
-        border: 1px solid #00f2fe; padding: 15px; border-radius: 8px;
+    }}
+    .terminal-container {{
+        border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 8px;
         background: rgba(0, 242, 254, 0.05); border-left: 5px solid #ff00de;
         margin-bottom: 20px;
-    }
-    .clock-box {
-        background: rgba(0,0,0,0.6); border: 1px solid #00f2fe;
+    }}
+    .clock-box {{
+        background: rgba(0,0,0,0.6); border: 1px solid {st.session_state.theme_color};
         padding: 10px; border-radius: 8px; text-align: center;
-    }
-    .clock-time { color: #ff00de; font-size: 20px; font-weight: bold; }
+    }}
+    .clock-time {{ color: #ff00de; font-size: 20px; font-weight: bold; }}
+    .stButton>button {{ 
+        border: 1px solid {st.session_state.theme_color} !important; 
+        color: {st.session_state.theme_color} !important; 
+        background-color: transparent !important;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -71,17 +95,7 @@ for col, (city, zone) in zip([c1, c2, c3, c4], zones.items()):
     col.markdown(f"<div class='clock-box'><small>{city}</small><br><span class='clock-time'>{now}</span></div>", unsafe_allow_html=True)
 
 # ==========================================
-# 4. SIDEBAR
-# ==========================================
-with st.sidebar:
-    st.markdown("### 🛰️ NETWORK CENTER")
-    audio_file = "ยักษ์ในตัวฉัน.mp3"
-    if os.path.exists(audio_file):
-        st.audio(audio_file, format="audio/mp3", loop=True)
-    st.write(f"UPTIME: {datetime.datetime.now().strftime('%H:%M:%S')}")
-
-# ==========================================
-# 5. MAIN NAVIGATION
+# 4. MAIN NAVIGATION
 # ==========================================
 tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "💬 การสื่อสาร", "📊 บันทึก", "🔐 SEC", "📺 สื่อ", "🧹 ระบบ"])
 
@@ -96,7 +110,8 @@ with tabs[0]:
             db.reference(f'users/{user_id}').set({
                 'lat': loc['coords']['latitude'], 
                 'lon': loc['coords']['longitude'],
-                'ts': time.time()
+                'ts': time.time(),
+                'color': st.session_state.theme_color
             })
             st.success("POSITION UPDATED")
 
@@ -124,13 +139,19 @@ with tabs[2]:
     with st.form("chat_system", clear_on_submit=True):
         input_msg = st.text_input("TRANSMIT MESSAGE:")
         if st.form_submit_button("SEND") and input_msg:
-            db.reference('global_chat').push({'user': st.session_state.user_id, 'msg': input_msg, 'ts': time.time()})
+            db.reference('global_chat').push({
+                'user': st.session_state.user_id, 
+                'msg': input_msg, 
+                'ts': time.time(),
+                'color': st.session_state.theme_color
+            })
     
     raw_chat = db.reference('global_chat').get()
     if raw_chat:
         msg_list = sorted([v for v in raw_chat.values()], key=lambda x: x.get('ts', 0), reverse=True)
         for m in msg_list[:8]:
-            st.write(f"📌 **{m.get('user')}**: {m.get('msg')}")
+            u_color = m.get('color', st.session_state.theme_color)
+            st.markdown(f"📌 <b style='color:{u_color}'>{m.get('user')}</b>: {m.get('msg')}", unsafe_allow_html=True)
 
 # --- TAB 7: SYS ---
 with tabs[6]:
