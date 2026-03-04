@@ -160,13 +160,64 @@ with tab_gps:
                     folium.Circle(
                         location=[data['lat'], data['lon']],
                         radius=50,
-                        color=u_color,
-                        fill=True,
-                        fill_opacity=0.2
-                    ).add_to(m)
+                        color=u_cofrom streamlit_autorefresh import st_autorefresh # ต้อง pip install streamlit-autorefresh
+
+# --- [หัวใจสำคัญ: สั่ง Refresh อัตโนมัติทุก 10 วินาที] ---
+# อยู่นิ่งๆ ไม่เจ็บตัว แต่แผนที่ต้องวิ่ง!
+st_autorefresh(interval=10 * 1000, key="datarefresh") 
+
+with tab_gps:
+    col_map_ctrl, col_map_display = st.columns([1, 3])
+    
+    # ดึงพิกัดจาก Browser
+    loc = get_geolocation() 
+    
+    with col_map_ctrl:
+        st.subheader("📡 GPS CONTROL")
+        if st.button("🛰️ TRANSMIT NOW"):
+            if loc:
+                # บันทึกพิกัดพร้อม Timestamp ปัจจุบัน
+                now = time.time()
+                db.reference(f'users/{user_id}').update({
+                    'lat': loc['coords']['latitude'], 
+                    'lon': loc['coords']['longitude'],
+                    'last_update': now
+                })
+                st.success(f"ส่งพิกัดแล้วตอน {time.strftime('%H:%M:%S', time.localtime(now))}")
+
+    with col_map_display:
+        # ดึงข้อมูลจาก Firebase (จะถูกดึงใหม่ทุก 10 วิจาก autorefresh)
+        all_users = db.reference('users').get()
         
-        # แสดงผลแผนที่
-        st_folium(m, width="100%", height=550, key="radar_map_v2")
+        # ตั้งค่า Center
+        view_lat, view_lon = 13.75, 100.5
+        if all_users and user_id in all_users:
+            view_lat = all_users[user_id].get('lat')
+            view_lon = all_users[user_id].get('lon')
+
+        m = folium.Map(location=[view_lat, view_lon], zoom_start=18, 
+                       tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+                       attr="Google Satellite")
+
+        if all_users:
+            for name, data in all_users.items():
+                if 'lat' in data and 'lon' in data:
+                    # คำนวณความสดใหม่ของข้อมูล (วินาที)
+                    freshness = time.time() - data.get('last_update', 0)
+                    
+                    # ถ้าอัปเดตล่าสุดไม่เกิน 1 นาที ให้สีสด ถ้าเก่านานแล้วให้สีจาง (กันโดนหลอก)
+                    u_color = 'blue' if name == user_id else 'red'
+                    if freshness > 60: u_color = 'gray' 
+
+                    folium.Marker(
+                        [data['lat'], data['lon']], 
+                        popup=f"{name} ({int(freshness)}s ago)",
+                        icon=folium.Icon(color=u_color)
+                    ).add_to(m)
+
+        # 💡 ใช้ Key ผูกกับเวลาเพื่อให้ Map โหลดใหม่เมื่อมีการ Refresh
+        st_folium(m, width="100%", height=500, key="radar_map_live")
+
 
 # --- [TAB 2: COMMS / แชต] ---
 with tab_chat:
