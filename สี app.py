@@ -12,7 +12,7 @@ from streamlit_autorefresh import st_autorefresh
 # 1. SETUP & THEME
 # ==========================================
 st.set_page_config(page_title="SYNAPSE 2026 PRO", layout="wide")
-st_autorefresh(interval=5000, key="global_refresh") 
+st_autorefresh(interval=10000, key="global_refresh") 
 
 if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#ff0033"
