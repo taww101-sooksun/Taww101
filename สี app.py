@@ -96,52 +96,77 @@ tab_gps, tab_chat, tab_call = st.tabs(["🛰️ GPS & RADAR", "💬 COMMS (แ�
 with tab_gps:
     col_map_ctrl, col_map_display = st.columns([1, 3])
     
+    # ดึงพิกัดจากเบราว์เซอร์ (ต้องรันบน HTTPS หรือ Localhost เท่านั้นถึงจะขึ้น)
+    loc = get_geolocation() 
+    
     with col_map_ctrl:
         st.subheader("📡 ระบบระบุพิกัด")
-        st.write("กดปุ่มด้านล่างเพื่อส่งตำแหน่งปัจจุบันของคุณเข้าสู่ระบบเรดาร์")
-        
-        # ฟังก์ชันอ่าน GPS (ใช้งานได้จริงเมื่อรันบน HTTPS หรือ Localhost)
-        loc = get_geolocation() 
+        st.info(f"รหัสเรียกขาน: **{user_id}**") # ใช้ user_id จากระบบหลักของคุณ
         
         if st.button("🛰️ TRANSMIT MY LOCATION"):
             if loc and 'coords' in loc:
                 try:
+                    lat = loc['coords']['latitude']
+                    lon = loc['coords']['longitude']
                     # บันทึกข้อมูลลง Firebase
-                    db.reference(f'users/{user_id}').set({
-                        'lat': loc['coords']['latitude'], 
-                        'lon': loc['coords']['longitude'],
+                    db.reference(f'users/{user_id}').update({
+                        'lat': lat, 
+                        'lon': lon,
                         'color': st.session_state.theme_color,
                         'last_update': time.time()
                     })
-                    st.success("ส่งพิกัดสำเร็จ!")
+                    st.success(f"ส่งพิกัดสำเร็จ! ({lat:.4f}, {lon:.4f})")
+                    st.balloons()
                 except Exception as e:
-                    st.error(f"ไม่สามารถบันทึกข้อมูลได้: {e}")
+                    st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ DB: {e}")
             else:
-                st.warning("กำลังค้นหาพิกัด... หรือคุณยังไม่อนุญาตให้เข้าถึง GPS ในเบราว์เซอร์")
-    
+                st.warning("🚨 กรุณากด 'Allow' ให้เบราว์เซอร์เข้าถึงตำแหน่งของคุณ")
+
     with col_map_display:
-        # สร้างแผนที่ Folium
-        m = folium.Map(location=[13.75, 100.5], zoom_start=5, tiles="cartodbdark_matter")
+        # ดึงข้อมูลทั้งหมดจาก Firebase มาเตรียมวาด Map
+        all_users = db.reference('users').get()
         
-        try:
-            all_users = db.reference('users').get()
-            if all_users:
-                for name, data in all_users.items():
-                    if isinstance(data, dict) and 'lat' in data and 'lon' in data:
-                        u_color = data.get('color', '#ffffff')
-                        folium.CircleMarker(
-                            location=[data['lat'], data['lon']],
-                            radius=8, 
-                            popup=f"Agent: {name}",
-                            color=u_color, 
-                            fill=True, 
-                            fill_color=u_color, 
-                            fill_opacity=0.8
-                        ).add_to(m)
-        except Exception:
-            pass # ซ่อน Error กรณีที่เชื่อมต่อฐานข้อมูลไม่ได้ในครั้งแรก
-            
-        st_folium(m, width="100%", height=500, key="radar_map")
+        # 🎯 คำนวณจุดศูนย์กลางแผนที่: ถ้ามีตำแหน่งเรา ให้โฟกัสที่เรา ถ้าไม่มีให้ไปกรุงเทพฯ
+        view_lat, view_lon = 13.75, 100.5 
+        if all_users and user_id in all_users:
+            view_lat = all_users[user_id].get('lat', 13.75)
+            view_lon = all_users[user_id].get('lon', 100.5)
+
+        # สร้างแผนที่แบบ Hybrid (เห็นพื้นผิวโลกจริงแบบอันแรกแต่คุมมู้ดให้เข้ากับ Dashboard)
+        m = folium.Map(
+            location=[view_lat, view_lon], 
+            zoom_start=16, 
+            tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+            attr="Google Satellite Hybrid"
+        )
+
+        if all_users:
+            for name, data in all_users.items():
+                if isinstance(data, dict) and 'lat' in data and 'lon' in data:
+                    # ถ้าเป็นตัวเราให้ใช้สีเขียว/น้ำเงินตาม Theme ถ้าคนอื่นให้ใช้สีที่เขาตั้งมา
+                    u_color = data.get('color', '#FF0000') 
+                    is_me = (name == user_id)
+                    
+                    folium.Marker(
+                        location=[data['lat'], data['lon']],
+                        tooltip=f"{'YOU' if is_me else 'AGENT'}: {name}",
+                        icon=folium.Icon(
+                            color='blue' if is_me else 'red', 
+                            icon='user' if is_me else 'info-sign'
+                        )
+                    ).add_to(m)
+                    
+                    # เพิ่มรัศมีวงกลมให้ดูเหมือน Radar Scan
+                    folium.Circle(
+                        location=[data['lat'], data['lon']],
+                        radius=50,
+                        color=u_color,
+                        fill=True,
+                        fill_opacity=0.2
+                    ).add_to(m)
+        
+        # แสดงผลแผนที่
+        st_folium(m, width="100%", height=550, key="radar_map_v2")
 
 # --- [TAB 2: COMMS / แชต] ---
 with tab_chat:
