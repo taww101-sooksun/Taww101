@@ -184,42 +184,85 @@ with tab_gps:
                 db.reference(f'users/{user_id}').update({
                     'lat': loc['coords']['latitude'], 
                     'lon': loc['coords']['longitude'],
-                    'last_update': now
-                })
-                st.success(f"ส่งพิกัดแล้วตอน {time.strftime('%H:%M:%S', time.localtime(now))}")
+# --- [TAB 1: GPS & RADAR] ---
+with tab_gps:
+    # 1. ⚙️ ระบบจัดการข้อมูลและรีเฟรช (ย้ายมาไว้ด้านบนเพื่อความไว)
+    col_map_ctrl, col_map_display = st.columns([1, 3])
+    loc = get_geolocation() 
+    
+    with col_map_ctrl:
+        st.subheader("📡 GPS CONTROL")
+        st.info(f"ID: **{user_id}**")
+        
+        # ปุ่มส่งพิกัด
+        if st.button("🛰️ TRANSMIT NOW", use_container_width=True):
+            if loc and 'coords' in loc:
+                try:
+                    now = time.time()
+                    db.reference(f'users/{user_id}').update({
+                        'lat': loc['coords']['latitude'], 
+                        'lon': loc['coords']['longitude'],
+                        'color': st.session_state.theme_color,
+                        'last_update': now
+                    })
+                    st.success(f"ส่งพิกัดสำเร็จ! ({time.strftime('%H:%M:%S')})")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            else:
+                st.warning("🚨 กรุณาเปิด GPS/Allow Location")
 
     with col_map_display:
-        # ดึงข้อมูลจาก Firebase (จะถูกดึงใหม่ทุก 10 วิจาก autorefresh)
+        # 2. 🛰️ ดึงข้อมูลและวาดแผนที่
         all_users = db.reference('users').get()
         
-        # ตั้งค่า Center
+        # ตั้งค่าจุดโฟกัส (Center)
         view_lat, view_lon = 13.75, 100.5
         if all_users and user_id in all_users:
-            view_lat = all_users[user_id].get('lat')
-            view_lon = all_users[user_id].get('lon')
+            view_lat = all_users[user_id].get('lat', 13.75)
+            view_lon = all_users[user_id].get('lon', 100.5)
 
-        m = folium.Map(location=[view_lat, view_lon], zoom_start=18, 
-                       tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
-                       attr="Google Satellite")
+        # สร้าง Map (ใช้ Google Satellite Hybrid เพื่อความคมชัด)
+        m = folium.Map(
+            location=[view_lat, view_lon], 
+            zoom_start=18, 
+            tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+            attr="Google Satellite"
+        )
 
         if all_users:
             for name, data in all_users.items():
-                if 'lat' in data and 'lon' in data:
-                    # คำนวณความสดใหม่ของข้อมูล (วินาที)
-                    freshness = time.time() - data.get('last_update', 0)
+                if isinstance(data, dict) and 'lat' in data and 'lon' in data:
+                    u_lat = data['lat']
+                    u_lon = data['lon']
+                    u_color_hex = data.get('color', '#00f2fe')
                     
-                    # ถ้าอัปเดตล่าสุดไม่เกิน 1 นาที ให้สีสด ถ้าเก่านานแล้วให้สีจาง (กันโดนหลอก)
-                    u_color = 'blue' if name == user_id else 'red'
-                    if freshness > 60: u_color = 'gray' 
+                    # เช็กความสดใหม่ (Freshness)
+                    last_ts = data.get('last_update', 0)
+                    diff = time.time() - last_ts
+                    
+                    # กำหนดสี Marker: เรา=น้ำเงิน, คนอื่น=แดง, เกิน 2 นาที=เทา (ป้องกันข้อมูลหลอก)
+                    m_color = 'blue' if name == user_id else 'red'
+                    if diff > 120: m_color = 'gray'
 
+                    # วางหมุด
                     folium.Marker(
-                        [data['lat'], data['lon']], 
-                        popup=f"{name} ({int(freshness)}s ago)",
-                        icon=folium.Icon(color=u_color)
+                        location=[u_lat, u_lon],
+                        tooltip=f"{name} ({int(diff)}s ago)",
+                        icon=folium.Icon(color=m_color, icon='user')
                     ).add_to(m)
 
-        # 💡 ใช้ Key ผูกกับเวลาเพื่อให้ Map โหลดใหม่เมื่อมีการ Refresh
-        st_folium(m, width="100%", height=500, key="radar_map_live")
+                    # วาดรัศมีรอบตัว (Radar Effect) - แก้ไข Syntax ที่ Error แล้ว
+                    folium.Circle(
+                        location=[u_lat, u_lon],
+                        radius=30,
+                        color=u_color_hex,
+                        fill=True,
+                        fill_opacity=0.2
+                    ).add_to(m)
+
+        # แสดงแผนที่ (ใช้ Key ที่มี User ID เพื่อให้มันจำสถานะแยกกันได้)
+        st_folium(m, width="100%", height=550, key=f"radar_{user_id}")
 
 
 # --- [TAB 2: COMMS / แชต] ---
