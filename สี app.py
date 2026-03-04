@@ -251,18 +251,91 @@ with tab_gps:
                         tooltip=f"{name} ({int(diff)}s ago)",
                         icon=folium.Icon(color=m_color, icon='user')
                     ).add_to(m)
+# ==========================================
+# 4. MAIN MENU TABS
+# ==========================================
+tab_gps, tab_chat, tab_call = st.tabs(["🛰️ GPS & RADAR", "💬 COMMS (แชต)", "📞 VOICE / VIDEO CALL"])
 
-                    # วาดรัศมีรอบตัว (Radar Effect) - แก้ไข Syntax ที่ Error แล้ว
+# --- [TAB 1: GPS & RADAR] ---
+with tab_gps:
+    col_map_ctrl, col_map_display = st.columns([1, 3])
+    
+    # ดึงพิกัดจากเบราว์เซอร์
+    loc = get_geolocation() 
+    
+    with col_map_ctrl:
+        st.subheader("📡 GPS CONTROL")
+        st.info(f"รหัสเรียกขาน: **{user_id}**")
+        
+        # ปุ่มส่งพิกัดเข้า Firebase
+        if st.button("🛰️ TRANSMIT MY LOCATION", use_container_width=True):
+            if loc and 'coords' in loc:
+                try:
+                    now = time.time()
+                    db.reference(f'users/{user_id}').update({
+                        'lat': loc['coords']['latitude'], 
+                        'lon': loc['coords']['longitude'],
+                        'color': st.session_state.theme_color,
+                        'last_update': now
+                    })
+                    st.success(f"ส่งพิกัดสำเร็จ! ({time.strftime('%H:%M:%S', time.localtime(now))})")
+                    st.balloons()
+                except Exception as e:
+                    st.error(f"DATABASE ERROR: {e}")
+            else:
+                st.warning("🚨 กรุณาอนุญาต (Allow) GPS ในเบราว์เซอร์")
+
+    with col_map_display:
+        # ดึงข้อมูลทั้งหมดจาก Firebase
+        all_users = db.reference('users').get()
+        
+        # ตั้งค่าจุดศูนย์กลาง (Center)
+        view_lat, view_lon = 13.75, 100.5 
+        if all_users and user_id in all_users:
+            view_lat = all_users[user_id].get('lat', 13.75)
+            view_lon = all_users[user_id].get('lon', 100.5)
+
+        # สร้างแผนที่ Satellite Hybrid
+        m = folium.Map(
+            location=[view_lat, view_lon], 
+            zoom_start=18, 
+            tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+            attr="Google Satellite Hybrid"
+        )
+
+        if all_users:
+            for name, data in all_users.items():
+                if isinstance(data, dict) and 'lat' in data and 'lon' in data:
+                    u_lat = data['lat']
+                    u_lon = data['lon']
+                    u_color = data.get('color', '#00f2fe')
+                    
+                    # เช็กความสดใหม่ของข้อมูล (วินาที)
+                    freshness = time.time() - data.get('last_update', 0)
+                    
+                    # กำหนดสีหมุด: เรา=น้ำเงิน, คนอื่น=แดง, เกิน 2 นาที=เทา
+                    m_color = 'blue' if name == user_id else 'red'
+                    if freshness > 120: m_color = 'gray'
+
+                    # วางหมุดเอเจนท์
+                    folium.Marker(
+                        location=[u_lat, u_lon],
+                        tooltip=f"Agent: {name}",
+                        popup=f"Last seen: {int(freshness)}s ago",
+                        icon=folium.Icon(color=m_color, icon='user')
+                    ).add_to(m)
+
+                    # วาดรัศมี Radar รอบตัว
                     folium.Circle(
                         location=[u_lat, u_lon],
-                        radius=30,
-                        color=u_color_hex,
+                        radius=40,
+                        color=u_color,
                         fill=True,
                         fill_opacity=0.2
                     ).add_to(m)
 
-        # แสดงแผนที่ (ใช้ Key ที่มี User ID เพื่อให้มันจำสถานะแยกกันได้)
-        st_folium(m, width="100%", height=550, key=f"radar_{user_id}")
+        # แสดงผลแผนที่ (ใช้ Key ที่ผูกกับ user_id เพื่อความเสถียร)
+        st_folium(m, width="100%", height=500, key=f"radar_map_{user_id}")
 
 
 # --- [TAB 2: COMMS / แชต] ---
