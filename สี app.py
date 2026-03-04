@@ -20,7 +20,7 @@ if 'theme_color' not in st.session_state:
 
 # --- SIDEBAR: การเข้าถึงและตั้งค่าส่วนตัว ---
 with st.sidebar:
-    st.markdown("### 🔐 ACCESS CONTROL")
+st.markdown("### 🔐 ACCESS CONTROL")
     user_id = st.text_input("CODENAME:", value="Agent_001")
     # เลือกสีประจำตัว ซึ่งจะไปผูกกับสีข้อความแชตและสีหมุด GPS
     st.session_state.theme_color = st.color_picker("เลือกสีประจำตัว / สีหมุด", st.session_state.theme_color)
@@ -31,8 +31,8 @@ with st.sidebar:
     st.write(f'**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"') # สโลแกนประจำตัวคุณ
     
     # นาฬิกาโลก
-    st.markdown("---")
-    st.markdown("### 🌍 WORLD CLOCK")
+st.markdown("---")
+st.markdown("### 🌍 WORLD CLOCK")
     zones = {'Bangkok': 'Asia/Bangkok', 'New York': 'America/New_York', 'London': 'Europe/London', 'Tokyo': 'Asia/Tokyo'}
     for city, zone in zones.items():
         t = datetime.datetime.now(pytz.timezone(zone)).strftime('%H:%M:%S')
@@ -74,13 +74,13 @@ st.markdown(f"""
 if os.path.exists("logo3.jpg"):
         st.image("logo3.jpg", use_container_width=True)
     
-    st.markdown("### 🔐 ACCESS CONTROL")
+st.markdown("### 🔐 ACCESS CONTROL")
     user_id = st.text_input("CODENAME:", value="Agent_001")
     st.session_state.theme_color = st.color_picker("RADAR COLOR", st.session_state.theme_color)
     
     # ตัวเลือกแผนที่แบบใหม่ปี 2026
-    st.markdown("---")
-    st.markdown("### 🗺️ MAP ENGINE 2026")
+st.markdown("---")
+st.markdown("### 🗺️ MAP ENGINE 2026")
     map_style = st.selectbox("เลือกรูปแบบแผนที่:", 
         ["Satellite (ชัดพิเศษ)", "Hybrid (ดาวเทียม+ถนน)", "Dark Radar (ไซไฟ)"])
     
