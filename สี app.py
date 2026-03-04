@@ -71,9 +71,7 @@ st.markdown(f"""
 # ==========================================
 # 2. LOGO & HEADER
 # ==========================================
-st.markdown(f"<h1 class='neon-text'>SYNAPSE COMMAND CENTER</h1>", unsafe_allow_html=True)
-# แสดง LOGO
-    if os.path.exists("logo3.jpg"):
+if os.path.exists("logo3.jpg"):
         st.image("logo3.jpg", use_container_width=True)
     
     st.markdown("### 🔐 ACCESS CONTROL")
