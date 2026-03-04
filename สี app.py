@@ -19,8 +19,8 @@ if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#00f2fe"
 
 # --- SIDEBAR: การเข้าถึงและตั้งค่าส่วนตัว ---
-with st.sidebar:
-st.markdown("### 🔐 ACCESS CONTROL")
+    with st.sidebar:
+    st.markdown("### 🔐 ACCESS CONTROL")
     user_id = st.text_input("CODENAME:", value="Agent_001")
     # เลือกสีประจำตัว ซึ่งจะไปผูกกับสีข้อความแชตและสีหมุด GPS
     st.session_state.theme_color = st.color_picker("เลือกสีประจำตัว / สีหมุด", st.session_state.theme_color)
