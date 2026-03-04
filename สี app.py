@@ -155,8 +155,7 @@ with tab_gps:
                             icon='user' if is_me else 'info-sign'
                         )
                     ).add_to(m)
-                    
-# --- แก้ไขส่วน Circle ใน Loop ของคุณ ---
+                    # --- แก้ไขส่วน Circle ใน Loop ของคุณ ---
 folium.Circle(
     location=[data['lat'], data['lon']],
     radius=50,
@@ -164,6 +163,7 @@ folium.Circle(
     fill=True,
     fill_opacity=0.2
 ).add_to(m) # <--- เช็กตรงนี้ว่ามี ) ครบ 2 อันไหม (อันหนึ่งปิด Circle อีกอันปิด add_to)
+
 
 # --- [หัวใจสำคัญ: สั่ง Refresh อัตโนมัติทุก 10 วินาที] ---
 # อยู่นิ่งๆ ไม่เจ็บตัว แต่แผนที่ต้องวิ่ง!
