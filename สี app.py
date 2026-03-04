@@ -17,7 +17,9 @@ st_autorefresh(interval=5000, key="global_refresh")
 
 if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#00f2fe"
-
+if os.path.exists("logo3.jpg"):
+        st.image("logo3.jpg", width=400)
+    st.markdown('<div class="neon-header">SYNAPSE</div>', unsafe_allow_html=True)
 # --- SIDEBAR: การเข้าถึงและตั้งค่าส่วนตัว ---
 with st.sidebar:
     st.markdown("### 🔐 ACCESS CONTROL")
