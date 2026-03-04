@@ -18,8 +18,7 @@ st_autorefresh(interval=5000, key="global_refresh")
 if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#00f2fe"
 
-# --- SIDEBAR: การเข้าถึงและตั้งค่าส่วนตัว ---
-    with st.sidebar:
+# --- SIDEBAR: การเข้าถึงและตั้งค่าส่วนตัว ---with st.sidebar:
     st.markdown("### 🔐 ACCESS CONTROL")
     user_id = st.text_input("CODENAME:", value="Agent_001")
     # เลือกสีประจำตัว ซึ่งจะไปผูกกับสีข้อความแชตและสีหมุด GPS
