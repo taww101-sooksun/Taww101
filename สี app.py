@@ -7,6 +7,7 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_webrtc import webrtc_streamer, WebRtcMode
 from streamlit_autorefresh import st_autorefresh
+import os # เพิ่ม os เพื่อตรวจสอบไฟล์โลโก้
 
 # ==========================================
 # 1. SETUP & THEME (ตั้งค่าเริ่มต้นและรีเฟรชหน้าจอ)
@@ -20,6 +21,13 @@ if 'theme_color' not in st.session_state:
 
 # --- SIDEBAR: การเข้าถึงและตั้งค่าส่วนตัว ---
 with st.sidebar:
+    # --- เพิ่ม LOGO ---
+    if os.path.exists("logo3.jpg"): # ตรวจสอบก่อนว่ามีไฟล์หรือไม่
+        st.image("logo3.jpg", use_column_width=True)
+    else:
+        st.error("⚠️ ไม่พบไฟล์ logo3.jpg กรุณาตรวจสอบ")
+    st.markdown("---")
+    
     st.markdown("### 🔐 ACCESS CONTROL")
     user_id = st.text_input("CODENAME:", value="Agent_001")
     # เลือกสีประจำตัว ซึ่งจะไปผูกกับสีข้อความแชตและสีหมุด GPS
@@ -120,8 +128,14 @@ with tab_gps:
                 st.warning("กำลังค้นหาพิกัด... หรือคุณยังไม่อนุญาตให้เข้าถึง GPS ในเบราว์เซอร์")
     
     with col_map_display:
-        # สร้างแผนที่ Folium
-        m = folium.Map(location=[13.75, 100.5], zoom_start=5, tiles="cartodbdark_matter")
+        # --- ปรับปรุงแผนที่ให้ชัดเจนขึ้น ---
+        # ใช้ tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" สำหรับ Google Hybrid Map
+        m = folium.Map(
+            location=[13.75, 100.5], 
+            zoom_start=15, # ปรับซูมให้เห็นรายละเอียดชัดขึ้น
+            tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+            attr="Google Hybrid"
+        )
         
         try:
             all_users = db.reference('users').get()
@@ -131,7 +145,7 @@ with tab_gps:
                         u_color = data.get('color', '#ffffff')
                         folium.CircleMarker(
                             location=[data['lat'], data['lon']],
-                            radius=8, 
+                            radius=10, # ปรับขนาดหมุดให้ใหญ่ขึ้นเล็กน้อย
                             popup=f"Agent: {name}",
                             color=u_color, 
                             fill=True, 
@@ -141,7 +155,7 @@ with tab_gps:
         except Exception:
             pass # ซ่อน Error กรณีที่เชื่อมต่อฐานข้อมูลไม่ได้ในครั้งแรก
             
-        st_folium(m, width="100%", height=500, key="radar_map")
+        st_folium(m, width="100%", height=600, key="radar_map") # ปรับความสูงแผนที่
 
 # --- [TAB 2: COMMS / แชต] ---
 with tab_chat:
