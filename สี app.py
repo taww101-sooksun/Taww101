@@ -72,6 +72,36 @@ st.markdown(f"""
 # 2. LOGO & HEADER
 # ==========================================
 st.markdown(f"<h1 class='neon-text'>SYNAPSE COMMAND CENTER</h1>", unsafe_allow_html=True)
+# แสดง LOGO
+    if os.path.exists("logo3.jpg"):
+        st.image("logo3.jpg", use_container_width=True)
+    
+    st.markdown("### 🔐 ACCESS CONTROL")
+    user_id = st.text_input("CODENAME:", value="Agent_001")
+    st.session_state.theme_color = st.color_picker("RADAR COLOR", st.session_state.theme_color)
+    
+    # ตัวเลือกแผนที่แบบใหม่ปี 2026
+    st.markdown("---")
+    st.markdown("### 🗺️ MAP ENGINE 2026")
+    map_style = st.selectbox("เลือกรูปแบบแผนที่:", 
+        ["Satellite (ชัดพิเศษ)", "Hybrid (ดาวเทียม+ถนน)", "Dark Radar (ไซไฟ)"])
+    
+    st.write(f"USER: **{user_id}**")
+    st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+
+# --- CSS NEON STYLE ---
+st.markdown(f"""
+    <style>
+    .stApp {{ background: #000; color: {st.session_state.theme_color}; }}
+    .neon-text {{ 
+        color: #fff; text-shadow: 0 0 10px {st.session_state.theme_color};
+        text-align: center; border: 2px solid {st.session_state.theme_color}; 
+        padding: 15px; border-radius: 15px; background: rgba(0,0,0,0.8);
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+st.markdown(f"<h1 class='neon-text'>SYNAPSE COMMAND CENTER 2026</h1>", unsafe_allow_html=True)
 
 # ==========================================
 # 3. FIREBASE CONNECTION
