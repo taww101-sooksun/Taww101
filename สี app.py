@@ -16,10 +16,15 @@ st.set_page_config(page_title="SYNAPSE 2026 PRO", layout="wide")
 st_autorefresh(interval=10000, key="global_refresh") 
 
 # --- ระบบ Google Login (เชื่อมกับ Secrets ที่คุณตั้งไว้) ---
+# --- อัปเดตชุดข้อมูลใหม่ ---
 auth = Authenticate(
     secret_key=st.secrets["google"]["secret_key"],
     client_id=st.secrets["google"]["client_id"],
     client_secret=st.secrets["google"]["client_secret"],
+    redirect_uri="https://sooksun101.streamlit.app/",
+    cookie_name="sooksun_cookie"
+)
+
     redirect_uri="https://sooksun101.streamlit.app/",
     cookie_name="sooksun_cookie"
 )
