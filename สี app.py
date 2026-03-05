@@ -1,196 +1,150 @@
 import streamlit as st
-from streamlit_google_auth import Authenticate
-import firebase_admin
-from firebase_admin import credentials, db
-import time, os
+import requests
 from streamlit_js_eval import get_geolocation
+from datetime import datetime
+import firebase_admin
+from firebase_admin import credentials, db, storage
 import folium
 from streamlit_folium import st_folium
-from streamlit_webrtc import webrtc_streamer, WebRtcMode
-from streamlit_autorefresh import st_autorefresh
+import uuid
 
-# ==========================================
-# 1. SETUP & THEME
-# ==========================================
-st.set_page_config(page_title="SYNAPSE 2026 PRO", layout="wide")
-st_autorefresh(interval=10000, key="global_refresh") 
+# --- 1. INITIALIZE (ต้องอยู่บรรทัดแรกสุด) ---
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
 
-# --- ระบบ Google Login ---
-# ดึงค่าจาก st.secrets["google"] ที่คุณตั้งไว้
-# --- แก้ไขบรรทัดที่ 20-26 ---
-try:
-    auth = Authenticate(
-        cookie_secret=st.secrets["google"]["secret_key"], # เปลี่ยนจาก secret_key เป็น cookie_secret
-        client_id=st.secrets["google"]["client_id"],
-        client_secret=st.secrets["google"]["client_secret"],
-        redirect_uri="https://sooksun101.streamlit.app",
-        cookie_name="sooksun_cookie"
-    )
-    auth.check_authenticity()
-except Exception as e:
-    st.error(f"❌ ตั้งค่า Auth ผิดพลาด: {e}")
+def init_firebase():
+    if not firebase_admin._apps:
+        try:
+            # ใช้ secrets จาก streamlit
+            fb_creds = dict(st.secrets["firebase_service_account"])
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app',
+                'storageBucket': 'notty-101.firebasestorage.app'
+            })
+        except Exception as e:
+            st.error(f"Firebase Connection Error: {e}")
+            return None
+    return storage.bucket()
+
+bucket = init_firebase()
+
+# --- 2. SECURITY GATE ---
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.markdown("<h2 style='text-align: center;'>🔐 SYNAPSE ACCESS CONTROL</h2>", unsafe_allow_html=True)
+    with st.form("Login"):
+        u_id = st.text_input("Enter your ID / ใส่ ID")
+        u_pw = st.text_input("Password", type="password")
+        if st.form_submit_button("UNLOCK SYSTEM"):
+            if u_pw == "99999999" and u_id: 
+                st.session_state.authenticated = True
+                st.session_state.my_id = u_id.strip()
+                # บันทึกสถานะ Online ใน DB จริงๆ
+                db.reference(f'/users/{u_id.strip()}').update({'last_seen': datetime.now().timestamp()})
+                st.rerun()
     st.stop()
 
-    auth = Authenticate(
-        secret_key=st.secrets["google"]["secret_key"],
-        client_id=st.secrets["google"]["client_id"],
-        client_secret=st.secrets["google"]["client_secret"],
-        redirect_uri="https://sooksun101.streamlit.app",
-        cookie_name="sooksun_cookie"
-    )
-    # ตรวจสอบสถานะ
-    auth.check_authenticity()
-except Exception as e:
-    st.error(f"❌ ตั้งค่า Auth ผิดพลาด: {e}")
-    st.stop()
+my_id = st.session_state.my_id
 
-# ==========================================
-# 2. LOGIN GATEKEEPER (กำแพงกั้นคนนอก)
-# ==========================================
-if not st.session_state.get("auth_state"):
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if os.path.exists("logo3.jpg"):
-            st.image("logo3.jpg", use_container_width=True)
-        st.markdown("<h2 style='text-align:center;'>ACCESS RESTRICTED</h2>", unsafe_allow_html=True)
-        st.info("กรุณาล็อกอินด้วย Google เพื่อยืนยันตัวตนเอเจนท์")
-        # แสดงปุ่ม Login
-        auth.login()
-    st.stop()  # หยุดการทำงานที่เหลือทั้งหมดจนกว่าจะล็อกอินสำเร็จ
-
-# --- ดึงข้อมูล User เมื่อล็อกอินผ่านแล้ว ---
-user_info = st.session_state.get("user_info", {})
-user_id = user_info.get("name", "Unknown Agent")
-user_email = user_info.get("email", "No Email")
-
-if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#ff0033"
-
-# ==========================================
-# 3. FIREBASE CONNECTION
-# ==========================================
-if not firebase_admin._apps:
-    try:
-        fb_dict = dict(st.secrets["firebase"])
-        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
-        creds = credentials.Certificate(fb_dict)
-        firebase_admin.initialize_app(creds, {
-            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app'
-        })
-    except Exception as e:
-        st.error(f"Firebase Error: {e}")
-
-# --- SIDEBAR ---
-with st.sidebar:
-    if os.path.exists("logo3.jpg"):
-        st.image("logo3.jpg", use_container_width=True)
-    
-    st.markdown(f"### 👤 AGENT: {user_id}")
-    st.caption(f"Email: {user_email}")
-    st.session_state.theme_color = st.color_picker("RADAR COLOR", st.session_state.theme_color)
-    
-    if st.button("🔌 LOGOUT", use_container_width=True):
-        auth.logout()
-
-    st.markdown("---")
-    st.subheader("🧹 ADMIN CONTROL")
-    admin_key = st.text_input("ADMIN PASS:", type="password")
-    if admin_key == "1234": 
-        if st.button("☢️ ERASE ALL DATA", use_container_width=True):
-            db.reference('chats').delete()
-            db.reference('users').delete()
-            st.success("ระบบถูกล้างข้อมูลแล้ว")
-            st.rerun()
-
-# --- CSS STYLE ---
-st.markdown(f"""
+# --- 3. CUSTOM STYLE ---
+st.markdown("""
     <style>
-    .stApp {{ background: #000; color: {st.session_state.theme_color}; font-family: 'Courier New', Courier, monospace; }}
-    .neon-text {{ 
-        color: #fff; text-shadow: 0 0 10px {st.session_state.theme_color};
-        text-align: center; border: 2px solid {st.session_state.theme_color}; 
-        padding: 15px; border-radius: 15px; background: rgba(0,0,0,0.8);
-    }}
-    .chat-msg {{ border-left: 3px solid {st.session_state.theme_color}; padding-left: 10px; margin-bottom: 5px; background: rgba(255,255,255,0.05); }}
+    .stApp { background: #0f0c29; color: white; }
+    .chat-container { 
+        background: rgba(255, 255, 255, 0.05); 
+        padding: 20px; 
+        border-radius: 15px; 
+        height: 500px; 
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown(f"<h1 class='neon-text'>SYNAPSE COMMAND CENTER 2026</h1>", unsafe_allow_html=True)
-
-# ==========================================
-# 4. MAIN TABS
-# ==========================================
-tab_gps, tab_chat, tab_call = st.tabs(["🛰️ GPS & RADAR", "💬 COMMS (แชต)", "📞 VOICE / VIDEO CALL"])
-
-# --- [TAB 1: GPS & RADAR] ---
-with tab_gps:
-    loc = get_geolocation()
-    col_ctrl, col_disp = st.columns([1, 3])
+# --- 4. SIDEBAR ---
+with st.sidebar:
+    st.title("S Y N A P S E")
+    st.write(f"🟢 **Online:** {my_id}")
     
-    with col_ctrl:
-        st.subheader("📡 POSITIONING")
-        if st.button("🛰️ TRANSMIT LOCATION", use_container_width=True):
-            if loc:
-                db.reference(f'users/{user_id}').update({
-                    'lat': loc['coords']['latitude'], 
-                    'lon': loc['coords']['longitude'],
-                    'color': st.session_state.theme_color,
-                    'last_update': time.time(),
-                    'email': user_email
-                })
-                st.success("อัปเดตพิกัดเรียบร้อย!")
+    # ดึงรายชื่อเพื่อนที่เคยเข้าระบบ
+    users_ref = db.reference('/users').get()
+    friend_list = [u for u in users_ref.keys() if u != my_id] if users_ref else []
+    target_chat = st.selectbox("💬 เลือกเพื่อนสนทนา:", ["-- เลือกเพื่อน --"] + friend_list)
+    
+    st.divider()
+    if st.button("Logout"):
+        st.session_state.authenticated = False
+        st.rerun()
 
-    with col_disp:
-        all_users = db.reference('users').get()
-        v_lat, v_lon = 13.75, 100.5
-        if all_users and user_id in all_users:
-            v_lat, v_lon = all_users[user_id]['lat'], all_users[user_id]['lon']
+# --- 5. CHAT & SATELLITE ---
+col1, col2 = st.columns([1, 2])
 
-        m = folium.Map(location=[v_lat, v_lon], zoom_start=18, 
-                       tiles="https://mt1.google.com{x}&y={y}&z={z}", 
-                       attr="Google Hybrid")
+with col1:
+    st.subheader("📍 Satellite Tracking")
+    location = get_geolocation()
+    if location:
+        coords = location.get('coords', {})
+        lat, lon = coords.get('latitude'), coords.get('longitude')
+        if lat and lon:
+            m = folium.Map(location=[lat, lon], zoom_start=16, tiles='CartoDB dark_matter')
+            folium.Marker([lat, lon], popup="Your Location").add_to(m)
+            st_folium(m, width=350, height=300, key="map")
+
+with col2:
+    if target_chat != "-- เลือกเพื่อน --":
+        st.subheader(f"Talking to: {target_chat}")
         
-        current_time = time.time()
-        if all_users:
-            for name, data in all_users.items():
-                if isinstance(data, dict) and 'lat' in data:
-                    if (current_time - data.get('last_update', 0)) < 600:
-                        u_c = data.get('color', st.session_state.theme_color)
-                        folium.CircleMarker([data['lat'], data['lon']], radius=10, color=u_c, fill=True, popup=f"{name} ({data.get('email')})").add_to(m)
-        st_folium(m, width="100%", height=500, key="radar_main")
+        chat_room_id = "_".join(sorted([my_id, target_chat]))
+        chat_ref = db.reference(f'/chats/{chat_room_id}')
 
-# --- [TAB 2: CHAT SYSTEM] ---
-with tab_chat:
-    users_data = db.reference('users').get() or {}
-    target_list = ["🌐 Global Group"] + [u for u in users_data.keys() if u != user_id]
-    target = st.selectbox("เลือกช่องทางสื่อสาร:", target_list)
-    
-    path = 'chats/global' if target == "🌐 Global Group" else f"chats/private/{'_'.join(sorted([user_id, target]))}"
-    
-    chat_container = st.container(height=350)
-    messages = db.reference(path).order_by_child('ts').get()
-    if messages:
-        for m in sorted(messages.values(), key=lambda x: x.get('ts', 0)):
-            u_name = m.get('user', 'Unknown')
-            txt_c = st.session_state.theme_color if u_name == user_id else "#ff00de"
-            chat_container.markdown(f"<div class='chat-msg'><b style='color:{txt_c}'>{u_name}:</b> {m.get('msg')}</div>", unsafe_allow_html=True)
+        # ดึงข้อความ 20 อันล่าสุด (ดึงจาก Server โดยตรงเพื่อความเร็ว)
+        msgs_data = chat_ref.order_by_child('timestamp').limit_to_last(20).get()
+        
+        # แสดงผล
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        if msgs_data:
+            for key in msgs_data:
+                m = msgs_data[key]
+                is_me = m['sender'] == my_id
+                with st.chat_message("user" if is_me else "assistant"):
+                    st.write(f"**{m['sender']}**")
+                    if m.get('text'): st.write(m['text'])
+                    if m.get('type') in ['image', 'video']:
+                        if m.get('type') == 'image': st.image(m['url'])
+                        else: st.video(m['url'])
+                    st.caption(m.get('time', ''))
+        
+        # ฟอร์มส่งข้อความ
+        with st.form("chat_form", clear_on_submit=True):
+            msg_text = st.text_input("พิมพ์ข้อความ...")
+            uploaded_file = st.file_uploader("แนบไฟล์ (Image/Video)", type=['jpg','png','mp4'])
+            submit = st.form_submit_button("SEND 🚀")
+            
+            if submit:
+                new_msg = {
+                    'sender': my_id,
+                    'timestamp': datetime.now().timestamp(),
+                    'time': datetime.now().strftime('%H:%M'),
+                    'type': 'text'
+                }
+                
+                if uploaded_file:
+                    file_id = f"{uuid.uuid4()}_{uploaded_file.name}"
+                    blob = bucket.blob(f"chat_media/{file_id}")
+                    blob.upload_from_file(uploaded_file, content_type=uploaded_file.type)
+                    blob.make_public()
+                    new_msg['url'] = blob.public_url
+                    new_msg['type'] = 'image' if 'image' in uploaded_file.type else 'video'
+                
+                if msg_text:
+                    new_msg['text'] = msg_text
+                
+                if msg_text or uploaded_file:
+                    chat_ref.push(new_msg)
+                    st.rerun()
+    else:
+        st.info("กรุณาเลือกเพื่อนเพื่อเริ่มการสนทนา")
 
-    with st.form("chat_form", clear_on_submit=True):
-        col_in, col_bt = st.columns([4, 1])
-        msg_in = col_in.text_input("TRANSMIT MESSAGE:", label_visibility="collapsed")
-        if col_bt.form_submit_button("SEND 🚀") and msg_in:
-            db.reference(path).push({'user': user_id, 'msg': msg_in, 'ts': time.time()})
-            st.rerun()
-
-# --- [TAB 3: VIDEO CALL SYSTEM] ---
-with tab_call:
-    st.markdown("### 📞 P2P ENCRYPTED CALL")
-    webrtc_streamer(
-        key="synapse-vcall-2026",
-        mode=WebRtcMode.SENDRECV,
-        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-        media_stream_constraints={"video": True, "audio": True}
-    )
-
-st.write("---")
-st.caption(f"SYNAPSE v4.2 PRO | {user_id} | อยู่นิ่งๆ ไม่เจ็บตัว 🤫")
