@@ -17,13 +17,20 @@ st_autorefresh(interval=10000, key="global_refresh")
 
 # --- ระบบ Google Login ---
 # ดึงค่าจาก st.secrets["google"] ที่คุณตั้งไว้
-# --- ตรวจสอบว่ามีค่าใน Secrets หรือไม่ก่อนเริ่ม ---
-if "google" not in st.secrets:
-    st.error("❌ ไม่พบข้อมูล [google] ในหน้า Secrets! กรุณาตั้งค่าก่อน")
+# --- แก้ไขบรรทัดที่ 20-26 ---
+try:
+    auth = Authenticate(
+        cookie_secret=st.secrets["google"]["secret_key"], # เปลี่ยนจาก secret_key เป็น cookie_secret
+        client_id=st.secrets["google"]["client_id"],
+        client_secret=st.secrets["google"]["client_secret"],
+        redirect_uri="https://sooksun101.streamlit.app",
+        cookie_name="sooksun_cookie"
+    )
+    auth.check_authenticity()
+except Exception as e:
+    st.error(f"❌ ตั้งค่า Auth ผิดพลาด: {e}")
     st.stop()
 
-# --- สร้างระบบ Google Login ---
-try:
     auth = Authenticate(
         secret_key=st.secrets["google"]["secret_key"],
         client_id=st.secrets["google"]["client_id"],
