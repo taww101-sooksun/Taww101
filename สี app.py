@@ -1,170 +1,180 @@
 import streamlit as st
-import requests
-from streamlit_js_eval import get_geolocation
-from datetime import datetime
-import pytz
-from timezonefinder import TimezoneFinder
-from geopy.geocoders import Nominatim
-import folium
-from streamlit_folium import st_folium
+from streamlit_google_auth import Authenticate
 import firebase_admin
 from firebase_admin import credentials, db
-import os
+import time, os
+from streamlit_js_eval import get_geolocation
+import folium
+from streamlit_folium import st_folium
+from streamlit_webrtc import webrtc_streamer, WebRtcMode
+from streamlit_autorefresh import st_autorefresh
 
-# --- 1. INITIALIZE FIREBASE ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="centered")
+# ==========================================
+# 1. SETUP & THEME
+# ==========================================
+st.set_page_config(page_title="SYNAPSE 2026 PRO", layout="wide")
+st_autorefresh(interval=10000, key="global_refresh") 
 
+# --- ระบบ Google Login ---
+# ดึงค่าจาก st.secrets["google"] ที่คุณตั้งไว้
+auth = Authenticate(
+    secret_key=st.secrets["google"]["secret_key"],
+    client_id=st.secrets["google"]["client_id"],
+    client_secret=st.secrets["google"]["client_secret"],
+    redirect_uri="https://sooksun101.streamlit.app",
+    cookie_name="sooksun_cookie"
+)
+
+# ตรวจสอบ Cookie เดิม (ถ้ามี)
+auth.check_authenticity()
+
+# ==========================================
+# 2. LOGIN GATEKEEPER (กำแพงกั้นคนนอก)
+# ==========================================
+if not st.session_state.get("auth_state"):
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if os.path.exists("logo3.jpg"):
+            st.image("logo3.jpg", use_container_width=True)
+        st.markdown("<h2 style='text-align:center;'>ACCESS RESTRICTED</h2>", unsafe_allow_html=True)
+        st.info("กรุณาล็อกอินด้วย Google เพื่อยืนยันตัวตนเอเจนท์")
+        # แสดงปุ่ม Login
+        auth.login()
+    st.stop()  # หยุดการทำงานที่เหลือทั้งหมดจนกว่าจะล็อกอินสำเร็จ
+
+# --- ดึงข้อมูล User เมื่อล็อกอินผ่านแล้ว ---
+user_info = st.session_state.get("user_info", {})
+user_id = user_info.get("name", "Unknown Agent")
+user_email = user_info.get("email", "No Email")
+
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#ff0033"
+
+# ==========================================
+# 3. FIREBASE CONNECTION
+# ==========================================
 if not firebase_admin._apps:
     try:
-        fb_creds = dict(st.secrets["firebase_service_account"])
-        cred = credentials.Certificate(fb_creds)
-        firebase_admin.initialize_app(cred, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
-    except: pass
+        fb_dict = dict(st.secrets["firebase"])
+        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+        creds = credentials.Certificate(fb_dict)
+        firebase_admin.initialize_app(creds, {
+            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app'
+        })
+    except Exception as e:
+        st.error(f"Firebase Error: {e}")
 
-# --- 2. MULTI-LANGUAGE DICTIONARY ---
-texts = {
-    "TH": {
-        "call_h": "📞 ระบบติดต่อสื่อสาร (CLICK TO OPEN)",
-        "call_btn": "🚀 เริ่มการเชื่อมต่อสัญญาณ",
-        "status": "'อยู่นิ่งๆ ไม่เจ็บตัว'",
-        "time_label": "⏰ เวลาตำแหน่งจริง",
-        "weather": "🌡️ อุณหภูมิ", "wind": "💨 ลม"
-    },
-    "EN": {
-        "call_h": "📞 COMMUNICATION SYSTEM (CLICK TO OPEN)",
-        "call_btn": "🚀 START CONNECTION",
-        "status": "'Stay Still & No Pain'",
-        "time_label": "⏰ Local Time",
-        "weather": "🌡️ Temp", "wind": "💨 Wind"
-    }
-}
+# --- SIDEBAR ---
+with st.sidebar:
+    if os.path.exists("logo3.jpg"):
+        st.image("logo3.jpg", use_container_width=True)
+    
+    st.markdown(f"### 👤 AGENT: {user_id}")
+    st.caption(f"Email: {user_email}")
+    st.session_state.theme_color = st.color_picker("RADAR COLOR", st.session_state.theme_color)
+    
+    if st.button("🔌 LOGOUT", use_container_width=True):
+        auth.logout()
 
-if 'lang' not in st.session_state: st.session_state.lang = "TH"
-t = texts[st.session_state.lang]
+    st.markdown("---")
+    st.subheader("🧹 ADMIN CONTROL")
+    admin_key = st.text_input("ADMIN PASS:", type="password")
+    if admin_key == "1234": 
+        if st.button("☢️ ERASE ALL DATA", use_container_width=True):
+            db.reference('chats').delete()
+            db.reference('users').delete()
+            st.success("ระบบถูกล้างข้อมูลแล้ว")
+            st.rerun()
 
-# --- 3. STYLE (ดำเงา + รุ้ง) ---
-st.markdown("""
+# --- CSS STYLE ---
+st.markdown(f"""
     <style>
-    @keyframes RainbowFlow { 0% {background-position:0% 50%} 50% {background-position:100% 50%} 100% {background-position:0% 50%} }
-    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 10s ease infinite; }
-    .glossy-card { background: rgba(0, 0, 0, 0.85); border: 2px solid white; border-radius: 15px; padding: 20px; color: white; box-shadow: 0 0 15px #fff; text-shadow: 0 0 5px #fff; margin-bottom: 15px; }
-    .streamlit-expanderHeader { background-color: black !important; color: white !important; font-size: 1.5rem !important; border: 2px solid white !important; border-radius: 10px !important; }
+    .stApp {{ background: #000; color: {st.session_state.theme_color}; font-family: 'Courier New', Courier, monospace; }}
+    .neon-text {{ 
+        color: #fff; text-shadow: 0 0 10px {st.session_state.theme_color};
+        text-align: center; border: 2px solid {st.session_state.theme_color}; 
+        padding: 15px; border-radius: 15px; background: rgba(0,0,0,0.8);
+    }}
+    .chat-msg {{ border-left: 3px solid {st.session_state.theme_color}; padding-left: 10px; margin-bottom: 5px; background: rgba(255,255,255,0.05); }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. SECURITY GATE ---
-if 'authenticated' not in st.session_state: st.session_state.authenticated = False
-if not st.session_state.authenticated:
-    st.markdown("<div class='glossy-card'>", unsafe_allow_html=True)
-    st.subheader("🔐 SYNAPSE ACCESS")
-    with st.form("login_form"):
-        u_id = st.text_input("ID")
-        u_pw = st.text_input("Password", type="password")
-        if st.form_submit_button("UNLOCK"):
-            if u_pw == "99999999" and u_id:
-                st.session_state.authenticated = True
-                st.session_state.my_id = u_id
-                st.rerun()
-            else: st.error("Unauthorized!")
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.stop()
+st.markdown(f"<h1 class='neon-text'>SYNAPSE COMMAND CENTER 2026</h1>", unsafe_allow_html=True)
 
-# --- LOGO ---
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    try:
-        st.image("logo2.jpg", use_container_width=True)
-    except:
-        st.markdown("<h2 style='text-align: center; color: white;'>🛰️ SYNAPSE</h2>", unsafe_allow_html=True)
+# ==========================================
+# 4. MAIN TABS
+# ==========================================
+tab_gps, tab_chat, tab_call = st.tabs(["🛰️ GPS & RADAR", "💬 COMMS (แชต)", "📞 VOICE / VIDEO CALL"])
 
-# --- 5. HEADER ---
-c1, c2 = st.columns([4, 1])
-with c1: st.title("🛰️ COMMAND CENTER")
-with c2: 
-    if st.button("🌐 TH/EN"):
-        st.session_state.lang = "EN" if st.session_state.lang == "TH" else "TH"
-        st.rerun()
-
-# --- 6. REALITY CORE (GPS + MAP) ---
-# จุดนี้ปรับเพื่อให้แผนที่แสดงผลได้จริง
-location = get_geolocation()
-
-if location and location.get('coords'):
-    lat = location['coords']['latitude']
-    lon = location['coords']['longitude']
+# --- [TAB 1: GPS & RADAR] ---
+with tab_gps:
+    loc = get_geolocation()
+    col_ctrl, col_disp = st.columns([1, 3])
     
-    # เวลาโลก
-    tf = Timezon
-🌐 SYNAPSE CONTROL
-🛰️ GPS: 🟢 CONNECTED
+    with col_ctrl:
+        st.subheader("📡 POSITIONING")
+        if st.button("🛰️ TRANSMIT LOCATION", use_container_width=True):
+            if loc:
+                db.reference(f'users/{user_id}').update({
+                    'lat': loc['coords']['latitude'], 
+                    'lon': loc['coords']['longitude'],
+                    'color': st.session_state.theme_color,
+                    'last_update': time.time(),
+                    'email': user_email
+                })
+                st.success("อัปเดตพิกัดเรียบร้อย!")
 
-🎵 MUSIC: 🟢 ONLINE
+    with col_disp:
+        all_users = db.reference('users').get()
+        v_lat, v_lon = 13.75, 100.5
+        if all_users and user_id in all_users:
+            v_lat, v_lon = all_users[user_id]['lat'], all_users[user_id]['lon']
 
-🔥 DB: 🟢 SYNCED
+        m = folium.Map(location=[v_lat, v_lon], zoom_start=18, 
+                       tiles="https://mt1.google.com{x}&y={y}&z={z}", 
+                       attr="Google Hybrid")
+        
+        current_time = time.time()
+        if all_users:
+            for name, data in all_users.items():
+                if isinstance(data, dict) and 'lat' in data:
+                    if (current_time - data.get('last_update', 0)) < 600:
+                        u_c = data.get('color', st.session_state.theme_color)
+                        folium.CircleMarker([data['lat'], data['lon']], radius=10, color=u_c, fill=True, popup=f"{name} ({data.get('email')})").add_to(m)
+        st_folium(m, width="100%", height=500, key="radar_main")
 
-🌐 SYNAPSE
-NameError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
-Traceback:
-File "/mount/src/taww101/สี app.py", line 39, in <module>
-    if os.path.exists("logo3.jpg"):
-       ^^
-🌐 SYNAPSE CONTROL
-🛰️ GPS: 🟢 CONNECTED
+# --- [TAB 2: CHAT SYSTEM] ---
+with tab_chat:
+    users_data = db.reference('users').get() or {}
+    target_list = ["🌐 Global Group"] + [u for u in users_data.keys() if u != user_id]
+    target = st.selectbox("เลือกช่องทางสื่อสาร:", target_list)
+    
+    path = 'chats/global' if target == "🌐 Global Group" else f"chats/private/{'_'.join(sorted([user_id, target]))}"
+    
+    chat_container = st.container(height=350)
+    messages = db.reference(path).order_by_child('ts').get()
+    if messages:
+        for m in sorted(messages.values(), key=lambda x: x.get('ts', 0)):
+            u_name = m.get('user', 'Unknown')
+            txt_c = st.session_state.theme_color if u_name == user_id else "#ff00de"
+            chat_container.markdown(f"<div class='chat-msg'><b style='color:{txt_c}'>{u_name}:</b> {m.get('msg')}</div>", unsafe_allow_html=True)
 
-🎵 MUSIC: 🟢 ONLINE
+    with st.form("chat_form", clear_on_submit=True):
+        col_in, col_bt = st.columns([4, 1])
+        msg_in = col_in.text_input("TRANSMIT MESSAGE:", label_visibility="collapsed")
+        if col_bt.form_submit_button("SEND 🚀") and msg_in:
+            db.reference(path).push({'user': user_id, 'msg': msg_in, 'ts': time.time()})
+            st.rerun()
 
-🔥 DB: 🟢 SYNCED
+# --- [TAB 3: VIDEO CALL SYSTEM] ---
+with tab_call:
+    st.markdown("### 📞 P2P ENCRYPTED CALL")
+    webrtc_streamer(
+        key="synapse-vcall-2026",
+        mode=WebRtcMode.SENDRECV,
+        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+        media_stream_constraints={"video": True, "audio": True}
+    )
 
-🌐 SYNAPSE
-NameError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
-Traceback:
-File "/mount/src/taww101/สี app.py", line 39, in <module>
-    if os.path.exists("logo3.jpg"):
-       ^^eFinder()
-    tz_name = tf.timezone_at(lng=lon, lat=lat)
-    now = datetime.now(pytz.timezone(tz_name if tz_name else 'Asia/Bangkok')).strftime('%H:%M:%S')
-
-    # ที่อยู่
-    try:
-        geo = Nominatim(user_agent="synapse_v3_agent")
-        loc_data = geo.reverse(f"{lat}, {lon}", timeout=10)
-        addr = loc_data.raw['address']
-        detail = f"🏠 {addr.get('village', addr.get('suburb', '---'))} | 🏙️ {addr.get('province', '')}"
-    except: detail = f"📍 {lat:.4f}, {lon:.4f}"
-
-    # สภาพอากาศ
-    try:
-        w = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()['current_weather']
-        temp, wind = w['temperature'], w['windspeed']
-    except: temp, wind = "--", "--"
-
-    st.markdown(f"""
-    <div class="glossy-card">
-        <p style='color: #00ff00; font-weight: bold; font-size: 1.2rem;'>{detail}</p>
-        <hr>
-        <div style='display: flex; justify-content: space-around; font-size: 1.1rem;'>
-            <span>{t['weather']}: {temp}°C</span>
-            <span>{t['wind']}: {wind}km/h</span>
-            <span style='color: yellow;'>{t['time_label']}: {now}</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # แผนที่ (ใส่ Key ป้องกันแผนที่หายเวลา Refresh)
-    m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Hybrid')
-    folium.Marker([lat, lon], icon=folium.Icon(color='red')).add_to(m)
-    st_folium(m, use_container_width=True, height=400, key="synapse_map_v3")
-else:
-    st.info("📡 กำลังรอการยืนยันพิกัด... (โปรดกด Allow Location บนบราวเซอร์)")
-
-# --- 7. JITSI ---
-with st.expander(t["call_h"]):
-    call_room = st.text_input("กรอกรหัสห้อง", "synapse_private_room")
-    if st.button(t["call_btn"]):
-        room_name = f"SYNAPSE_{call_room}"
-        st.markdown(f'<iframe src="https://meet.jit.si/{room_name}" allow="camera; microphone; fullscreen" width="100%" height="600" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
-
-# --- 8. FOOTER ---
-st.markdown(f"<div class='glossy-card'>{t['status']}</div>", unsafe_allow_html=True)
-pid = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-st.markdown(f'<iframe width="100%" height="200" src="https://www.youtube.com/embed/videoseries?list={pid}" frameborder="0"></iframe>', unsafe_allow_html=True)
+st.write("---")
+st.caption(f"SYNAPSE v4.2 PRO | {user_id} | อยู่นิ่งๆ ไม่เจ็บตัว 🤫")
