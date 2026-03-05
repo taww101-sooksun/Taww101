@@ -25,10 +25,7 @@ def init_firebase():
 
 bucket = init_firebase()
 
-# --- 2. AUTHENTICATION ---
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-
+# --- 2. AUTHENTICATION (ปรับปรุงใหม่) ---
 if not st.session_state.authenticated:
     st.title("🔐 SYNAPSE ACCESS CONTROL")
     with st.form("Login"):
@@ -36,14 +33,22 @@ if not st.session_state.authenticated:
         u_pw = st.text_input("Password", type="password")
         if st.form_submit_button("UNLOCK"):
             if u_pw == "99999999" and u_id:
-                st.session_state.authenticated = True
-                st.session_state.my_id = u_id
-                # บันทึกสถานะ Online
-                db.reference(f'/users/{u_id}').update({'last_seen': datetime.now().timestamp()})
-                st.rerun()
+                # ตรวจสอบก่อนว่า Firebase พร้อมใช้งานไหม
+                try:
+                    # ลองเช็คว่าแอปถูก init หรือยัง
+                    firebase_admin.get_app() 
+                    
+                    st.session_state.authenticated = True
+                    st.session_state.my_id = u_id
+                    db.reference(f'/users/{u_id}').update({'last_seen': datetime.now().timestamp()})
+                    st.rerun()
+                except ValueError:
+                    st.error("❌ ระบบ Firebase ยังไม่ได้เชื่อมต่อ กรุณาเช็ค Secrets Configuration")
+                except Exception as e:
+                    st.error(f"❌ เกิดข้อผิดพลาด: {e}")
     st.stop()
 
-my_id = st.session_state.my_id
+
 
 # --- 3. SIDEBAR & USERS ---
 with st.sidebar:
