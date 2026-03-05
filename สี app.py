@@ -17,11 +17,15 @@ st_autorefresh(interval=10000, key="global_refresh")
 
 # --- ระบบ Google Login (เชื่อมกับ Secrets ที่คุณเพิ่งใส่ไป) ---
 # --- แก้ไขบรรทัดที่ 19-22 ให้เป็นแบบนี้ครับ ---
+# --- จัดระเบียบใหม่ให้ตรงกันแบบนี้ครับ ---
 auth = Authenticate(
     secret_key=st.secrets["google"]["secret_key"],
     client_id=st.secrets["google"]["client_id"],
     client_secret=st.secrets["google"]["client_secret"],
     redirect_uri="https://sooksun101.streamlit.app/",
+    cookie_name="sooksun_cookie"
+)
+
     cookie_name="sooksun_cookie"
 )
 
