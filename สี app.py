@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_google_auth import Authenticate 
+from streamlit_google_auth import Authenticate
 import firebase_admin
 from firebase_admin import credentials, db
 import time, datetime, pytz, os
@@ -15,7 +15,7 @@ from streamlit_autorefresh import st_autorefresh
 st.set_page_config(page_title="SYNAPSE 2026 PRO", layout="wide")
 st_autorefresh(interval=10000, key="global_refresh") 
 
-# --- ระบบ Google Login (เชื่อมกับ Secrets) ---
+# --- ระบบ Google Login (เชื่อมกับ Secrets ที่คุณตั้งไว้) ---
 auth = Authenticate(
     secret_key=st.secrets["google"]["secret_key"],
     client_id=st.secrets["google"]["client_id"],
@@ -24,14 +24,14 @@ auth = Authenticate(
     cookie_name="sooksun_cookie"
 )
 
-# ตรวจสอบสถานะล็อกอิน
+# ตรวจสอบว่าล็อกอินหรือยัง
 auth.check_authenticity()
 
 if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#ff0033"
 
 # ==========================================
-# 2. CHECK CONNECTION (ระบบกั้นคนนอก)
+# 2. CHECK CONNECTION (กำแพงกั้นคนนอก)
 # ==========================================
 if not st.session_state.get("connected"):
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -41,11 +41,11 @@ if not st.session_state.get("connected"):
         st.markdown("<h2 style='text-align:center;'>ACCESS RESTRICTED</h2>", unsafe_allow_html=True)
         st.info("กรุณาล็อกอินด้วย Google เพื่อยืนยันตัวตนเอเจนท์ (1 คน 1 ชื่อ)")
         auth.login()
-    st.stop() 
+    st.stop() # หยุดการทำงานที่เหลือจนกว่าจะล็อกอิน
 
-# ดึงชื่อจริงจาก Google มาใช้เป็น user_id (ล็อคชื่อจริงจาก Gmail)
+# --- เมื่อล็อกอินผ่านแล้ว ระบบจะมาทำงานตรงนี้ ---
 user_info = st.session_state["user_info"]
-user_id = user_info.get("name")
+user_id = user_info.get("name") # ใช้ชื่อจริงจาก Gmail
 user_email = user_info.get("email")
 
 # ==========================================
@@ -60,7 +60,7 @@ if not firebase_admin._apps:
             'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
         })
     except:
-        st.error("Firebase connection failed. Check your secrets.")
+        pass
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -99,7 +99,9 @@ st.markdown(f"""
 
 st.markdown(f"<h1 class='neon-text'>SYNAPSE COMMAND CENTER 2026</h1>", unsafe_allow_html=True)
 
-# --- [TABS] ---
+# ==========================================
+# 4. MAIN TABS (GPS, CHAT, CALL)
+# ==========================================
 tab_gps, tab_chat, tab_call = st.tabs(["🛰️ GPS & RADAR", "💬 COMMS (แชต)", "📞 VOICE / VIDEO CALL"])
 
 # --- [TAB 1: GPS & RADAR] ---
@@ -118,7 +120,7 @@ with tab_gps:
                     'last_update': time.time(),
                     'email': user_email
                 })
-                st.success("ส่งสัญญาณพิกัดแล้ว!")
+                st.success("อัปเดตพิกัดเรียบร้อย!")
 
     with col_disp:
         all_users = db.reference('users').get()
@@ -138,3 +140,39 @@ with tab_gps:
                         u_c = data.get('color', st.session_state.theme_color)
                         folium.CircleMarker([data['lat'], data['lon']], radius=10, color=u_c, fill=True, popup=f"{name} ({data.get('email')})").add_to(m)
         st_folium(m, width="100%", height=500, key="radar_main")
+
+# --- [TAB 2: CHAT SYSTEM] ---
+with tab_chat:
+    users_data = db.reference('users').get() or {}
+    target_list = ["🌐 Global Group"] + [u for u in users_data.keys() if u != user_id]
+    target = st.selectbox("เลือกช่องทางสื่อสาร:", target_list)
+    
+    path = 'chats/global' if target == "🌐 Global Group" else f"chats/private/{'_'.join(sorted([user_id, target]))}"
+    
+    chat_container = st.container(height=350)
+    messages = db.reference(path).order_by_child('ts').get()
+    if messages:
+        for m in sorted(messages.values(), key=lambda x: x.get('ts', 0)):
+            u_name = m.get('user', 'Unknown')
+            txt_c = st.session_state.theme_color if u_name == user_id else "#ff00de"
+            chat_container.markdown(f"<div class='chat-msg'><b style='color:{txt_c}'>{u_name}:</b> {m.get('msg')}</div>", unsafe_allow_html=True)
+
+    with st.form("chat_form", clear_on_submit=True):
+        col_in, col_bt = st.columns([4, 1])
+        msg_in = col_in.text_input("TRANSMIT MESSAGE:", label_visibility="collapsed")
+        if col_bt.form_submit_button("SEND 🚀") and msg_in:
+            db.reference(path).push({'user': user_id, 'msg': msg_in, 'ts': time.time()})
+            st.rerun()
+
+# --- [TAB 3: VIDEO CALL SYSTEM] ---
+with tab_call:
+    st.markdown("### 📞 P2P ENCRYPTED CALL")
+    webrtc_streamer(
+        key="synapse-vcall-2026",
+        mode=WebRtcMode.SENDRECV,
+        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+        media_stream_constraints={"video": True, "audio": True}
+    )
+
+st.write("---")
+st.caption(f"SYNAPSE v4.2 PRO | {user_id} | อยู่นิ่งๆ ไม่เจ็บตัว 🤫")
