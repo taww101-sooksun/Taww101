@@ -1,150 +1,119 @@
 import streamlit as st
-import requests
-from streamlit_js_eval import get_geolocation
-from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, db, storage
-import folium
-from streamlit_folium import st_folium
+from datetime import datetime
 import uuid
 
-# --- 1. INITIALIZE (ต้องอยู่บรรทัดแรกสุด) ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
+# --- 1. INITIALIZE ---
+if not st.session_state.get("init"):
+    st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
+    st.session_state.init = True
 
 def init_firebase():
     if not firebase_admin._apps:
         try:
-            # ใช้ secrets จาก streamlit
             fb_creds = dict(st.secrets["firebase_service_account"])
             cred = credentials.Certificate(fb_creds)
             firebase_admin.initialize_app(cred, {
                 'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app',
-                'storageBucket': 'notty-101.firebasestorage.app'
+                'storageBucket': 'notty-101.appspot.com' # ตรวจสอบชื่อ bucket ดีๆ นะครับ มักจะลงท้ายด้วย .appspot.com
             })
         except Exception as e:
-            st.error(f"Firebase Connection Error: {e}")
+            st.error(f"Firebase Error: {e}")
             return None
     return storage.bucket()
 
 bucket = init_firebase()
 
-# --- 2. SECURITY GATE ---
+# --- 2. AUTHENTICATION ---
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    st.markdown("<h2 style='text-align: center;'>🔐 SYNAPSE ACCESS CONTROL</h2>", unsafe_allow_html=True)
+    st.title("🔐 SYNAPSE ACCESS CONTROL")
     with st.form("Login"):
-        u_id = st.text_input("Enter your ID / ใส่ ID")
+        u_id = st.text_input("User ID").strip()
         u_pw = st.text_input("Password", type="password")
-        if st.form_submit_button("UNLOCK SYSTEM"):
-            if u_pw == "99999999" and u_id: 
+        if st.form_submit_button("UNLOCK"):
+            if u_pw == "99999999" and u_id:
                 st.session_state.authenticated = True
-                st.session_state.my_id = u_id.strip()
-                # บันทึกสถานะ Online ใน DB จริงๆ
-                db.reference(f'/users/{u_id.strip()}').update({'last_seen': datetime.now().timestamp()})
+                st.session_state.my_id = u_id
+                # บันทึกสถานะ Online
+                db.reference(f'/users/{u_id}').update({'last_seen': datetime.now().timestamp()})
                 st.rerun()
     st.stop()
 
 my_id = st.session_state.my_id
 
-# --- 3. CUSTOM STYLE ---
-st.markdown("""
-    <style>
-    .stApp { background: #0f0c29; color: white; }
-    .chat-container { 
-        background: rgba(255, 255, 255, 0.05); 
-        padding: 20px; 
-        border-radius: 15px; 
-        height: 500px; 
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 4. SIDEBAR ---
+# --- 3. SIDEBAR & USERS ---
 with st.sidebar:
     st.title("S Y N A P S E")
-    st.write(f"🟢 **Online:** {my_id}")
+    st.success(f"Online: {my_id}")
     
-    # ดึงรายชื่อเพื่อนที่เคยเข้าระบบ
-    users_ref = db.reference('/users').get()
-    friend_list = [u for u in users_ref.keys() if u != my_id] if users_ref else []
-    target_chat = st.selectbox("💬 เลือกเพื่อนสนทนา:", ["-- เลือกเพื่อน --"] + friend_list)
+    users_data = db.reference('/users').get()
+    friend_list = [u for u in users_data.keys() if u != my_id] if users_data else []
+    target_chat = st.selectbox("💬 Select Partner:", ["-- Select --"] + friend_list)
     
-    st.divider()
     if st.button("Logout"):
         st.session_state.authenticated = False
         st.rerun()
 
-# --- 5. CHAT & SATELLITE ---
-col1, col2 = st.columns([1, 2])
+# --- 4. MAIN CHAT INTERFACE ---
+if target_chat != "-- Select --":
+    st.subheader(f"Chatting with: {target_chat}")
+    
+    chat_room_id = "_".join(sorted([my_id, target_chat]))
+    chat_ref = db.reference(f'/chats/{chat_room_id}')
 
-with col1:
-    st.subheader("📍 Satellite Tracking")
-    location = get_geolocation()
-    if location:
-        coords = location.get('coords', {})
-        lat, lon = coords.get('latitude'), coords.get('longitude')
-        if lat and lon:
-            m = folium.Map(location=[lat, lon], zoom_start=16, tiles='CartoDB dark_matter')
-            folium.Marker([lat, lon], popup="Your Location").add_to(m)
-            st_folium(m, width=350, height=300, key="map")
-
-with col2:
-    if target_chat != "-- เลือกเพื่อน --":
-        st.subheader(f"Talking to: {target_chat}")
-        
-        chat_room_id = "_".join(sorted([my_id, target_chat]))
-        chat_ref = db.reference(f'/chats/{chat_room_id}')
-
-        # ดึงข้อความ 20 อันล่าสุด (ดึงจาก Server โดยตรงเพื่อความเร็ว)
-        msgs_data = chat_ref.order_by_child('timestamp').limit_to_last(20).get()
-        
-        # แสดงผล
-        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-        if msgs_data:
-            for key in msgs_data:
-                m = msgs_data[key]
-                is_me = m['sender'] == my_id
-                with st.chat_message("user" if is_me else "assistant"):
+    # ดึงข้อมูลและเรียงลำดับ (Firebase dict -> sorted list)
+    raw_msgs = chat_ref.order_by_child('timestamp').limit_to_last(30).get()
+    
+    # ส่วนแสดงผลข้อความ
+    chat_placeholder = st.container(height=500)
+    with chat_placeholder:
+        if raw_msgs:
+            # สำคัญ: Firebase คืนค่าเป็น Dict ต้องเรียงลำดับด้วย timestamp อีกครั้งเพื่อความชัวร์
+            sorted_msgs = sorted(raw_msgs.values(), key=lambda x: x['timestamp'])
+            for m in sorted_msgs:
+                role = "user" if m['sender'] == my_id else "assistant"
+                with st.chat_message(role):
                     st.write(f"**{m['sender']}**")
                     if m.get('text'): st.write(m['text'])
-                    if m.get('type') in ['image', 'video']:
+                    if m.get('url'):
                         if m.get('type') == 'image': st.image(m['url'])
-                        else: st.video(m['url'])
+                        elif m.get('type') == 'video': st.video(m['url'])
                     st.caption(m.get('time', ''))
+
+    # ส่วนส่งข้อความ
+    with st.form("input_form", clear_on_submit=True):
+        col_msg, col_file = st.columns([3, 1])
+        with col_msg:
+            msg_text = st.text_input("Message...", label_visibility="collapsed")
+        with col_file:
+            uploaded_file = st.file_uploader("Media", type=['jpg','png','mp4'], label_visibility="collapsed")
         
-        # ฟอร์มส่งข้อความ
-        with st.form("chat_form", clear_on_submit=True):
-            msg_text = st.text_input("พิมพ์ข้อความ...")
-            uploaded_file = st.file_uploader("แนบไฟล์ (Image/Video)", type=['jpg','png','mp4'])
-            submit = st.form_submit_button("SEND 🚀")
+        if st.form_submit_button("SEND 🚀"):
+            new_msg = {
+                'sender': my_id,
+                'timestamp': datetime.now().timestamp(),
+                'time': datetime.now().strftime('%H:%M'),
+                'type': 'text'
+            }
             
-            if submit:
-                new_msg = {
-                    'sender': my_id,
-                    'timestamp': datetime.now().timestamp(),
-                    'time': datetime.now().strftime('%H:%M'),
-                    'type': 'text'
-                }
-                
-                if uploaded_file:
+            if uploaded_file:
+                with st.spinner("Uploading..."):
                     file_id = f"{uuid.uuid4()}_{uploaded_file.name}"
                     blob = bucket.blob(f"chat_media/{file_id}")
                     blob.upload_from_file(uploaded_file, content_type=uploaded_file.type)
                     blob.make_public()
                     new_msg['url'] = blob.public_url
                     new_msg['type'] = 'image' if 'image' in uploaded_file.type else 'video'
-                
-                if msg_text:
-                    new_msg['text'] = msg_text
-                
-                if msg_text or uploaded_file:
-                    chat_ref.push(new_msg)
-                    st.rerun()
-    else:
-        st.info("กรุณาเลือกเพื่อนเพื่อเริ่มการสนทนา")
-
+            
+            if msg_text:
+                new_msg['text'] = msg_text
+            
+            if msg_text or uploaded_file:
+                chat_ref.push(new_msg)
+                st.rerun()
+else:
+    st.info("👈 เลือกเพื่อนในแถบด้านซ้ายเพื่อเริ่มคุย")
