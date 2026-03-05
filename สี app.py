@@ -1,15 +1,11 @@
 import streamlit as st
 from streamlit_google_auth import Authenticate
-import firebase_admin
-from firebase_admin import credentials, db
-import time, datetime, pytz, os
+import os
 
 # ==========================================
-# 1. SETUP & AUTHENTICATION
+# 1. AUTHENTICATION SETUP
 # ==========================================
-st.set_page_config(page_title="SYNAPSE 2026 PRO", layout="wide")
-
-# เรียกใช้งานระบบ Auth (ต้องจัดย่อหน้าให้ตรงตามนี้เป๊ะๆ)
+# ดึงค่าจาก Secrets (ต้องสะกดให้ตรงกับหน้า Settings เป๊ะๆ)
 auth = Authenticate(
     secret_key=st.secrets["google"]["secret_key"],
     client_id=st.secrets["google"]["client_id"],
@@ -18,118 +14,15 @@ auth = Authenticate(
     cookie_name="sooksun_cookie"
 )
 
-# ตรวจสอบสถานะ
+# ตรวจสอบสถานะการเข้าสู่ระบบ
 auth.check_authenticity()
 
-# กำแพงกั้นคนนอก
+# ถ้ายังไม่ได้ Login ให้แสดงปุ่ม Login และหยุดการทำงานส่วนที่เหลือ
 if not st.session_state.get("connected"):
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("<h2 style='text-align:center;'>ACCESS RESTRICTED</h2>", unsafe_allow_html=True)
-        st.info("กรุณาล็อกอินด้วย Google เพื่อยืนยันตัวตน")
-        auth.login()
+    st.markdown("<h2 style='text-align:center;'>🔐 ACCESS RESTRICTED</h2>", unsafe_allow_html=True)
+    auth.login()
     st.stop()
 
-# ดึงข้อมูลหลังล็อกอิน
+# ถ้าผ่านจุดนี้มาได้ แสดงว่า Login สำเร็จแล้ว
 user_info = st.session_state["user_info"]
 user_id = user_info.get("name")
-user_email = user_info.get("email")
-
-st_autorefresh(interval=10000, key="global_refresh") 
-
-# --- ระบบ Google Login (เชื่อมกับ Secrets) ---
-auth = Authenticate(
-    secret_key=st.secrets["google"]["secret_key"],
-    client_id=st.secrets["google"]["client_id"],
-    client_secret=st.secrets["google"]["client_secret"],
-    redirect_uri="https://sooksun101.streamlit.app/",
-    cookie_name="sooksun_cookie"
-)
-
-# ตรวจสอบสถานะการล็อกอิน
-auth.check_authenticity()
-
-if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#ff0033"
-
-# ==========================================
-# 2. CHECK CONNECTION (กำแพงกั้นคนนอก)
-# ==========================================
-if not st.session_state.get("connected"):
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if os.path.exists("logo3.jpg"):
-            st.image("logo3.jpg", use_container_width=True)
-        st.markdown("<h2 style='text-align:center;'>ACCESS RESTRICTED</h2>", unsafe_allow_html=True)
-        st.info("กรุณาล็อกอินด้วย Google เพื่อยืนยันตัวตนเอเจนท์ (1 คน 1 ชื่อ)")
-        auth.login()
-    st.stop() 
-
-# ดึงชื่อจริงจาก Google มาใช้เป็น user_id
-user_info = st.session_state["user_info"]
-user_id = user_info.get("name")
-user_email = user_info.get("email")
-
-# ==========================================
-# 3. FIREBASE CONNECTION
-# ==========================================
-if not firebase_admin._apps:
-    try:
-        fb_dict = dict(st.secrets["firebase"])
-        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
-        creds = credentials.Certificate(fb_dict)
-        firebase_admin.initialize_app(creds, {
-            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
-        })
-    except:
-        pass
-
-# --- SIDEBAR ---
-with st.sidebar:
-    if os.path.exists("logo3.jpg"):
-        st.image("logo3.jpg", use_container_width=True)
-    st.markdown(f"### 👤 AGENT: {user_id}")
-    st.caption(f"Email: {user_email}")
-    st.session_state.theme_color = st.color_picker("RADAR COLOR", st.session_state.theme_color)
-    if st.button("🔌 LOGOUT", use_container_width=True):
-        auth.logout()
-
-# --- CSS STYLE ---
-st.markdown(f"""
-    <style>
-    .stApp {{ background: #000; color: {st.session_state.theme_color}; font-family: 'Courier New', Courier, monospace; }}
-    .neon-text {{ 
-        color: #fff; text-shadow: 0 0 10px {st.session_state.theme_color};
-        text-align: center; border: 2px solid {st.session_state.theme_color}; 
-        padding: 15px; border-radius: 15px; background: rgba(0,0,0,0.8);
-    }}
-    .chat-msg {{ border-left: 3px solid {st.session_state.theme_color}; padding-left: 10px; margin-bottom: 5px; background: rgba(255,255,255,0.05); }}
-    </style>
-    """, unsafe_allow_html=True)
-
-st.markdown(f"<h1 class='neon-text'>SYNAPSE COMMAND CENTER 2026</h1>", unsafe_allow_html=True)
-
-# --- MAIN TABS ---
-tab_gps, tab_chat, tab_call = st.tabs(["🛰️ GPS & RADAR", "💬 COMMS (แชต)", "📞 VOICE / VIDEO CALL"])
-
-with tab_gps:
-    loc = get_geolocation()
-    col_ctrl, col_disp = st.columns([1, 3])
-    with col_ctrl:
-        st.subheader("📡 POSITIONING")
-        if st.button("🛰️ TRANSMIT LOCATION", use_container_width=True):
-            if loc:
-                db.reference(f'users/{user_id}').update({
-                    'lat': loc['coords']['latitude'], 
-                    'lon': loc['coords']['longitude'],
-                    'color': st.session_state.theme_color,
-                    'last_update': time.time()
-                })
-                st.success("ส่งสัญญาณพิกัดแล้ว!")
-    with col_disp:
-        all_users = db.reference('users').get()
-        v_lat, v_lon = 13.75, 100.5
-        if all_users and user_id in all_users:
-            v_lat, v_lon = all_users[user_id]['lat'], all_users[user_id]['lon']
-        m = folium.Map(location=[v_lat, v_lon], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=y&x={{x}}&y={{y}}&z={{z}}", attr="Google Hybrid")
-        st_folium(m, width="100%", height=500, key="radar_main")
