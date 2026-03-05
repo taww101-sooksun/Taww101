@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_google_auth import Authenticate # ต้อง pip install streamlit-google-auth
+from streamlit_google_auth import Authenticate 
 import firebase_admin
 from firebase_admin import credentials, db
 import time, datetime, pytz, os
@@ -15,9 +15,7 @@ from streamlit_autorefresh import st_autorefresh
 st.set_page_config(page_title="SYNAPSE 2026 PRO", layout="wide")
 st_autorefresh(interval=10000, key="global_refresh") 
 
-# --- ระบบ Google Login (เชื่อมกับ Secrets ที่คุณเพิ่งใส่ไป) ---
-# --- แก้ไขบรรทัดที่ 19-22 ให้เป็นแบบนี้ครับ ---
-# --- จัดระเบียบใหม่ให้ตรงกันแบบนี้ครับ ---
+# --- ระบบ Google Login (เชื่อมกับ Secrets) ---
 auth = Authenticate(
     secret_key=st.secrets["google"]["secret_key"],
     client_id=st.secrets["google"]["client_id"],
@@ -26,24 +24,16 @@ auth = Authenticate(
     cookie_name="sooksun_cookie"
 )
 
-    cookie_name="sooksun_cookie"
-)
-
-    redirect_uri="https://sooksun101.streamlit.app/",
-    cookie_name="sooksun_cookie",
-)
-
-# ตรวจสอบว่าล็อกอินหรือยัง
+# ตรวจสอบสถานะล็อกอิน
 auth.check_authenticity()
 
 if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#ff0033"
 
 # ==========================================
-# 2. CHECK CONNECTION
+# 2. CHECK CONNECTION (ระบบกั้นคนนอก)
 # ==========================================
-if not st.session_state["connected"]:
-    # ถ้ายังไม่เชื่อมต่อ ให้แสดงหน้า Login สวยๆ
+if not st.session_state.get("connected"):
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         if os.path.exists("logo3.jpg"):
@@ -51,9 +41,9 @@ if not st.session_state["connected"]:
         st.markdown("<h2 style='text-align:center;'>ACCESS RESTRICTED</h2>", unsafe_allow_html=True)
         st.info("กรุณาล็อกอินด้วย Google เพื่อยืนยันตัวตนเอเจนท์ (1 คน 1 ชื่อ)")
         auth.login()
-    st.stop() # หยุดการทำงานที่เหลือจนกว่าจะล็อกอิน
+    st.stop() 
 
-# ดึงชื่อจริงจาก Google มาใช้เป็น user_id (แก้ไม่ได้)
+# ดึงชื่อจริงจาก Google มาใช้เป็น user_id (ล็อคชื่อจริงจาก Gmail)
 user_info = st.session_state["user_info"]
 user_id = user_info.get("name")
 user_email = user_info.get("email")
@@ -66,8 +56,11 @@ if not firebase_admin._apps:
         fb_dict = dict(st.secrets["firebase"])
         fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
         creds = credentials.Certificate(fb_dict)
-        firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
-    except: pass
+        firebase_admin.initialize_app(creds, {
+            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
+        })
+    except:
+        st.error("Firebase connection failed. Check your secrets.")
 
 # --- SIDEBAR ---
 with st.sidebar:
@@ -106,10 +99,10 @@ st.markdown(f"""
 
 st.markdown(f"<h1 class='neon-text'>SYNAPSE COMMAND CENTER 2026</h1>", unsafe_allow_html=True)
 
-# --- [TAB 1: GPS & RADAR] ---
-# (โค้ด Tab GPS, Chat, Call ใช้ของเดิมได้เลยครับ เพราะเราเปลี่ยน user_id เป็นชื่อจาก Google แล้ว)
+# --- [TABS] ---
 tab_gps, tab_chat, tab_call = st.tabs(["🛰️ GPS & RADAR", "💬 COMMS (แชต)", "📞 VOICE / VIDEO CALL"])
 
+# --- [TAB 1: GPS & RADAR] ---
 with tab_gps:
     loc = get_geolocation()
     col_ctrl, col_disp = st.columns([1, 3])
@@ -145,6 +138,3 @@ with tab_gps:
                         u_c = data.get('color', st.session_state.theme_color)
                         folium.CircleMarker([data['lat'], data['lon']], radius=10, color=u_c, fill=True, popup=f"{name} ({data.get('email')})").add_to(m)
         st_folium(m, width="100%", height=500, key="radar_main")
-
-# --- โค้ดส่วน Tab Chat และ Tab Call ต่อจากนี้ใช้ของเดิมได้เลยครับ ---
-# (ประหยัดพื้นที่แชต ผมขอละไว้ในฐานที่เข้าใจว่ายกของเดิมมาวางต่อได้เลย)
