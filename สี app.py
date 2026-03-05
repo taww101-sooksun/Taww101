@@ -3,16 +3,38 @@ from streamlit_google_auth import Authenticate
 import firebase_admin
 from firebase_admin import credentials, db
 import time, datetime, pytz, os
-from streamlit_js_eval import get_geolocation
-import folium
-from streamlit_folium import st_folium
-from streamlit_webrtc import webrtc_streamer, WebRtcMode
-from streamlit_autorefresh import st_autorefresh
 
 # ==========================================
-# 1. SETUP & THEME
+# 1. SETUP & AUTHENTICATION
 # ==========================================
 st.set_page_config(page_title="SYNAPSE 2026 PRO", layout="wide")
+
+# เรียกใช้งานระบบ Auth (ต้องจัดย่อหน้าให้ตรงตามนี้เป๊ะๆ)
+auth = Authenticate(
+    secret_key=st.secrets["google"]["secret_key"],
+    client_id=st.secrets["google"]["client_id"],
+    client_secret=st.secrets["google"]["client_secret"],
+    redirect_uri="https://sooksun101.streamlit.app/",
+    cookie_name="sooksun_cookie"
+)
+
+# ตรวจสอบสถานะ
+auth.check_authenticity()
+
+# กำแพงกั้นคนนอก
+if not st.session_state.get("connected"):
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("<h2 style='text-align:center;'>ACCESS RESTRICTED</h2>", unsafe_allow_html=True)
+        st.info("กรุณาล็อกอินด้วย Google เพื่อยืนยันตัวตน")
+        auth.login()
+    st.stop()
+
+# ดึงข้อมูลหลังล็อกอิน
+user_info = st.session_state["user_info"]
+user_id = user_info.get("name")
+user_email = user_info.get("email")
+
 st_autorefresh(interval=10000, key="global_refresh") 
 
 # --- ระบบ Google Login (เชื่อมกับ Secrets) ---
