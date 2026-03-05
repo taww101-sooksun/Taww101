@@ -22,5 +22,5 @@ streamlit-webrtc
 streamlit
 streamlit-autorefresh
 streamlit-google-auth
-
+Authlib
 
