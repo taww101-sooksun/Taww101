@@ -149,7 +149,42 @@ with tab_gps:
                             [data['lat'], data['lon']], 
                             radius=8, color=u_color, fill=True
                         ).add_to(m)
-        st_folium(m, width="100%", height=500, key="radar_main")
+# --- [TAB 2: CHAT SYSTEM] ---
+with tab_chat:
+    users_data = db.reference('users').get() or {}
+    target_list = ["🌐 Global Group"] + [u for u in users_data.keys() if u != user_id]
+    target = st.selectbox("เลือกช่องทางสื่อสาร:", target_list)
+    
+    path = 'chats/global' if target == "🌐 Global Group" else f"chats/private/{'_'.join(sorted([user_id, target]))}"
+    
+    chat_container = st.container(height=350)
+    messages = db.reference(path).order_by_child('ts').get()
+    if messages:
+        for m in sorted(messages.values(), key=lambda x: x.get('ts', 0)):
+            u_name = m.get('user', 'Unknown')
+            txt_c = st.session_state.theme_color if u_name == user_id else "#ff00de"
+            chat_container.markdown(f"<div class='chat-msg'><b style='color:{txt_c}'>{u_name}:</b> {m.get('msg')}</div>", unsafe_allow_html=True)
+
+    with st.form("chat_form", clear_on_submit=True):
+        col_in, col_bt = st.columns([4, 1])
+        msg_in = col_in.text_input("TRANSMIT MESSAGE:", label_visibility="collapsed")
+        if col_bt.form_submit_button("SEND 🚀") and msg_in:
+            db.reference(path).push({'user': user_id, 'msg': msg_in, 'ts': time.time()})
+            st.rerun()
+
+# --- [TAB 3: VIDEO CALL SYSTEM] ---
+with tab_call:
+    st.markdown("### 📞 P2P ENCRYPTED CALL")
+    st.info("เปิดกล้องและไมค์เพื่อสื่อสารกับเอเจนท์คนอื่นในเครือข่าย")
+    webrtc_streamer(
+        key="synapse-vcall-2026",
+        mode=WebRtcMode.SENDRECV,
+        rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+        media_stream_constraints={"video": True, "audio": True}
+    )
+
+st.write("---")
+st.caption(f"SYNAPSE v4.2 PRO | {user_id} | อยู่นิ่งๆ ไม่เจ็บตัว 🤫")        st_folium(m, width="100%", height=500, key="radar_main")
 
 # (ส่วนแชตและ Call ใช้โค้ดเดิมที่เพื่อนมีได้เลยครับ)
 # ... [CHAT & CALL CODE] ...
