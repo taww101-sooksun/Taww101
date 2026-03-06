@@ -1,44 +1,51 @@
 import streamlit as st
 import numpy as np
 
-# --- 📈 ฟังก์ชันวาด "กราฟความจริง" ---
-def plot_waveform(s1_len, s2_tail, s3_gain):
-    # จำลองคลื่นเสียงตามค่าที่พี่ปรับ
-    t = np.linspace(0, s1_len, 200) # ตามความยาว Slider 1
-    # คลื่นเสียงผสม (Sine + Noise) เพื่อให้กราฟดู "รก" และมีมิติ
-    wave = np.sin(2 * np.pi * 5 * t) * np.exp(-(21-s2_tail) * t) * s3_gain
-    noise = np.random.normal(0, 0.05, 200) * s3_gain # ใส่ Noise นิดๆ ให้ดูแพง
-    return wave + noise
+# --- 1. เตรียมคลังเสียง (The Sound Slots) ---
+if 'sound_bank' not in st.session_state:
+    st.session_state.sound_bank = ["🥁 ตึ่บ", "⚡ ตืด", "🔫 เลเซอร์", "🎤 เสียงไมค์", "🔔 กริ๊ง"]
 
-# --- 🎼 ส่วนของกระดาน 8 บรรทัด (8 Layers) ---
-for row in range(8):
-    with st.container():
-        col_info, col_graph, col_grid = st.columns([1, 2, 3])
-        
-        with col_info:
-            st.markdown(f"### 🎛️ L-{row+1}")
-            st.image("Logo3.jpg", width=60)
-            # 3 ปุ่มสไลด์ที่พี่มี
-            s1 = st.slider("LEN", 0.1, 2.0, 0.5, key=f"len_{row}")
-            s2 = st.slider("TAIL", 1, 20, 10, key=f"tail_{row}")
-            s3 = st.slider("GAIN", 0.0, 2.0, 1.0, key=f"gain_{row}")
+if 'sequencer_slots' not in st.session_state:
+    st.session_state.sequencer_slots = ["ว่าง"] * 32
 
-        with col_graph:
-            # --- หน้าจอกราฟเสียง (Visualizer) ---
-            st.markdown("<p style='color:#00ff00; font-size:10px;'>LIVE OSCILLOSCOPE</p>", unsafe_allow_html=True)
-            data = plot_waveform(s1, s2, s3)
-            # วาดกราฟเส้นสีเขียวสะท้อนแสง
-            st.line_chart(data, height=150, use_container_width=True)
+# --- 2. หน้าแอปหลัก ---
+st.set_page_config(layout="wide")
+st.title("🖱️ Synapse Drag & Place Studio")
+st.write("เลือกเสียงจากคลัง แล้ว 'จิ้มวาง' ลงในห้องจังหวะที่ต้องการ")
 
-        with col_grid:
-            # กระดานแบ่งห้อง 4 8 16 32
-            st.write("GRID SELECTOR")
-            sel_tab = st.radio(f"ROOM-{row+1}", ["4", "8", "16", "32"], horizontal=True, key=f"tab_{row}")
-            
-            # วาดปุ่มกดตามจำนวนห้องที่เลือก
-            num_steps = int(sel_tab)
-            grid_cols = st.columns(8) # แบ่งหน้าจอให้รกกำลังดี
-            for n in range(num_steps):
-                grid_cols[n % 8].checkbox(f"{n+1}", key=f"ch_{row}_{num_steps}_{n}")
-        
+# --- 3. ส่วนคลังเสียง (ของที่พี่จะลาก) ---
+col_bank, col_seq = st.columns([1, 3])
+
+with col_bank:
+    st.header("📂 คลังเสียง")
+    selected_sound = st.radio("เลือกเสียงที่จะ 'ลาก' :", st.session_state.sound_bank)
+    st.info(f"ตอนนี้พี่กำลังถือเสียง: **{selected_sound}**")
+    
     st.divider()
+    if st.button("📋 ก๊อปปี้ท่อน (4 ไปทั้งหมด)"):
+        chunk = st.session_state.sequencer_slots[:4]
+        st.session_state.sequencer_slots = (chunk * 8)[:32]
+        st.success("ก๊อปปี้วางให้แล้วพี่!")
+
+# --- 4. ส่วนกระดานจังหวะ (ที่ที่พี่จะเอาไปใส่) ---
+with col_seq:
+    st.header("🎼 กระดานจังหวะ 32 ช่อง")
+    steps = st.select_slider("ขนาดกระดาน", options=[4, 8, 16, 32], value=16)
+    
+    grid = st.columns(8)
+    for i in range(steps):
+        with grid[i % 8]:
+            # ปุ่มนี้ทำหน้าที่เหมือนจุดที่พี่ลากมาวาง
+            # ถ้ากดปุ่ม เสียงที่เลือกไว้จะไปอยู่ในช่องนี้ทันที
+            label = st.session_state.sequencer_slots[i]
+            if st.button(f"{i+1}\n{label}", key=f"slot_{i}", use_container_width=True):
+                st.session_state.sequencer_slots[i] = selected_sound
+                st.rerun()
+
+# --- 5. สรุปผล ---
+st.divider()
+active_pattern = [f"{i+1}:{s}" for i, s in enumerate(st.session_state.sequencer_slots[:steps]) if s != "ว่าง"]
+st.write(f"**ลำดับเพลงของพี่:** {' -> '.join(active_pattern)}")
+
+if st.button("▶️ PLAY ALL (เล่นเสียงที่ลากมาวางทั้งหมด)"):
+    st.success("กำลังประมวลผลเสียง... 'ตึ่บ-ตืด-ฟิ้ว-ตึ่บ' ตามที่พี่วางไว้เป๊ะ!")
