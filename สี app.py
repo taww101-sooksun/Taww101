@@ -3,75 +3,60 @@ import numpy as np
 import scipy.io.wavfile as wavfile
 import io
 
-# --- เครื่องยนต์สร้างเสียง 3 เลเยอร์ (คณิตศาสตร์ล้วน) ---
-class SynapseTuedEngine:
-    def __init__(self, sr=44100):
-        self.sr = sr
+# --- เครื่องยนต์สร้างเสียง (ตัวเดิมที่พี่ชอบ แต่ทำให้เสถียรขึ้น) ---
+def generate_vocal_note(freq, duration, sr=44100):
+    t = np.linspace(0, duration, int(sr * duration))
+    vibrato_hz = 6.0
+    vibrato = 1 + 0.02 * np.sin(2 * np.pi * vibrato_hz * t)
+    f0 = freq * vibrato
+    
+    phase = np.cumsum(f0) / sr
+    # สร้างเสียงที่มี Harmonic (เนื้อเสียงสระอา)
+    vocal_out = np.sin(2 * np.pi * phase) + 0.5 * np.sin(4 * np.pi * phase) + 0.25 * np.sin(6 * np.pi * phase)
+    
+    # Fade in/out กันเสียงกึก
+    envelope = np.ones_like(t)
+    fade = min(int(sr * 0.05), len(t)//2) 
+    envelope[:fade] = np.linspace(0, 1, fade)
+    envelope[-fade:] = np.linspace(1, 0, fade)
+    
+    return (vocal_out * envelope * 0.5 * 32767).astype(np.int16)
 
-    def generate_layered_tone(self, freq, duration, v_low, v_mid, v_high):
-        t = np.linspace(0, duration, int(self.sr * duration))
-        
-        # 1. เลเยอร์ต่ำ (Sub/Low): คลื่น Sine หนาๆ ทุ้มๆ (ลดลง 1 Octave)
-        low_wave = np.sin(2 * np.pi * (freq / 2) * t) * v_low
-        
-        # 2. เลเยอร์กลาง (Mid): คลื่น Square ให้ความตืดแบบ Synth (ความถี่หลัก)
-        mid_wave = np.sign(np.sin(2 * np.pi * freq * t)) * v_mid
-        
-        # 3. เลเยอร์สูง (High): คลื่น Sawtooth แหลมสว่าง (เพิ่มขึ้น 1 Octave)
-        high_wave = (2 * (t * (freq * 2) - np.floor(0.5 + t * (freq * 2)))) * v_high
-        
-        # รวมร่างและเกลี่ยเสียงไม่ให้แตก
-        combined = (low_wave + mid_wave + high_wave)
-        if np.max(np.abs(combined)) > 0:
-            combined = combined / np.max(np.abs(combined))
-            
-        # Envelope: ให้มันกระแทกตอนต้นแล้วค่อยๆ จาง (Decay)
-        env = np.exp(-4 * t)
-        return (combined * env * 0.5 * 32767).astype(np.int16)
-
-# --- หน้าแอป ---
-st.set_page_config(page_title="Synapse 3-Slide Synth", layout="wide")
-st.title("🎛️ Synapse 3-Layer Tued Machine")
-st.write("ปรับสไลเดอร์เพื่อผสมเสียง **สูง-กลาง-ต่ำ** แล้วกดเล่นโน้ตด้านล่าง")
-
-# --- แถบควบคุมข้างซ้าย (3 ตัวสไลด์ที่พี่บอก) ---
-with st.sidebar:
-    st.header("🎚️ Master Mix")
-    vol_low = st.slider("เสียงต่ำ (Low/Sub)", 0.0, 1.0, 0.8)
-    vol_mid = st.slider("เสียงกลาง (Mid/Synth)", 0.0, 1.0, 0.5)
-    vol_high = st.slider("เสียงสูง (High/Lead)", 0.0, 1.0, 0.2)
-    st.divider()
-    use_432 = st.checkbox("ระบบ 432Hz (Pure Truth)", value=True)
-
-# ข้อมูลโน้ต โด-เร-มี-ฟา-ซอล-ลา-ที-โด
-DO_RE_MI = {
-    "โด (C)": 261.63, "เร (D)": 293.66, "มี (E)": 329.63, 
-    "ฟา (F)": 349.23, "ซอล (G)": 392.00, "ลา (A)": 440.00, 
-    "ที (B)": 493.88, "โด+ (C2)": 523.25
+# --- ข้อมูลตัวโน้ต 12 คีย์ (อิงตามหลักความจริง) ---
+NOTES = {
+    "C": 261.63, "C#": 277.18, "D": 293.66, "D#": 311.13, 
+    "E": 329.63, "F": 349.23, "F#": 369.99, "G": 392.00, 
+    "G#": 415.30, "A": 440.00, "A#": 466.16, "B": 493.88
 }
 
-# --- ส่วนแสดงผลคีย์บอร์ด ---
-st.subheader("🎹 บันไดเสียง (12 คีย์มาตรฐาน)")
-cols = st.columns(8) # เรียง โด-โด+ 8 ปุ่มหลัก
-engine = SynapseTuedEngine()
-factor = (432/440) if use_432 else 1.0
+# --- หน้าแอป ---
+st.set_page_config(layout="wide")
+st.title("🎹 Synapse Sound Bank (12 Keys x 4 Timing)")
+st.write(f"สร้างเสียงอัตโนมัติ 48 รูปแบบ: จังหวะ 4, 8, 16, 32 | สโลแกน: **อยู่นิ่งๆ ไม่เจ็บตัว**")
 
-for i, (name, f) in enumerate(DO_RE_MI.items()):
-    with cols[i]:
-        if st.button(name, use_container_width=True, type="primary"):
-            # สร้างเสียง 3 เลเยอร์สดๆ ตามค่า Slider
-            audio_data = engine.generate_layered_tone(
-                freq=f * factor,
-                duration=0.8,
-                v_low=vol_low,
-                v_mid=vol_mid,
-                v_high=vol_high
-            )
+# เลือกจังหวะ
+timing = st.select_slider("เลือกความยาว (Beat/Timing):", options=[4, 8, 16, 32])
+# แปลงจังหวะเป็นวินาที (สมมติ 120 BPM: 4 beats = 2 sec)
+duration = timing / 2 
+
+st.subheader(f"🎶 กำลังเล่นที่ความยาว: {timing} จังหวะ ({duration} วินาที)")
+
+# สร้างปุ่ม 12 คีย์
+cols = st.columns(4) # แบ่งเป็น 4 คอลัมน์ แถวละ 3 ปุ่ม
+note_names = list(NOTES.keys())
+
+for i, note in enumerate(note_names):
+    with cols[i % 4]:
+        if st.button(f"🎵 Key {note}", use_container_width=True):
+            # คำนวณความถี่แบบ 432Hz ตามที่พี่ตั้งไว้
+            freq = NOTES[note] * (432/440)
+            audio_data = generate_vocal_note(freq, duration)
             
-            # เล่นเสียงทันที
+            # ส่งออกเป็นไฟล์เสียงเล่นทันที
             buf = io.BytesIO()
             wavfile.write(buf, 44100, audio_data)
-            st.audio(buf, format='audio/wav', autoplay=True)
+            st.audio(buf)
+            st.caption(f"{note} ({freq:.2f} Hz)")
 
 st.divider()
-st.info("💡 **ทริค:** ลองลด Mid/High ให้เป็น 0 แล้วดัน Low สุด พี่จะได้เสียงเบสเตะอกแบบในผับเลยครับ!")
+st.write("📌 **วิธีใช้:** เลือกจังหวะด้านบน แล้วกดที่คีย์เพื่อฟังเสียงร้องสังเคราะห์ครับ")
