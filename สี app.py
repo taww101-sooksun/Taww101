@@ -1,133 +1,120 @@
 import streamlit as st
-import numpy as np
 import time
 
-# --- 🎭 1. จัดเต็ม CSS (ใส่ทุกสูตรที่พี่ปรุงมา) ---
+# --- 🎭 1. ใส่โลโก้ logo3.jpg (ถ้าพี่มีไฟล์ในโฟลเดอร์เดียวกัน) ---
+try:
+    st.image("logo3.jpg", width=200)
+except:
+    st.markdown("<h1 style='color:white; text-align:center;'>[ logo3.jpg ]</h1>", unsafe_allow_html=True)
+
+# --- 🌈 2. ใส่ CSS ปรุงแต่งสีและแสง (ตามสูตรพี่) ---
 st.markdown(f"""
     <style>
-    /* 🌈 ฉากหลังสายรุ้งวิ่งสูตรพี่ 100% */
+    /* พื้นหลังดำเงาแว๊บ (Deep Black) */
     .stApp {{
-        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-        background-size: 1200% 1200%;
-        animation: RainbowFlow 10s ease infinite;
-    }}
-    @keyframes RainbowFlow {{
-        0%{{background-position:0% 50%}}
-        50%{{background-position:100% 50%}}
-        100%{{background-position:0% 50%}}
+        background-color: #000000;
+        background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
+        background-size: 20px 20px;
     }}
 
-    /* 🧱 แผงคอนโซล ดำเงาแว๊บ (Deep Piano Black) */
-    .console-panel {{
-        background: rgba(0, 0, 0, 0.92);
-        border: 4px double #FF7F50;
-        border-radius: 20px;
-        padding: 25px;
-        box-shadow: 0 0 50px rgba(0,0,0,1);
-    }}
-
-    /* 💡 ตัวหนังสือขาวชัดเจน + เรืองแสง */
-    .stMarkdown, p, h1, h2, h3 {{
-        color: #FFFFFF !important;
-        text-shadow: 2px 2px 4px #000000;
+    /* ตัวหนังสือขาวชัดเจน (Stark White) */
+    h1, h2, h3, p, label {{
+        color: #ffffff !important;
         font-family: 'Orbitron', sans-serif;
     }}
 
-    /* 🟢 ปุ่มกด 32 ช่อง ล่อแสงมิติ (เขียวสะท้อนแสง) */
-    .stCheckbox {{
-        background: linear-gradient(145deg, #333, #000);
-        border: 1px solid #444;
-        border-radius: 8px;
-        padding: 10px;
-        transition: 0.2s;
-        box-shadow: inset 2px 2px 5px #000;
+    /* ปรับแต่ง Tabs ให้ดูเงา */
+    .stTabs [data-baseweb="tab-list"] {{
+        background-color: #111;
+        border-radius: 10px;
+        border: 1px solid #333;
     }}
-    .stCheckbox:has(input:checked) {{
-        border: 2px solid #00ff00;
-        box-shadow: 0 0 20px #00ff00, inset 0 0 10px #00ff00;
+    .stTabs [data-baseweb="tab"] {{
+        color: #888;
+    }}
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+        color: #ffffff;
+        background-color: #222;
+        border-radius: 10px;
     }}
 
-    /* 🔴🔵🟣🟠 แผงปุ่มกดมหาประลัย (เงาแว๊บ) */
+    /* 🔴🔵🟣🟢 ปรับแต่งปุ่มกดให้มี "มิติลาแสง" (Glossy/Neon) */
+    .stCheckbox {{
+        background: linear-gradient(145deg, #222, #000); /* พื้นหลังปุ่มเงา */
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid #333;
+        transition: 0.3s;
+        box-shadow: 3px 3px 5px #000, -1px -1px 2px #333; /* มิตินูน */
+    }}
+
+    /* เมื่อติ๊กปุ่ม (Active) ให้แสงสะท้อน */
+    .stCheckbox:has(input:checked) {{
+        border: 2px solid #00ff00; /* เขียวสะท้อนแสง */
+        box-shadow: 0 0 15px #00ff00, inset 0 0 5px #00ff00; /* แสงสะท้อนมิติ */
+    }}
+
+    /* ปรับแต่งปุ่มกด Play/Copy (แดง/น้ำเงิน/ม่วง เงา) */
     .stButton>button {{
-        border-radius: 10px !important;
-        font-weight: 900 !important;
-        height: 50px !important;
-        border: 2px solid rgba(255,255,255,0.3) !important;
+        border-radius: 50px !important;
+        font-weight: bold !important;
         transition: 0.3s !important;
     }}
-    /* แดงเงา */
-    div[data-testid="stButton"]:nth-child(1) button {{ background: linear-gradient(180deg, #ff0000, #660000) !important; }}
-    /* น้ำเงินเงา */
-    div[data-testid="stButton"]:nth-child(2) button {{ background: linear-gradient(180deg, #0000ff, #000066) !important; }}
-    /* ม่วงเงา */
-    div[data-testid="stButton"]:nth-child(3) button {{ background: linear-gradient(180deg, #800080, #330033) !important; }}
-    /* ส้มเงา */
-    div[data-testid="stButton"]:nth-child(4) button {{ background: linear-gradient(180deg, #ff8c00, #ff4500) !important; }}
+    /* ปุ่ม Play (แดงเงา) */
+    div[data-testid="stButton"] button:first-child {{
+        background: linear-gradient(145deg, #ff4b4b, #8b0000) !important;
+        border: 2px solid #ff0000 !important;
+        color: white !important;
+        box-shadow: 0 0 10px #ff0000 !important;
+    }}
+    /* ปุ่ม Copy (น้ำเงินเงา) */
+    div[data-testid="stButton"] + div[data-testid="stButton"] button {{
+        background: linear-gradient(145deg, #4b4bff, #00008b) !important;
+        border: 2px solid #0000ff !important;
+        color: white !important;
+        box-shadow: 0 0 10px #0000ff !important;
+    }}
+    /* ปุ่ม Clear (ม่วงเงา) */
+    div[data-testid="stButton"] + div[data-testid="stButton"] + div[data-testid="stButton"] button {{
+        background: linear-gradient(145deg, #8b4bcf, #4b0082) !important;
+        border: 2px solid #800080 !important;
+        color: white !important;
+        box-shadow: 0 0 10px #800080 !important;
+    }}
 
-    /* 🌊 กราฟวิ่ง (Visualizer) */
-    .wave-box {{
-        width: 100%; height: 60px;
-        background: #000;
-        border: 1px solid #00ff00;
-        position: relative;
-        overflow: hidden;
-    }}
-    .wave-line {{
-        width: 200%; height: 100%;
-        background: url('https://i.stack.imgur.com/8m9Xp.gif');
-        background-size: contain;
-        opacity: 0.5;
-    }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 🚀 2. เริ่มต้นหน้าจอแบบ "รกและจัดเต็ม" ---
-st.markdown('<h1 style="text-align:center;">SYNAPSE QUANTUM ENGINE v3.0</h1>', unsafe_allow_html=True)
-
-# แผงนาฬิกาและสถิติ (รกๆ ไว้ก่อน)
-c1, c2, c3, c4 = st.columns(4)
-with c1: st.metric("OSCILLATOR", "432Hz", "+1.2")
-with c2: st.metric("BITRATE", "64-BIT", "MAX")
-with c3: st.metric("BPM", "128", "STABLE")
-with c4: 
+# --- 🕒 ส่วนแสดงวินาที (Real-time Clock) ---
+col_logo, col_clock = st.columns([1, 2])
+with col_clock:
     t_now = time.strftime('%H:%M:%S')
-    st.markdown(f"<h2 style='color:#00ff00;'>🕒 {t_now}</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align:right; color:#00ff00;'>🕒 {t_now}</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:right; color:white;'>\"อยู่นิ่งๆ ไม่เจ็บตัว\"</p>", unsafe_allow_html=True)
 
-# หน้าจอกราฟวิ่งไม่หยุด
-st.markdown('<div class="wave-box"><div class="wave-line"></div></div>', unsafe_allow_html=True)
-
-# --- 🎼 3. กระดาน 32 ช่อง แบ่งโซน 4-8-16-32 (จัดระเบียบให้ดูแน่น) ---
+# --- 🎼 กระดานห้องเพลงแบ่งโซน (4-8-16-32) ---
 st.divider()
-st.subheader("🎹 SEQUENCER GRID (32-STEP MULTI-ARRAY)")
+st.subheader("🎹 ห้องจังหวะเพลง (ปุ่มกดล่อแสง)")
 
-# แบ่งแถวละ 8 ช่อง จำนวน 4 แถว (เพื่อให้ดูเต็มหน้าจอ)
-for r in range(4):
+tab1, tab2, tab3, tab4 = st.tabs(["ห้อง 4", "ห้อง 8", "ห้อง 16", "ห้อง 32"])
+
+def create_glossy_grid(num):
     cols = st.columns(8)
-    for c in range(8):
-        idx = r * 8 + c
-        with cols[c]:
-            st.checkbox(f"T{idx+1}", key=f"step_full_{idx}")
+    for i in range(num):
+        with cols[i % 8]:
+            # ปุ่ม checkbox ที่ถูกปรุงแต่งด้วย CSS ให้ดูมีมิติ
+            st.checkbox(f"P-{i+1}", key=f"gbeat_{num}_{i}")
 
-# --- 🕹️ 4. แผงปุ่มควบคุมมหาประลัย (หลากสีเงา) ---
+with tab1: create_glossy_grid(4)
+with tab2: create_glossy_grid(8)
+with tab3: create_glossy_grid(16)
+with tab4: create_glossy_grid(32)
+
+# --- 🚀 ปุ่มสั่งงานหลัก (จัดเต็ม แดง/น้ำเงิน/ม่วง เงา) ---
 st.divider()
-st.subheader("🕹️ CONTROL CENTER (GLOSSY BUTTONS)")
-btn_cols = st.columns(4)
-with btn_cols[0]: st.button("🔴 PLAY (แดงเงา)", use_container_width=True)
-with btn_cols[1]: st.button("🔵 COPY (น้ำเงินเงา)", use_container_width=True)
-with btn_cols[2]: st.button("🟣 CLEAR (ม่วงเงา)", use_container_width=True)
-with btn_cols[3]: st.button("🟠 FX (ส้มเงา)", use_container_width=True)
+c1, c2, c3 = st.columns(3)
+with c1: st.button("▶️ PLAY LOOP (แดงเงา)", use_container_width=True)
+with c2: st.button("📋 COPY 4-STEPS (น้ำเงินเงา)", use_container_width=True)
+with c3: st.button("🗑️ CLEAR ALL (ม่วงเงา)", use_container_width=True)
 
-# --- 🎚️ 5. แผงข้าง (Sidebar) ที่รกไปด้วยตัวปรับจูน ---
-with st.sidebar:
-    st.markdown("### [ logo3.jpg ]")
-    st.image("https://via.placeholder.com/150/FF7F50/FFFFFF?text=SIGNATURE", use_container_width=True)
-    st.divider()
-    st.markdown("### 🎛️ MODULATION PANELS")
-    for i in range(8):
-        st.slider(f"FREQUENCY-SET-{i+1}", 0, 100, 50)
-    st.divider()
-    st.write("บันทึก: 6 มีนาคม 2026")
-    st.write("สถานะ: 3,000 ชั่วโมงแห่งความจริง")
-    st.markdown("**สโลแกน: อยู่นิ่งๆ ไม่เจ็บตัว**")
-
-st.success("✅ โหลดข้อมูลครบถ้วน: ระบบทำงานด้วยประสิทธิภาพสูงสุด ไม่มีการแก้ง ไม่มีการสั้นลง!")
+st.info("💡 เครื่องนี้คำนวณเสียงในพริบตา ด้วยคณิตศาสตร์ที่พี่คิดเอง!")
