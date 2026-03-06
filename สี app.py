@@ -85,8 +85,7 @@ audio_engine_js = f"""
         gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration + release);
 
         osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + duration + release);
-    }
+        osc.start(); osc.stop(audioCtx.currentTime + duration + release);}
 
     btn.onclick = async () => {{
         if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
