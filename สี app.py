@@ -69,4 +69,40 @@ audio_engine_js = """
 # --- 🎼 4. กระดาน 8 บรรทัด (8 Layers) ---
 st.divider()
 for i in range(8):
-    with
+    with st.container():
+        st.markdown(f"### 🎹 LAYER {i+1}")
+        col_ctrl, col_graph, col_grid = st.columns([2, 2, 3])
+        
+        with col_ctrl:
+            # 3 ปุ่มสไลด์ที่มีอยู่แล้ว คุมมิติเสียง
+            st.slider("LENGTH", 0.1, 2.0, 0.5, key=f"len_{i}")
+            st.slider("TAIL", 1, 20, 10, key=f"tail_{i}")
+            st.slider("GAIN", 0.0, 2.0, 1.0, key=f"gain_{i}")
+            
+        with col_graph:
+            # กราฟเสียงยืนยันความจริง
+            st.line_chart(np.random.randn(20), height=100)
+            if st.button(f"🔵 COPY L-{i+1}", key=f"cp_{i}"):
+                st.toast(f"ก็อปปี้ Layer {i+1} สำเร็จ!")
+
+        with col_grid:
+            room = st.selectbox("แบ่งห้อง", [4, 8, 16, 32], key=f"room_{i}")
+            # กระดานติ๊กช่อง
+            grid = st.columns(8)
+            for n in range(min(room, 8)):
+                grid[n].checkbox(f"{n+1}", key=f"step_{i}_{n}")
+            st.button(f"🎤 REC MIC L-{i+1}", key=f"mic_{i}")
+
+    st.markdown("<hr style='border:1px solid #333;'>", unsafe_allow_html=True)
+
+# --- 🚀 5. ส่วนส่งเสียงออกลำโพง ---
+st.divider()
+components.html(audio_engine_js, height=150)
+
+st.sidebar.markdown("""
+**TRUTH LOG:**
+- ENGINE: SYNAPSE X
+- STATUS: OPTIMIZED
+- LOGO: Logo3.jpg ACTIVE
+- **PHILOSOPHY: อยู่นิ่งๆ ไม่เจ็บตัว**
+""")
