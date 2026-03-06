@@ -1,88 +1,67 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import numpy as np
+import scipy.io.wavfile as wavfile
+import io
 
-st.subheader("🎼 SYNAPSE X - FULL MUSIC ENGINE TEST")
-st.write("สถานะ: กำลังรันระบบดนตรีและเสียงร้องจาก Logic ภายใน")
+# --- ส่วนของเครื่องยนต์ (Engine ของพี่) ---
+class SynapseSingingEngine:
+    def __init__(self, sr=44100):
+        self.sr = sr
 
-# JavaScript: รวมร่างดนตรี (Beat) และ เสียงร้อง (Melody)
-full_music_js = """
-<div style="background-color: #111; color: #FFD700; padding: 25px; border: 2px solid #FFD700; border-radius: 20px; text-align: center; font-family: monospace;">
-    <div id="vocal_stat" style="color: #00ffff; font-size: 20px; margin-bottom: 10px;">🎤 รอการร้อง...</div>
-    <div id="beat_stat" style="color: #ff00ff; font-size: 14px; margin-bottom: 20px;">🥁 จังหวะดนตรี: Standby</div>
+    def generate_vocal_tone(self, freq, duration, vibrato_hz, transition_ms):
+        t = np.linspace(0, duration, int(self.sr * duration))
+        # มิติความสมจริง: ลูกคอ
+        vibrato = 1 + 0.02 * np.sin(2 * np.pi * vibrato_hz * t)
+        f0 = freq * vibrato
+        
+        # สร้างเสียง Harmonic (เนื้อเสียง)
+        phase = np.cumsum(f0) / self.sr
+        glottal_source = np.sin(2 * np.pi * phase)
+        vocal_out = glottal_source + 0.5 * np.sin(4 * np.pi * phase) + 0.25 * np.sin(6 * np.pi * phase)
+        
+        # ปรับความดังเบา (Envelope)
+        envelope = np.ones_like(t)
+        fade_samples = int(self.sr * (transition_ms / 1000))
+        if len(t) > fade_samples * 2:
+            envelope[:fade_samples] = np.linspace(0, 1, fade_samples)
+            envelope[-fade_samples:] = np.linspace(1, 0, fade_samples)
+        
+        return vocal_out * envelope
+
+# --- ส่วนของหน้าแอป (UI) ---
+st.set_page_config(page_title="Synapse Vocal Engine", page_icon="🎤")
+st.title("🎤 Synapse Vocal Engine")
+st.write("เปลี่ยนตัวเลขให้เป็นเสียงร้อง (สระ 'อา')")
+
+# แผงควบคุม (Dashboard)
+with st.sidebar:
+    st.header("⚙️ ตั้งค่าเสียง")
+    freq_input = st.slider("ความถี่ (Hz) - โน้ตเพลง", 100, 1000, 261)
+    duration_input = st.slider("ความยาว (วินาที)", 0.5, 5.0, 2.0)
+    vibrato_input = st.slider("ลูกคอ (Hz)", 0.0, 10.0, 6.0)
+    tuning_432 = st.checkbox("ใช้ระบบ 432Hz (Pure Truth)", value=True)
+
+# คำนวณความถี่จริง
+final_freq = freq_input * (432/440) if tuning_432 else freq_input
+
+# ปุ่มกดร้องเพลง
+if st.button("🔴 กดเพื่อให้แปร้องเพลง (Generate Audio)"):
+    engine = SynapseSingingEngine()
     
-    <button id="playMusic" style="width: 100%; padding: 20px; background: #FFD700; border: none; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 20px;">🎹 PLAY: ร้องเพลง + ดนตรี</button>
-</div>
+    with st.spinner('กำลังวอร์มเสียง...'):
+        vocal_wav = engine.generate_vocal_tone(
+            freq=final_freq,
+            duration=duration_input,
+            vibrato_hz=vibrato_input,
+            transition_ms=150
+        )
+        
+        # แปลงเป็นไฟล์ในหน่วยความจำ (RAM) ไม่ต้องเซฟลงเครื่องจริง
+        virtual_file = io.BytesIO()
+        wavfile.write(virtual_file, 44100, (vocal_wav * 32767).astype(np.int16))
+        
+        st.success(f"ร้องโน้ตความถี่ {final_freq:.2f} Hz เรียบร้อย!")
+        st.audio(virtual_file, format='audio/wav')
 
-<script>
-    let audioCtx;
-    const melody = [261.63, 293.66, 329.63, 349.23]; // โน้ต C4, D4, E4, F4 (Vocal)
-    
-    async function startMusic() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') await audioCtx.resume();
-
-        let startTime = audioCtx.currentTime;
-
-        // --- 1. ส่วนของเสียงดนตรี (The Beat/Backing) ---
-        function playDrum(time) {
-            let osc = audioCtx.createOscillator();
-            let g = audioCtx.createGain();
-            osc.frequency.setValueAtTime(150, time);
-            osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.1);
-            g.gain.setValueAtTime(0.3, time);
-            g.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
-            osc.connect(g); g.connect(audioCtx.destination);
-            osc.start(time); osc.stop(time + 0.1);
-        }
-
-        // --- 2. ส่วนของเสียงร้อง (The Vocal Logic) ---
-        function playVocal(freq, time, duration) {
-            let vOsc = audioCtx.createOscillator();
-            let vGain = audioCtx.createGain();
-            let vLfo = audioCtx.createOscillator();
-            let vLfoG = audioCtx.createGain();
-
-            vOsc.type = 'sawtooth'; // เสียงที่มี Harmonic เยอะขึ้นเพื่อให้เหมือนคน
-            vOsc.frequency.setValueAtTime(freq * (432/440), time);
-            
-            // ใส่ Vibrato (มิติความสมจริง)
-            vLfo.frequency.value = 6.0;
-            vLfoG.gain.value = 4;
-            vLfo.connect(vLfoG); vLfoG.connect(vOsc.frequency);
-
-            // คุมน้ำหนักเสียง (Dynamics)
-            vGain.gain.setValueAtTime(0, time);
-            vGain.gain.linearRampToValueAtTime(0.2, time + 0.1); // Attack
-            vGain.gain.linearRampToValueAtTime(0, time + duration - 0.1); // Release
-
-            // Low-pass Filter เพื่อให้เสียงนุ่มนวล (Timbre)
-            let filter = audioCtx.createBiquadFilter();
-            filter.type = 'lowpass';
-            filter.frequency.value = 1500;
-
-            vOsc.connect(filter); filter.connect(vGain); vGain.connect(audioCtx.destination);
-            vOsc.start(time); vLfo.start(time);
-            vOsc.stop(time + duration); vLfo.stop(time + duration);
-        }
-
-        // รัน Loop ดนตรีและเสียงร้อง
-        for (let i = 0; i < 8; i++) {
-            let time = startTime + (i * 0.5);
-            playDrum(time); // เล่นจังหวะทุกๆ 0.5 วินาที
-            
-            if (i % 2 === 0) {
-                let noteIdx = (i / 2) % melody.length;
-                playVocal(melody[noteIdx], time, 0.9); // ร้องโน้ตทุกๆ 1 วินาที
-                setTimeout(() => {
-                    document.getElementById('vocal_stat').innerText = "🎤 Singing Note: " + (noteIdx + 1);
-                    document.getElementById('beat_stat').innerText = "🥁 Beat: " + (i + 1);
-                }, i * 500);
-            }
-        }
-    }
-
-    document.getElementById('playMusic').onclick = startMusic;
-</script>
-"""
-
-components.html(full_music_js, height=400)
+st.divider()
+st.info("สโลแกน: อยู่นิ่งๆ ไม่เจ็บตัว - แต่ถ้าอยากขยับเสียง ลองปรับ Slider ดูครับ")
