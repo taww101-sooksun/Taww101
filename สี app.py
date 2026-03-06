@@ -1,63 +1,82 @@
 import streamlit as st
 import time
 
-# --- 🎭 1. จัดเต็ม CSS: สายรุ้งวิ่ง 10s + ปุ่มมีมิติ ---
+# --- 🎭 1. ดีไซน์ (ดำเงา-ส้มสว่าง) ---
 st.markdown("""
     <style>
-    .stApp {
-        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-        background-size: 1200% 1200%;
-        animation: RainbowFlow 10s ease infinite;
-    }
-    @keyframes RainbowFlow { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-    
-    /* โลโก้ Logo3.jpg กะพริบเรืองแสง */
-    .logo-glow { border: 5px solid #00ff00; box-shadow: 0 0 20px #00ff00; border-radius: 50%; animation: glow 1s infinite alternate; }
-    @keyframes glow { from { border-color: #ff0000; box-shadow: 0 0 10px #ff0000; } to { border-color: #00ff00; box-shadow: 0 0 30px #00ff00; } }
+    .big-clock { font-size: 100px; font-weight: bold; color: #00ff00; text-align: center; }
+    .active-v1 { background-color: #FF7F50; border-radius: 5px; height: 25px; }
+    .active-v2 { background-color: #00ffff; border-radius: 5px; height: 25px; }
+    .idle { background-color: #333; border-radius: 5px; height: 25px; }
+    .current-marker { border: 2px solid #fff; box-shadow: 0 0 10px #fff; transform: scale(1.1); }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 🖼️ 2. ส่วนหัวเครื่อง (Logo3.jpg + 🕒) ---
-c1, c2 = st.columns([1, 4])
-with c1: st.markdown('<div class="logo-glow"><img src="Logo3.jpg" width="100" onerror="this.src=\'https://via.placeholder.com/100?text=Logo3\'"></div>', unsafe_allow_html=True)
-with c2: 
-    st.markdown(f"<h1>SYNAPSE 8-LAYERS ENGINE</h1>", unsafe_allow_html=True)
-    st.markdown(f"<h3 style='color:#00ff00; text-align:right;'>🕒 {time.strftime('%H:%M:%S')} | 6 มี.ค. 26</h3>", unsafe_allow_html=True)
+st.image("Logo3.jpg", width=80)
+st.title("🎯 SYNAPSE: CUSTOM SEQUENCE")
 
-# --- 🎼 3. กระดานเสียง 8 บรรทัด (8 Layers) ---
+# --- 🛠️ 2. แผงควบคุม (3 ปุ่มสไลด์ + ความเร็ว) ---
+c1, c2, c3, c4 = st.columns(4)
+with c1: s_len = st.slider("LEN", 0.1, 2.0, 1.0)
+with c2: s_tail = st.slider("TAIL", 1, 20, 10)
+with c3: s_gain = st.slider("GAIN", 0.0, 2.0, 1.0)
+with c4: bpm = st.slider("SPEED (BPM)", 60, 240, 120)
+
+# --- 📝 3. ส่วน "ตามใจพี่" (กำหนดช่วงห้อง) ---
+st.markdown("### ✍️ กำหนดช่วงเวลา (สั่งตามใจ)")
+col_v1, col_v2 = st.columns(2)
+
+with col_v1:
+    st.markdown("🎵 **เสียงที่ 1**")
+    v1_start = st.number_input("เริ่มห้องที่ (V1):", value=1, min_value=1)
+    v1_end = st.number_input("จบห้องที่ (V1):", value=4, min_value=1)
+
+with col_v2:
+    st.markdown("🎵 **เสียงที่ 2**")
+    v2_start = st.number_input("เริ่มห้องที่ (V2):", value=1, min_value=1)
+    v2_end = st.number_input("จบห้องที่ (V2):", value=16, min_value=1)
+
+# หาจุดจบที่ไกลที่สุดเพื่อกำหนดความยาวนาฬิกา
+max_rooms = max(v1_end, v2_end, 20)
+
+# --- 📊 4. ตาราง Visualizer วิ่งตามนาฬิกา ---
+grid_placeholder = st.empty()
+
+def draw_custom_grid(current_x=0):
+    st.write(f"ตาราง 1-{max_rooms} ห้อง")
+    
+    # แถวเสียง 1
+    v1_cols = st.columns(max_rooms)
+    for i in range(max_rooms):
+        room_num = i + 1
+        is_on = (v1_start <= room_num <= v1_end)
+        style = "active-v1" if is_on else "idle"
+        marker = "current-marker" if room_num == current_x else ""
+        v1_cols[i].markdown(f"<div class='{style} {marker}'></div>", unsafe_allow_html=True)
+        v1_cols[i].caption(f"{room_num}")
+
+    # แถวเสียง 2
+    v2_cols = st.columns(max_rooms)
+    for i in range(max_rooms):
+        room_num = i + 1
+        is_on = (v2_start <= room_num <= v2_end)
+        style = "active-v2" if is_on else "idle"
+        marker = "current-marker" if room_num == current_x else ""
+        v2_cols[i].markdown(f"<div class='{style} {marker}'></div>", unsafe_allow_html=True)
+
+with grid_placeholder.container():
+    draw_custom_grid()
+
+# --- 🚀 5. ปุ่ม PLAY มหาประลัย ---
 st.divider()
-tabs = st.tabs(["[ 04 ]", "[ 08 ]", "[ 16 ]", "[ 32 ]"])
-
-# รายชื่อเสียงให้เลือก
-sound_options = ["🔴 ตึ่บ (KICK)", "🔵 จิ้ว (BASS)", "🟢 แชะ (HAT)", "🟣 ปึ้ง (SNARE)", "🟡 ฟิ้ว (LEAD)", "🟠 แป๊ว (SYNTH)", "⚪ วิ้ง (PERC)", "🟤 ครืด (NOISE)"]
-
-def create_layer_grid(steps):
-    for layer in range(8): # 8 บรรทัดตามสั่ง!
-        c_sound, c_grid, c_control = st.columns([2, 5, 3])
+if st.button("🔴 PLAY: เริ่มเดินตามคำสั่ง", use_container_width=True):
+    clock_placeholder = st.empty()
+    step_time = 60 / bpm
+    
+    for x in range(1, max_rooms + 1):
+        clock_placeholder.markdown(f"<div class='big-clock'>{x}</div>", unsafe_allow_html=True)
+        with grid_placeholder.container():
+            draw_custom_grid(current_x=x)
+        time.sleep(step_time)
         
-        with c_sound:
-            # เลือกเสียงได้หลากหลาย
-            choice = st.selectbox(f"L-{layer+1}", sound_options, key=f"sel_{steps}_{layer}")
-        
-        with c_grid:
-            # กระดานแบ่งห้อง
-            cols = st.columns(8)
-            for i in range(min(steps, 8)): # โชว์ตัวอย่างในหน้าจอ
-                cols[i].checkbox("", key=f"ck_{steps}_{layer}_{i}")
-        
-        with c_control:
-            # กดเสียงไหน ลูกเล่น 3 ปุ่มสไลด์จะขึ้นบอก (Balance/Level/FX)
-            with st.expander("🎚️ 3-SLIDERS"):
-                st.slider("BALANCE", 0, 100, 50, key=f"b_{steps}_{layer}")
-                st.slider("LEVEL", 0, 100, 80, key=f"l_{steps}_{layer}")
-                st.slider("FX-DEPTH", 0, 100, 20, key=f"f_{steps}_{layer}")
-
-with tabs[0]: create_layer_grid(4)
-with tabs[1]: create_layer_grid(8)
-with tabs[2]: create_layer_grid(16)
-with tabs[3]: create_layer_grid(32)
-
-# --- 🚀 4. ปุ่มสั่งการมหาประลัย ---
-st.divider()
-st.button("🔴 EXECUTE REAL SOUND", use_container_width=True)
-st.markdown("<p style='text-align:center;'>\"อยู่นิ่งๆ ไม่เจ็บตัว\"</p>", unsafe_allow_html=True)
+    st.success(f"🏁 ระบบหยุดทำงานที่ห้อง {max_rooms} เรียบร้อย!")
