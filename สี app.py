@@ -1,120 +1,143 @@
 import streamlit as st
+import numpy as np
+import scipy.io.wavfile as wavfile
+import io
 import time
 
-# --- 🎭 1. ใส่โลโก้ logo3.jpg (ถ้าพี่มีไฟล์ในโฟลเดอร์เดียวกัน) ---
-try:
-    st.image("logo3.jpg", width=200)
-except:
-    st.markdown("<h1 style='color:white; text-align:center;'>[ logo3.jpg ]</h1>", unsafe_allow_html=True)
+# ==========================================
+# 🧮 1. เครื่องยนต์คณิตศาสตร์เสียง (THE AUDIO ENGINE)
+# ==========================================
+def create_signature_hit(sr=44100):
+    # สร้างเสียง 1 จังหวะ (ตึ่บ + แชะ + จิ้ว) ความยาว 0.2 วินาที
+    t = np.linspace(0, 0.2, int(sr * 0.2))
+    
+    # 1. ตึ่บ (Kick) - ความถี่ตกฮวบจาก 150Hz ลงมา 40Hz
+    freq_kick = np.geomspace(150, 40, len(t))
+    kick = np.sin(2 * np.pi * freq_kick * t) * np.exp(-15 * t)
+    
+    # 2. แชะ (Hi-hat) - White Noise สั้นๆ
+    noise = np.random.uniform(-1, 1, len(t))
+    hat = np.diff(noise, prepend=0) * np.exp(-40 * t) * 0.5
+    
+    # 3. จิ้ว (Acid Bass) - คลื่นหยัก (Sawtooth) กวาดความถี่
+    bass_freq = 65.41 # โน้ต C2
+    saw = 2 * (t * bass_freq - np.floor(0.5 + t * bass_freq))
+    f_env = np.geomspace(2000, 100, len(t)) # กวาดจากแหลมลงทุ้ม (จิ้ว)
+    vcf_f = 2 * np.sin(np.pi * f_env / sr)
+    vcf_q = 0.2 # Resonance แหลมๆ
+    out = np.zeros_like(saw)
+    low = 0; band = 0
+    for i in range(len(saw)):
+        low = low + vcf_f[i] * band
+        high = saw[i] - low - vcf_q * band
+        band = vcf_f[i] * high + band
+        out[i] = low
+    bass = out * np.exp(-10 * t)
+    
+    # ผสมเสียงทั้งหมด
+    mixed = kick + hat + (bass * 0.8)
+    return mixed
 
-# --- 🌈 2. ใส่ CSS ปรุงแต่งสีและแสง (ตามสูตรพี่) ---
-st.markdown(f"""
+def generate_32step_sequence(pattern, bpm=128, sr=44100):
+    # คำนวณเวลา 1 ช่องจังหวะ (16th note)
+    step_duration = 60.0 / bpm / 4.0
+    step_samples = int(step_duration * sr)
+    
+    # สร้างกระดาษเปล่าสำหรับเพลงทั้งท่อน (32 ช่อง)
+    total_samples = step_samples * 32
+    master_track = np.zeros(total_samples)
+    
+    # ดึงเสียงที่พี่คิดไว้มาใช้
+    hit_sound = create_signature_hit(sr)
+    
+    # กวาดดูว่าพี่ติ๊กช่องไหนไว้บ้าง
+    for i in range(32):
+        if pattern[i]: # ถ้าช่องที่ i ถูกติ๊ก
+            start_idx = i * step_samples
+            end_idx = start_idx + len(hit_sound)
+            # ป้องกันเสียงล้นความยาวเพลง
+            if end_idx > total_samples:
+                end_idx = total_samples
+                hit_sound = hit_sound[:end_idx-start_idx]
+            
+            # วางเสียงลงไปใน Master Track
+            master_track[start_idx:end_idx] += hit_sound
+            
+    # ปรับระดับความดังไม่ให้แตก (Normalize)
+    if np.max(np.abs(master_track)) > 0:
+        master_track = master_track / np.max(np.abs(master_track))
+        
+    return (master_track * 32767).astype(np.int16)
+
+# ==========================================
+# 🎨 2. หน้าจอ UI รกๆ จัดเต็มสูตรพี่
+# ==========================================
+st.markdown("""
     <style>
-    /* พื้นหลังดำเงาแว๊บ (Deep Black) */
-    .stApp {{
-        background-color: #000000;
-        background-image: radial-gradient(#1a1a1a 1px, transparent 1px);
-        background-size: 20px 20px;
-    }}
-
-    /* ตัวหนังสือขาวชัดเจน (Stark White) */
-    h1, h2, h3, p, label {{
-        color: #ffffff !important;
-        font-family: 'Orbitron', sans-serif;
-    }}
-
-    /* ปรับแต่ง Tabs ให้ดูเงา */
-    .stTabs [data-baseweb="tab-list"] {{
-        background-color: #111;
-        border-radius: 10px;
-        border: 1px solid #333;
-    }}
-    .stTabs [data-baseweb="tab"] {{
-        color: #888;
-    }}
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {{
-        color: #ffffff;
-        background-color: #222;
-        border-radius: 10px;
-    }}
-
-    /* 🔴🔵🟣🟢 ปรับแต่งปุ่มกดให้มี "มิติลาแสง" (Glossy/Neon) */
-    .stCheckbox {{
-        background: linear-gradient(145deg, #222, #000); /* พื้นหลังปุ่มเงา */
-        padding: 10px;
-        border-radius: 10px;
-        border: 1px solid #333;
-        transition: 0.3s;
-        box-shadow: 3px 3px 5px #000, -1px -1px 2px #333; /* มิตินูน */
-    }}
-
-    /* เมื่อติ๊กปุ่ม (Active) ให้แสงสะท้อน */
-    .stCheckbox:has(input:checked) {{
-        border: 2px solid #00ff00; /* เขียวสะท้อนแสง */
-        box-shadow: 0 0 15px #00ff00, inset 0 0 5px #00ff00; /* แสงสะท้อนมิติ */
-    }}
-
-    /* ปรับแต่งปุ่มกด Play/Copy (แดง/น้ำเงิน/ม่วง เงา) */
-    .stButton>button {{
-        border-radius: 50px !important;
-        font-weight: bold !important;
-        transition: 0.3s !important;
-    }}
-    /* ปุ่ม Play (แดงเงา) */
-    div[data-testid="stButton"] button:first-child {{
-        background: linear-gradient(145deg, #ff4b4b, #8b0000) !important;
-        border: 2px solid #ff0000 !important;
-        color: white !important;
-        box-shadow: 0 0 10px #ff0000 !important;
-    }}
-    /* ปุ่ม Copy (น้ำเงินเงา) */
-    div[data-testid="stButton"] + div[data-testid="stButton"] button {{
-        background: linear-gradient(145deg, #4b4bff, #00008b) !important;
-        border: 2px solid #0000ff !important;
-        color: white !important;
-        box-shadow: 0 0 10px #0000ff !important;
-    }}
-    /* ปุ่ม Clear (ม่วงเงา) */
-    div[data-testid="stButton"] + div[data-testid="stButton"] + div[data-testid="stButton"] button {{
-        background: linear-gradient(145deg, #8b4bcf, #4b0082) !important;
-        border: 2px solid #800080 !important;
-        color: white !important;
-        box-shadow: 0 0 10px #800080 !important;
-    }}
-
+    .stApp {
+        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
+        background-size: 1200% 1200%;
+        animation: RainbowFlow 5s ease infinite;
+    }
+    @keyframes RainbowFlow { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    h1, h2, p, label { color: #FFFFFF !important; text-shadow: 2px 2px 5px #000; font-family: 'Courier New', monospace; }
+    .stCheckbox { background: rgba(0,0,0,0.8); border: 1px solid #444; border-radius: 5px; padding: 10px; }
+    .stCheckbox:has(input:checked) { border: 2px solid #00ff00; box-shadow: 0 0 15px #00ff00; }
+    div[data-testid="stButton"]:nth-child(1) button { background: linear-gradient(180deg, #ff0000, #660000) !important; color: white !important; border-radius: 10px; font-weight: bold;}
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# --- 🕒 ส่วนแสดงวินาที (Real-time Clock) ---
-col_logo, col_clock = st.columns([1, 2])
-with col_clock:
-    t_now = time.strftime('%H:%M:%S')
-    st.markdown(f"<h1 style='text-align:right; color:#00ff00;'>🕒 {t_now}</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:right; color:white;'>\"อยู่นิ่งๆ ไม่เจ็บตัว\"</p>", unsafe_allow_html=True)
+# ส่วนหัว
+c1, c2 = st.columns([2, 1])
+c1.markdown("<h1>SYNAPSE: REAL AUDIO ENGINE</h1>", unsafe_allow_html=True)
+c2.markdown(f"<h1 style='color:#00ff00; text-align:right;'>🕒 {time.strftime('%H:%M:%S')}</h1>", unsafe_allow_html=True)
 
-# --- 🎼 กระดานห้องเพลงแบ่งโซน (4-8-16-32) ---
+# ==========================================
+# 🎼 3. กระดาน 32 ช่อง
+# ==========================================
 st.divider()
-st.subheader("🎹 ห้องจังหวะเพลง (ปุ่มกดล่อแสง)")
+st.write("🎹 MULTI-ARRAY SEQUENCER (32-STEP)")
 
-tab1, tab2, tab3, tab4 = st.tabs(["ห้อง 4", "ห้อง 8", "ห้อง 16", "ห้อง 32"])
+# สร้างตัวแปรเก็บสถานะ 32 ช่อง
+if 'steps' not in st.session_state:
+    st.session_state.steps = [False] * 32
 
-def create_glossy_grid(num):
+# สร้างตาราง 4 แถว แถวละ 8 ช่อง
+for r in range(4):
     cols = st.columns(8)
-    for i in range(num):
-        with cols[i % 8]:
-            # ปุ่ม checkbox ที่ถูกปรุงแต่งด้วย CSS ให้ดูมีมิติ
-            st.checkbox(f"P-{i+1}", key=f"gbeat_{num}_{i}")
+    for c in range(8):
+        idx = r * 8 + c
+        with cols[c]:
+            st.session_state.steps[idx] = st.checkbox(f"T{idx+1}", value=st.session_state.steps[idx], key=f"step_{idx}")
 
-with tab1: create_glossy_grid(4)
-with tab2: create_glossy_grid(8)
-with tab3: create_glossy_grid(16)
-with tab4: create_glossy_grid(32)
-
-# --- 🚀 ปุ่มสั่งงานหลัก (จัดเต็ม แดง/น้ำเงิน/ม่วง เงา) ---
+# ==========================================
+# 🚀 4. ปุ่มลั่นเสียงมหาประลัย
+# ==========================================
 st.divider()
-c1, c2, c3 = st.columns(3)
-with c1: st.button("▶️ PLAY LOOP (แดงเงา)", use_container_width=True)
-with c2: st.button("📋 COPY 4-STEPS (น้ำเงินเงา)", use_container_width=True)
-with c3: st.button("🗑️ CLEAR ALL (ม่วงเงา)", use_container_width=True)
+b_cols = st.columns(4)
 
-st.info("💡 เครื่องนี้คำนวณเสียงในพริบตา ด้วยคณิตศาสตร์ที่พี่คิดเอง!")
+with b_cols[0]:
+    if st.button("🔴 PLAY (แดงเงา)", use_container_width=True):
+        # 1. เช็คความเร็วจากเข็มวัด (สมมติ 128 BPM)
+        bpm = 128 
+        # 2. ส่ง Array 32 ช่องไปให้ Audio Engine คำนวณ
+        audio_data = generate_32step_sequence(st.session_state.steps, bpm)
+        
+        # 3. แปลงตัวเลขเป็นไฟล์ .wav ชั่วคราวในพริบตา
+        buf = io.BytesIO()
+        wavfile.write(buf, 44100, audio_data)
+        
+        # 4. สั่งลำโพงให้ส่งเสียง!
+        st.success(f"CALCULATION COMPLETE! บรรเลง ณ วินาทีที่ {time.strftime('%S')}")
+        st.audio(buf, autoplay=True)
+
+with b_cols[1]: 
+    if st.button("🔵 COPY 1-8", use_container_width=True):
+        st.session_state.steps = (st.session_state.steps[:8] * 4)[:32]
+        st.rerun()
+with b_cols[2]: 
+    if st.button("🟣 CLEAR", use_container_width=True):
+        st.session_state.steps = [False] * 32
+        st.rerun()
+
+st.sidebar.markdown(f"**DATE:** 6 มีนาคม 2026\n\n**STATUS:** 3000 HOURS OF TRUTH\n\n**สโลแกน:** อยู่นิ่งๆ ไม่เจ็บตัว")
