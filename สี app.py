@@ -48,7 +48,7 @@ if not firebase_admin._apps:
 col1, col2 = st.columns([1, 4])
 with col1:
     try:
-        st.image("logo3.jpg", width=120)
+        st.image("logo3.jpg", width=400)
     except:
         st.subheader("🛰️ LOGO")
 with col2:
