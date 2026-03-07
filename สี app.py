@@ -5,143 +5,103 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import time
-from datetime import datetime
 
-# --- 1. SETTING & STYLE (Rainbow Background) ---
+# --- 1. SETTING & STYLE (Dark Mode Green Glow) ---
 st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide", page_icon="🛰️")
 
-st.markdown(f"""
+st.markdown("""
     <style>
-    .stApp {{
-        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-        background-size: 1200% 1200%;
-        animation: rainbow 15s ease infinite;
-    }}
-    @keyframes rainbow {{
-        0%{{background-position:0% 50%}}
-        50%{{background-position:100% 50%}}
-        100%{{background-position:0% 50%}}
-    }}
-    .stTabs, .stMarkdown, .stTextInput, .stButton {{
-        background: rgba(0, 0, 0, 0.85);
+    .stApp { background: #0e1117; color: #00ff00; }
+    div[data-testid="stVerticalBlock"] > div {
+        background: rgba(0, 50, 0, 0.2);
         padding: 15px;
-        border-radius: 12px;
-        border: 1px solid rgba(0, 255, 0, 0.4);
-        color: white;
-    }}
-    .chat-box {{
-        background: rgba(20, 20, 20, 0.9);
-        padding: 10px;
         border-radius: 10px;
-        height: 300px;
-        overflow-y: auto;
-        border-left: 4px solid #00ff00;
-        margin-bottom: 10px;
-    }}
+        border: 1px solid #00ff00;
+    }
     </style>
     """, unsafe_allow_html=True)
 
 # --- 2. FIREBASE CONNECTION ---
 if not firebase_admin._apps:
     try:
-        fb_dict = dict(st.secrets["firebase"])
-        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
-        creds = credentials.Certificate(fb_dict)
-        firebase_admin.initialize_app(creds, {
-            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
-        })
-    except:
-        st.error("🚨 ระบบ Firebase ขัดข้อง เช็คการตั้งค่า Secrets")
-
-# --- 3. HEADER & MUSIC ---
-col_l, col_r = st.columns([1, 4])
-with col_l:
-    try: st.image("logo3.jpg", width=500)
-    except: st.subheader("🛰️ LOGO")
-with col_r:
-    st.title("🛰️ SYNAPSE COMMAND CENTER")
-    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | BY Ta101")
-
-yt_playlist = "https://www.youtube.com/embed/videoseries?list=PL6S211I3urvqVH9bDPIr0SLQkENDsNx3Y"
-st.markdown(f'<iframe width="100%" height="80" src="{yt_playlist}" frameborder="0" allow="autoplay; encrypted-media"></iframe>', unsafe_allow_html=True)
-
-# --- 4. CORE LOGIC ---
-loc = get_geolocation()
-if 'my_id' not in st.session_state:
-    st.session_state.my_id = "Ta101"
-
-tabs = st.tabs(["🚀 CORE & RADAR", "💬 CHAT CENTER", "📞 TELE-CALL"])
-
-# --- TAB 1: RADAR & GPS ---
-with tabs[0]:
-    st.session_state.my_id = st.text_input("ระบุชื่อรหัสของคุณ:", value=st.session_state.my_id)
-    
-    col_gps, col_map = st.columns([1, 2])
-    
-    with col_gps:
-        if loc and 'coords' in loc:
-            lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-            st.success(f"📍 GPS Online: {lat}, {lon}")
-            if st.button("🛰️ บันทึกพิกัดดาวเทียม"):
-                db.reference(f'users/{st.session_state.my_id}').update({
-                    'lat': lat, 'lon': lon, 'last_update': time.time()
-                })
-                st.toast("ส่งข้อมูลพิกัดแล้ว!")
-        else:
-            st.warning("🚨 รอสัญญาณ GPS...")
-
-    with col_map:
-        all_users = db.reference('users').get()
-        v_lat, v_lon = 13.75, 100.5
-        if all_users and st.session_state.my_id in all_users:
-            v_lat = all_users[st.session_state.my_id].get('lat', 13.75)
-            v_lon = all_users[st.session_state.my_id].get('lon', 100.5)
-
-        m = folium.Map(location=[v_lat, v_lon], zoom_start=15, 
-                       tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google")
-
-        if all_users:
-            for name, info in all_users.items():
-                if 'lat' in info and 'lon' in info:
-                    # สีหมุด: เรา=เขียว, ออนไลน์=ฟ้า, ออฟไลน์=แดง
-                    is_active = (time.time() - info.get('last_update', 0)) < 500
-                    color = 'green' if name == st.session_state.my_id else ('blue' if is_active else 'red')
-                    folium.Marker([info['lat'], info['lon']], tooltip=name,
-                                  icon=folium.Icon(color=color, icon='star')).add_to(m)
-        st_folium(m, width="100%", height=500)
-
-# --- TAB 2: CHAT SYSTEM (2 ROOMS) ---
-with tabs[1]:
-    st.subheader("💬 SYNAPSE MESSENGER")
-    chat_mode = st.radio("เลือกห้องแชต:", ["🌐 PUBLIC ROOM", "🔒 COMMAND ROOM"], horizontal=True)
-    
-    room_path = 'chats/public' if chat_mode == "🌐 PUBLIC ROOM" else 'chats/command'
-    
-    # ดึงข้อความ
-    msgs = db.reference(room_path).order_by_child('timestamp').limit_to_last(20).get()
-    
-    # แสดงกล่องแชต
-    chat_display = ""
-    if msgs:
-        for m_id, m_data in msgs.items():
-            t = datetime.fromtimestamp(m_data['timestamp']).strftime('%H:%M')
-            chat_display += f"[{t}] **{m_data['user']}**: {m_data['text']}\n\n"
-    
-    st.markdown(f'<div class="chat-box">{chat_display}</div>', unsafe_allow_html=True)
-    
-    # ส่งข้อความ
-    with st.container():
-        msg_text = st.text_input("พิมพ์ข้อความ...", key="chat_input")
-        if st.button("🚀 SEND") and msg_text:
-            db.reference(room_path).push({
-                'user': st.session_state.my_id,
-                'text': msg_text,
-                'timestamp': time.time()
+        if "firebase" in st.secrets:
+            fb_dict = dict(st.secrets["firebase"])
+            fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+            creds = credentials.Certificate(fb_dict)
+            firebase_admin.initialize_app(creds, {
+                'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
             })
+        else:
+            st.error("🔑 ไม่พบข้อมูล Firebase ใน Secrets")
+    except Exception as e:
+        st.error(f"⚠️ Firebase Error: {e}")
+
+# --- 3. SIDEBAR (MUSIC & PROFILE) ---
+with st.sidebar:
+    st.title("🛰️ COMMAND PANEL")
+    my_id = st.text_input("รหัส (ID):", value="Ta101")
+    st.write("---")
+    st.subheader("🎵 SYNAPSE PLAYER")
+    # เพลย์ลิสต์ R&B/Hip Hop ของคุณ
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+    st.components.v1.iframe(
+        src=f"https://www.youtube.com/embed/videoseries?list={playlist_id}",
+        height=300
+    )
+    st.caption("🎧 'อยู่นิ่งๆ ไม่เจ็บตัว' | BY Ta101")
+
+# --- 4. HEADER ---
+st.title("SYNAPSE COMMAND CENTER")
+
+# --- 5. CORE SYSTEM (Tabs) ---
+tabs = st.tabs(["🚀 RADAR & GPS", "💬 CHAT ROOMS", "📞 TELE-CALL"])
+
+# TAB 1: GPS & RADAR
+with tabs[0]:
+    loc = get_geolocation()
+    if loc:
+        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
+        st.success(f"📍 พิกัดปัจจุบัน: {lat}, {lon}")
+        if st.button("🛰️ อัปเดตตำแหน่งลงฐานข้อมูล"):
+            db.reference(f'users/{my_id}').update({'lat': lat, 'lon': lon, 'last_update': time.time()})
+            st.toast("บันทึกตำแหน่งแล้ว!", icon="✅")
+    
+    # Map Display
+    st.subheader("🛰️ STRATEGIC MAP")
+    all_users = db.reference('users').get() or {}
+    m = folium.Map(location=[13.75, 100.5], zoom_start=12, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google")
+    for name, info in all_users.items():
+        if isinstance(info, dict) and 'lat' in info:
+            is_online = (time.time() - info.get('last_update', 0)) < 300
+            color = 'green' if is_online else 'red'
+            folium.Marker([info['lat'], info['lon']], tooltip=name, icon=folium.Icon(color=color)).add_to(m)
+    st_folium(m, width="100%", height=450)
+
+# TAB 2: CHAT 2 ROOMS
+with tabs[1]:
+    room_choice = st.selectbox("เลือกห้องแชต:", ["🛰️ กองบัญชาการ (Room 1)", "🛠️ หน่วยปฏิบัติการ (Room 2)"])
+    room_id = "room_1" if "1" in room_choice else "room_2"
+    
+    chat_ref = db.reference(f'chats/{room_id}')
+    messages = chat_ref.order_by_child('timestamp').limit_to_last(15).get() or {}
+
+    with st.container(height=300):
+        for msg_id, data in messages.items():
+            st.markdown(f"**{data['user']}**: {data['text']}")
+
+    with st.form("send_msg", clear_on_submit=True):
+        msg_text = st.text_input("พิมพ์ข้อความ...")
+        if st.form_submit_button("ส่ง") and msg_text:
+            chat_ref.push({'user': my_id, 'text': msg_text, 'timestamp': time.time()})
             st.rerun()
 
-# --- TAB 3: TELE-CALL ---
+# TAB 3: VIDEO CALL (Whereby)
 with tabs[2]:
-    st.subheader("📞 DIRECT CALL")
-    call_url = "https://ta-sooksun.whereby.com/ta0b9934f8-ae2a-4e0f-b513-58a0616fd29a"
-    st.markdown(f'<iframe src="{call_url}?embed&vpa=1&chat=1" allow="camera; microphone; fullscreen; display-capture; compute-pressure" style="height: 650px; width: 100%; border: 2px solid #00ff00; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
+    st.subheader("📞 DIRECT CALL (Whereby)")
+    whereby_url = "https://ta-sooksun.whereby.com/ta0b9934f8-ae2a-4e0f-b513-58a0616fd29a"
+    # เพิ่ม allow เพื่อให้เบราว์เซอร์ยอมใช้กล้อง/ไมค์
+    st.components.v1.iframe(
+        src=f"{whereby_url}?embed&vpa=1&chat=1",
+        height=600,
+        allow="camera; microphone; fullscreen; speaker; display-capture"
+    )
