@@ -1,82 +1,67 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Firebase Chat Demo</title>
-    <style>
-        #messages {
-            border: 1px solid #ccc;
-            height: 300px;
-            overflow-y: scroll;
-            padding: 10px;
-            margin-bottom: 10px;
-            font-family: sans-serif;
-        }
-        .message-item { margin-bottom: 5px; }
-    </style>
-</head>
-<body>
-    <h1>Realtime Chat with Firebase Firestore</h1>
+import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, db
+import folium
+from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
+import time
 
-    <div id="messages"></div>
-    <input type="text" id="messageInput" placeholder="พิมพ์ข้อความของคุณ...">
-    <button id="sendButton">ส่ง</button>
+# 1. ⚡ ล้างหน้าจอให้คมชัด
+st.set_page_config(page_title="SYNAPSE CLEAR", layout="wide")
 
-    <script type="module">
-        // ใช้ Import แบบ Modular จาก CDN โดยตรง (เวอร์ชัน 10+)
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+# 2. 🛰️ เชื่อมต่อ FIREBASE
+if not firebase_admin._apps:
+    try:
+        fb_dict = dict(st.secrets["firebase"])
+        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+        creds = credentials.Certificate(fb_dict)
+        firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
+    except: pass
 
-        // 1. ใส่ค่าของจริงที่นี่
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
+st.title("🛰️ SYNAPSE COMMAND CENTER")
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const messagesCollection = collection(db, 'messages');
+# 3. 🎵 บังคับเล่นเพลง (ยักษ์ในตัวฉัน)
+music_url = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
+st.audio(music_url, format="audio/mpeg", loop=True)
 
-        const messagesDiv = document.getElementById('messages');
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
+# 4. 🚀 ระบบดึงพิกัดจริง (แก้จากอนุสาวรีย์ฯ เป็นตัวคุณ)
+loc = get_geolocation()
 
-        // 2. ส่งข้อความ
-        sendButton.addEventListener('click', async () => {
-            const text = messageInput.value.trim();
-            if (text) {
-                try {
-                    await addDoc(messagesCollection, {
-                        text: text,
-                        sender: "Anonymous User",
-                        timestamp: serverTimestamp()
-                    });
-                    messageInput.value = ''; 
-                } catch (error) {
-                    console.error("Error writing document: ", error);
-                }
-            }
-        });
+tabs = st.tabs(["🚀 CORE", "🛰️ RADAR"])
 
-        // 3. รับข้อความ Realtime
-        const q = query(messagesCollection, orderBy('timestamp'));
-        onSnapshot(q, (snapshot) => {
-            messagesDiv.innerHTML = ''; 
-            snapshot.forEach((doc) => {
-                const message = doc.data();
-                const messageElement = document.createElement('div');
-                messageElement.classList.add('message-item');
-                
-                // เปลี่ยนข้อความตอนรอเซิร์ฟเวอร์ให้ดูสมจริงขึ้น
-                const timestamp = message.timestamp ? new Date(message.timestamp.toDate()).toLocaleTimeString() : 'กำลังส่ง...';
-                messageElement.textContent = `[${timestamp}] ${message.sender}: ${message.text}`;
-                messagesDiv.appendChild(messageElement);
-            });
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        });
-    </script>
-</body>
-</html>
+with tabs[0]:
+    my_id = st.text_input("ระบุชื่อรหัสของคุณ:", value="Ta101")
+    if loc:
+        lat = loc['coords']['latitude']
+        lon = loc['coords']['longitude']
+        st.success(f"📍 ตรวจพบตำแหน่งจริง: {lat}, {lon}")
+        
+        if st.button("🛰️ บันทึกพิกัดจริง"):
+            db.reference(f'users/{my_id}').update({
+                'lat': lat, 'lon': lon, 'last_update': time.time()
+            })
+            st.balloons()
+    else:
+        st.warning("🚨 กรุณากด 'อนุญาต' (Allow) การเข้าถึงตำแหน่งบนเบราว์เซอร์")
+
+with tabs[1]:
+    all_users = db.reference('users').get()
+    
+    # 💡 หัวใจสำคัญ: ถ้ามีพิกัดเรา ให้เปิดแผนที่ตรงที่เราอยู่เลย!
+    view_lat, view_lon = 13.75, 100.5 # ค่าพื้นฐาน
+    if all_users and my_id in all_users:
+        view_lat = all_users[my_id].get('lat', 13.75)
+        view_lon = all_users[my_id].get('lon', 100.5)
+
+    m = folium.Map(location=[view_lat, view_lon], zoom_start=17, 
+                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+                   attr="Google Satellite")
+
+    if all_users:
+        for name, info in all_users.items():
+            if 'lat' in info and 'lon' in info:
+                # 🔵 ตัวคุณ | 🔴 คนอื่น
+                color = 'blue' if name == my_id else 'red'
+                folium.Marker([info['lat'], info['lon']], tooltip=name,
+                              icon=folium.Icon(color=color, icon='star')).add_to(m)
+        st_folium(m, width="100%", height=500)
