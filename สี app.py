@@ -6,10 +6,9 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import time
 
-# --- 1. SETTING & STYLE (Rainbow Background) ---
+# --- 1. SETTING & STYLE (Rainbow Background + Matrix Feel) ---
 st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide", page_icon="🛰️")
 
-# ใส่ CSS สำหรับพื้นหลังสีรุ้งวิ่งตามที่คุณต้องการ
 st.markdown(f"""
     <style>
     .stApp {{
@@ -22,11 +21,11 @@ st.markdown(f"""
         50%{{background-position:100% 50%}}
         100%{{background-position:0% 50%}}
     }}
-    /* ทำให้เนื้อหาด้านบนดูง่ายขึ้น */
-    .stTabs, .stMarkdown, .stTextInput, .stButton {{
-        background: rgba(0, 0, 0, 0.7);
-        padding: 15px;
+    .stTabs, .stMarkdown, .stTextInput, .stButton, .stAudio {{
+        background: rgba(0, 0, 0, 0.8);
+        padding: 20px;
         border-radius: 15px;
+        border: 1px solid rgba(0, 255, 0, 0.3);
         color: white;
     }}
     </style>
@@ -35,23 +34,21 @@ st.markdown(f"""
 # --- 2. FIREBASE CONNECTION ---
 if not firebase_admin._apps:
     try:
-        # ใช้ค่าจาก secrets หรือถ้ามีไฟล์ google-services.json ก็เปลี่ยนเป็น credentials.Certificate("google-services.json")
+        # ดึงค่าจาก Secrets (ต้องตั้งค่าใน Streamlit Cloud)
         fb_dict = dict(st.secrets["firebase"])
         fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
         creds = credentials.Certificate(fb_dict)
         firebase_admin.initialize_app(creds, {
             'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
         })
-    except Exception as e:
-        st.error(f"กรุณาตั้งค่า Firebase ใน Secrets: {e}")
+    except:
+        st.error("🚨 ระบบ Firebase ยังไม่ได้เชื่อมต่อ (เช็ค Secrets)")
 
-# --- 3. HEADER & LOGO ---
+# --- 3. HEADER ---
 col1, col2 = st.columns([1, 4])
 with col1:
-    try:
-        st.image("logo3.jpg", width=120)
-    except:
-        st.subheader("🛰️ LOGO")
+    try: st.image("logo3.jpg", width=120)
+    except: st.subheader("🛰️ LOGO")
 with col2:
     st.title("🛰️ SYNAPSE COMMAND CENTER")
     st.write("### *'อยู่นิ่งๆ ไม่เจ็บตัว'* | BY Ta101")
@@ -62,32 +59,23 @@ st.audio(music_url, format="audio/mpeg", loop=True)
 
 # --- 5. CORE SYSTEM ---
 loc = get_geolocation()
-tabs = st.tabs(["🚀 CORE & CONTROL", "🛰️ RADAR MAP", "📞 TELE-CALL"])
+tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "📞 TELE-CALL"])
 
 with tabs[0]:
-    my_id = st.text_input("ระบุชื่อรหัสของคุณ (ID):", value="Ta101")
-    
+    my_id = st.text_input("ระบุชื่อรหัสของคุณ:", value="Ta101")
     if loc:
-        lat = loc['coords']['latitude']
-        lon = loc['coords']['longitude']
-        st.success(f"📍 ตรวจพบตำแหน่งปัจจุบัน: {lat}, {lon}")
-        
-        if st.button("🛰️ LOGIN & UPDATE POSITION"):
+        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
+        st.success(f"📍 พิกัดปัจจุบัน: {lat}, {lon}")
+        if st.button("🛰️ บันทึกตำแหน่งเข้าดาวเทียม"):
             db.reference(f'users/{my_id}').update({
-                'lat': lat, 
-                'lon': lon, 
-                'status': 'online',
-                'last_update': time.time()
+                'lat': lat, 'lon': lon, 'last_update': time.time()
             })
-            st.toast(f"สวัสดี {my_id}, พิกัดอัปเดตแล้ว!", icon="✅")
-            st.balloons()
+            st.toast("บันทึกสำเร็จ!", icon="✅")
     else:
-        st.warning("🚨 กรุณากด 'อนุญาต' (Allow) ให้เข้าถึงพิกัด GPS บนเบราว์เซอร์")
+        st.warning("🚨 กรุณาเปิด GPS")
 
 with tabs[1]:
     all_users = db.reference('users').get()
-    
-    # กำหนดจุดศูนย์กลางแผนที่
     v_lat, v_lon = (13.75, 100.5)
     if all_users and my_id in all_users:
         v_lat = all_users[my_id].get('lat', 13.75)
@@ -100,46 +88,23 @@ with tabs[1]:
     if all_users:
         for name, info in all_users.items():
             if 'lat' in info and 'lon' in info:
-                # 💡 หมุดเปลี่ยนสีตามสถานะจริง
-                current_time = time.time()
-                last_active = info.get('last_update', 0)
-                
-                if name == my_id:
-                    icon_color = 'green'  # ตัวเราสีเขียว
-                elif (current_time - last_active) < 300: # ออนไลน์ไม่เกิน 5 นาที
-                    icon_color = 'blue'   # เพื่อนออนไลน์สีฟ้า
-                else:
-                    icon_color = 'red'    # ออฟไลน์สีแดง
-                
-                folium.Marker(
-                    [info['lat'], info['lon']], 
-                    tooltip=f"{name} ({'Online' if icon_color != 'red' else 'Offline'})",
-                    icon=folium.Icon(color=icon_color, icon='star')
-                ).add_to(m)
-        
-    st_folium(m, width="100%", height=600)
+                # ตัวเราสีเขียว | ออนไลน์สีฟ้า | ออฟไลน์สีแดง
+                is_online = (time.time() - info.get('last_update', 0)) < 300
+                icon_color = 'green' if name == my_id else ('blue' if is_online else 'red')
+                folium.Marker([info['lat'], info['lon']], tooltip=name,
+                              icon=folium.Icon(color=icon_color, icon='star')).add_to(m)
+    st_folium(m, width="100%", height=500)
 
 with tabs[2]:
-    st.subheader("📞 SYNAPSE QUICK-CALL")
-    st.info("ใช้ Whereby แทน Jitsi เพื่อความเสถียรบนมือถือที่มากกว่า")
-
-    room_id = st.text_input("ชื่อห้องสนทนา:", value=f"synapse-{my_id}")
-    whereby_url = f"https://whereby.com/{room_id}" 
+    st.subheader("📞 SYNAPSE DIRECT CALL")
+    # ลิงก์ห้องที่คุณสมัครไว้ล่าสุด
+    whereby_url = "https://ta-sooksun.whereby.com/ta0b9934f8-ae2a-4e0f-b513-58a0616fd29a"
     
-    col_c1, col_c2 = st.columns(2)
-    with col_c1:
-        st.write("ส่งลิงก์นี้ให้เพื่อน:")
-        st.code(whereby_url)
-    with col_c2:
-        if st.button("🚀 เปิดผ่าน Google Meet (สำรอง)"):
-            st.markdown(f'<a href="https://meet.google.com/new" target="_blank">สร้างห้องสำรองที่นี่</a>', unsafe_allow_html=True)
-
-    # ฝังหน้าจอโทร
+    # ฝัง Iframe ตามที่คุณให้มาเป๊ะๆ
     st.markdown(f"""
         <iframe 
             src="{whereby_url}?embed&vpa=1&chat=1" 
-            width="100%" 
-            height="600" 
-            allow="camera; microphone; fullscreen; display-capture">
+            allow="camera; microphone; fullscreen; speaker; display-capture; compute-pressure" 
+            style="height: 700px; width: 100%; border: 2px solid #00ff00; border-radius: 15px;">
         </iframe>
     """, unsafe_allow_html=True)
