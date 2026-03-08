@@ -1,15 +1,14 @@
-def global_chat_logic(my_name, msg_input=None):
-    # ถ้ามีการส่งข้อความใหม่
-    if msg_input:
-        db.reference('global_chat').push({
-            'name': my_name, 
-            'msg': msg_input, 
-            'ts': time.time()
+def private_chat_logic(my_name, target_name, p_msg=None):
+    # สร้างชื่อห้องจากชื่อคนสองคนเรียงกัน (กันชื่อสลับที่กันแล้วหาห้องไม่เจอ)
+    pair = sorted([my_name, target_name])
+    room_id = f"priv_{pair[0]}_{pair[1]}"
+    
+    if p_msg:
+        db.reference(f'private_rooms/{room_id}').push({
+            'name': my_name, 'msg': p_msg, 'ts': time.time()
         })
     
-    # ดึงข้อความเก่ามาแสดง (กรองเฉพาะ 15 ข้อความล่าสุด)
-    raw_msgs = db.reference('global_chat').get()
-    if raw_msgs:
-        return sorted(raw_msgs.values(), key=lambda x: x.get('ts', 0))[-15:]
+    raw_p_msgs = db.reference(f'private_rooms/{room_id}').get()
+    if raw_p_msgs:
+        return sorted(raw_p_msgs.values(), key=lambda x: x.get('ts', 0))[-10:]
     return []
-
