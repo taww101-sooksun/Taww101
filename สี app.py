@@ -1,6 +1,22 @@
 import streamlit as st
 import time
 from firebase_admin import db # อย่าลืมตั้งค่า firebase_admin.initialize_app ก่อนรัน
+import streamlit as st
+import time
+import firebase_admin
+from firebase_admin import credentials, db
+
+# --- 0. ยืนยันตัวตนกับ Firebase (เพิ่มส่วนนี้เข้าไป!) ---
+if not firebase_admin._apps:
+    # นำไฟล์ JSON ที่ได้จาก Firebase มาใส่ชื่อไฟล์ให้ตรง
+    # หรือถ้าไม่อยากใช้ไฟล์ ให้ใส่ path ของไฟล์ที่คุณอัปโหลดขึ้น GitHub/Server
+    cred = credentials.Certificate("ชื่อไฟล์-คีย์-ของคุณ.json") 
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': 'https://ชื่อโปรเจกต์ของคุณ.firebaseio.com/' # ใส่ URL ฐานข้อมูลของคุณ
+    })
+
+# --- ต่อด้วยโค้ดเดิมของคุณ ---
+# st.set_page_config ...
 
 # --- 1. SET UP & THEME (ก๊อปจากที่คุณเลือก) ---
 st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
