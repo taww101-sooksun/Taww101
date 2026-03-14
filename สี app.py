@@ -1,47 +1,31 @@
 import streamlit as st
-import time
-from firebase_admin import db # อย่าลืมตั้งค่า firebase_admin.initialize_app ก่อนรัน
-import streamlit as st
-import time
 import firebase_admin
 from firebase_admin import credentials, db
+import time
 
-# --- 0. ยืนยันตัวตนกับ Firebase (เพิ่มส่วนนี้เข้าไป!) ---
+# --- 1. INITIALIZE FIREBASE (เชื่อมต่อฐานข้อมูลอัตโนมัติ) ---
 if not firebase_admin._apps:
-    # นำไฟล์ JSON ที่ได้จาก Firebase มาใส่ชื่อไฟล์ให้ตรง
-    # หรือถ้าไม่อยากใช้ไฟล์ ให้ใส่ path ของไฟล์ที่คุณอัปโหลดขึ้น GitHub/Server
-    cred = credentials.Certificate("ชื่อไฟล์-คีย์-ของคุณ.json") 
+    fb_config = {
+        "type": "service_account",
+        "project_id": "notty-101",
+        "private_key_id": "e280e1fe09351106936545fc0d0175dfb45716b2",
+        "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDbOYSW+i8jyezE\nsnIUglx8/8yrclUh+DrWWVbgmPEcinECAeT9m3MrtlPSlX4HlRcgUAY2GOVNvx8+\n2bfQ4odpvsxiP3D0lX23Pex8fkDc0BHQplOjAgYBmQtyr+0IDXJZgGfKqdvbu82u\nmmEUuP7NGML4xGnd/pobmmFo3jG8e0Q33CQl2lLyAOlrXJ/7bxW/7mHPMngOj2In\njAw/38triq/a5DrAWTq0eQaBGq84BI+AkCoN1Pjn6se1JJBL7JkTnS4+zhQQNLEz\ng0cUV8LTAoWUm//4JeezW44K83Jof4SVyu8lUkjWBcGoEbnVh9PdFqEiipJrk8Bk\noNV5yVGXAgMBAAECggEAJMn0PDnj60eZmjCwAE0YJEnxGNxo+PhlN09qyuofnECH\nUmTq/rw1iaJhUrePnMoiRWPohu+Km491OODkfgNl4hMIzXwEAqeLn1Ke+w1c6TFp\nq/AdnP9b7qy2RRrM1ksbY3Wu9U2n/an4jFKP9CBPci+zmHetpHlzdypjKmwPQKfH\nUIkFm29JsFjQiV3mlFTxh8KWSofOKk2idkW6pSuf9Vg+U7G7PfcmY8zJ7R4xFHhU\n4SxGn/zEaclfvv4BGKA8VwVsXvtedSqgf3m153XI72eNcFLR05laoqCffj4ZFlL0\nOZcWAI9l9USjlwM6r3bx68zqzX+fRP9B+DEt1oYQcQKBgQD8hg45u10WJ70VMVJB\n8rIgPNdMIyUSodOjqgna0oOCb9jmOwLqSQy/DbF5nyG4bdoIMvA1MY/anPqZ9T4X\nJti/owndmMzuNXK10ltpctmy8fu8L0Py9E20GiqFkLi+CZFL2owZxK7xXQ6SW5N2\njK23wTd6xxp8+/0WC9DPQxCkKwKBgQDePhwrZQWFbDbd0Absb+mnbL3W8BymUYEF\nlIxd9VaUSOw4bJ93HOHF7e7ZI+Pe2HjNAYdhdu+uvJTN4vYRFQgwO8nv2noPupw8\nCl/WhwKvWFU13pB4f46v/awSg1Ec0/dVWXOimGxxS2AY6hsQPs4RDukBVk6X9Ws1\nRtDoeQQ2RQKBgQDyqdgNvnErkzBupyDG4vQtaonyTmuXxg7c3c/uihF6TQT/6YFZ\npq0rA3uixjrfQiEdc+XFGEWG7Qcc38C0+s2bCo+2dNmpp47+DpFtecKd5U/lfP4t\nAHuTMPnftDzz0bngTLoJISqEIsqX9ox0haeCR5iK0b4wkO6aOuyD34ykVQKBgA/o\nXDXS9lE1jLvVzxkPbacZRoFjEHnrLZQLrPxwujDFA3uKcuOgwpxbSpRqWD40Onla\nGamlTMSyJOiTzU8ttTdWoD614bTMg7Bcgb2mTk/kv7yqYKbvYnRAcRemJKEunu6S\nB4/k3yZA4fEGmMdR54gbDByXY+rGm1Tl68AoIWANAoGBAOdcPg/t6CXw7aXRzV9O\nxIzE6oQNn5djZBKvOqQi2C7b1/jNF3odFC0wXK8xDqAPvUNXfNwxz1FjHYkKSSH1\nxbjoa3WHPFqgkUvBuh5N77Ish3dsRMd47dnHSPPY0WKt2LP1IRQw7z3qCmLWSTpy\n+tvkS1k9uAU6qLcsKVrkxr4e\n-----END PRIVATE KEY-----\n",
+        "client_email": "firebase-adminsdk-fbsvc@notty-101.iam.gserviceaccount.com",
+        "token_uri": "https://oauth2.googleapis.com/token",
+    }
+    cred = credentials.Certificate(fb_config)
     firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://ชื่อโปรเจกต์ของคุณ.firebaseio.com/' # ใส่ URL ฐานข้อมูลของคุณ
+        'databaseURL': 'https://notty-101-default-rtdb.firebaseio.com/'
     })
 
-# --- ต่อด้วยโค้ดเดิมของคุณ ---
-# st.set_page_config ...
+# --- 2. CONFIGURATION ---
+st.set_page_config(page_title="SYNAPSE IDENTITY", layout="wide")
 
-# --- 1. SET UP & THEME (ก๊อปจากที่คุณเลือก) ---
-st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
+if 'user_name' not in st.session_state: st.session_state.user_name = "AGENT_X"
+if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00f2fe"
+if 'lang' not in st.session_state: st.session_state.lang = "TH"
 
-if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#00f2fe" 
-if 'lang' not in st.session_state:
-    st.session_state.lang = "TH"
-if 'lang_open' not in st.session_state:
-    st.session_state.lang_open = False
-if 'user_name' not in st.session_state:
-    st.session_state.user_name = "USER_" + str(int(time.time()))[-4:]
-if 'nav_level' not in st.session_state:
-    st.session_state.nav_level = "HOME"
-
-# --- 2. คลังภาษา (6 ภาษาครอบคลุมทุกส่วน) ---
-LANG_MAP = {
-    "TH": {"back": "⬅️ ย้อนกลับ", "target": "เป้าหมาย", "status": "สถานะระบบ", "send": "ส่ง", "chat": "แชต"},
-    "EN": {"back": "⬅️ BACK", "target": "TARGET", "status": "SYS STATUS", "send": "SEND", "chat": "CHAT"},
-    "JP": {"back": "⬅️ 戻る", "target": "目標", "status": "システム状態", "send": "送信", "chat": "チャット"},
-    "CN": {"back": "⬅️ 返回", "target": "目标", "status": "系统状态", "send": "发送", "chat": "聊天"},
-    "MM": {"back": "⬅️ နောက်သို့", "target": "ပစ်မှတ်", "status": "စနစ်အခြေအနေ", "send": "ပို့ပါ", "chat": "စကားပြောခန်း"},
-    "LA": {"back": "⬅️ ກັບຄືນ", "target": "ເປົ້າໝາຍ", "status": "ສະຖານະລະບົບ", "send": "ສົ່ງ", "chat": "ແຊັດ"}
-}
-
+# --- 3. LANGUAGE MATRIX (6 ภาษา) ---
 TAB_LABELS = {
     "TH": ["🚀 แกนหลัก", "🛰️ เรดาร์", "💬 สื่อสาร", "📊 ล็อก", "🔐 ปลอดภัย", "📺 มีเดีย", "🧹 ระบบ"],
     "EN": ["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "📊 LOG", "🔐 SEC", "📺 MEDIA", "🧹 SYS"],
@@ -51,88 +35,89 @@ TAB_LABELS = {
     "LA": ["🚀 ແກນຫຼັກ", "🛰️ ເຣດາ", "💬 ສື່ສານ", "📊 ບັນທຶກ", "🔐 ປອດໄພ", "📺 ມີເດຍ", "🧹 ລະບົບ"]
 }
 
-# --- 3. UI STYLE (CSS นีออนตามสีที่เลือก) ---
+# --- 4. ADVANCED CSS CUSTOMIZATION ---
 st.markdown(f"""
     <style>
     .stApp {{ background: #000; color: {st.session_state.theme_color}; }}
-    .ghost-glass {{
-        background: rgba(255, 255, 255, 0.05);
-        backdrop-filter: blur(10px);
-        border: 1px solid {st.session_state.theme_color}44;
-        padding: 20px; border-radius: 15px; margin-bottom: 15px;
-    }}
     .stButton>button {{ 
         border: 1px solid {st.session_state.theme_color} !important; 
         color: {st.session_state.theme_color} !important; 
-        background: transparent !important;
-        width: 100%; transition: 0.3s;
+        background: transparent !important; 
+        border-radius: 10px;
     }}
-    .stButton>button:hover {{ background: {st.session_state.theme_color}22 !important; box-shadow: 0 0 15px {st.session_state.theme_color}; }}
+    .chat-bubble {{
+        border: 1px solid {st.session_state.theme_color}33;
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(5px);
+        padding: 10px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        border-left: 4px solid {st.session_state.theme_color};
+    }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. LOGIC FUNCTIONS (เช็คระบบ & แชต) ---
-def check_server_logic():
-    try: return "ONLINE" if db.reference('.info/connected').get() else "OFFLINE"
-    except: return "OFFLINE"
-
-def private_chat_logic(my_name, target_name, p_msg=None):
-    pair = sorted([my_name, target_name])
-    room_id = f"priv_{pair[0]}_{pair[1]}"
-    if p_msg:
-        db.reference(f'private_rooms/{room_id}').push({'name': my_name, 'msg': p_msg, 'ts': time.time()})
-    raw = db.reference(f'private_rooms/{room_id}').order_by_child('ts').limit_to_last(10).get()
-    return sorted(raw.values(), key=lambda x: x.get('ts', 0)) if raw else []
-
-# --- 5. SIDEBAR & LANGUAGE SELECTOR ---
+# --- 5. SIDEBAR CONTROL ---
 with st.sidebar:
-    st.markdown(f"### 🌐 SYNAPSE IDENTITY")
+    st.title("🌐 SYNAPSE IDENTITY")
     st.session_state.user_name = st.text_input("YOUR ID", st.session_state.user_name)
     st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
+    st.session_state.lang = st.selectbox("LANGUAGE", ["TH", "EN", "JP", "CN", "MM", "LA"])
+    st.markdown("---")
+    st.write(f'**Slogan:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+
+# --- 6. MAIN CONTENT (TABS) ---
+tabs = st.tabs(TAB_LABELS[st.session_state.lang])
+
+# --- TAB: RADAR (ตัวอย่างการล็อกพิกัด) ---
+with tabs[1]:
+    st.subheader("🛰️ GPS TARGET LOCK")
+    col1, col2 = st.columns(2)
+    with col1:
+        lat = st.number_input("LATITUDE", value=13.75)
+    with col2:
+        lon = st.number_input("LONGITUDE", value=100.50)
+    if st.button("LOCK COORDINATES"):
+        db.reference('radar/target').set({'lat': lat, 'lon': lon, 'by': st.session_state.user_name, 'ts': time.time()})
+        st.success("Target Locked in Database")
+
+# --- TAB: COMMS (แชตลับ P2P Signaling) ---
+with tabs[2]:
+    st.subheader("💬 NEURAL PRIVATE LINK")
+    target_id = st.text_input("TARGET ID (ID เพื่อนที่จะคุยด้วย)")
     
-    # ระบบเลือกภาษา 2 จังหวะ
-    if st.button(f"LANGUAGE: {st.session_state.lang}"):
-        st.session_state.lang_open = not st.session_state.lang_open
-    
-    if st.session_state.lang_open:
-        c1, c2 = st.columns(2)
-        l_opts = [("TH", "🇹🇭"), ("EN", "🇺🇸"), ("JP", "🇯🇵"), ("CN", "🇨🇳"), ("MM", "🇲🇲"), ("LA", "🇱🇦")]
-        for code, flag in l_opts:
-            if st.button(f"{flag} {code}"):
-                st.session_state.lang = code
-                st.session_state.lang_open = False
-                st.rerun()
-    st.write("---")
-    st.info('"อยู่นิ่งๆ ไม่เจ็บตัว"')
+    if target_id:
+        chat_msg = st.chat_input("Type your message...")
+        
+        # Room ID Logic (เรียงชื่อกันชื่อสลับ)
+        room_id = f"priv_{'_'.join(sorted([st.session_state.user_name, target_id]))}"
+        
+        if chat_msg:
+            db.reference(f'private_rooms/{room_id}').push({
+                'name': st.session_state.user_name,
+                'msg': chat_msg,
+                'ts': time.time()
+            })
+        
+        # Display Messages
+        raw_data = db.reference(f'private_rooms/{room_id}').order_by_child('ts').limit_to_last(15).get()
+        if raw_data:
+            for key in sorted(raw_data.keys(), key=lambda k: raw_data[k]['ts']):
+                m = raw_data[key]
+                st.markdown(f"""
+                    <div class="chat-bubble">
+                        <small style="color:{st.session_state.theme_color}">{m['name']}</small><br>{m['msg']}
+                    </div>
+                """, unsafe_allow_html=True)
 
-# --- 6. MAIN NAVIGATION (Tabs & UI) ---
-L = LANG_MAP[st.session_state.lang]
-main_tabs = st.tabs(TAB_LABELS[st.session_state.lang])
-
-# [Tab 💬 COMMS] - แชตลับ
-with main_tabs[2]:
-    st.markdown('<div class="ghost-glass">', unsafe_allow_html=True)
-    target = st.text_input(L["target"], placeholder="Target ID...")
-    if target:
-        msg = st.chat_input(f"{L['chat']}...")
-        p_history = private_chat_logic(st.session_state.user_name, target, msg)
-        for m in p_history:
-            color = st.session_state.theme_color if m['name'] == st.session_state.user_name else "#888"
-            st.markdown(f"<p style='color:{color}'><b>{m['name']}:</b> {m['msg']}</p>", unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# [Tab 🧹 SYS] - เช็คสถานะ
-with main_tabs[6]:
-    status = check_server_logic()
-    color = "#00f2fe" if status == "ONLINE" else "#ff1744"
+# --- TAB: SYSTEM (สถานะเซิร์ฟเวอร์) ---
+with tabs[6]:
+    st.subheader("🧹 SYSTEM DIAGNOSTICS")
+    is_connected = db.reference('.info/connected').get()
+    status_color = st.session_state.theme_color if is_connected else "#ff1744"
     st.markdown(f"""
-        <div style='border: 2px solid {color}; padding: 20px; border-radius: 10px; text-align: center;'>
-            <h2 style='color:{color};'>{L['status']}: {status}</h2>
+        <div style="border: 2px solid {status_color}; padding: 20px; border-radius: 15px; text-align: center;">
+            <h1 style="color:{status_color};">{ "CORE ONLINE" if is_connected else "CORE OFFLINE" }</h1>
+            <p>Connection to Firebase RTDB: Active</p>
         </div>
     """, unsafe_allow_html=True)
-
-# ปุ่ม BACK (ที่ท้ายหน้า)
-if st.session_state.nav_level != "HOME":
-    if st.button(L["back"]):
-        st.session_state.nav_level = "HOME"
-        st.rerun()
