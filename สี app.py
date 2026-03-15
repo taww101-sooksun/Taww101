@@ -84,7 +84,25 @@ with tabs[1]:
     lon = st.number_input("LONGITUDE", value=100.50)
     if st.button("LOCK TARGET"):
         db.reference('radar/target').set({'lat': lat, 'lon': lon, 'by': st.session_state.user_name, 'ts': time.time()})
-        st.success("Target Coordinate Locked!")
+# ... (โค้ดส่วนบนที่เป็นพวก Import และ Initialize Firebase) ...
+
+# --- 6. MAIN CONTENT (TABS) ---
+tabs = st.tabs(TAB_LABELS[st.session_state.lang])
+
+# 1. หาจุดนี้ในไฟล์ของคุณ
+with tabs[0]: 
+    # >>> วางโค้ดที่ผมให้ใหม่ลงไปตรงนี้ <<<
+    st.markdown(f"### 👤 OPERATOR: {st.session_state.user_name}")
+    # ... โค้ดที่เหลือของแท็บแกนหลัก ...
+
+with tabs[1]:
+    # อันนี้ของเรดาร์ (ไม่ต้องยุ่งถ้ามีอยู่แล้ว)
+    ...
+
+with tabs[2]:
+    # อันนี้ของสื่อสาร (ไม่ต้องยุ่งถ้ามีอยู่แล้ว)
+    ...
+      st.success("Target Coordinate Locked!")
 
 # --- TAB 2: สื่อสาร (Private Chat) ---
 with tabs[2]:
