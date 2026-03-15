@@ -60,7 +60,7 @@ if 'lang' not in st.session_state: st.session_state.lang = "TH"
 def login_ui():
     # แสดงโลโก้ด้านบนสุดของหน้า Login
     if logo_exists:
-        st.image(logo_path, width=200) 
+        st.image(logo_path, width=400) 
     
     st.markdown(f"""
         <div style="text-align: center; padding: 20px; border: 1px solid {st.session_state.theme_color}; border-radius: 15px; background: rgba(0,0,0,0.5);">
