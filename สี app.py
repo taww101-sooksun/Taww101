@@ -34,6 +34,15 @@ st.set_page_config(page_title="SYNAPSE IDENTITY", layout="wide")
 if 'user_name' not in st.session_state: st.session_state.user_name = "AGENT_X"
 if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00f2fe"
 if 'lang' not in st.session_state: st.session_state.lang = "TH"
+# --- 3. CUSTOM UI (CSS) --- บรรทัดประมาณที่ 39
+st.markdown(f"""
+    <style>
+    .stApp {{ background: #000; color: {st.session_state.theme_color}; }}
+    .stTextInput>div>div>input {{ background-color: #111 !important; color: {st.session_state.theme_color} !important; border: 1px solid {st.session_state.theme_color}55 !important; }}
+    .stButton>button {{ border: 1px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; width: 100%; border-radius: 10px; }}
+    .chat-bubble {{ border-left: 4px solid {st.session_state.theme_color}; background: rgba(255,255,255,0.05); padding: 12px; margin-bottom: 10px; border-radius: 0 10px 10px 0; font-family: 'Courier New', monospace; }}
+    </style>
+    """, unsafe_allow_html=True) # <-- เช็คว่ามี """, ปิดท้ายและตามด้วย ) หรือไม่
 
 # --- 3. CUSTOM CSS (Cyberpunk Theme) ---
 st.markdown(f"""
