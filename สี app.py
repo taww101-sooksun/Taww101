@@ -1,288 +1,126 @@
 import streamlit as st
-import requests
-from streamlit_js_eval import get_geolocation
-from datetime import datetime
-import pytz
-from timezonefinder import TimezoneFinder
-import folium
-from streamlit_folium import st_folium
-import firebase_admin
-from firebase_admin import credentials, db
-import uuid
-import os
+import time
+from firebase_admin import credentials, db, initialize_app
 
-# --- 1. INITIALIZE FIREBASE ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
-
-if not firebase_admin._apps:
+# --- 1. SETUP FIREBASE (ใช้ข้อมูลหลังบ้านของคุณ) ---
+if not st.session_state.get("firebase_init"):
     try:
-        fb_creds = dict(st.secrets["firebase_service_account"])
-        cred = credentials.Certificate(fb_creds)
-        firebase_admin.initialize_app(cred, {
-            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
+        # ดึงข้อมูลจาก st.secrets ที่คุณเอาไปไว้หลังบ้านแล้ว
+        cred = credentials.Certificate({
+            "project_id": st.secrets["project_id"],
+            "private_key": st.secrets["private_key"].replace('\\n', '\n'),
+            "client_email": st.secrets["client_email"],
         })
-    except Exception as e:
-        st.error(f"Firebase Connection Error: {e}")
-
-# --- 2. SECURITY GATE ---
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-
-if not st.session_state.authenticated:
-    st.markdown("<h2 style='text-align: center;'>🔐 ACCESS CONTROL</h2>", unsafe_allow_html=True)
-    with st.form("Login"):
-        u_id = st.text_input("Enter ID")
-        u_pw = st.text_input("Password", type="password")
-        if st.form_submit_button("UNLOCK"):
-            if u_pw == "9999999" and u_id: 
-                st.session_state.authenticated = True
-                st.session_state.my_id = u_id
-                st.rerun()
-    st.stop()
-
-my_id = st.session_state.my_id
-
-# --- 3. STYLE & RAINBOW (Compact Mode) ---
-st.markdown("""
-    <style>
-    @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 60s ease infinite; }
-    .stMetric { background-color: rgba(0, 0, 0, 0.8) !important; padding: 5px !important; border-radius: 10px; border: 1px solid white; }
-    div[data-testid="stMetricValue"] > div { font-size: 1.5rem !important; } /* ย่อขนาดตัวเลขให้เล็กลงหน่อยไม่กินที่ */
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 4. HEADER & LOGO CHECK ---
-# ตรวจสอบไฟล์โลโก้ ถ้าไม่มีให้ใช้ Text Header แทน
-if os.path.exists("logo2.jpg"):
-    st.image("logo2.jpg", width=500)
-else:
-    st.markdown("<h1 style='text-align: center; color: white;'>S Y N A P S E</h1>", unsafe_allow_html=True)
-
-st.write(f"👤 **ID:** {my_id} | **Status:** 'อยู่นิ่งๆ ไม่เจ็บตัว'")
-
-# --- 5. CALL & SEARCH SYSTEM ---
-with st.expander("🔍 ค้นหาและโทรหาเพื่อน", expanded=False):
-    all_users = db.reference('/users').get()
-    friend_options = [u for u in all_users.keys() if u != my_id] if all_users else []
-    target = st.selectbox("เลือกเพื่อน", ["-- Select --"] + friend_options)
-    if st.button("📞 CALL NOW"):
-        if target != "-- Select --":
-            room_id = f"SYNAPSE-{uuid.uuid4().hex[:6]}"
-            db.reference(f'/calls/{target}').set({'from': my_id, 'room': room_id, 'status': 'calling'})
-            st.session_state.active_room = room_id
-            st.session_state.call_target = target
-
-# --- 6. INCOMING CALL LISTENER ---
-try:
-    call_data = db.reference(f'/calls/{my_id}').get()
-    if call_data and call_data.get('status') == 'calling':
-        st.warning(f"🚨📞 สายเรียกเข้าจาก: {call_data.get('from')}")
-        col_a, col_r = st.columns(2)
-        if col_a.button("✅ รับสาย"):
-            st.session_state.active_room = call_data.get('room')
-            st.session_state.call_target = call_data.get('from')
-            db.reference(f'/calls/{my_id}').update({'status': 'connected'})
-            st.rerun()
-        if col_r.button("❌ ไม่รับ"):
-            db.reference(f'/calls/{my_id}').delete()
-            st.rerun()
-except: pass
-
-# --- 7. CORE DATA (COMPACT REALITY) ---
-location = get_geolocation()
-if location:
-    coords = location.get('coords', {})
-    lat, lon = coords.get('latitude'), coords.get('longitude')
-    if lat and lon:
-        db.reference(f'/users/{my_id}/location').update({'lat': lat, 'lon': lon, 'time': datetime.now().isoformat()})
-        
-        # ยุบแถบข้อมูลให้ประหยัดพื้นที่
-        w_res = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()['current_weather']
-        c1, c2, c3 = st.columns(3)
-        c1.metric("🌡️ Temp", f"{w_res['temperature']}°C")
-        c2.metric("💨 Wind", f"{w_res['windspeed']}k/h")
-        c3.metric("⏰ Time", datetime.now().strftime('%H:%M'))
-        
-        st.caption(f"📍 พิกัดจริงของคุณ: {lat:.5f}, {lon:.5f}")
-
-        # --- แผนที่ HYBRID (ใหญ่สะใจ) ---
-        m = folium.Map(location=[lat, lon], zoom_start=17, 
-                       tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', 
-                       attr='Google Hybrid')
-        folium.Marker([lat, lon], icon=folium.Icon(color='blue', icon='user', prefix='fa')).add_to(m)
-        
-        # แสดงพิกัดเพื่อนถ้าเชื่อมต่ออยู่
-        if "call_target" in st.session_state:
-            f_data = db.reference(f'/users/{st.session_state.call_target}/location').get()
-            if f_data:
-                folium.Marker([f_data['lat'], f_data['lon']], icon=folium.Icon(color='red', icon='eye', prefix='fa')).add_to(m)
-        
-        st_folium(m, use_container_width=True, height=400)
-    else: st.warning("🛰️ กำลังรับสัญญาณดาวเทียม...")
-else: st.info("💡 โปรดอนุญาต GPS")
-
-# --- 8. ACTIVE CALL ---
-if "active_room" in st.session_state:
-    st.markdown(f'<iframe src="https://meet.jit.si/{st.session_state.active_room}" allow="camera; microphone; fullscreen" width="100%" height="400" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
-    if st.button("❌ END CALL"):
-        db.reference(f'/calls/{st.session_state.call_target}').delete()
-        del st.session_state.active_room
-        st.rerun()
-
-# --- 9. YOUTUBE AUTOPLAY (บังคับเปิดตลอด) ---
-st.write("---")
-# ใส่ &autoplay=1&mute=1 เพื่อให้เล่นอัตโนมัติบน Browser ส่วนใหญ่ (ต้องติด Mute ไว้ตามนโยบาย Chrome/Safari)
-# เพิ่ม loop=1 และ playlist ID เพื่อให้วนลูป
-playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-st.markdown(f'''
-    <iframe width="100%" height="300" 
-    src="import streamlit as st
-import requests
-from streamlit_js_eval import get_geolocation
-from datetime import datetime
-import pytz
-from timezonefinder import TimezoneFinder
-import folium
-from streamlit_folium import st_folium
-import firebase_admin
-from firebase_admin import credentials, db
-import uuid
-import os
-
-# --- 1. INITIALIZE FIREBASE ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
-
-if not firebase_admin._apps:
-    try:
-        fb_creds = dict(st.secrets["firebase_service_account"])
-        cred = credentials.Certificate(fb_creds)
-        firebase_admin.initialize_app(cred, {
-            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
+        initialize_app(cred, {
+            'databaseURL': st.secrets["database_url"]
         })
+        st.session_state["firebase_init"] = True
     except Exception as e:
-        st.error(f"Firebase Connection Error: {e}")
+        st.error(f"การเชื่อมต่อ Firebase ผิดพลาด: {e}")
 
-# --- 2. SECURITY GATE ---
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
+# --- 2. ฟังก์ชันเล่นเสียง (Auto-play ตามที่คุณส่งมา) ---
+def play_audio():
+    link = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
+    st.components.v1.html(f"""
+        <audio id="synapse-audio" loop autoplay style="display:none;"><source src="{link}" type="audio/mpeg"></audio>
+        <script>
+            var audio = document.getElementById("synapse-audio");
+            window.parent.document.addEventListener('click', function() {{ audio.play(); }}, {{ once: true }});
+        </script>
+    """, height=0)
 
-if not st.session_state.authenticated:
-    st.markdown("<h2 style='text-align: center;'>🔐 ACCESS CONTROL</h2>", unsafe_allow_html=True)
-    with st.form("Login"):
-        u_id = st.text_input("Enter ID")
-        u_pw = st.text_input("Password", type="password")
-        if st.form_submit_button("UNLOCK"):
-            if u_pw == "9999999" and u_id: 
-                st.session_state.authenticated = True
-                st.session_state.my_id = u_id
+# --- 3. LOGIC แชทส่วนตัว (จากโค้ดที่คุณส่งมา) ---
+def private_chat_logic(my_name, target_name, p_msg=None):
+    pair = sorted([my_name, target_name])
+    room_id = f"priv_{pair[0]}_{pair[1]}"
+    
+    ref = db.reference(f'private_rooms/{room_id}')
+    
+    if p_msg:
+        ref.push({
+            'name': my_name, 
+            'msg': p_msg, 
+            'ts': time.time()
+        })
+    
+    raw_p_msgs = ref.get()
+    if raw_p_msgs:
+        return sorted(raw_p_msgs.values(), key=lambda x: x.get('ts', 0))[-15:]
+    return []
+
+# --- 4. หน้าจอหลัก (UI) ---
+st.set_page_config(page_title="GPS Chat System", layout="wide")
+play_audio() # รันระบบเสียง
+
+# ส่วน GPS และเวลา (Real-time จริงตามตำแหน่งที่ยืน)
+st.markdown("### 📍 ระบบพิกัดและเวลาเรียลไทม์")
+st.components.v1.html("""
+    <div style="background: #1e1e1e; color: #00ff00; padding: 15px; border-radius: 10px; font-family: monospace; border: 1px solid #333;">
+        <div style="display: flex; justify-content: space-around;">
+            <div>📡 LAT/LONG: <span id="gps-val">กำลังรับสัญญาณ...</span></div>
+            <div>⏰ LOCAL TIME: <span id="clock-val">00:00:00</span></div>
+        </div>
+    </div>
+    <script>
+        function updateInfo() {
+            navigator.geolocation.getCurrentPosition(pos => {
+                document.getElementById('gps-val').innerText = pos.coords.latitude.toFixed(6) + ", " + pos.coords.longitude.toFixed(6);
+            });
+            document.getElementById('clock-val').innerText = new Date().toLocaleTimeString('th-TH');
+        }
+        setInterval(updateInfo, 1000);
+    </script>
+""", height=80)
+
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    st.subheader("💬 ระบบแชทส่วนตัว")
+    my_name = st.text_input("ชื่อของคุณ", value="User1")
+    target_name = st.text_input("ชื่อคู่สนทนา", value="User2")
+    
+    if my_name and target_name:
+        # ดึงข้อความจาก Firebase
+        messages = private_chat_logic(my_name, target_name)
+        
+        # กล่องแสดงข้อความ
+        chat_placeholder = st.empty()
+        with chat_placeholder.container():
+            for m in messages:
+                align = "text-align:right;" if m['name'] == my_name else "text-align:left;"
+                bg = "#dcf8c6" if m['name'] == my_name else "#ffffff"
+                st.markdown(f"""
+                    <div style="{align} margin-bottom: 10px;">
+                        <div style="display: inline-block; background: {bg}; padding: 8px 12px; border-radius: 10px; border: 1px solid #ddd; color: black;">
+                            <b>{m['name']}</b>: {m['msg']}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        # ช่องส่งข้อความ
+        with st.form("send_msg", clear_on_submit=True):
+            user_input = st.text_input("พิมพ์อะไรบางอย่าง...")
+            if st.form_submit_button("ส่งข้อความ") and user_input:
+                private_chat_logic(my_name, target_name, p_msg=user_input)
                 st.rerun()
-    st.stop()
 
-my_id = st.session_state.my_id
+with col2:
+    st.subheader("📹 วิดีโอคอล")
+    if st.button("🔴 เปิดกล้องเชื่อมต่อ"):
+        st.warning("ระบบกำลังเรียกใช้งาน WebRTC ผ่านพิกัดปัจจุบันของคุณ...")
+        st.components.v1.html("""
+            <div style="display:flex; gap:10px;">
+                <video id="localVideo" autoplay playsinline muted style="width:100%; border-radius:10px; background:black;"></video>
+            </div>
+            <script>
+                navigator.mediaDevices.getUserMedia({video: true, audio: true})
+                .then(stream => { document.getElementById('localVideo').srcObject = stream; })
+                .catch(err => { console.error("ไม่สามารถเปิดกล้องได้", err); });
+            </script>
+        """, height=300)
+    else:
+        st.info("อยู่นิ่งๆ ไม่เจ็บตัว... กดปุ่มด้านบนเพื่อเริ่มวิดีโอ")
 
-# --- 3. STYLE & RAINBOW (Compact Mode) ---
-st.markdown("""
-    <style>
-    @keyframes RainbowFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-    .stApp { background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 60s ease infinite; }
-    .stMetric { background-color: rgba(0, 0, 0, 0.8) !important; padding: 5px !important; border-radius: 10px; border: 1px solid white; }
-    div[data-testid="stMetricValue"] > div { font-size: 1.5rem !important; } /* ย่อขนาดตัวเลขให้เล็กลงหน่อยไม่กินที่ */
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 4. HEADER & LOGO CHECK ---
-# ตรวจสอบไฟล์โลโก้ ถ้าไม่มีให้ใช้ Text Header แทน
-if os.path.exists("logo2.jpg"):
-    st.image("logo2.jpg", width=500)
-else:
-    st.markdown("<h1 style='text-align: center; color: white;'>S Y N A P S E</h1>", unsafe_allow_html=True)
-
-st.write(f"👤 **ID:** {my_id} | **Status:** 'อยู่นิ่งๆ ไม่เจ็บตัว'")
-
-# --- 5. CALL & SEARCH SYSTEM ---
-with st.expander("🔍 ค้นหาและโทรหาเพื่อน", expanded=False):
-    all_users = db.reference('/users').get()
-    friend_options = [u for u in all_users.keys() if u != my_id] if all_users else []
-    target = st.selectbox("เลือกเพื่อน", ["-- Select --"] + friend_options)
-    if st.button("📞 CALL NOW"):
-        if target != "-- Select --":
-            room_id = f"SYNAPSE-{uuid.uuid4().hex[:6]}"
-            db.reference(f'/calls/{target}').set({'from': my_id, 'room': room_id, 'status': 'calling'})
-            st.session_state.active_room = room_id
-            st.session_state.call_target = target
-
-# --- 6. INCOMING CALL LISTENER ---
-try:
-    call_data = db.reference(f'/calls/{my_id}').get()
-    if call_data and call_data.get('status') == 'calling':
-        st.warning(f"🚨📞 สายเรียกเข้าจาก: {call_data.get('from')}")
-        col_a, col_r = st.columns(2)
-        if col_a.button("✅ รับสาย"):
-            st.session_state.active_room = call_data.get('room')
-            st.session_state.call_target = call_data.get('from')
-            db.reference(f'/calls/{my_id}').update({'status': 'connected'})
-            st.rerun()
-        if col_r.button("❌ ไม่รับ"):
-            db.reference(f'/calls/{my_id}').delete()
-            st.rerun()
-except: pass
-
-# --- 7. CORE DATA (COMPACT REALITY) ---
-location = get_geolocation()
-if location:
-    coords = location.get('coords', {})
-    lat, lon = coords.get('latitude'), coords.get('longitude')
-    if lat and lon:
-        db.reference(f'/users/{my_id}/location').update({'lat': lat, 'lon': lon, 'time': datetime.now().isoformat()})
-        
-        # ยุบแถบข้อมูลให้ประหยัดพื้นที่
-        w_res = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true").json()['current_weather']
-        c1, c2, c3 = st.columns(3)
-        c1.metric("🌡️ Temp", f"{w_res['temperature']}°C")
-        c2.metric("💨 Wind", f"{w_res['windspeed']}k/h")
-        c3.metric("⏰ Time", datetime.now().strftime('%H:%M'))
-        
-        st.caption(f"📍 พิกัดจริงของคุณ: {lat:.5f}, {lon:.5f}")
-
-        # --- แผนที่ HYBRID (ใหญ่สะใจ) ---
-        m = folium.Map(location=[lat, lon], zoom_start=17, 
-                       tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', 
-                       attr='Google Hybrid')
-        folium.Marker([lat, lon], icon=folium.Icon(color='blue', icon='user', prefix='fa')).add_to(m)
-        
-        # แสดงพิกัดเพื่อนถ้าเชื่อมต่ออยู่
-        if "call_target" in st.session_state:
-            f_data = db.reference(f'/users/{st.session_state.call_target}/location').get()
-            if f_data:
-                folium.Marker([f_data['lat'], f_data['lon']], icon=folium.Icon(color='red', icon='eye', prefix='fa')).add_to(m)
-        
-        st_folium(m, use_container_width=True, height=400)
-    else: st.warning("🛰️ กำลังรับสัญญาณดาวเทียม...")
-else: st.info("💡 โปรดอนุญาต GPS")
-
-# --- 8. ACTIVE CALL ---
-if "active_room" in st.session_state:
-    st.markdown(f'<iframe src="https://meet.jit.si/{st.session_state.active_room}" allow="camera; microphone; fullscreen" width="100%" height="400" style="border: 2px solid white; border-radius: 15px;"></iframe>', unsafe_allow_html=True)
-    if st.button("❌ END CALL"):
-        db.reference(f'/calls/{st.session_state.call_target}').delete()
-        del st.session_state.active_room
-        st.rerun()
-
-# --- 9. YOUTUBE AUTOPLAY (บังคับเปิดตลอด) ---
-st.write("---")
-# ใส่ &autoplay=1&mute=1 เพื่อให้เล่นอัตโนมัติบน Browser ส่วนใหญ่ (ต้องติด Mute ไว้ตามนโยบาย Chrome/Safari)
-# เพิ่ม loop=1 และ playlist ID เพื่อให้วนลูป
-playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
-st.markdown(f'''
-    <iframe width="100%" height="300" 
-    src="https://www.youtube.com/embed?listType=playlist&list={playlist_id}&autoplay=1&loop=1&mute=1&playlist={playlist_id}" 
-    frameborder="0" allow="autoplay; encrypted-media"></iframe>
-    ''', unsafe_allow_html=True)
-
-st.caption("SYNAPSE V1.9 | REAL DATA | NO LIES")
-}" 
-    frameborder="0" allow="autoplay; encrypted-media"></iframe>
-    ''', unsafe_allow_html=True)
-
-st.caption("SYNAPSE V1.9 | REAL DATA | NO LIES")
+# ระบบ Refresh ข้อมูลอัตโนมัติเพื่อให้แชทดูเรียลไทม์
+if st.button("🔄 อัปเดตแชท"):
+    st.rerun()
