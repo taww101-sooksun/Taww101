@@ -43,7 +43,25 @@ st.markdown(f"""
     .stButton>button {{ border: 1px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; width: 100%; border-radius: 10px; }}
     .chat-bubble {{ border-left: 4px solid {st.session_state.theme_color}; background: rgba(255,255,255,0.05); padding: 12px; margin-bottom: 10px; border-radius: 0 10px 10px 0; font-family: 'Courier New', monospace; }}
     </style>
-    """, unsafe_allow_html=True)
+# --- [TAB 0: แกนหลัก - เวอร์ชันทนทาน] ---
+with tabs[0]:
+    st.subheader("🖥️ SYSTEM DASHBOARD")
+    
+    if st.button("📢 BROADCAST SIGNAL"):
+        try:
+            # ลองส่งข้อมูล
+            db.reference('logs/activity').push({
+                'event': 'SIGNAL_SENT', 
+                'user': st.session_state.user_name, 
+                'ts': time.time()
+            })
+            st.toast("Signal Broadcasted!")
+        except Exception as e:
+            # ถ้าพัง ให้บอกวิธีแก้แทนการพ่น Error ยาวๆ
+            st.error("📡 การเชื่อมต่อล้มเหลว!")
+            st.warning("ตรวจสอบ database_url ใน Secrets และตั้งค่า Rules เป็น true ใน Firebase")
+            st.info(f"รายละเอียด: {e}")
+
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
@@ -63,31 +81,6 @@ selected_tabs = TAB_LABELS.get(st.session_state.lang, TAB_LABELS["EN"])
 tabs = st.tabs(selected_tabs)
 
 # --- [TAB 0: แกนหลัก] ---
-with tabs[0]:
-    st.markdown(f"""
-        <div style="text-align: center; border: 1px solid {st.session_state.theme_color}; padding: 20px; border-radius: 15px; background: rgba(0,0,0,0.5);">
-            <h1 style="color:{st.session_state.theme_color}; margin-bottom: 0;">SYNAPSE CORE</h1>
-            <p style="letter-spacing: 2px;">NEURAL INTERFACE v3.13</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("OPERATOR", st.session_state.user_name)
-    
-    try:
-        db.reference('status').get(timeout=3)
-        c2.metric("CORE STATUS", "ONLINE")
-    except:
-        c2.metric("CORE STATUS", "OFFLINE")
-        
-    c3.metric("SYS TIME", time.strftime("%H:%M", time.localtime()))
-    
-    if st.button("📢 BROADCAST SIGNAL"):
-        db.reference('logs/activity').push({
-            'event': 'SIGNAL_SENT', 'user': st.session_state.user_name, 'ts': time.time()
-        })
-        st.toast("Signal Broadcasted!")
 
 # --- [TAB 1: เรดาร์] ---
 with tabs[1]:
