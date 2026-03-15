@@ -26,7 +26,7 @@ if not firebase_admin._apps:
         }
         cred = credentials.Certificate(fb_config)
         # ใช้ URL ตรงตามที่ Error แจ้งมาเป๊ะๆ
-        target_url = "https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app"
+        target_url = "https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/"
         firebase_admin.initialize_app(cred, {'databaseURL': target_url})
         st.toast("✅ SYNAPSE CORE CONNECTED")
     except Exception as e:
