@@ -3,7 +3,7 @@ import firebase_admin
 from firebase_admin import credentials, db
 import time
 
-# --- 1. INITIALIZE FIREBASE ---
+# --- 1. INITIALIZE FIREBASE (ยึดตามความเป็นจริง ไม่หลอกกัน) ---
 @st.cache_resource
 def init_firebase():
     if not firebase_admin._apps:
@@ -16,117 +16,117 @@ def init_firebase():
                 "token_uri": "https://oauth2.googleapis.com/token",
             }
             cred = credentials.Certificate(fb_config)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': st.secrets["database_url"]
-            })
+            # ใช้ URL ที่ตรงกับ Region ของเพื่อน (Singapore)
+            target_url = "https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/"
+            firebase_admin.initialize_app(cred, {'databaseURL': target_url})
             return True
         except Exception as e:
-            st.error(f"🚨 เชื่อมต่อ Firebase ไม่ได้: {e}")
+            st.error(f"📡 Connection Error: {e}")
             return False
     return True
 
-# เรียกใช้งาน
-is_connected = init_firebase()
+init_firebase()
 
-# --- 2. CONFIGURATION & SESSION STATE ---
-st.set_page_config(page_title="SYNAPSE IDENTITY", layout="wide")
+# --- 2. MULTI-LANGUAGE DICTIONARY (6 ภาษา) ---
+LANG_DATA = {
+    "TH": {"welcome": "ยินดีต้อนรับ", "core": "🚀 แกนหลัก", "radar": "🛰️ เรดาร์", "comms": "💬 สื่อสาร", "login": "เข้าสู่ระบบ", "pass": "รหัสผ่าน", "lat": "ละติจูด", "lon": "ลองติจูด", "time": "เวลาของระบบ"},
+    "EN": {"welcome": "Welcome", "core": "🚀 CORE", "radar": "🛰️ RADAR", "comms": "💬 COMMS", "login": "LOGIN", "pass": "PASSWORD", "lat": "LATITUDE", "lon": "LONGITUDE", "time": "SYS TIME"},
+    "JP": {"welcome": "ようこそ", "core": "🚀 コア", "radar": "🛰️ レーダー", "comms": "💬 通信", "login": "ログイン", "pass": "パスワード", "lat": "緯度", "lon": "経度", "time": "システム時間"},
+    "CN": {"welcome": "欢迎", "core": "🚀 核心", "radar": "🛰️ 雷达", "comms": "💬 通讯", "login": "登录", "pass": "密码", "lat": "纬度", "lon": "经度", "time": "系统时间"},
+    "MM": {"welcome": "ကြိုဆိုပါတယ်", "core": "🚀 အဓိက", "radar": "🛰️ ရေဒါ", "comms": "💬 ဆက်သွယ်ရေး", "login": "လော့ဂ်အင်", "pass": "စကားဝှက်", "lat": "လတ္တီတွဒ်", "lon": "လောင်ဂျီတွဒ်", "time": "စနစ်အချိန်"},
+    "LA": {"welcome": "ຍິນດີຕ້ອນຮັບ", "core": "🚀 ແກນຫຼັກ", "radar": "🛰️ ເຣດາ", "comms": "💬 ສື່ສານ", "login": "ເຂົ້າສູ່ລະບົບ", "pass": "ລະຫັດຜ່ານ", "lat": "ລະຕິຈູດ", "lon": "ລອງຕິຈູດ", "time": "ເວລາລະບົບ"}
+}
 
+# --- 3. LOGIN & SESSION STATE ---
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 if 'user_name' not in st.session_state: st.session_state.user_name = "AGENT_X"
 if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00f2fe"
 if 'lang' not in st.session_state: st.session_state.lang = "TH"
 
-# --- 3. CUSTOM UI (CSS) - ตรวจสอบเครื่องหมายปิดให้ดี ---
+def login_screen():
+    st.markdown("<h1 style='text-align: center; color:#00f2fe;'>SYNAPSE IDENTITY</h1>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        pw = st.text_input("PASSWORD", type="password")
+        if st.button("ENTER"):
+            if pw == "notty101": 
+                st.session_state.logged_in = True
+                st.rerun()
+            else: st.error("Access Denied")
+    st.stop()
+
+if not st.session_state.logged_in: login_screen()
+
+# --- 4. UI SETUP ---
+st.set_page_config(page_title="SYNAPSE v3", layout="wide")
+L = LANG_DATA[st.session_state.lang]
+
 st.markdown(f"""
     <style>
     .stApp {{ background: #000; color: {st.session_state.theme_color}; }}
-    .stTextInput>div>div>input {{ background-color: #111 !important; color: {st.session_state.theme_color} !important; border: 1px solid {st.session_state.theme_color}55 !important; }}
-    .stButton>button {{ border: 1px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; width: 100%; border-radius: 10px; }}
-    .chat-bubble {{ border-left: 4px solid {st.session_state.theme_color}; background: rgba(255,255,255,0.05); padding: 12px; margin-bottom: 10px; border-radius: 0 10px 10px 0; font-family: monospace; }}
+    .stButton>button {{ border: 1px solid {st.session_state.theme_color}; background: transparent; color: {st.session_state.theme_color}; border-radius: 10px; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. SIDEBAR ---
+# --- 5. SIDEBAR ---
 with st.sidebar:
-    st.title("🌐 SYNAPSE IDENTITY")
-    st.session_state.user_name = st.text_input("YOUR ID", st.session_state.user_name)
-    st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
-    st.session_state.lang = st.selectbox("LANGUAGE", ["TH", "EN"])
-    st.markdown("---")
+    st.title("🌐 CONTROL")
+    st.session_state.user_name = st.text_input("NAME", st.session_state.user_name)
+    st.session_state.lang = st.selectbox("LANG", list(LANG_DATA.keys()))
+    st.session_state.theme_color = st.color_picker("THEME", st.session_state.theme_color)
     st.write('**Slogan:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+    if st.button("LOGOUT"):
+        st.session_state.logged_in = False
+        st.rerun()
 
-# --- 5. MAIN CONTENT (TABS) ---
-tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "💬 สื่อสาร", "🔐 ปลอดภัย", "🧹 ระบบ"])
+# --- 6. MAIN CONTENT ---
+tabs = st.tabs([L["core"], L["radar"], L["comms"], "🛠️ ระบบ"])
 
-# --- [TAB 0: แกนหลัก] ---
+# TAB 0: แกนหลัก (Dashboard + นาฬิกา)
 with tabs[0]:
-    st.markdown(f"""
-        <div style="text-align: center; border: 1px solid {st.session_state.theme_color}; padding: 20px; border-radius: 15px; background: rgba(0,0,0,0.5);">
-            <h1 style="color:{st.session_state.theme_color}; margin-bottom: 0;">SYNAPSE CORE</h1>
-            <p style="letter-spacing: 2px;">NEURAL INTERFACE v3.13</p>
-        </div>
-    """, unsafe_allow_html=True)
+    c1, c2 = st.columns([2,1])
+    with c1:
+        st.header(f"{L['welcome']}, {st.session_state.user_name}")
+    with c2:
+        st.metric(L["time"], time.strftime("%H:%M:%S"))
     
     st.markdown("---")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("OPERATOR", st.session_state.user_name)
-    
-    try:
-        # เช็คสถานะการเชื่อมต่อจริง
-        db.reference('status').get(timeout=3)
-        c2.metric("CORE STATUS", "ONLINE")
-    except:
-        c2.metric("CORE STATUS", "OFFLINE")
-        
-    c3.metric("SYS TIME", time.strftime("%H:%M", time.localtime()))
-    
     if st.button("📢 BROADCAST SIGNAL"):
-        try:
-            db.reference('logs/activity').push({
-                'event': 'SIGNAL_SENT', 'user': st.session_state.user_name, 'ts': time.time()
-            })
-            st.toast("Signal Broadcasted!")
-        except Exception as e:
-            st.error(f"ส่งสัญญาณล้มเหลว: {e}")
+        db.reference('logs/activity').push({'user': st.session_state.user_name, 'ts': time.time()})
+        st.toast("Signal Sent!")
 
-# --- [TAB 1: เรดาร์] ---
+# TAB 1: เรดาร์ (พิกัด + สีหมุดแผ่นที่)
 with tabs[1]:
-    st.subheader("🛰️ GPS TARGET LOCK")
-    lat = st.number_input("LATITUDE", value=13.7500, format="%.4f")
-    lon = st.number_input("LONGITUDE", value=100.5100, format="%.4f")
-    if st.button("LOCK COORDINATES"):
-        try:
-            db.reference('radar/target').set({
-                'lat': lat, 'lon': lon, 'user': st.session_state.user_name, 'ts': time.time()
-            })
-            st.success("Target Locked!")
-        except Exception as e:
-            st.error(f"Error: {e}")
+    st.subheader(L["radar"])
+    col_a, col_b = st.columns(2)
+    lat_val = col_a.number_input(L["lat"], value=13.7500, format="%.4f")
+    lon_val = col_b.number_input(L["lon"], value=100.5100, format="%.4f")
+    
+    # แสดงแผนที่ (หมุดสีจะเปลี่ยนตาม Theme ที่เลือก)
+    import pandas as pd
+    map_data = pd.DataFrame({'lat': [lat_val], 'lon': [lon_val]})
+    st.map(map_data, color=st.session_state.theme_color)
+    
+    if st.button("📍 LOCK LOCATION"):
+        db.reference('radar/target').set({'lat': lat_val, 'lon': lon_val, 'user': st.session_state.user_name})
+        st.success("Target Locked!")
 
-# --- [TAB 2: สื่อสาร] ---
+# TAB 2: สื่อสาร (Chat + Call Link)
 with tabs[2]:
-    st.subheader("💬 NEURAL PRIVATE LINK")
-    target = st.text_input("TARGET ID", placeholder="คุยกับใคร?")
+    st.subheader(L["comms"])
+    target = st.text_input("TARGET ID")
     if target:
-        room_id = f"priv_{'_'.join(sorted([st.session_state.user_name, target]))}"
-        chat_ref = db.reference(f'private_rooms/{room_id}')
-        
-        msg = st.chat_input("Transmit...")
+        msg = st.chat_input("Message...")
         if msg:
-            chat_ref.push({'name': st.session_state.user_name, 'msg': msg, 'ts': time.time()})
-            st.rerun()
-            
-        try:
-            msgs = chat_ref.order_by_child('ts').limit_to_last(10).get()
-            if msgs:
-                for m in sorted(msgs.values(), key=lambda x: x['ts']):
-                    st.markdown(f'<div class="chat-bubble"><b style="color:{st.session_state.theme_color}">{m["name"]}</b><br>{m["msg"]}</div>', unsafe_allow_html=True)
-        except:
-            st.caption("กำลังรอการเชื่อมต่อ...")
+            db.reference(f'chats/{st.session_state.user_name}_{target}').push({'msg': msg, 'ts': time.time()})
+    
+    st.markdown("---")
+    st.write("📞 **Quick Call**")
+    st.markdown(f'<a href="tel:0812345678"><button style="width:100%;">Call Operator</button></a>', unsafe_allow_html=True)
 
-# --- [TAB 4: ระบบ] ---
-with tabs[4]:
-    st.subheader("🧹 DIAGNOSTICS")
-    if st.button("REBOOT CORE"):
+# TAB 3: ระบบ (Check Path)
+with tabs[3]:
+    st.write("Database Path:", "Asia-Southeast1 (Singapore)")
+    if st.button("REBOOT"):
         st.cache_resource.clear()
         st.rerun()
-    st.write("Database Path:", st.secrets.get("database_url", "Not Set"))
