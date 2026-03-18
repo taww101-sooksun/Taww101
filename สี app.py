@@ -139,25 +139,25 @@ with tabs[2]: # สื่อสาร (Video Call ไร้ติ่ง)
             <script>
                 const options = {{
                     roomName: '{call_id}',
-                    width: '100%', height: 450,
+                    width: '100%', 
+                    height: 450,
                     parentNode: document.querySelector('#meet'),
-                    configOverwrite: {
-    prejoinPageEnabled: false,
-    disableDeepLinking: true,       // ❌ ปิดการถามให้เปิดในแอป (ตัวที่คุณเจอ)
-    enableClosePage: false,        // ❌ ปิดหน้าเวลาคอลเสร็จ
-    doNotFlipLocalVideo: true,
-    startWithAudioMuted: false,
-    startWithVideoMuted: false,
-    enableWelcomePage: false,
-    // --- เพิ่มตัวนี้เข้าไปด้วย ---
-    disableThirdPartyRequests: true 
-},
-
+                    configOverwrite: {{
+                        prejoinPageEnabled: false,
+                        disableDeepLinking: true,       
+                        enableClosePage: false,        
+                        doNotFlipLocalVideo: true,
+                        startWithAudioMuted: false,
+                        startWithVideoMuted: false,
+                        enableWelcomePage: false,
+                        disableThirdPartyRequests: true 
+                    }},
+                    interfaceConfigOverwrite: {{
+                        SHOW_JITSI_WATERMARK: false,
+                        SHOW_WATERMARK_FOR_GUESTS: false,
+                        TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup', 'tileview']
+                    }}
                 }};
                 new JitsiMeetExternalAPI('meet.jit.si', options);
             </script>
         """, height=470)
-
-with tabs[3]: # ระบบ
-    st.write(f'Slogan: "อยู่นิ่งๆ ไม่เจ็บตัว"')
-    if st.button("REBOOT"): st.rerun()
