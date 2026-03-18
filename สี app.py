@@ -141,17 +141,18 @@ with tabs[2]: # สื่อสาร (Video Call ไร้ติ่ง)
                     roomName: '{call_id}',
                     width: '100%', height: 450,
                     parentNode: document.querySelector('#meet'),
-                    configOverwrite: {{
-                        prejoinPageEnabled: false,    // ❌ ข้ามหน้า Join
-                        disableDeepLinking: true,     // ❌ ปิดการชวนโหลดแอป
-                        startWithAudioMuted: false,
-                        startWithVideoMuted: false,
-                        enableWelcomePage: false
-                    }},
-                    interfaceConfigOverwrite: {{
-                        SHOW_JITSI_WATERMARK: false,  // ❌ ลบโลโก้
-                        TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup', 'tileview']
-                    }}
+                    configOverwrite: {
+    prejoinPageEnabled: false,
+    disableDeepLinking: true,       // ❌ ปิดการถามให้เปิดในแอป (ตัวที่คุณเจอ)
+    enableClosePage: false,        // ❌ ปิดหน้าเวลาคอลเสร็จ
+    doNotFlipLocalVideo: true,
+    startWithAudioMuted: false,
+    startWithVideoMuted: false,
+    enableWelcomePage: false,
+    // --- เพิ่มตัวนี้เข้าไปด้วย ---
+    disableThirdPartyRequests: true 
+},
+
                 }};
                 new JitsiMeetExternalAPI('meet.jit.si', options);
             </script>
