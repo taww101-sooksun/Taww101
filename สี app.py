@@ -19,17 +19,14 @@ if loc:
     st.info(f"ละติจูด: {loc['coords']['latitude']}")
     st.info(f"ลองจิจูด: {loc['coords']['longitude']}")
 
-    # สร้างแผนที่และปักหมุด
-    # m คือตัวแปรเก็บแผนที่, zoom_start=15 คือระยะซูมที่เห็นหลังคาบ้าน
+     # บรรทัดนี้คือหัวใจของการเปลี่ยนลายแผนที่
     m = folium.Map(
         location=[loc['coords']['latitude'], loc['coords']['longitude']], 
-        zoom_start=15
+        zoom_start=17, # ซูมเข้าไปใกล้ขึ้นอีกนิด
+        tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+        attr='Google'
     )
-    
-    folium.Marker(
-        [loc['coords']['latitude'], loc['coords']['longitude']], 
-        popup="คุณอยู่ที่นี่"
-    ).add_to(m)
+
 
     # แสดงแผนที่บนหน้าเว็บ
     st_folium(m, width=700)
