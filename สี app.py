@@ -106,7 +106,7 @@ if music_files:
         if os.path.exists("logo2.jpg"):
             st.image("logo2.jpg", width=500)
     with col_main2:
-        st.title("🎸 อยู่นิ้งๆไม่เจ็บตัว 🎼 MUSIC 🎼")
+        st.title("🎸 อยู่นิ้งๆไม่เจ็บตัว 🎼 MUSIC ")
 
     # 1. ชื่อเพลงวิ่ง
     st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
