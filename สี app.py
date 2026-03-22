@@ -56,8 +56,8 @@ if music_files:
         st.session_state.song_index = 0
 
     # แสดงโลโก้ด้านบน
-    if os.path.exists("logo3.jpg"):
-        st.image("logo3.jpg", width=1000)
+    if os.path.exists("logo2.jpg"):
+        st.image("logo2.jpg", width=400)
 
     st.title("🎧 MY VIBE PLAYER")
 
