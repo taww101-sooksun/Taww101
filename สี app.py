@@ -2,62 +2,70 @@ import streamlit as st
 import os
 import random
 
-# ตั้งค่าหน้าแอป
-st.set_page_config(page_title="My Music Hub", layout="centered")
+# 1. ตั้งค่าหน้าแอป
+st.set_page_config(page_title="Music Rainbow Hub", layout="centered", page_icon="🌈")
 
-st.title("🎵 คลังเพลงเพื่อนรัก")
+# 2. ใส่ CSS สำหรับ Background สายรุ้งวิ่ง และปรับแต่งสีตัวอักษร
+st.markdown(f"""
+    <style>
+    /* ส่วนของ Background ทั้งแอป */
+    .stApp {{
+        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
+        background-size: 1200% 1200%;
+        animation: RainbowFlow 10s ease infinite;
+    }}
 
-# --- ส่วนของการดึงข้อมูลเพลง ---
+    @keyframes RainbowFlow {{
+        0%{{background-position:0% 50%}}
+        50%{{background-position:100% 50%}}
+        100%{{background-position:0% 50%}}
+    }}
+
+    /* ปรับแต่งสีกล่องข้อความและสีพื้นหลังบางส่วนให้เข้ากับสีที่คุณเลือก */
+    .stSelectbox, .stButton>button {{
+        background-color: #AFEEEE !important; /* Pale Turquoise */
+        color: #333 !important;
+        border-radius: 10px;
+    }}
+    
+    h1, h2, h3, p {{
+        color: #FFFFFF; /* สีตัวอักษรขาวเพื่อให้ตัดกับพื้นหลัง */
+        text-shadow: 2px 2px 4px #000000; /* ใส่เงาให้ดูลอยออกมา */
+    }}
+
+    /* ปรับแต่งขอบ Sidebar */
+    [data-testid="stSidebar"] {{
+        background-color: #FF7F50 !important; /* Coral */
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# 3. แสดงโลโก้ (logo3.jpg)
+if os.path.exists("logo3.jpg"):
+    # จัดวางโลโก้ให้อยู่ตรงกลาง
+    col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
+    with col_logo2:
+        st.image("logo3.jpg", use_container_width=True)
+else:
+    st.warning("⚠️ ไม่พบไฟล์ logo3.jpg ใน GitHub ของคุณ")
+
+st.title("🎵 คลังเพลง Rainbow Vibe")
+st.markdown("---")
+
+# 4. ส่วนของเครื่องเล่นเพลง (ดึงโค้ดเดิมมาปรับใช้)
 current_dir = os.getcwd() 
 music_files = [f for f in os.listdir(current_dir) if f.lower().endswith(".mp3")]
 
 if music_files:
-    # ลูกเล่นที่ 1: ระบบสุ่มเพลง (Shuffle)
-    if st.button("🔀 สุ่มเพลงให้หน่อย"):
-        st.session_state.selected_song = random.choice(music_files)
-        st.toast(f"สุ่มได้เพลง: {st.session_state.selected_song}")
-
-    # ตรวจสอบว่ามีเพลงที่เลือกค้างไว้ไหม ถ้าไม่มีให้เอาเพลงแรกในลิสต์
-    if 'selected_song' not in st.session_state:
-        st.session_state.selected_song = music_files[0]
-
-    # ลูกเล่นที่ 2: ช่องเลือกเพลง (จะเปลี่ยนตามปุ่มสุ่ม หรือเลือกเองก็ได้)
-    index = music_files.index(st.session_state.selected_song)
-    selected_song = st.selectbox("เลือกเพลงที่อยากฟัง:", music_files, index=index)
-    
-    # อัปเดตค่าที่เลือกปัจจุบันลง session_state
-    st.session_state.selected_song = selected_song
-
-    # --- ส่วนการแสดงผลตัวเล่นเพลง ---
-    st.write(f"### 🎧 กำลังเล่น: **{selected_song}**")
+    selected_song = st.selectbox("🎧 เลือกเพลงที่จะเปิด:", music_files)
+    st.write(f"### กำลังเล่น: **{selected_song}**")
     st.audio(selected_song)
     
-    # ลูกเล่นที่ 3: ใส่เนื้อเพลง (ตัวอย่างเฉพาะเพลงที่คุณมี)
-    lyrics_data = {
-        "ขอบคุณทุกคำที่ทำให้ฉันเจ็บ.mp3": "เนื้อเพลง: ...ขอบคุณที่ทิ้งกันในวันนั้น ทำให้ฉันแข็งแกร่งกว่าเดิม...",
-        # คุณสามารถเพิ่มเพลงอื่นๆ ตรงนี้ได้
-    }
-
-    if selected_song in lyrics_data:
-        with st.expander("📖 ดูเนื้อเพลง"):
-            st.write(lyrics_data[selected_song])
-    else:
-        with st.expander("📖 ดูเนื้อเพลง"):
-            st.write("ขออภัย ยังไม่มีเนื้อเพลงสำหรับเพลงนี้ในระบบ")
-
-    st.divider()
-    st.info("💡 ส่งลิงก์หน้านี้ให้เพื่อนฟังไปพร้อมกันได้เลย!")
-
+    # เพิ่มลูกเล่นปุ่มสี Coral
+    if st.button("🎲 สุ่มเพลงใหม่"):
+        st.session_state.selected_song = random.choice(music_files)
+        st.rerun()
 else:
-    st.warning("⚠️ ยังไม่พบไฟล์เพลง .mp3 ใน GitHub")
-    st.write("อัปโหลดไฟล์เพลงไว้ที่หน้าเดียวกับไฟล์ app.py นะครับ")
+    st.error("❌ ยังไม่มีไฟล์เพลง .mp3 ในเครื่อง")
 
-# ลูกเล่นที่ 4: ส่วนคอมเมนต์ท้ายแอป
-st.subheader("💬 คุยกับเจ้าของคลังเพลง")
-name = st.text_input("ชื่อของคุณ:")
-msg = st.text_area("อยากบอกอะไรไหม:")
-if st.button("ส่งข้อความ"):
-    if name and msg:
-        st.success(f"ขอบคุณนะ {name}! ข้อความของคุณถูกส่งแล้ว (จำลอง)")
-    else:
-        st.error("กรุณากรอกชื่อและข้อความด้วยนะ")
+st.info("💡 พื้นหลังกำลังวิ่งแบบ Rainbow Flow ตามที่คุณต้องการเลย!")
