@@ -4,9 +4,9 @@ import random
 import streamlit.components.v1 as components
 
 # 1. ตั้งค่าหน้าแอป
-st.set_page_config(page_title="Vibe Player Motion", layout="centered")
+st.set_page_config(page_title="Vibe Motion Fix", layout="centered")
 
-# 2. CSS สายรุ้ง + ตัวอักษรวิ่ง + กราฟเสียง + กล่องรายชื่อ
+# 2. CSS แบบคุมเข้ม (บังคับทุกอย่างเข้าที่)
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -22,64 +22,74 @@ st.markdown(f"""
         100%{{background-position:0% 50%}}
     }}
 
-    /* ชื่อเพลงวิ่ง (Marquee) */
+    /* ชื่อเพลงวิ่ง */
     .marquee {{
         width: 100%;
         overflow: hidden;
-        white-space: nowrap;
-        background: rgba(0,0,0,0.5);
-        padding: 10px 0;
-        border-radius: 10px;
+        background: rgba(0,0,0,0.6);
+        padding: 15px 0;
+        border-radius: 15px;
+        border: 2px solid #AFEEEE;
         margin-bottom: 20px;
     }}
     .marquee p {{
         display: inline-block;
-        padding-left: 100%;
+        white-space: nowrap;
         animation: marquee 15s linear infinite;
         font-family: 'Orbitron', sans-serif;
-        font-size: 24px;
+        font-size: 22px;
         color: #AFEEEE;
-        text-shadow: 2px 2px 4px #000;
         margin: 0;
     }}
     @keyframes marquee {{
-        0% {{ transform: translate(0, 0); }}
-        100% {{ transform: translate(-100%, 0); }}
+        0% {{ transform: translateX(100%); }}
+        100% {{ transform: translateX(-100%); }}
     }}
 
-    /* กราฟคลื่นเสียงจำลอง */
+    /* กราฟเสียง */
     .visualizer {{
         display: flex;
         align-items: flex-end;
         justify-content: center;
-        height: 50px;
-        gap: 3px;
-        margin-bottom: 20px;
+        height: 40px;
+        gap: 4px;
+        margin: 15px 0;
     }}
     .bar {{
-        width: 8px;
+        width: 10px;
         background: #AFEEEE;
-        animation: equalize 1s infinite alternate;
+        animation: equalize 0.8s infinite alternate;
+        border-radius: 2px;
     }}
     @keyframes equalize {{
         0% {{ height: 5px; }}
-        100% {{ height: 50px; }}
+        100% {{ height: 40px; }}
     }}
-    /* สุ่มความเร็วให้แต่ละแท่ง */
-    .bar:nth-child(1)  {{ animation-duration: 0.4s; }}
-    .bar:nth-child(2)  {{ animation-duration: 0.7s; }}
-    .bar:nth-child(3)  {{ animation-duration: 0.5s; }}
-    .bar:nth-child(4)  {{ animation-duration: 0.9s; }}
-    .bar:nth-child(5)  {{ animation-duration: 0.6s; }}
 
-    /* กล่องเก็บรายชื่อเพลง (Scroll Box) */
-    .song-box {{
-        height: 250px;
-        overflow-y: scroll;
-        background: rgba(255, 255, 255, 0.2);
-        padding: 15px;
-        border-radius: 15px;
-        border: 2px solid #AFEEEE;
+    /* บังคับกล่องรายชื่อเพลง (Scroll Box) ให้ใช้งานได้จริง */
+    .song-container {{
+        background: rgba(0, 0, 0, 0.4);
+        border: 3px solid #AFEEEE;
+        border-radius: 20px;
+        height: 300px;
+        overflow-y: auto;
+        padding: 20px;
+        margin-top: 20px;
+    }}
+    
+    /* ตกแต่ง Scrollbar ให้ดูเท่ */
+    .song-container::-webkit-scrollbar {{
+        width: 8px;
+    }}
+    .song-container::-webkit-scrollbar-thumb {{
+        background: #AFEEEE;
+        border-radius: 10px;
+    }}
+
+    h1, h3, p {{
+        font-family: 'Orbitron', sans-serif;
+        color: white !important;
+        text-shadow: 2px 2px 4px #000;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -93,53 +103,53 @@ if music_files:
     
     current_song = music_files[st.session_state.song_index]
 
-    # --- ส่วนแสดงผล ---
-    st.title("🚀 MUSIC IN MOTION")
+    st.title("🎸อยู่นิ้งๆไม่เจ็บตัว MUSIC🎧")
 
-    # 1. ชื่อเพลงวิ่ง
-    st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT SONG UP SOON </p></div>', unsafe_allow_html=True)
+    # 1. ชื่อเพลงวิ่ง (Marquee)
+    st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK LOADING... </p></div>', unsafe_allow_html=True)
 
-    # 2. ปก (วิดีโอหรือรูป)
+    # 2. ปกวิดีโอ/รูป
     base_name = os.path.splitext(current_song)[0]
     if os.path.exists(base_name + ".mp4"):
         st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
     elif os.path.exists(base_name + ".jpg"):
         st.image(base_name + ".jpg", use_container_width=True)
     
-    # 3. กราฟเสียงจำลอง (Visualizer)
-    st.markdown('<div class="visualizer">' + '<div class="bar"></div>'*15 + '</div>', unsafe_allow_html=True)
-
+    # 3. กราฟเสียง + เครื่องเล่น
+    st.markdown('<div class="visualizer">' + '<div class="bar" style="animation-delay: '+str(random.random())+'s"></div>'*12 + '</div>', unsafe_allow_html=True)
     st.audio(current_song)
 
-    # 4. กล่องรายชื่อเพลง (Scroll Box)
-    st.subheader("📜 Playlist Library")
-    with st.container():
-        # เราใช้ st.container ร่วมกับ CSS song-box
-        st.markdown('<div class="song-box">', unsafe_allow_html=True)
-        for i, song in enumerate(music_files):
-            if st.button(f"{i+1}. {song}", key=f"box_{song}"):
-                st.session_state.song_index = i
-                st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # 5. ปุ่มควบคุม
-    col1, col2 = st.columns(2)
-    with col1:
+    # 4. ปุ่มควบคุมหลัก
+    c1, c2 = st.columns(2)
+    with c1:
         if st.button("⏭️ เพลงถัดไป"):
             st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
             st.rerun()
-    with col2:
+    with c2:
         if st.button("🎲 สุ่มเพลง"):
             st.session_state.song_index = random.randint(0, len(music_files) - 1)
             st.rerun()
 
-    # JavaScript สำหรับ Auto-next
+    # 5. กล่องรายชื่อเพลง (ใส่ HTML บังคับเข้ากล่อง)
+    st.write("### 📜 Playlist Library")
+    
+    # สร้าง HTML สำหรับปุ่มข้างในกล่อง
+    song_list_html = ""
+    st.markdown('<div class="song-container">', unsafe_allow_html=True)
+    for i, song in enumerate(music_files):
+        if st.button(f"{i+1}. {song}", key=f"list_{song}"):
+            st.session_state.song_index = i
+            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # 6. JavaScript สำหรับ Auto-next + บังคับ Play
     components.html(
         """
         <script>
-        function autoNext() {
+        function startSync() {
             var audio = window.parent.document.querySelector('audio');
             if (audio) {
+                // เมื่อเพลงจบ ให้กดปุ่มถัดไป
                 audio.onended = function() {
                     var buttons = window.parent.document.querySelectorAll('button');
                     for (var i = 0; i < buttons.length; i++) {
@@ -149,9 +159,13 @@ if music_files:
                         }
                     }
                 };
+                // พยายามสั่งเล่น (ถ้ามันค้าง)
+                if (audio.paused) {
+                    audio.play().catch(e => console.log("Waiting for user..."));
+                }
             }
         }
-        setInterval(autoNext, 1000);
+        setInterval(startSync, 2000); // เช็คทุก 2 วินาที
         </script>
         """, height=0
     )
