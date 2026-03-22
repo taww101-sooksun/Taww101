@@ -2,35 +2,36 @@ import streamlit as st
 import os
 
 # 1. ตั้งค่าหน้าแอป
-st.set_page_config(page_title="My Vibe YouTube Playlist", layout="centered", page_icon="🌈")
+st.set_page_config(page_title="My Vibe Music", layout="centered")
 
-# 2. ใส่ CSS สำหรับ Background สายรุ้งวิ่ง (Rainbow Flow)
+# 2. ใส่ CSS สายรุ้งวิ่ง (Rainbow Flow) เหมือนเดิม
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-
     .stApp {{
         background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
         background-size: 1200% 1200%;
         animation: RainbowFlow 15s ease infinite;
     }}
-
     @keyframes RainbowFlow {{
         0%{{background-position:0% 50%}}
         50%{{background-position:100% 50%}}
         100%{{background-position:0% 50%}}
     }}
-
     h1, h3, p {{
         font-family: 'Orbitron', sans-serif;
-        color: #FFFFFF !important;
-        text-shadow: 2px 2px 4px #000000;
+        color: white !important;
+        text-shadow: 2px 2px 4px #000;
     }}
-
+    /* สไตล์ปุ่มกดขนาดใหญ่ */
     .stButton>button {{
+        width: 100%;
+        height: 60px;
         background-color: #AFEEEE !important;
         color: #333 !important;
+        font-size: 20px !important;
         border-radius: 15px !important;
+        font-weight: bold;
         border: 2px solid white !important;
     }}
     </style>
@@ -38,37 +39,30 @@ st.markdown(f"""
 
 # 3. แสดงโลโก้
 if os.path.exists("logo3.jpg"):
-    col_logo1, col_logo2, col_logo3 = st.columns([1, 1.5, 1])
-    with col_logo2:
-        st.image("logo3.jpg", use_container_width=True)
+    st.image("logo3.jpg", width=150)
 
-st.title("📺 PRIVATE PLAYLIST")
-st.write("คลังเพลง 35 เพลงสุดฟิน")
+st.title("🎧 MY PRIVATE VIBE")
+st.write("กดปุ่มด้านล่างเพื่อเข้าสู่เพลย์ลิสต์ 35 เพลง")
 
-# 4. ใส่ลิงก์แบบ Embed ที่ชัวร์ที่สุด
-# ผมลบส่วน &si= ออกเพื่อให้ลิงก์สะอาดขึ้น ระบบจะอ่านง่ายขึ้นครับ
-playlist_id = "PL6S211I3urvqVH9bDPIr0SLQkENDsNx3Y"
-clean_url = f"https://www.youtube.com/watch?v=videoseries&list={playlist_id}"
+# 4. ปุ่มเข้าสู่ YouTube (วิธีนี้เล่นได้แน่นอน 100%)
+playlist_url = "https://youtube.com/playlist?list=PL6S211I3urvqVH9bDPIr0SLQkENDsNx3Y"
 
 st.markdown("---")
 
-# 5. แสดงเครื่องเล่นวิดีโอ
-# ใช้ st.video กับลิงก์ที่คลีนแล้ว
-try:
-    st.video(clean_url)
-    st.success("โหลดเพลย์ลิสต์สำเร็จ! กด Play ได้เลย")
-except:
-    st.error("เกิดปัญหาในการดึงวิดีโอ กรุณาลอง Refresh หน้าเว็บอีกครั้ง")
+# สร้างปุ่มที่กดแล้วเด้งไปแอป YouTube
+st.link_button("🚀 เปิดฟังเพลงใน YouTube (35 เพลง)", playlist_url)
 
 st.info("""
-    💡 **วิธีดูรายชื่อเพลง:** กดที่ไอคอนรูป 'ขีด 3 ขีด' ที่มุมขวาบนของวิดีโอ เพื่อเลือกเพลงในลิสต์ทั้ง 35 เพลงครับ
+    💡 **ทำไมต้องกดปุ่ม?** เนื่องจากบางเพลงมีลิขสิทธิ์ทำให้เปิดในแอปโดยตรงไม่ได้ 
+    การกดปุ่มนี้จะทำให้เพื่อนของคุณดูวิดีโอได้ลื่นไหล ยอดวิวขึ้น และฟังได้ต่อเนื่องครับ
 """)
 
 st.divider()
 
-# 6. ส่วนคอมเมนต์
-st.subheader("💬 ฝากข้อความ")
+# 5. กระดานข้อความ (ยังอยู่เหมือนเดิม)
+st.subheader("💬 ฝากความคิดถึง")
 name = st.text_input("ชื่อของคุณ:")
 msg = st.text_area("ข้อความ:")
-if st.button("ส่ง"):
-    st.toast("ส่งความรู้สึกเรียบร้อย!")
+if st.button("ส่งข้อความ"):
+    st.success("ขอบคุณที่แวะมาฟังเพลงครับ!")
+    st.balloons()
