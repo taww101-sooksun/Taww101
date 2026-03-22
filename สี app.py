@@ -1,81 +1,77 @@
 import streamlit as st
 import os
-import random
 
-# 1. ตั้งค่าหน้าแอปและดีไซน์ (สายรุ้ง + ฟอนต์เท่)
-st.set_page_config(page_title="My Playlist Hub", layout="centered")
+# 1. ตั้งค่าหน้าแอป
+st.set_page_config(page_title="My Vibe YouTube Playlist", layout="centered", page_icon="🌈")
 
-st.markdown("""
+# 2. ใส่ CSS สำหรับ Background สายรุ้งวิ่งและปรับแต่งธีม
+st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-    .stApp {
+
+    .stApp {{
         background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
         background-size: 1200% 1200%;
         animation: RainbowFlow 15s ease infinite;
-    }
-    @keyframes RainbowFlow {
-        0%{background-position:0% 50%}
-        50%{background-position:100% 50%}
-        100%{background-position:0% 50%}
-    }
-    h1, h2, h3 {
+    }}
+
+    @keyframes RainbowFlow {{
+        0%{{background-position:0% 50%}}
+        50%{{background-position:100% 50%}}
+        100%{{background-position:0% 50%}}
+    }}
+
+    h1, h2, h3, p {{
         font-family: 'Orbitron', sans-serif;
-        color: white !important;
-        text-shadow: 2px 2px 4px #000;
-    }
-    /* สไตล์สำหรับปุ่มรายชื่อเพลง */
-    .stButton>button {
-        width: 100%;
-        text-align: left;
-        background-color: rgba(175, 238, 238, 0.8) !important; /* Pale Turquoise แบบโปร่งแสง */
-        border: 1px solid white !important;
-        border-radius: 10px;
+        color: #FFFFFF !important;
+        text-shadow: 2px 2px 4px #000000;
+    }}
+
+    /* ปรับแต่งปุ่มและส่วนประกอบอื่นๆ */
+    .stButton>button {{
+        background-color: #AFEEEE !important;
         color: #333 !important;
-        margin-bottom: 5px;
-    }
-    .stButton>button:hover {
-        background-color: #FF7F50 !important; /* Coral */
-        color: white !important;
-    }
+        border-radius: 15px !important;
+        border: 2px solid white !important;
+        font-weight: bold;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
-# 2. ค้นหาไฟล์เพลง
-music_files = [f for f in os.listdir('.') if f.lower().endswith(".mp3")]
+# 3. แสดงโลโก้ (logo3.jpg)
+if os.path.exists("logo3.jpg"):
+    col_logo1, col_logo2, col_logo3 = st.columns([1, 1.5, 1])
+    with col_logo2:
+        st.image("logo3.jpg", use_container_width=True)
 
-if music_files:
-    # เก็บสถานะเพลงที่เลือก
-    if 'current_song' not in st.session_state:
-        st.session_state.current_song = music_files[0]
+st.title("📺 MY PRIVATE PLAYLIST")
+st.write("คลังเพลง 35 เพลงสุดฟิน ฟังต่อเนื่องได้เลย!")
 
-    # แสดงโลโก้
-    if os.path.exists("logo2.jpg"):
-        st.image("logo2.jpg", width=500)
+# 4. ใส่ลิงก์ Playlist ของคุณ (ดึงจากที่คุณส่งมา)
+playlist_url = "https://youtube.com/playlist?list=PL6S211I3urvqVH9bDPIr0SLQkENDsNx3Y&si=nuIyO4KQ5r5-vx0c"
 
-    st.title("🎵 MY PLAYLIST")
+st.markdown("---")
 
-    # --- ส่วนที่ 1: ตัวเล่นเพลงปัจจุบัน ---
-    st.write(f"### 🎧 กำลังเล่น: {st.session_state.current_song}")
-    
-    # แสดงรูปปกถ้ามี (ชื่อเดียวกับเพลงแต่เป็น .jpg)
-    cover_image = st.session_state.current_song.replace(".mp3", ".jpg")
-    if os.path.exists(cover_image):
-        st.image(cover_image, width=300)
-    
-    st.audio(st.session_state.current_song)
+# 5. ส่วนเครื่องเล่นวิดีโอ (YouTube Embed)
+# ระบบจะจัดการเรื่องเล่นต่อเนื่องและยอดวิวให้เองครับ
+st.video(playlist_url)
 
-    st.markdown("---")
+st.info("""
+    💡 **ทิปพิเศษ:** - กดปุ่ม **Playlist** (รูปขีดสามขีดตรงขวาบนของวิดีโอ) เพื่อดูรายชื่อเพลงทั้ง 35 เพลง
+    - ระบบจะเล่นเพลงถัดไปให้เองอัตโนมัติ (Autoplay) ตามระบบของ YouTube ครับ
+    - ทุกครั้งที่เพื่อนฟัง ยอดวิวจะขึ้นให้เจ้าของคลิปปกติเลย
+""")
 
-    # --- ส่วนที่ 2: รายชื่อเพลงทั้งหมด (กดแล้วเล่นเลย) ---
-    st.write("### 📜 รายชื่อเพลงทั้งหมด")
-    st.write("เลือกเพลงที่ต้องการฟังด้านล่างนี้:")
+st.divider()
 
-    for song in music_files:
-        # สร้างปุ่มสำหรับทุกเพลง
-        if st.button(f"▶️ {song}", key=song):
-            st.session_state.current_song = song
-            st.rerun() # สั่งให้แอปโหลดใหม่เพื่อเล่นเพลงที่กดทันที
+# 6. ส่วนคอมเมนต์ (เผื่อเพื่อนอยากฝากอะไรไว้)
+st.subheader("💬 ฝากข้อความถึงเพื่อน")
+name = st.text_input("ชื่อเล่นของคุณ:")
+msg = st.text_area("อยากบอกอะไรไหม:")
+if st.button("ส่งความรู้สึก"):
+    if name and msg:
+        st.success(f"ขอบคุณนะ {name}! ข้อความของคุณถูกส่งแล้ว")
+        st.balloons()
+    else:
+        st.warning("กรุณากรอกชื่อและข้อความด้วยนะ")
 
-else:
-    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์ครับ")
-    st.info("วิธีแก้: อัปโหลดเพลงไว้ที่หน้าเดียวกับ app.py นะ")
