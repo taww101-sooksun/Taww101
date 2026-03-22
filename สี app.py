@@ -1,34 +1,35 @@
-name: Django CI
+import streamlit as st
+import os
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+st.set_page_config(page_title="My Music Hub", layout="centered")
 
-jobs:
-  build:
+st.title("🎵 คลังเพลงเพื่อนรัก")
 
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 4
-      matrix:
-        python-version: [3.7, 3.8, 3.9]
+# 1. กำหนดชื่อโฟลเดอร์ให้ชัดเจน (แนะนำให้ใช้ภาษาอังกฤษตัวพิมพ์เล็ก)
+music_folder = "music_library"
 
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install Dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-    - name: Run Tests
-      run: |
-        python manage.py test
-st.subheader("💬 คุยกันท้ายเพลง")
-comment = st.text_input("พิมพ์อะไรบอกเจ้าของแอปหน่อย...")
-if st.button("ส่งความเห็น"):
-    st.toast(f"ขอบคุณสำหรับความเห็น: {comment}")
+# 2. ตรวจสอบเงื่อนไขก่อน list ไฟล์
+if not os.path.exists(music_folder):
+    # ถ้าไม่มีโฟลเดอร์ ให้สร้างใหม่
+    os.makedirs(music_folder)
+    st.info(f"สร้างโฟลเดอร์ '{music_folder}' เรียบร้อยแล้ว กรุณาอัปโหลดไฟล์ .mp3 ลงไป")
+    music_files = []
+elif not os.path.isdir(music_folder):
+    # ป้องกันกรณีมีไฟล์ชื่อเดียวกับโฟลเดอร์
+    st.error(f"Error: มีไฟล์ที่ชื่อ '{music_folder}' อยู่แล้ว ทำให้สร้างโฟลเดอร์ไม่ได้")
+    music_files = []
+else:
+    # อ่านไฟล์เพลงเฉพาะที่เป็น .mp3
+    music_files = [f for f in os.listdir(music_folder) if f.lower().endswith(".mp3")]
+
+# 3. ส่วนการแสดงผล
+if music_files:
+    selected_song = st.selectbox("เลือกเพลงที่อยากฟัง:", music_files)
+    song_path = os.path.join(music_folder, selected_song)
+    
+    # แสดงตัวเล่นเพลง
+    st.audio(song_path)
+    st.success(f"กำลังเล่น: {selected_song}")
+else:
+    st.warning("ยังไม่พบไฟล์เพลงในระบบ")
+    st.write("วิธีแก้: ตรวจสอบใน GitHub ว่าคุณมีโฟลเดอร์ชื่อ `music_library` และมีไฟล์ .mp3 อยู่ข้างในนั้นแล้วหรือยัง")
