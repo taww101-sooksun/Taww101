@@ -40,14 +40,14 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# 3. แสดงโลโก้ (logo3.jpg)
-if os.path.exists("logo3.jpg"):
+# 3. แสดงโลโก้ (logo2.jpg)
+if os.path.exists("logo2.jpg"):
     # จัดวางโลโก้ให้อยู่ตรงกลาง
     col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
     with col_logo2:
         st.image("logo3.jpg", use_container_width=True)
 else:
-    st.warning("⚠️ ไม่พบไฟล์ logo3.jpg ใน GitHub ของคุณ")
+    st.warning("⚠️ ไม่พบไฟล์ logo2.jpg ใน GitHub ของคุณ")
 
 st.title("🎵 คลังเพลง Rainbow Vibe")
 st.markdown("---")
