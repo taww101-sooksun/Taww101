@@ -57,7 +57,7 @@ if music_files:
 
     # แสดงโลโก้ด้านบน
     if os.path.exists("logo2.jpg"):
-        st.image("logo2.jpg", width=200)
+        st.image("logo2.jpg", width=500)
 
     st.title("🎧 MY VIBE PLAYER")
 
