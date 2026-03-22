@@ -6,41 +6,41 @@ import streamlit.components.v1 as components
 # --- 1. SET UP & THEME SELECTOR ---
 st.set_page_config(page_title="Vibe Player Pro Max", layout="wide")
 
-# ระบบจำค่าสีที่เลือก
+# ค่าเริ่มต้นของสี
 if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#00f2fe" 
+if 'bg_color' not in st.session_state:
+    st.session_state.bg_color = "#000000"
 
 with st.sidebar:
-    # เพิ่ม Logo ใน Sidebar
     if os.path.exists("logo2.jpg"):
         st.image("logo2.jpg", use_container_width=True)
-    else:
-        st.write("📌 [ไม่พบไฟล์ logo2.jpg]")
         
     st.markdown("### 🎨 ปรับแต่งสีระบบ")
-    picked_color = st.color_picker("เลือกสีนีออนของคุณ", st.session_state.theme_color)
-    st.session_state.theme_color = picked_color
-    st.write(f"สีปัจจุบัน: {picked_color}")
+    # เลือกสีนีออน (เส้นขอบ/ตัวอักษร)
+    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
+    # เลือกสีพื้นหลัง
+    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
+    
     st.write("---")
-    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
+    st.markdown(f'**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
 
-# --- 2. CSS ฉีดสีตามที่เลือก (Dynamic Theme) ---
-# ผมปรับให้ Background เป็น Gradient จางๆ และใช้สีที่เลือกเป็นสีหลักของ UI
+# --- 2. CSS Dynamic Theme ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
     
     .stApp {{
-        background: radial-gradient(circle at center, #1a1a1a 0%, #000000 100%);
+        background-color: {st.session_state.bg_color} !important;
         color: {st.session_state.theme_color} !important;
     }}
 
-    /* ปรับแต่งขอบกล่องรายการเพลงตามสีที่เลือก */
+    /* ขอบกล่องรายการเพลง */
     [data-testid="stVVerticalBlock"] > div > div > [data-testid="stVerticalBlockBorderWrapper"] {{
         border: 2px solid {st.session_state.theme_color} !important;
         border-radius: 15px !important;
-        background: rgba(0, 0, 0, 0.6) !important;
-        box-shadow: 0px 0px 15px {st.session_state.theme_color}66; /* เติม 66 เพื่อให้โปร่งแสง */
+        background: rgba(255, 255, 255, 0.05) !important;
+        box-shadow: 0px 0px 15px {st.session_state.theme_color}44;
         padding: 15px;
     }}
 
@@ -48,7 +48,7 @@ st.markdown(f"""
         width: 100%;
         overflow: hidden;
         white-space: nowrap;
-        background: rgba(0,0,0,0.8);
+        background: rgba(0,0,0,0.5);
         padding: 15px 0;
         border-radius: 12px;
         margin-bottom: 15px;
@@ -62,28 +62,23 @@ st.markdown(f"""
         font-size: 22px;
         color: {st.session_state.theme_color};
         text-shadow: 0px 0px 10px {st.session_state.theme_color};
-        margin: 0;
     }}
     @keyframes marquee {{
         0% {{ transform: translate(0, 0); }}
         100% {{ transform: translate(-100%, 0); }}
     }}
 
-    /* ดีไซน์ปุ่มตามสี Theme */
     .stButton>button {{
         width: 100%;
-        text-align: left;
         background-color: transparent !important;
         color: {st.session_state.theme_color} !important;
-        border-radius: 10px !important;
-        font-weight: bold;
         border: 1px solid {st.session_state.theme_color} !important;
-        margin-bottom: 5px;
+        border-radius: 10px !important;
         transition: 0.3s;
     }}
     .stButton>button:hover {{
         background-color: {st.session_state.theme_color} !important;
-        color: #000 !important;
+        color: {st.session_state.bg_color} !important;
         box-shadow: 0px 0px 15px {st.session_state.theme_color};
     }}
     
@@ -100,18 +95,13 @@ if music_files:
     
     current_song = music_files[st.session_state.song_index]
 
-    # ส่วนหัวและโลโก้ในหน้าหลัก
-    col_main1, col_main2 = st.columns([1, 4])
-    with col_main1:
-        if os.path.exists("logo2.jpg"):
-            st.image("logo2.jpg", width=500)
-    with col_main2:
-        st.title("🎸 อยู่นิ้งๆไม่เจ็บตัว 🎼 MUSIC ")
+    # หัวข้อ
+    st.title("🎸 อยู่นิ้งๆไม่เจ็บตัว 🎼 MUSIC")
 
     # 1. ชื่อเพลงวิ่ง
     st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
 
-    # 2. พื้นที่แสดงผลปก/วิดีโอ
+    # 2. ปก/วิดีโอ
     base_name = os.path.splitext(current_song)[0]
     if os.path.exists(base_name + ".mp4"):
         st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
@@ -123,8 +113,8 @@ if music_files:
 
     st.markdown("---")
 
-    # 4. กล่องรายชื่อเพลง (ใส่ Border ตามสีธีม)
-    st.subheader("🎧รายชื่อเพลง 🎼 อยู่นิ้งๆไม่เจ็บตัว")
+    # 4. กล่องรายชื่อเพลง
+    st.subheader("🎧 เพลงของอยู่นิ้งๆไม่เจ็บตัว🎸")
     with st.container(border=True, height=250):
         for i, song in enumerate(music_files):
             label = f"▶️ {i+1}. {song}" if i == st.session_state.song_index else f"{i+1}. {song}"
@@ -143,7 +133,7 @@ if music_files:
             st.session_state.song_index = random.randint(0, len(music_files) - 1)
             st.rerun()
 
-    # 6. JavaScript: ระบบ Fade + ข้ามเพลงก่อนจบ 10 วินาที
+    # 6. JavaScript: ปรับปรุงให้เล่นต่อเนื่องและ Fade เนียนขึ้น
     components.html(
         """
         <script>
@@ -151,38 +141,43 @@ if music_files:
         var skipThreshold = 10; 
         var hasSkipped = false;
 
-        function handleAudioSync() {
+        function checkAndPlay() {
             var audio = window.parent.document.querySelector('audio');
             var buttons = window.parent.document.querySelectorAll('button');
             
             if (audio) {
-                // ระบบ Fade In (เริ่มเพลง)
+                // บังคับเล่น (แก้ปัญหาเพลงหยุดเดิน)
+                if (audio.paused && audio.currentTime > 0 && audio.currentTime < (audio.duration - 1)) {
+                    audio.play().catch(e => console.log("Waiting for user interaction"));
+                }
+
+                // Fade In
                 if (audio.currentTime < fadeDuration) {
                     audio.volume = Math.max(0, Math.min(audio.currentTime / fadeDuration, 1));
                 } 
-                // ระบบ Fade Out (ก่อนจบเพลง)
+                // Fade Out & Skip
                 else if (audio.duration - audio.currentTime < fadeDuration) {
                     audio.volume = Math.max(0, (audio.duration - audio.currentTime) / fadeDuration);
-                } 
-                else {
-                    audio.volume = 1;
-                }
-
-                // ข้ามเพลงก่อนจบ 10 วินาที
-                if (audio.duration > 0 && (audio.duration - audio.currentTime) < skipThreshold && !hasSkipped) {
-                    hasSkipped = true;
-                    for (var i = 0; i < buttons.length; i++) {
-                        if (buttons[i].textContent.includes('เพลงถัดไป')) {
-                            buttons[i].click();
-                            break;
+                    
+                    // เปลี่ยนเพลงก่อนจบ 10 วิ
+                    if ((audio.duration - audio.currentTime) < skipThreshold && !hasSkipped) {
+                        hasSkipped = true;
+                        for (var i = 0; i < buttons.length; i++) {
+                            if (buttons[i].textContent.includes('เพลงถัดไป')) {
+                                buttons[i].click();
+                                break;
+                            }
                         }
                     }
+                } else {
+                    audio.volume = 1;
                 }
             }
         }
-        setInterval(handleAudioSync, 400);
+        // ตรวจสอบทุกๆ 500ms
+        setInterval(checkAndPlay, 500);
         </script>
         """, height=0
     )
 else:
-    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์ครับ")
+    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์")
