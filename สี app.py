@@ -1,10 +1,11 @@
 import streamlit as st
 import os
+import random
+import streamlit.components.v1 as components
 
-# 1. ตั้งค่าหน้าแอป
-st.set_page_config(page_title="My Vibe Music", layout="centered")
+# 1. ตั้งค่าหน้าแอปและดีไซน์
+st.set_page_config(page_title="Non-Stop MP3 Player", layout="centered")
 
-# 2. ใส่ CSS สายรุ้งวิ่ง (Rainbow Flow) เหมือนเดิม
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -23,46 +24,83 @@ st.markdown(f"""
         color: white !important;
         text-shadow: 2px 2px 4px #000;
     }}
-    /* สไตล์ปุ่มกดขนาดใหญ่ */
     .stButton>button {{
         width: 100%;
-        height: 60px;
         background-color: #AFEEEE !important;
         color: #333 !important;
-        font-size: 20px !important;
-        border-radius: 15px !important;
+        border-radius: 12px;
         font-weight: bold;
         border: 2px solid white !important;
     }}
     </style>
     """, unsafe_allow_html=True)
 
-# 3. แสดงโลโก้
-if os.path.exists("logo3.jpg"):
-    st.image("logo3.jpg", width=150)
+# 2. จัดการไฟล์เพลง
+music_files = [f for f in os.listdir('.') if f.lower().endswith(".mp3")]
 
-st.title("🎧 MY PRIVATE VIBE")
-st.write("กดปุ่มด้านล่างเพื่อเข้าสู่เพลย์ลิสต์ 35 เพลง")
+if music_files:
+    # เก็บสถานะเพลงปัจจุบัน
+    if 'song_index' not in st.session_state:
+        st.session_state.song_index = 0
 
-# 4. ปุ่มเข้าสู่ YouTube (วิธีนี้เล่นได้แน่นอน 100%)
-playlist_url = "https://youtube.com/playlist?list=PL6S211I3urvqVH9bDPIr0SLQkENDsNx3Y"
+    current_song = music_files[st.session_state.song_index]
 
-st.markdown("---")
+    # แสดงโลโก้
+    if os.path.exists("logo3.jpg"):
+        st.image("logo3.jpg", width=150)
 
-# สร้างปุ่มที่กดแล้วเด้งไปแอป YouTube
-st.link_button("🚀 เปิดฟังเพลงใน YouTube (35 เพลง)", playlist_url)
+    st.title("🎵 NON-STOP VIBE")
+    
+    # --- ส่วนที่ 1: เครื่องเล่นเพลง ---
+    st.write(f"### 🎧 กำลังเล่น: {current_song}")
+    st.audio(current_song)
 
-st.info("""
-    💡 **ทำไมต้องกดปุ่ม?** เนื่องจากบางเพลงมีลิขสิทธิ์ทำให้เปิดในแอปโดยตรงไม่ได้ 
-    การกดปุ่มนี้จะทำให้เพื่อนของคุณดูวิดีโอได้ลื่นไหล ยอดวิวขึ้น และฟังได้ต่อเนื่องครับ
-""")
+    # --- ส่วนที่ 2: ระบบเล่นต่อเนื่อง (JavaScript) ---
+    # สคริปต์นี้จะแอบตรวจว่าเพลงจบหรือยัง ถ้าจบจะมากดปุ่ม "เพลงถัดไป" ให้เอง
+    components.html(
+        """
+        <script>
+        function autoNext() {
+            var audio = window.parent.document.querySelector('audio');
+            if (audio) {
+                audio.onended = function() {
+                    var buttons = window.parent.document.querySelectorAll('button');
+                    for (var i = 0; i < buttons.length; i++) {
+                        if (buttons[i].textContent.includes('เพลงถัดไป')) {
+                            buttons[i].click();
+                            break;
+                        }
+                    }
+                };
+            }
+        }
+        setInterval(autoNext, 1000);
+        </script>
+        """,
+        height=0,
+    )
 
-st.divider()
+    # --- ส่วนที่ 3: ปุ่มควบคุม ---
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("⏭️ เพลงถัดไป"):
+            st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+            st.rerun()
+    with col2:
+        if st.button("🎲 สุ่มเพลง"):
+            st.session_state.song_index = random.randint(0, len(music_files) - 1)
+            st.rerun()
 
-# 5. กระดานข้อความ (ยังอยู่เหมือนเดิม)
-st.subheader("💬 ฝากความคิดถึง")
-name = st.text_input("ชื่อของคุณ:")
-msg = st.text_area("ข้อความ:")
-if st.button("ส่งข้อความ"):
-    st.success("ขอบคุณที่แวะมาฟังเพลงครับ!")
-    st.balloons()
+    st.markdown("---")
+    
+    # --- ส่วนที่ 4: รายชื่อเพลงทั้งหมด ---
+    st.subheader("📜 รายชื่อเพลงในคลัง")
+    for i, song in enumerate(music_files):
+        if st.button(f"{i+1}. {song}", key=f"btn_{song}"):
+            st.session_state.song_index = i
+            st.rerun()
+
+    st.info("💡 **เคล็ดลับ:** เพื่อให้เพลงเล่นต่อเนื่องไม่หยุด กรุณา **'เปิดหน้าจอแอปค้างไว้'** นะครับ (ถ้าพับหน้าจอหรือสลับแอป ระบบอาจจะหยุดทำงานตามนโยบายของ Browser มือถือครับ)")
+
+else:
+    st.error("ไม่เจอไฟล์เพลง .mp3 เลยครับ")
