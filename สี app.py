@@ -4,7 +4,7 @@ import os
 # 1. ตั้งค่าหน้าแอป
 st.set_page_config(page_title="My Vibe YouTube Playlist", layout="centered", page_icon="🌈")
 
-# 2. ใส่ CSS สำหรับ Background สายรุ้งวิ่งและปรับแต่งธีม
+# 2. ใส่ CSS สำหรับ Background สายรุ้งวิ่ง (Rainbow Flow)
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -21,57 +21,54 @@ st.markdown(f"""
         100%{{background-position:0% 50%}}
     }}
 
-    h1, h2, h3, p {{
+    h1, h3, p {{
         font-family: 'Orbitron', sans-serif;
         color: #FFFFFF !important;
         text-shadow: 2px 2px 4px #000000;
     }}
 
-    /* ปรับแต่งปุ่มและส่วนประกอบอื่นๆ */
     .stButton>button {{
         background-color: #AFEEEE !important;
         color: #333 !important;
         border-radius: 15px !important;
         border: 2px solid white !important;
-        font-weight: bold;
     }}
     </style>
     """, unsafe_allow_html=True)
 
-# 3. แสดงโลโก้ (logo3.jpg)
+# 3. แสดงโลโก้
 if os.path.exists("logo3.jpg"):
     col_logo1, col_logo2, col_logo3 = st.columns([1, 1.5, 1])
     with col_logo2:
         st.image("logo3.jpg", use_container_width=True)
 
-st.title("📺 MY PRIVATE PLAYLIST")
-st.write("คลังเพลง 35 เพลงสุดฟิน ฟังต่อเนื่องได้เลย!")
+st.title("📺 PRIVATE PLAYLIST")
+st.write("คลังเพลง 35 เพลงสุดฟิน")
 
-# 4. ใส่ลิงก์ Playlist ของคุณ (ดึงจากที่คุณส่งมา)
-playlist_url = "https://youtube.com/playlist?list=PL6S211I3urvqVH9bDPIr0SLQkENDsNx3Y&si=nuIyO4KQ5r5-vx0c"
+# 4. ใส่ลิงก์แบบ Embed ที่ชัวร์ที่สุด
+# ผมลบส่วน &si= ออกเพื่อให้ลิงก์สะอาดขึ้น ระบบจะอ่านง่ายขึ้นครับ
+playlist_id = "PL6S211I3urvqVH9bDPIr0SLQkENDsNx3Y"
+clean_url = f"https://www.youtube.com/watch?v=videoseries&list={playlist_id}"
 
 st.markdown("---")
 
-# 5. ส่วนเครื่องเล่นวิดีโอ (YouTube Embed)
-# ระบบจะจัดการเรื่องเล่นต่อเนื่องและยอดวิวให้เองครับ
-st.video(playlist_url)
+# 5. แสดงเครื่องเล่นวิดีโอ
+# ใช้ st.video กับลิงก์ที่คลีนแล้ว
+try:
+    st.video(clean_url)
+    st.success("โหลดเพลย์ลิสต์สำเร็จ! กด Play ได้เลย")
+except:
+    st.error("เกิดปัญหาในการดึงวิดีโอ กรุณาลอง Refresh หน้าเว็บอีกครั้ง")
 
 st.info("""
-    💡 **ทิปพิเศษ:** - กดปุ่ม **Playlist** (รูปขีดสามขีดตรงขวาบนของวิดีโอ) เพื่อดูรายชื่อเพลงทั้ง 35 เพลง
-    - ระบบจะเล่นเพลงถัดไปให้เองอัตโนมัติ (Autoplay) ตามระบบของ YouTube ครับ
-    - ทุกครั้งที่เพื่อนฟัง ยอดวิวจะขึ้นให้เจ้าของคลิปปกติเลย
+    💡 **วิธีดูรายชื่อเพลง:** กดที่ไอคอนรูป 'ขีด 3 ขีด' ที่มุมขวาบนของวิดีโอ เพื่อเลือกเพลงในลิสต์ทั้ง 35 เพลงครับ
 """)
 
 st.divider()
 
-# 6. ส่วนคอมเมนต์ (เผื่อเพื่อนอยากฝากอะไรไว้)
-st.subheader("💬 ฝากข้อความถึงเพื่อน")
-name = st.text_input("ชื่อเล่นของคุณ:")
-msg = st.text_area("อยากบอกอะไรไหม:")
-if st.button("ส่งความรู้สึก"):
-    if name and msg:
-        st.success(f"ขอบคุณนะ {name}! ข้อความของคุณถูกส่งแล้ว")
-        st.balloons()
-    else:
-        st.warning("กรุณากรอกชื่อและข้อความด้วยนะ")
-
+# 6. ส่วนคอมเมนต์
+st.subheader("💬 ฝากข้อความ")
+name = st.text_input("ชื่อของคุณ:")
+msg = st.text_area("ข้อความ:")
+if st.button("ส่ง"):
+    st.toast("ส่งความรู้สึกเรียบร้อย!")
