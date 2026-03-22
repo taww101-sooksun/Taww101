@@ -138,7 +138,7 @@ if music_files:
     components.html(
         """
         <script>
-        var fadeDuration = 1; // ตั้งค่า Fade 1 วินาที
+        var fadeDuration = 12; // ตั้งค่า Fade 12 วินาที
 
         function handleAudioSync() {
             var audio = window.parent.document.querySelector('audio');
