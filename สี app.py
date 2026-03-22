@@ -14,7 +14,7 @@ st.markdown(f"""
     .stApp {{
         background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
         background-size: 1200% 1200%;
-        animation: RainbowFlow 3s ease infinite;
+        animation: RainbowFlow 10s ease infinite;
     }}
     @keyframes RainbowFlow {{
         0%{{background-position:0% 50%}}
@@ -95,7 +95,7 @@ if music_files:
     
     current_song = music_files[st.session_state.song_index]
 
-    st.title("🎸 อยู่นิ่งๆไม่เจ็บตัว MUSIC🎧")
+    st.title("🎸 🎼อยู่นิ่งๆไม่เจ็บตัว 🎶🎧")
 
     # 1. ชื่อเพลงวิ่ง
     st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
@@ -116,8 +116,8 @@ if music_files:
     st.markdown("---")
 
     # 5. กล่องรายชื่อเพลง (ล็อคเข้าที่ด้วย Container)
-    st.subheader("📜 รายชื่อเพลง 🎼อยู่นิ้งๆไม่เจ็บตัว🎸")
-    with st.container(height=200):
+    st.subheader("📜 เลือกฟังผลงานเพลง🎧🎼อยู่นิ้งๆไม่เจ็บตัว🎸")
+    with st.container(height=300):
         for i, song in enumerate(music_files):
             if st.button(f"{i+1}. {song}", key=f"box_{i}"):
                 st.session_state.song_index = i
@@ -134,11 +134,11 @@ if music_files:
             st.session_state.song_index = random.randint(0, len(music_files) - 1)
             st.rerun()
 
-    # 7. JavaScript: Fade In/Out (5s) + Auto-Next (บังคับเล่น)
+    # 7. JavaScript: Fade In/Out (12s) + Auto-Next (บังคับเล่น)
     components.html(
         """
         <script>
-        var fadeDuration = 5; // ตั้งค่า Fade 5 วินาที
+        var fadeDuration = 12; // ตั้งค่า Fade 12 วินาที
 
         function handleAudioSync() {
             var audio = window.parent.document.querySelector('audio');
@@ -154,7 +154,7 @@ if music_files:
                     audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
                 } 
                 else {
-                    audio.volume = 2;
+                    audio.volume = 1;
                 }
 
                 // ระบบ Auto-Next
@@ -173,7 +173,7 @@ if music_files:
                 }
             }
         }
-        setInterval(handleAudioSync, 800);
+        setInterval(handleAudioSync, 500);
         </script>
         """, height=0
     )
