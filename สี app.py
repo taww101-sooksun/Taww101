@@ -6,7 +6,7 @@ import streamlit.components.v1 as components
 # 1. ตั้งค่าหน้าแอป
 st.set_page_config(page_title="Vibe Player Pro Max", layout="centered")
 
-# 2. CSS สายรุ้ง + ตัวอักษรวิ่ง + กราฟเสียง + ดีไซน์ปุ่ม (จัดเต็ม)
+# 2. CSS ปรับปรุงขอบกล่องรายการเพลง
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -20,6 +20,15 @@ st.markdown(f"""
         0%{{background-position:0% 50%}}
         50%{{background-position:100% 50%}}
         100%{{background-position:0% 50%}}
+    }}
+
+    /* ปรับปรุงขอบกล่องรายการเพลงให้ชัดเจน */
+    [data-testid="stVVerticalBlock"] > div > div > [data-testid="stVerticalBlockBorderWrapper"] {{
+        border: 3px solid #AFEEEE !important;
+        border-radius: 15px !important;
+        background: rgba(0, 0, 0, 0.4) !important;
+        box-shadow: 0px 0px 15px rgba(175, 238, 238, 0.5);
+        padding: 10px;
     }}
 
     .marquee {{
@@ -46,27 +55,6 @@ st.markdown(f"""
         0% {{ transform: translate(0, 0); }}
         100% {{ transform: translate(-100%, 0); }}
     }}
-
-    .visualizer {{
-        display: flex;
-        align-items: flex-end;
-        justify-content: center;
-        height: 50px;
-        gap: 3px;
-        margin-bottom: 15px;
-    }}
-    .bar {{
-        width: 8px;
-        background: linear-gradient(180deg, #AFEEEE, #FF7F50);
-        animation: equalize 1s infinite alternate;
-        border-radius: 3px;
-    }}
-    @keyframes equalize {{
-        0% {{ height: 5px; }}
-        100% {{ height: 50px; }}
-    }}
-    .bar:nth-child(odd) {{ animation-duration: 0.6s; }}
-    .bar:nth-child(even) {{ animation-duration: 0.9s; }}
 
     .stButton>button {{
         width: 100%;
@@ -97,29 +85,26 @@ if music_files:
 
     st.title("🎸 อยู่นิ่งๆไม่เจ็บตัว 🎼 MUSIC")
 
-    # 1. ชื่อเพลงวิ่ง
     st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
 
-    # 2. ปก (วิดีโอหรือรูป)
+    # ปก
     base_name = os.path.splitext(current_song)[0]
     if os.path.exists(base_name + ".mp4"):
         st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
     elif os.path.exists(base_name + ".jpg"):
         st.image(base_name + ".jpg", use_container_width=True)
     
-    # 3. กราฟเสียงสีสัน
-    st.markdown('<div class="visualizer">' + '<div class="bar"></div>'*20 + '</div>', unsafe_allow_html=True)
-
-    # 4. เครื่องเล่นเพลง
     st.audio(current_song)
 
     st.markdown("---")
 
-    # 5. กล่องรายชื่อเพลง (ล็อคเข้าที่ด้วย Container)
-    st.subheader("🎧 ฟังผลงานเพลง 🎼 อยู่นิ้งๆไม่เจ็บตัว🎸")
-    with st.container(height=200):
+    # 5. กล่องรายชื่อเพลง (เพิ่ม Border ผ่าน Container)
+    st.subheader("🎧 รายชื่อเพลง")
+    with st.container(border=True, height=250):
         for i, song in enumerate(music_files):
-            if st.button(f"{i+1}. {song}", key=f"box_{i}"):
+            # เน้นสีเพลงที่กำลังเล่นอยู่
+            label = f"▶️ {i+1}. {song}" if i == st.session_state.song_index else f"{i+1}. {song}"
+            if st.button(label, key=f"box_{i}"):
                 st.session_state.song_index = i
                 st.rerun()
 
@@ -134,46 +119,48 @@ if music_files:
             st.session_state.song_index = random.randint(0, len(music_files) - 1)
             st.rerun()
 
-    # 7. JavaScript: Fade In/Out (12s) + Auto-Next (บังคับเล่น)
+    # 7. JavaScript: แก้ไข Fade และระบบเปลี่ยนเพลงก่อนจบ 10 วินาที
     components.html(
         """
         <script>
-        var fadeDuration = 12; // ตั้งค่า Fade 12 วินาที
+        var fadeDuration = 12; 
+        var skipThreshold = 10; // เปลี่ยนเพลงก่อนจบ 10 วินาที
+        var hasSkipped = false;
 
         function handleAudioSync() {
             var audio = window.parent.document.querySelector('audio');
             var buttons = window.parent.document.querySelectorAll('button');
             
             if (audio) {
-                // ระบบ Fade In (เริ่มเพลง)
-                if (audio.currentTime < fadeDuration && !audio.paused) {
-                    audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
+                // 1. ระบบ Fade In (ป้องกันเสียงกระชาก)
+                if (audio.currentTime < fadeDuration) {
+                    audio.volume = Math.max(0, Math.min(audio.currentTime / fadeDuration, 1));
                 } 
-                // ระบบ Fade Out (จบเพลง)
-                else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {
-                    audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
+                // 2. ระบบ Fade Out (เริ่มเบาลงก่อนจบ)
+                else if (audio.duration - audio.currentTime < fadeDuration) {
+                    audio.volume = Math.max(0, (audio.duration - audio.currentTime) / fadeDuration);
                 } 
                 else {
                     audio.volume = 1;
                 }
 
-                // ระบบ Auto-Next
-                audio.onended = function() {
+                // 3. ระบบเปลี่ยนเพลงล่วงหน้า (Skip before end)
+                if (audio.duration > 0 && (audio.duration - audio.currentTime) < skipThreshold && !hasSkipped) {
+                    hasSkipped = true; // กัน Loop รัวๆ
                     for (var i = 0; i < buttons.length; i++) {
                         if (buttons[i].textContent.includes('เพลงถัดไป')) {
                             buttons[i].click();
                             break;
                         }
                     }
-                };
+                }
 
-                // บังคับ Play กรณีโหลดเพลงใหม่แล้วนิ่ง
                 if (audio.paused && audio.currentTime == 0) {
-                    audio.play().catch(e => console.log("User interaction needed"));
+                    audio.play().catch(e => {});
                 }
             }
         }
-        setInterval(handleAudioSync, 500);
+        setInterval(handleAudioSync, 300); // เช็คถี่ขึ้นเพื่อความเนียน
         </script>
         """, height=0
     )
