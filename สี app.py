@@ -35,7 +35,7 @@ st.markdown(f"""
     .marquee p {{
         display: inline-block;
         padding-left: 100%;
-        animation: marquee 15s linear infinite;
+        animation: marquee 30s linear infinite;
         font-family: 'Orbitron', sans-serif;
         font-size: 22px;
         color: #AFEEEE;
@@ -116,8 +116,8 @@ if music_files:
     st.markdown("---")
 
     # 5. กล่องรายชื่อเพลง (ล็อคเข้าที่ด้วย Container)
-    st.subheader("📜 ฟังผลงานเพลง🎧🎼อยู่นิ้งๆไม่เจ็บตัว🎸")
-    with st.container(height=300):
+    st.subheader("🎧 ฟังผลงานเพลง 🎼 อยู่นิ้งๆไม่เจ็บตัว🎸")
+    with st.container(height=200):
         for i, song in enumerate(music_files):
             if st.button(f"{i+1}. {song}", key=f"box_{i}"):
                 st.session_state.song_index = i
