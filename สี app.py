@@ -3,23 +3,48 @@ import os
 import random
 import streamlit.components.v1 as components
 
-# 1. ตั้งค่าหน้าแอป
-st.set_page_config(page_title="Vibe Player Pro Max", layout="centered")
+# --- 1. SET UP & THEME SELECTOR ---
+st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
 
-# 2. CSS สายรุ้ง + ตัวอักษรวิ่ง + กราฟเสียง + ดีไซน์ปุ่ม (จัดเต็ม)
+# ระบบจำค่าสี (ถ้ายังไม่มีให้ตั้งค่าเริ่มต้น)
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#39FF14" # เขียวนีออน
+if 'bg_color' not in st.session_state:
+    st.session_state.bg_color = "#121212" # ดำเทาเข้ม
+
+with st.sidebar:
+    # ส่วนของ Logo
+    if os.path.exists("logo2.jpg"):
+        st.image("logo2.jpg", use_container_width=True)
+    else:
+        st.write("📌 [ยังไม่มีไฟล์ logo2.jpg]")
+        
+    st.markdown("### 🎨 ปรับแต่งสีระบบ")
+    # เลือกสีนีออน (เส้นขอบ/ตัวอักษร)
+    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
+    # เลือกสีพื้นหลัง
+    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
+    
+    st.write("---")
+    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
+
+# --- 2. CSS DYNAMIC THEME (ดึงสีจาก Picker) ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
     
     .stApp {{
-        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-        background-size: 1200% 1200%;
-        animation: RainbowFlow 10s ease infinite;
+        background-color: {st.session_state.bg_color} !important;
+        color: {st.session_state.theme_color} !important;
     }}
-    @keyframes RainbowFlow {{
-        0%{{background-position:0% 50%}}
-        50%{{background-position:100% 50%}}
-        100%{{background-position:0% 50%}}
+
+    /* ปรับปรุงขอบกล่องรายการเพลง */
+    [data-testid="stVVerticalBlock"] > div > div > [data-testid="stVerticalBlockBorderWrapper"] {{
+        border: 2px solid {st.session_state.theme_color} !important;
+        border-radius: 15px !important;
+        background: rgba(0, 0, 0, 0.4) !important;
+        box-shadow: 0px 0px 15px {st.session_state.theme_color}44;
+        padding: 15px;
     }}
 
     .marquee {{
@@ -30,16 +55,16 @@ st.markdown(f"""
         padding: 15px 0;
         border-radius: 12px;
         margin-bottom: 15px;
-        border: 2px solid #AFEEEE;
+        border: 2px solid {st.session_state.theme_color};
     }}
     .marquee p {{
         display: inline-block;
         padding-left: 100%;
-        animation: marquee 15s linear infinite;
+        animation: marquee 20s linear infinite;
         font-family: 'Orbitron', sans-serif;
         font-size: 22px;
-        color: #AFEEEE;
-        text-shadow: 2px 2px 4px #000;
+        color: {st.session_state.theme_color};
+        text-shadow: 0px 0px 10px {st.session_state.theme_color};
         margin: 0;
     }}
     @keyframes marquee {{
@@ -47,46 +72,28 @@ st.markdown(f"""
         100% {{ transform: translate(-100%, 0); }}
     }}
 
-    .visualizer {{
-        display: flex;
-        align-items: flex-end;
-        justify-content: center;
-        height: 50px;
-        gap: 3px;
-        margin-bottom: 15px;
-    }}
-    .bar {{
-        width: 8px;
-        background: linear-gradient(180deg, #AFEEEE, #FF7F50);
-        animation: equalize 1s infinite alternate;
-        border-radius: 3px;
-    }}
-    @keyframes equalize {{
-        0% {{ height: 5px; }}
-        100% {{ height: 50px; }}
-    }}
-    .bar:nth-child(odd) {{ animation-duration: 0.6s; }}
-    .bar:nth-child(even) {{ animation-duration: 0.9s; }}
-
     .stButton>button {{
         width: 100%;
         text-align: left;
-        background-color: rgba(175, 238, 238, 0.8) !important;
-        color: #333 !important;
+        background-color: transparent !important;
+        color: {st.session_state.theme_color} !important;
         border-radius: 10px !important;
         font-weight: bold;
-        border: 2px solid white !important;
+        border: 1px solid {st.session_state.theme_color} !important;
         margin-bottom: 5px;
+        transition: 0.3s;
     }}
     .stButton>button:hover {{
-        background-color: #FF7F50 !important;
-        color: white !important;
+        background-color: {st.session_state.theme_color} !important;
+        color: {st.session_state.bg_color} !important;
+        box-shadow: 0px 0px 15px {st.session_state.theme_color};
     }}
-    h1, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: white !important; text-shadow: 2px 2px 4px #000; }}
+    
+    h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
     </style>
     """, unsafe_allow_html=True)
 
-# 3. จัดการไฟล์เพลง
+# --- 3. ระบบจัดการเพลง ---
 music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
 
 if music_files:
@@ -95,35 +102,39 @@ if music_files:
     
     current_song = music_files[st.session_state.song_index]
 
-    st.title("🎸 อยู่นิ่งๆไม่เจ็บตัว 🎧")
+    # ส่วนหัวและโลโก้
+    col_l, col_r = st.columns([1, 5])
+    with col_l:
+        if os.path.exists("logo2.jpg"):
+            st.image("logo2.jpg", width=500)
+    with col_r:
+        st.title("🎸 อยู่นิ่งๆไม่เจ็บตัว 🎼 MUSIC")
 
     # 1. ชื่อเพลงวิ่ง
     st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
 
-    # 2. ปก (วิดีโอหรือรูป)
+    # 2. ปก
     base_name = os.path.splitext(current_song)[0]
     if os.path.exists(base_name + ".mp4"):
         st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
     elif os.path.exists(base_name + ".jpg"):
         st.image(base_name + ".jpg", use_container_width=True)
     
-    # 3. กราฟเสียงสีสัน
-    st.markdown('<div class="visualizer">' + '<div class="bar"></div>'*15 + '</div>', unsafe_allow_html=True)
-
-    # 4. เครื่องเล่นเพลง
+    # 3. เครื่องเล่นเพลง
     st.audio(current_song)
 
     st.markdown("---")
 
-    # 5. กล่องรายชื่อเพลง (ล็อคเข้าที่ด้วย Container)
-    st.subheader("📜 Playlist Library")
-    with st.container(height=300):
+    # 4. กล่องรายชื่อเพลง
+    st.subheader("🎧 รายชื่อเพลง🎸")
+    with st.container(border=True, height=250):
         for i, song in enumerate(music_files):
-            if st.button(f"{i+1}. {song}", key=f"box_{i}"):
+            label = f"▶️ {i+1}. {song}" if i == st.session_state.song_index else f"{i+1}. {song}"
+            if st.button(label, key=f"box_{i}"):
                 st.session_state.song_index = i
                 st.rerun()
 
-    # 6. ปุ่มควบคุม
+    # 5. ปุ่มควบคุม
     col1, col2 = st.columns(2)
     with col1:
         if st.button("⏭️ เพลงถัดไป"):
@@ -134,22 +145,22 @@ if music_files:
             st.session_state.song_index = random.randint(0, len(music_files) - 1)
             st.rerun()
 
-    # 7. JavaScript: Fade In/Out (12s) + Auto-Next (บังคับเล่น)
+    # 6. JavaScript: ใช้ตัวที่คุณยืนยันว่าเวิร์ค (Fade + Auto Play + Auto Next)
     components.html(
         """
         <script>
-        var fadeDuration = 12; // ตั้งค่า Fade 12 วินาที
+        var fadeDuration = 12; 
 
         function handleAudioSync() {
             var audio = window.parent.document.querySelector('audio');
             var buttons = window.parent.document.querySelectorAll('button');
             
             if (audio) {
-                // ระบบ Fade In (เริ่มเพลง)
+                // ระบบ Fade In
                 if (audio.currentTime < fadeDuration && !audio.paused) {
                     audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
                 } 
-                // ระบบ Fade Out (จบเพลง)
+                // ระบบ Fade Out
                 else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {
                     audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
                 } 
@@ -157,7 +168,7 @@ if music_files:
                     audio.volume = 1;
                 }
 
-                // ระบบ Auto-Next
+                // ระบบ Auto-Next เมื่อเพลงจบ
                 audio.onended = function() {
                     for (var i = 0; i < buttons.length; i++) {
                         if (buttons[i].textContent.includes('เพลงถัดไป')) {
@@ -167,7 +178,7 @@ if music_files:
                     }
                 };
 
-                // บังคับ Play กรณีโหลดเพลงใหม่แล้วนิ่ง
+                // บังคับ Play เมื่อโหลดใหม่
                 if (audio.paused && audio.currentTime == 0) {
                     audio.play().catch(e => console.log("User interaction needed"));
                 }
