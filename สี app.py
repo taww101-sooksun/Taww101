@@ -14,7 +14,7 @@ st.markdown(f"""
     .stApp {{
         background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
         background-size: 1200% 1200%;
-        animation: RainbowFlow 10s ease infinite;
+        animation: RainbowFlow 30s ease infinite;
     }}
     @keyframes RainbowFlow {{
         0%{{background-position:0% 50%}}
@@ -95,7 +95,7 @@ if music_files:
     
     current_song = music_files[st.session_state.song_index]
 
-    st.title("🎸 🎼อยู่นิ่งๆไม่เจ็บตัว 🎶🎧")
+    st.title("🎸 🎼อยู่นิ่งๆไม่เจ็บตัว MUSIC🎧")
 
     # 1. ชื่อเพลงวิ่ง
     st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
@@ -108,7 +108,7 @@ if music_files:
         st.image(base_name + ".jpg", use_container_width=True)
     
     # 3. กราฟเสียงสีสัน
-    st.markdown('<div class="visualizer">' + '<div class="bar"></div>'*15 + '</div>', unsafe_allow_html=True)
+    st.markdown('<div class="visualizer">' + '<div class="bar"></div>'*20 + '</div>', unsafe_allow_html=True)
 
     # 4. เครื่องเล่นเพลง
     st.audio(current_song)
@@ -116,7 +116,7 @@ if music_files:
     st.markdown("---")
 
     # 5. กล่องรายชื่อเพลง (ล็อคเข้าที่ด้วย Container)
-    st.subheader("📜 เลือกฟังผลงานเพลง🎧🎼อยู่นิ้งๆไม่เจ็บตัว🎸")
+    st.subheader("📜 ฟังผลงานเพลง🎧🎼อยู่นิ้งๆไม่เจ็บตัว🎸")
     with st.container(height=300):
         for i, song in enumerate(music_files):
             if st.button(f"{i+1}. {song}", key=f"box_{i}"):
