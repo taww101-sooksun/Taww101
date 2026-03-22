@@ -1,39 +1,33 @@
-import streamlit as st
-import os
+name: Django CI
 
-st.set_page_config(page_title="My Music Hub", layout="centered")
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
-st.title("🎵 คลังเพลงเพื่อนรัก")
-st.write("เลือกเพลงที่อยากฟังจากรายการด้านล่างได้เลย!")
+jobs:
+  build:
 
-# กำหนดโฟลเดอร์ที่เก็บไฟล์เพลง (ต้องมีโฟลเดอร์นี้ใน GitHub ด้วย)
-music_folder = "music"
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        python-version: [3.7, 3.8, 3.9]
 
-# ตรวจสอบว่ามีโฟลเดอร์ไหม ถ้าไม่มีให้สร้าง (ป้องกัน Error)
-if not os.path.exists(music_folder):
-    os.makedirs(music_folder)
-    st.info("กรุณาอัปโหลดไฟล์เพลง .mp3 ลงในโฟลเดอร์ 'music' บน GitHub ของคุณ")
-
-# ดึงรายชื่อไฟล์เพลง
-music_files = [f for f in os.listdir(music_folder) if f.endswith(".mp3")]
-
-if music_files:
-    # ลูกเล่น: ตัวเลือกเพลง
-    selected_song = st.selectbox("เลือกเพลง:", music_files)
-    
-    # Path ของเพลงที่เลือก
-    song_path = os.path.join(music_folder, selected_song)
-    
-    # ตัวเล่นเพลง
-    st.audio(song_path)
-    
-    # เพิ่มลูกเล่นง่ายๆ: แสดงชื่อเพลงที่กำลังเล่นแบบเน้นๆ
-    st.success(f"กำลังเล่นเพลง: {selected_song}")
-else:
-    st.warning("ยังไม่มีเพลงในคลังเลย ลองเพิ่มไฟล์ .mp3 ดูนะ")
-
-# ลูกเล่นเพิ่มเติม: ให้เพื่อนโหวตเพลงหรือคอมเมนต์
-st.divider()
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Run Tests
+      run: |
+        python manage.py test
 st.subheader("💬 คุยกันท้ายเพลง")
 comment = st.text_input("พิมพ์อะไรบอกเจ้าของแอปหน่อย...")
 if st.button("ส่งความเห็น"):
