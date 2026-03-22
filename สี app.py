@@ -5,31 +5,20 @@ st.set_page_config(page_title="My Music Hub", layout="centered")
 
 st.title("🎵 คลังเพลงเพื่อนรัก")
 
-# 1. กำหนดชื่อโฟลเดอร์ให้ชัดเจน (แนะนำให้ใช้ภาษาอังกฤษตัวพิมพ์เล็ก)
-music_folder = "music_library"
+# เปลี่ยนมาดึงไฟล์จากหน้าแรก (Root) แทนการเข้าโฟลเดอร์
+# วิธีนี้จะช่วยลดปัญหา NotADirectoryError ได้ 100%
+current_dir = os.getcwd() 
+music_files = [f for f in os.listdir(current_dir) if f.lower().endswith(".mp3")]
 
-# 2. ตรวจสอบเงื่อนไขก่อน list ไฟล์
-if not os.path.exists(music_folder):
-    # ถ้าไม่มีโฟลเดอร์ ให้สร้างใหม่
-    os.makedirs(music_folder)
-    st.info(f"สร้างโฟลเดอร์ '{music_folder}' เรียบร้อยแล้ว กรุณาอัปโหลดไฟล์ .mp3 ลงไป")
-    music_files = []
-elif not os.path.isdir(music_folder):
-    # ป้องกันกรณีมีไฟล์ชื่อเดียวกับโฟลเดอร์
-    st.error(f"Error: มีไฟล์ที่ชื่อ '{music_folder}' อยู่แล้ว ทำให้สร้างโฟลเดอร์ไม่ได้")
-    music_files = []
-else:
-    # อ่านไฟล์เพลงเฉพาะที่เป็น .mp3
-    music_files = [f for f in os.listdir(music_folder) if f.lower().endswith(".mp3")]
-
-# 3. ส่วนการแสดงผล
 if music_files:
     selected_song = st.selectbox("เลือกเพลงที่อยากฟัง:", music_files)
-    song_path = os.path.join(music_folder, selected_song)
     
-    # แสดงตัวเล่นเพลง
-    st.audio(song_path)
+    # เล่นเพลงจากหน้าแรกได้เลย
+    st.audio(selected_song)
     st.success(f"กำลังเล่น: {selected_song}")
+    
+    st.divider()
+    st.info("💡 ทิป: อัปโหลดไฟล์ .mp3 เพิ่มเข้าไปใน GitHub แล้วกด Refresh หน้าเว็บเพื่ออัปเดตเพลงใหม่ได้เลย!")
 else:
-    st.warning("ยังไม่พบไฟล์เพลงในระบบ")
-    st.write("วิธีแก้: ตรวจสอบใน GitHub ว่าคุณมีโฟลเดอร์ชื่อ `music_library` และมีไฟล์ .mp3 อยู่ข้างในนั้นแล้วหรือยัง")
+    st.warning("⚠️ ยังไม่พบไฟล์เพลง .mp3 ใน GitHub")
+    st.write("วิธีแก้: อัปโหลดไฟล์เพลง (นามสกุล .mp3) ไว้ที่หน้าแรกคู่กับไฟล์ app.py ของคุณครับ")
