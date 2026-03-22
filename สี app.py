@@ -95,7 +95,7 @@ if music_files:
     
     current_song = music_files[st.session_state.song_index]
 
-    st.title("🎸 🎼อยู่นิ่งๆไม่เจ็บตัว MUSIC🎧")
+    st.title("🎸 อยู่นิ่งๆไม่เจ็บตัว 🎼 MUSIC")
 
     # 1. ชื่อเพลงวิ่ง
     st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
@@ -138,7 +138,7 @@ if music_files:
     components.html(
         """
         <script>
-        var fadeDuration = 12; // ตั้งค่า Fade 12 วินาที
+        var fadeDuration = 1; // ตั้งค่า Fade 1 วินาที
 
         function handleAudioSync() {
             var audio = window.parent.document.querySelector('audio');
