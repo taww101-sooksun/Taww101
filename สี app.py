@@ -166,33 +166,37 @@ if music_files:
             st.session_state.song_index = random.randint(0, len(music_files) - 1)
             st.rerun()
 
-    # --- 5. JavaScript (Fixed NameError) ---
-    components.html(
-        f"""
-        <script>
-        var fadeDuration = 12; 
-        function handleAudio() {{
-            var audio = window.parent.document.querySelector('audio');
-            var buttons = window.parent.document.querySelectorAll('button');
-            if (audio) {{
-                if (audio.currentTime < fadeDuration && !audio.paused) {{
-                    audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
-                }} else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {{
-                    audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
-                } else {{ audio.volume = 1; }}
+        # --- 5. JavaScript (Safe Version: No f-string to avoid SyntaxError) ---
+    js_code = """
+    <script>
+    var fadeDuration = 12; 
+    function handleAudio() {
+        var audio = window.parent.document.querySelector('audio');
+        var buttons = window.parent.document.querySelectorAll('button');
+        if (audio) {
+            // ระบบ Fade In / Out
+            if (audio.currentTime < fadeDuration && !audio.paused) {
+                audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
+            } else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {
+                audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
+            } else { 
+                audio.volume = 1; 
+            }
 
-                audio.onended = function() {{
-                    for (var i = 0; i < buttons.length; i++) {{
-                        if (buttons[i].textContent.includes('เพลงถัดไป')) {{
-                            buttons[i].click(); break;
-                        }}
-                    }}
-                }};
-            }}
-        }}
-        setInterval(handleAudio, 500);
-        </script>
-        """, height=0
-    )
+            // ระบบเล่นเพลงถัดไปอัตโนมัติ
+            audio.onended = function() {
+                for (var i = 0; i < buttons.length; i++) {
+                    if (buttons[i].textContent.includes('เพลงถัดไป')) {
+                        buttons[i].click(); 
+                        break;
+                    }
+                }
+            };
+        }
+    }
+    setInterval(handleAudio, 500);
+    </script>
+    """
+    components.html(js_code, height=0)
 else:
     st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์ครับ")
