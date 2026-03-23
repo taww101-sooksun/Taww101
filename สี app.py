@@ -1,3 +1,104 @@
+# --- 4. ระบบจัดการข้อมูลแชต (Public Chat) ---
+CHAT_FILE = "public_chat.txt"
+
+def load_chat():
+    if os.path.exists(CHAT_FILE):
+        try:
+            with open(CHAT_FILE, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                return "".join(lines[-15:]) # ดึง 15 ข้อความล่าสุด
+        except:
+            return "กำลังโหลดข้อความ..."
+    return "ยังไม่มีการสนทนา เริ่มพิมพ์ได้เลย!"
+
+# --- 5. ส่วนแสดงผล UI แชต ---
+st.markdown("---")
+tab1, tab2 = st.tabs(["🌐 PUBLIC LOBBY", "🔒 PRIVATE NOTE"])
+
+with tab1:
+    st.subheader("💬 Global Chat")
+    # แสดงข้อความแชตในรูปแบบ Code Block หรือ Text Area ให้ดูดิบๆ สไตล์ Neon
+    chat_content = load_chat()
+    st.text_area(label="Chat History", value=chat_content, height=200, disabled=True, label_visibility="collapsed")
+    
+    # ฟอร์มส่งข้อความ
+    with st.form("chat_input_form", clear_on_submit=True):
+        col_msg, col_btn = st.columns([4, 1])
+        with col_msg:
+            user_msg = st.text_input("พิมพ์ข้อความ...", placeholder="Say something...")
+        with col_btn:
+            submit_chat = st.form_submit_button("SEND")
+            
+        if submit_chat and user_msg:
+            with open(CHAT_FILE, "a", encoding="utf-8") as f:
+                f.write(f"> {user_msg}\n")
+            st.rerun()
+
+with tab2:
+    st.subheader("📓 My Secret Note")
+    if 'private_notes' not in st.session_state:
+        st.session_state.private_notes = []
+    
+    note_input = st.text_input("บันทึกเฉพาะคุณที่เห็น (หายเมื่อปิดเว็บ)", key="note_in")
+    if st.button("SAVE NOTE"):
+        if note_input:
+            st.session_state.private_notes.append(note_input)
+            st.rerun()
+    
+    for n in reversed(st.session_state.private_notes):
+        st.write(f"• {n}")
+
+# --- 6. JavaScript: อัปเดตใหม่ (Auto-Play + Auto-Next + Auto-Refresh Chat) ---
+components.html(
+    f"""
+    <script>
+    var fadeDuration = 12; 
+    var refreshInterval = 10000; // ตั้งค่า Refresh แชตทุกๆ 10 วินาที
+
+    function handleSystem() {{
+        var audio = window.parent.document.querySelector('audio');
+        var buttons = window.parent.document.querySelectorAll('button');
+        
+        if (audio) {{
+            // --- ระบบเสียง (คงเดิม) ---
+            if (audio.currentTime < fadeDuration && !audio.paused) {{
+                audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
+            }} else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {{
+                audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
+            }} else {{
+                audio.volume = 1;
+            }}
+
+            audio.onended = function() {{
+                for (var i = 0; i < buttons.length; i++) {{
+                    if (buttons[i].textContent.includes('เพลงถัดไป')) {{
+                        buttons[i].click();
+                        break;
+                    }}
+                }}
+            }};
+        }}
+    }}
+
+    // ระบบตรวจจับเพื่อ Refresh หน้าจอเมื่อไม่มีการพิมพ์ (ป้องกันการขัดจังหวะผู้ใช้)
+    setInterval(function() {{
+        var inputs = window.parent.document.querySelectorAll('input');
+        var isTyping = false;
+        inputs.forEach(input => {{
+            if (input === window.parent.document.activeElement) isTyping = true;
+        }});
+
+        if (!isTyping) {{
+            // ถ้าไม่ได้กำลังพิมพ์ ให้รีโหลดเพื่ออัปเดตแชตสาธารณะ
+            // window.parent.location.reload(); // วิธีนี้อาจจะแรงไปสำหรับบางคน
+            // หรือจะใช้ปุ่มหลอกๆ เพื่อสั่ง rerun ก็ได้ แต่ในที่นี้แนะนำให้ rerun ผ่าน logic หลัก
+        }}
+    }}, refreshInterval);
+
+    setInterval(handleSystem, 500);
+    </script>
+    """, height=0
+)
 import streamlit as st
 import os
 import random
@@ -190,3 +291,104 @@ if music_files:
     )
 else:
     st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์ครับ")
+# --- 4. ระบบจัดการข้อมูลแชต (Public Chat) ---
+CHAT_FILE = "public_chat.txt"
+
+def load_chat():
+    if os.path.exists(CHAT_FILE):
+        try:
+            with open(CHAT_FILE, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                return "".join(lines[-15:]) # ดึง 15 ข้อความล่าสุด
+        except:
+            return "กำลังโหลดข้อความ..."
+    return "ยังไม่มีการสนทนา เริ่มพิมพ์ได้เลย!"
+
+# --- 5. ส่วนแสดงผล UI แชต ---
+st.markdown("---")
+tab1, tab2 = st.tabs(["🌐 PUBLIC LOBBY", "🔒 PRIVATE NOTE"])
+
+with tab1:
+    st.subheader("💬 Global Chat")
+    # แสดงข้อความแชตในรูปแบบ Code Block หรือ Text Area ให้ดูดิบๆ สไตล์ Neon
+    chat_content = load_chat()
+    st.text_area(label="Chat History", value=chat_content, height=200, disabled=True, label_visibility="collapsed")
+    
+    # ฟอร์มส่งข้อความ
+    with st.form("chat_input_form", clear_on_submit=True):
+        col_msg, col_btn = st.columns([4, 1])
+        with col_msg:
+            user_msg = st.text_input("พิมพ์ข้อความ...", placeholder="Say something...")
+        with col_btn:
+            submit_chat = st.form_submit_button("SEND")
+            
+        if submit_chat and user_msg:
+            with open(CHAT_FILE, "a", encoding="utf-8") as f:
+                f.write(f"> {user_msg}\n")
+            st.rerun()
+
+with tab2:
+    st.subheader("📓 My Secret Note")
+    if 'private_notes' not in st.session_state:
+        st.session_state.private_notes = []
+    
+    note_input = st.text_input("บันทึกเฉพาะคุณที่เห็น (หายเมื่อปิดเว็บ)", key="note_in")
+    if st.button("SAVE NOTE"):
+        if note_input:
+            st.session_state.private_notes.append(note_input)
+            st.rerun()
+    
+    for n in reversed(st.session_state.private_notes):
+        st.write(f"• {n}")
+
+# --- 6. JavaScript: อัปเดตใหม่ (Auto-Play + Auto-Next + Auto-Refresh Chat) ---
+components.html(
+    f"""
+    <script>
+    var fadeDuration = 12; 
+    var refreshInterval = 10000; // ตั้งค่า Refresh แชตทุกๆ 10 วินาที
+
+    function handleSystem() {{
+        var audio = window.parent.document.querySelector('audio');
+        var buttons = window.parent.document.querySelectorAll('button');
+        
+        if (audio) {{
+            // --- ระบบเสียง (คงเดิม) ---
+            if (audio.currentTime < fadeDuration && !audio.paused) {{
+                audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
+            }} else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {{
+                audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
+            }} else {{
+                audio.volume = 1;
+            }}
+
+            audio.onended = function() {{
+                for (var i = 0; i < buttons.length; i++) {{
+                    if (buttons[i].textContent.includes('เพลงถัดไป')) {{
+                        buttons[i].click();
+                        break;
+                    }}
+                }}
+            }};
+        }}
+    }}
+
+    // ระบบตรวจจับเพื่อ Refresh หน้าจอเมื่อไม่มีการพิมพ์ (ป้องกันการขัดจังหวะผู้ใช้)
+    setInterval(function() {{
+        var inputs = window.parent.document.querySelectorAll('input');
+        var isTyping = false;
+        inputs.forEach(input => {{
+            if (input === window.parent.document.activeElement) isTyping = true;
+        }});
+
+        if (!isTyping) {{
+            // ถ้าไม่ได้กำลังพิมพ์ ให้รีโหลดเพื่ออัปเดตแชตสาธารณะ
+            // window.parent.location.reload(); // วิธีนี้อาจจะแรงไปสำหรับบางคน
+            // หรือจะใช้ปุ่มหลอกๆ เพื่อสั่ง rerun ก็ได้ แต่ในที่นี้แนะนำให้ rerun ผ่าน logic หลัก
+        }}
+    }}, refreshInterval);
+
+    setInterval(handleSystem, 500);
+    </script>
+    """, height=0
+)
