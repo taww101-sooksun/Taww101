@@ -52,26 +52,63 @@ def room_core():
     st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
 
 def room_radar():
-    st.subheader("🛰️ ระบบเรดาร์และพิกัดจริง")
+    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม (Multi-User Radar)")
+    
+    # 1. ดึงพิกัดตัวเอง
     loc = get_geolocation()
     
+    # 2. ดึงพิกัดเพื่อนทุกคนจาก Firebase
+    all_users = db.reference('users').get()
+    
+    # สร้างแผนที่ (ถ้าไม่มีพิกัดตัวเอง ให้เริ่มที่จุดกลางประเทศไทยก่อน)
+    start_lat, start_lon = 13.7367, 100.5231 # กรุงเทพ
     if loc:
-        lat = loc['coords']['latitude']
-        lon = loc['coords']['longitude']
-        st.success(f"📍 พิกัดปัจจุบัน: {lat}, {lon}")
-        
-        m = folium.Map(location=[lat, lon], zoom_start=17, 
-                       tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
-                       attr="Google Satellite")
-        folium.Marker([lat, lon], tooltip="Ta101", icon=folium.Icon(color='blue')).add_to(m)
-        st_folium(m, width="100%", height=400)
-        
-        if st.button("📡 กระจายสัญญาณพิกัด"):
-            db.reference('users/Ta101').update({'lat': lat, 'lon': lon, 'ts': time.time()})
-            save_log("LOCATION UPDATED")
-            st.toast("ส่งพิกัดสำเร็จ!")
+        start_lat = loc['coords']['latitude']
+        start_lon = loc['coords']['longitude']
+
+    m = folium.Map(location=[start_lat, start_lon], zoom_start=12, 
+                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+                   attr="Google Satellite")
+
+    # 3. วางหมุดทุกคนที่ออนไลน์ (ดึงจาก Firebase)
+    if all_users:
+        for user_id, data in all_users.items():
+            u_lat = data.get('lat')
+            u_lon = data.get('lon')
+            u_ts = data.get('ts', 0)
+            
+            if u_lat and u_lon:
+                # เช็คว่าออนไลน์ล่าสุดเมื่อไหร่ (ถ้าเกิน 1 ชม. ให้เป็นสีเทา)
+                is_active = (time.time() - u_ts) < 3600
+                icon_color = 'green' if is_active else 'gray'
+                
+                # ถ้าเป็นตัวเอง (Ta101) ให้ใช้สีพิเศษที่เลือกจาก Sidebar
+                if user_id == "Ta101":
+                    icon_color = 'red' 
+
+                folium.Marker(
+                    [u_lat, u_lon],
+                    popup=f"User: {user_id}",
+                    tooltip=f"{user_id} ({'Online' if is_active else 'Offline'})",
+                    icon=folium.Icon(color=icon_color, icon='user', prefix='fa')
+                ).add_to(m)
+
+    # แสดงแผนที่
+    st_folium(m, width="100%", height=500)
+
+    # 4. ปุ่มอัปเดตตำแหน่งตัวเอง
+    if loc:
+        if st.button("📡 กระจายพิกัดของฉันให้ทุกคนเห็น", use_container_width=True):
+            db.reference('users/Ta101').update({
+                'lat': loc['coords']['latitude'],
+                'lon': loc['coords']['longitude'],
+                'ts': time.time()
+            })
+            save_log("BROADCASTED LOCATION")
+            st.toast("ส่งพิกัดเข้าศูนย์บัญชาการแล้ว!")
+            st.rerun()
     else:
-        st.warning("🚨 กำลังรอสัญญาณ GPS...")
+        st.warning("🚨 กรุณาเปิด GPS เพื่อระบุตำแหน่งบนเรดาร์")
 
 def room_comms():
     st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
