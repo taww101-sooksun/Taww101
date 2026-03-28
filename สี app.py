@@ -1,171 +1,130 @@
 import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, db
 import os
 import random
-import streamlit.components.v1 as components
+import time
+from datetime import datetime
 
-# --- 1. SET UP & THEME ---
-st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
+# --- 1. INITIALIZE & CONFIG (ตั้งค่าระบบ) ---
+st.set_page_config(page_title="SYNAPSE OMNI", layout="wide")
 
-# ระบบจำสถานะการเข้าใช้งาน (เพื่อแก้ปัญหา Autoplay)
+def init_firebase():
+    if not firebase_admin._apps:
+        try:
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': st.secrets["firebase_db_url"]
+            })
+        except Exception as e:
+            st.error(f"Firebase Connection Error: {e}")
+
+def save_log(action_details):
+    try:
+        now = datetime.now()
+        date_key = now.strftime("%Y-%m-%d")
+        db.reference(f'synapse_logs/{date_key}').push({
+            'time': now.strftime("%H:%M:%S"),
+            'action': action_details,
+            'user': 'Ta101'
+        })
+    except: pass
+
+# --- 2. SYSTEM STATE (จำสถานะ) ---
 if 'system_active' not in st.session_state:
     st.session_state.system_active = False
+if 'nav_level' not in st.session_state:
+    st.session_state.nav_level = "HOME"
 if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#39FF14" 
+    st.session_state.theme_color = "#39FF14"
 if 'bg_color' not in st.session_state:
-    st.session_state.bg_color = "#121212" 
+    st.session_state.bg_color = "#000000"
 
-# หน้าจอสำหรับกด "เข้าสู่ระบบ" ครั้งแรก (จำเป็นสำหรับเสียง)
+# --- 3. ACTIVATION SCREEN (หน้าแรกเพื่อเปิดระบบ) ---
 if not st.session_state.system_active:
-    st.markdown(f"<style>body {{ background-color: {st.session_state.bg_color}; }}</style>", unsafe_allow_html=True)
-    st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; margin-top:20%; font-family:Orbitron;'>SYNAPSE ROOMS</h1>", unsafe_allow_html=True)
-    if st.button("🚀 CLICK TO ACTIVATE SYSTEM", use_container_width=True):
+    st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; margin-top:20%; font-family:Orbitron;'>SYNAPSE OMNI SYSTEM</h1>", unsafe_allow_html=True)
+    if st.button("🚀 CLICK TO ACTIVATE COMMAND CENTER", use_container_width=True):
         st.session_state.system_active = True
+        init_firebase()
+        save_log("SYSTEM ACTIVATED")
         st.rerun()
     st.stop()
 
-with st.sidebar:
-    if os.path.exists("logo2.jpg"):
-        st.image("logo2.jpg", use_container_width=True)
-    st.markdown("### 🎨 ปรับแต่งสีระบบ")
-    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
-    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
-    st.write("---")
-    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
-
-# --- 2. CSS DYNAMIC THEME ---
+# --- 4. DYNAMIC UI (CSS) ---
 st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
     .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.theme_color} !important; }}
-    .marquee {{
-        width: 100%; overflow: hidden; white-space: nowrap; background: rgba(0,0,0,0.6);
-        padding: 15px 0; border-radius: 12px; margin-bottom: 15px; border: 4px solid {st.session_state.theme_color};
-    }}
-    .marquee p {{
-        display: inline-block; padding-left: 100%; animation: marquee 20s linear infinite;
-        font-family: 'Orbitron', sans-serif; font-size: 22px; color: {st.session_state.theme_color};
-        text-shadow: 0px 0px 10px {st.session_state.theme_color}; margin: 0;
-    }}
-    @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
-    .stButton>button {{
-        width: 100%; background-color: transparent !important; color: {st.session_state.theme_color} !important;
-        border-radius: 10px !important; border: 4px solid {st.session_state.theme_color} !important;
-    }}
-    .stTextArea textarea {{ background-color: rgba(0,0,0,0.5) !important; color: {st.session_state.theme_color} !important; border: 4px solid {st.session_state.theme_color} !important; }}
-    h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
-    
-    /* Fallback Visual Box */
-    .visual-box {{
-        width: 100%; height: 300px; border: 4px dashed {st.session_state.theme_color};
-        display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3);
-    }}
+    .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; }}
+    .stTabs [data-baseweb="tab-list"] {{ gap: 10px; }}
+    .stTabs [data-baseweb="tab"] {{ border: 1px solid {st.session_state.theme_color}; padding: 10px; border-radius: 5px; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. ระบบจัดการเพลง ---
-music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+# --- 5. SIDEBAR (ปรับแต่ง) ---
+with st.sidebar:
+    st.title("⚙️ SETTINGS")
+    st.session_state.theme_color = st.color_picker("Neon Color", st.session_state.theme_color)
+    st.session_state.bg_color = st.color_picker("Background Color", st.session_state.bg_color)
+    st.write("---")
+    st.markdown(f"**Slogan:**\n*'อยู่นิ่งๆ ไม่เจ็บตัว'*")
 
-if music_files:
-    if 'song_index' not in st.session_state:
-        st.session_state.song_index = 0
-    
-    current_song = music_files[st.session_state.song_index]
-    base_name = os.path.splitext(current_song)[0]
+# --- 6. MAIN INTERFACE ---
+st.markdown(f"<h1 style='text-align:center; text-shadow: 0 0 10px {st.session_state.theme_color};'>SYNAPSE OMNI V5</h1>", unsafe_allow_html=True)
 
-    col_l, col_r = st.columns([1, 5])
-    with col_l:
-        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=400)
-    with col_r:
-        st.title("🎸 SYNAPSE ROOMS 🎼 MUSIC")
+main_tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "📊 LOGS", "🎧 ROOMS"])
 
-    st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
-
-    # --- ส่วนการแสดงวิดีโอ/ภาพ (Logic ใหม่ที่ทำได้จริง) ---
-    found_visual = False
-    
-    # เช็คไฟล์วิดีโอ
-    if os.path.exists(f"{base_name}.mp4"):
-        st.video(f"{base_name}.mp4", loop=True, autoplay=True, muted=True)
-        found_visual = True
-    # เช็คไฟล์ภาพ (.jpg หรือ .png)
-    else:
-        for ext in [".jpg", ".png", ".jpeg"]:
-            if os.path.exists(base_name + ext):
-                st.image(base_name + ext, use_container_width=True)
-                found_visual = True
-                break
-    
-    # ถ้าไม่เจอเลย ให้ใช้ Visualizer จำลอง
-    if not found_visual:
-        st.markdown(f"<div class='visual-box'>NO VISUAL DATA FOR: {base_name}</div>", unsafe_allow_html=True)
-    
-    # เล่นเพลง (เปิด Autoplay)
-    st.audio(current_song, autoplay=True)
-
-    # --- 4. ระบบแชต & Playlist ---
-    st.markdown("---")
-    col_chat, col_list = st.columns([2, 1])
-
-    with col_chat:
-        st.subheader("🌐 PUBLIC LOBBY")
-        CHAT_FILE = "public_chat.txt"
-        if os.path.exists(CHAT_FILE):
-            with open(CHAT_FILE, "r", encoding="utf-8") as f:
-                chat_data = "".join(f.readlines()[-10:])
-        else:
-            chat_data = "ยังไม่มีข้อความ..."
-        st.text_area("Live Chat", value=chat_data, height=200, disabled=True, label_visibility="collapsed")
-        
-        with st.form("chat_form", clear_on_submit=True):
-            msg = st.text_input("พิมพ์ข้อความ...", key="chat_msg_input")
-            if st.form_submit_button("SEND"):
-                if msg:
-                    with open(CHAT_FILE, "a", encoding="utf-8") as f:
-                        f.write(f"> {msg}\n")
-                    st.rerun()
-
-    with col_list:
-        st.subheader("🎧 PLAYLIST")
-        with st.container(border=True, height=250):
-            for i, song in enumerate(music_files):
-                label = f"▶️ {song}" if i == st.session_state.song_index else f"{song}"
-                if st.button(label, key=f"list_{i}"):
-                    st.session_state.song_index = i
-                    st.rerun()
-
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("⏭️ เพลงถัดไป"):
-            st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+# --- TAB: CORE (Hierarchy System) ---
+with main_tabs[0]:
+    if st.session_state.nav_level != "HOME":
+        if st.button("⬅️ BACK"):
+            if "." in st.session_state.nav_level:
+                st.session_state.nav_level = ".".join(st.session_state.nav_level.split(".")[:-1])
+            else: st.session_state.nav_level = "HOME"
             st.rerun()
-    with c2:
-        if st.button("🎲 สุ่มเพลง"):
-            st.session_state.song_index = random.randint(0, len(music_files) - 1)
+    
+    st.subheader(f"PATH: {st.session_state.nav_level}")
+    if st.session_state.nav_level == "HOME":
+        c1, c2 = st.columns(2)
+        if c1.button("กรอบที่ 1", use_container_width=True):
+            st.session_state.nav_level = "1"; save_log("ENTERED LEVEL 1"); st.rerun()
+        if c2.button("กรอบที่ 2", use_container_width=True):
+            st.session_state.nav_level = "2"; save_log("ENTERED LEVEL 2"); st.rerun()
+
+# --- TAB: COMMS (Firebase Chat) ---
+with main_tabs[2]:
+    st.subheader("🌐 LOBBY SIGNALS")
+    chat_ref = db.reference('public_chat')
+    msg = st.text_input("ระบุสัญญาณ...")
+    if st.button("SEND"):
+        if msg:
+            chat_ref.push({'user': 'Ta101', 'msg': msg, 'ts': time.time()})
             st.rerun()
+    
+    msgs = chat_ref.order_by_key().limit_to_last(10).get()
+    if msgs:
+        for m in reversed(list(msgs.values())):
+            st.write(f"💬 **{m['user']}:** {m['msg']}")
 
-    # JS สำหรับ Handle ระบบเสียง
-    js_code = """
-    <script>
-    function handleAudio() {
-        var audio = window.parent.document.querySelector('audio');
-        var buttons = window.parent.document.querySelectorAll('button');
-        if (audio) {
-            audio.onended = function() {
-                for (var i = 0; i < buttons.length; i++) {
-                    if (buttons[i].textContent.includes('เพลงถัดไป')) {
-                        buttons[i].click(); break;
-                    }
-                }
-            };
-            if (audio.paused && audio.currentTime == 0) {
-                audio.play().catch(e => console.log("Waiting for user..."));
-            }
-        }
-    }
-    setInterval(handleAudio, 1000);
-    </script>
-    """
-    components.html(js_code, height=0)
+# --- TAB: LOGS (History) ---
+with main_tabs[3]:
+    st.subheader("📊 ACTIVITY LOG")
+    today = datetime.now().strftime("%Y-%m-%d")
+    logs = db.reference(f'synapse_logs/{today}').get()
+    if logs:
+        for lid in reversed(list(logs.keys())):
+            l = logs[lid]
+            st.code(f"[{l['time']}] {l['action']}")
 
-else:
-    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์")
+# --- TAB: ROOMS (Music Player) ---
+with main_tabs[4]:
+    music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+    if music_files:
+        if 'song_idx' not in st.session_state: st.session_state.song_idx = 0
+        current_song = music_files[st.session_state.song_idx]
+        st.markdown(f"🎶 **NOW PLAYING:** {current_song}")
+        st.audio(current_song, autoplay=True)
+        if st.button("⏭️ NEXT TRACK"):
+            st.session_state.song_idx = (st.session_state.song_idx + 1) % len(music_files)
+            st.rerun()
+    else: st.warning("No MP3 files found in directory.")
