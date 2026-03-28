@@ -38,7 +38,7 @@ st.markdown(f"""
     @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
     .stButton>button {{
         width: 100%; background-color: transparent !important; color: {st.session_state.theme_color} !important;
-        border-radius: 10px !important; border: 1px solid {st.session_state.theme_color} !important;
+        border-radius: 10px !important; border: 4px solid {st.session_state.theme_color} !important;
     }}
     .stTextArea textarea {{ background-color: rgba(0,0,0,0.5) !important; color: {st.session_state.theme_color} !important; border: 1px solid {st.session_state.theme_color} !important; }}
     h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
