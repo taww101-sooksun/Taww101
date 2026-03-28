@@ -56,7 +56,7 @@ if music_files:
 
     col_l, col_r = st.columns([1, 5])
     with col_l:
-        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=200)
+        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=400)
     with col_r:
         st.title("🎸 SYNAPSE ROOMS 🎼 MUSIC")
 
