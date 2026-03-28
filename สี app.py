@@ -1,4 +1,13 @@
 import streamlit as st
+import os  # <<--- ตัวนี้แหละครับที่หายไป ทำให้เกิด Error
+import random
+import time
+from datetime import datetime
+import firebase_admin
+from firebase_admin import credentials, db
+import streamlit.components.v1 as components
+
+import streamlit as st
 # ... (import อื่นๆ ตามที่พี่ส่งมาใน requirements.txt) ...
 
 # ==========================================
