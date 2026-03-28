@@ -1,98 +1,171 @@
 import streamlit as st
 import os
 import random
-import platform
 import streamlit.components.v1 as components
 
-# --- 1. SET UP ---
+# --- 1. SET UP & THEME ---
 st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
 
-if 'activated' not in st.session_state:
-    st.session_state.activated = False
-if 'song_index' not in st.session_state:
-    st.session_state.song_index = 0
+# ระบบจำสถานะการเข้าใช้งาน (เพื่อแก้ปัญหา Autoplay)
+if 'system_active' not in st.session_state:
+    st.session_state.system_active = False
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#39FF14" 
+if 'bg_color' not in st.session_state:
+    st.session_state.bg_color = "#121212" 
 
-# --- 2. SIDEBAR & SYSTEM INFO (ใช้ platform แทน psutil เพื่อลด error) ---
+# หน้าจอสำหรับกด "เข้าสู่ระบบ" ครั้งแรก (จำเป็นสำหรับเสียง)
+if not st.session_state.system_active:
+    st.markdown(f"<style>body {{ background-color: {st.session_state.bg_color}; }}</style>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; margin-top:20%; font-family:Orbitron;'>SYNAPSE ROOMS</h1>", unsafe_allow_html=True)
+    if st.button("🚀 CLICK TO ACTIVATE SYSTEM", use_container_width=True):
+        st.session_state.system_active = True
+        st.rerun()
+    st.stop()
+
 with st.sidebar:
-    st.title("⚙️ SYSTEM CORE")
-    st.write(f"**OS:** {platform.system()}")
-    # ปุ่มเปิดระบบ (แก้ปัญหา Autoplay)
-    if not st.session_state.activated:
-        if st.button("🚀 ACTIVATE SYSTEM", use_container_width=True):
-            st.session_state.activated = True
-            st.rerun()
-    else:
-        st.success("SYSTEM ONLINE")
-    
+    if os.path.exists("logo2.jpg"):
+        st.image("logo2.jpg", use_container_width=True)
+    st.markdown("### 🎨 ปรับแต่งสีระบบ")
+    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
+    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
     st.write("---")
-    st.markdown('*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
+    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
 
-# --- 3. MUSIC ENGINE ---
-# กวาดไฟล์ MP3 ทั้งหมดในโฟลเดอร์
+# --- 2. CSS DYNAMIC THEME ---
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+    .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.theme_color} !important; }}
+    .marquee {{
+        width: 100%; overflow: hidden; white-space: nowrap; background: rgba(0,0,0,0.6);
+        padding: 15px 0; border-radius: 12px; margin-bottom: 15px; border: 2px solid {st.session_state.theme_color};
+    }}
+    .marquee p {{
+        display: inline-block; padding-left: 100%; animation: marquee 20s linear infinite;
+        font-family: 'Orbitron', sans-serif; font-size: 22px; color: {st.session_state.theme_color};
+        text-shadow: 0px 0px 10px {st.session_state.theme_color}; margin: 0;
+    }}
+    @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
+    .stButton>button {{
+        width: 100%; background-color: transparent !important; color: {st.session_state.theme_color} !important;
+        border-radius: 10px !important; border: 1px solid {st.session_state.theme_color} !important;
+    }}
+    .stTextArea textarea {{ background-color: rgba(0,0,0,0.5) !important; color: {st.session_state.theme_color} !important; border: 1px solid {st.session_state.theme_color} !important; }}
+    h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
+    
+    /* Fallback Visual Box */
+    .visual-box {{
+        width: 100%; height: 300px; border: 2px dashed {st.session_state.theme_color};
+        display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3);
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 3. ระบบจัดการเพลง ---
 music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
 
-if music_files and st.session_state.activated:
-    current_song = music_files[st.session_state.song_index]
-    base_name = os.path.splitext(current_song)[0] # ชื่อไฟล์แบบไม่มีนามสกุล
+if music_files:
+    if 'song_index' not in st.session_state:
+        st.session_state.song_index = 0
     
-    st.title(f"🎵 NOW PLAYING: {current_song}")
+    current_song = music_files[st.session_state.song_index]
+    base_name = os.path.splitext(current_song)[0]
 
-    # --- ส่วนการแสดงภาพ/วิดีโอ (ปรับปรุงการตรวจสอบ) ---
-    # ลองหาไฟล์ที่ชื่อเหมือนกันแต่เป็น .mp4, .jpg, หรือ .png
-    video_file = base_name + ".mp4"
-    image_file_jpg = base_name + ".jpg"
-    image_file_png = base_name + ".png"
+    col_l, col_r = st.columns([1, 5])
+    with col_l:
+        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=500)
+    with col_r:
+        st.title("🎸 SYNAPSE ROOMS 🎼 MUSIC")
 
-    if os.path.exists(video_file):
-        st.video(video_file, loop=True, autoplay=True, muted=True)
-    elif os.path.exists(image_file_jpg):
-        st.image(image_file_jpg, use_container_width=True)
-    elif os.path.exists(image_file_png):
-        st.image(image_file_png, use_container_width=True)
+    st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
+
+    # --- ส่วนการแสดงวิดีโอ/ภาพ (Logic ใหม่ที่ทำได้จริง) ---
+    found_visual = False
+    
+    # เช็คไฟล์วิดีโอ
+    if os.path.exists(f"{base_name}.mp4"):
+        st.video(f"{base_name}.mp4", loop=True, autoplay=True, muted=True)
+        found_visual = True
+    # เช็คไฟล์ภาพ (.jpg หรือ .png)
     else:
-        # ถ้าหาไม่เจอจริงๆ ให้โชว์ Visualizer จำลองแทน
-        st.info(f"🔍 System Note: ไม่พบไฟล์วิดีโอหรือภาพที่ชื่อ {base_name}")
-        st.markdown("""<div style='height:200px; background:black; border:1px solid #39FF14;'>
-                    <p style='text-align:center; padding-top:80px;'>NO VISUAL DATA FOUND</p>
-                    </div>""", unsafe_allow_html=True)
-
-    # ตัวเล่นเพลง
+        for ext in [".jpg", ".png", ".jpeg"]:
+            if os.path.exists(base_name + ext):
+                st.image(base_name + ext, use_container_width=True)
+                found_visual = True
+                break
+    
+    # ถ้าไม่เจอเลย ให้ใช้ Visualizer จำลอง
+    if not found_visual:
+        st.markdown(f"<div class='visual-box'>NO VISUAL DATA FOR: {base_name}</div>", unsafe_allow_html=True)
+    
+    # เล่นเพลง (เปิด Autoplay)
     st.audio(current_song, autoplay=True)
 
-    # ปุ่มควบคุม
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("⏭️ NEXT TRACK"):
+    # --- 4. ระบบแชต & Playlist ---
+    st.markdown("---")
+    col_chat, col_list = st.columns([2, 1])
+
+    with col_chat:
+        st.subheader("🌐 PUBLIC LOBBY")
+        CHAT_FILE = "public_chat.txt"
+        if os.path.exists(CHAT_FILE):
+            with open(CHAT_FILE, "r", encoding="utf-8") as f:
+                chat_data = "".join(f.readlines()[-10:])
+        else:
+            chat_data = "ยังไม่มีข้อความ..."
+        st.text_area("Live Chat", value=chat_data, height=200, disabled=True, label_visibility="collapsed")
+        
+        with st.form("chat_form", clear_on_submit=True):
+            msg = st.text_input("พิมพ์ข้อความ...", key="chat_msg_input")
+            if st.form_submit_button("SEND"):
+                if msg:
+                    with open(CHAT_FILE, "a", encoding="utf-8") as f:
+                        f.write(f"> {msg}\n")
+                    st.rerun()
+
+    with col_list:
+        st.subheader("🎧 PLAYLIST")
+        with st.container(border=True, height=250):
+            for i, song in enumerate(music_files):
+                label = f"▶️ {song}" if i == st.session_state.song_index else f"{song}"
+                if st.button(label, key=f"list_{i}"):
+                    st.session_state.song_index = i
+                    st.rerun()
+
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("⏭️ เพลงถัดไป"):
             st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
             st.rerun()
-    with col2:
-        if st.button("🎲 RANDOM"):
+    with c2:
+        if st.button("🎲 สุ่มเพลง"):
             st.session_state.song_index = random.randint(0, len(music_files) - 1)
             st.rerun()
 
-elif not st.session_state.activated:
-    st.warning("กรุณากดปุ่ม 'ACTIVATE SYSTEM' ที่แถบด้านซ้ายเพื่อเริ่มการทำงานครับ")
-else:
-    st.error("ไม่พบไฟล์เพลงในโฟลเดอร์ กรุณาตรวจสอบไฟล์ .mp3")
-
-# --- 4. JS AUTO-NEXT (ทำหน้าที่กดปุ่ม Next ให้เมื่อเพลงจบ) ---
-js_fix = """
-<script>
-    function checkAudio() {
+    # JS สำหรับ Handle ระบบเสียง
+    js_code = """
+    <script>
+    function handleAudio() {
         var audio = window.parent.document.querySelector('audio');
+        var buttons = window.parent.document.querySelectorAll('button');
         if (audio) {
             audio.onended = function() {
-                var buttons = window.parent.document.querySelectorAll('button');
                 for (var i = 0; i < buttons.length; i++) {
-                    if (buttons[i].textContent.includes('NEXT TRACK')) {
-                        buttons[i].click();
-                        break;
+                    if (buttons[i].textContent.includes('เพลงถัดไป')) {
+                        buttons[i].click(); break;
                     }
                 }
             };
+            if (audio.paused && audio.currentTime == 0) {
+                audio.play().catch(e => console.log("Waiting for user..."));
+            }
         }
     }
-    setInterval(checkAudio, 1000);
-</script>
-"""
-components.html(js_fix, height=0)
+    setInterval(handleAudio, 1000);
+    </script>
+    """
+    components.html(js_code, height=0)
+
+else:
+    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์")
