@@ -1,130 +1,149 @@
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, db
-import os
-import random
-import time
-from datetime import datetime
+# ... (import อื่นๆ ตามที่พี่ส่งมาใน requirements.txt) ...
 
-# --- 1. INITIALIZE & CONFIG (ตั้งค่าระบบ) ---
-st.set_page_config(page_title="SYNAPSE OMNI", layout="wide")
+# ==========================================
+# 1. กลไกกลาง (Core Engine) - ห้ามแก้ส่วนนี้บ่อย
+# ==========================================
+def init_system():
+    if 'active_room' not in st.session_state:
+        st.session_state.active_room = "🚀 แกนหลัก"
+    # แทรกการเชื่อมต่อ Firebase ตรงนี้ครั้งเดียวใช้ได้ทุกห้อง
 
-def init_firebase():
-    if not firebase_admin._apps:
-        try:
-            fb_creds = dict(st.secrets["firebase_credentials"])
-            cred = credentials.Certificate(fb_creds)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': st.secrets["firebase_db_url"]
-            })
-        except Exception as e:
-            st.error(f"Firebase Connection Error: {e}")
+# ==========================================
+# 2. พื้นที่เก็บห้อง (The Rooms / Modules) 
+# อยากเพิ่มอะไรใหม่ ให้สร้างฟังก์ชัน def ใหม่ตรงนี้
+# ==========================================
 
-def save_log(action_details):
-    try:
-        now = datetime.now()
-        date_key = now.strftime("%Y-%m-%d")
-        db.reference(f'synapse_logs/{date_key}').push({
-            'time': now.strftime("%H:%M:%S"),
-            'action': action_details,
-            'user': 'Ta101'
-        })
-    except: pass
+def room_core():
+    st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
+    # ใส่โค้ด Hierarchy/Navigation
 
-# --- 2. SYSTEM STATE (จำสถานะ) ---
-if 'system_active' not in st.session_state:
-    st.session_state.system_active = False
-if 'nav_level' not in st.session_state:
-    st.session_state.nav_level = "HOME"
-if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#39FF14"
-if 'bg_color' not in st.session_state:
-    st.session_state.bg_color = "#000000"
+def room_radar():
+    st.subheader("🛰️ ระบบเรดาร์และพิกัด")
+    # ใส่โค้ด Folium Map / GPS
 
-# --- 3. ACTIVATION SCREEN (หน้าแรกเพื่อเปิดระบบ) ---
-if not st.session_state.system_active:
-    st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; margin-top:20%; font-family:Orbitron;'>SYNAPSE OMNI SYSTEM</h1>", unsafe_allow_html=True)
-    if st.button("🚀 CLICK TO ACTIVATE COMMAND CENTER", use_container_width=True):
-        st.session_state.system_active = True
-        init_firebase()
-        save_log("SYSTEM ACTIVATED")
-        st.rerun()
-    st.stop()
+def room_comms():
+    st.subheader("💬 ศูนย์สื่อสารลับ")
+    # ใส่โค้ด Chat / Private Signal
 
-# --- 4. DYNAMIC UI (CSS) ---
-st.markdown(f"""
-    <style>
-    .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.theme_color} !important; }}
-    .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; }}
-    .stTabs [data-baseweb="tab-list"] {{ gap: 10px; }}
-    .stTabs [data-baseweb="tab"] {{ border: 1px solid {st.session_state.theme_color}; padding: 10px; border-radius: 5px; }}
-    </style>
+def room_music():
+    st.subheader("🎧 ห้องพักผ่อน (SYNAPSE ROOMS)")
+    # ใส่โค้ด Music Player / Suno AI
+def room_music():
+    st.subheader("🎧 SYNAPSE ROOMS (BETA V5)")
+    
+    # --- 1. ตรวจสอบไฟล์เพลงในโฟลเดอร์ ---
+    music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+    
+    if not music_files:
+        st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในศูนย์บัญชาการ")
+        return
+
+    # --- 2. ตั้งค่าสถานะการเล่น (Session State) ---
+    if 'song_index' not in st.session_state:
+        st.session_state.song_index = 0
+    
+    current_song = music_files[st.session_state.song_index]
+    base_name = os.path.splitext(current_song)[0] # ชื่อไฟล์แบบไม่มี .mp3
+
+    # --- 3. ส่วนแสดงผล (Visual & Title) ---
+    st.markdown(f"""
+        <div style="border: 2px solid {st.session_state.theme_color}; padding: 10px; border-radius: 10px; text-align: center; background: rgba(0,0,0,0.5);">
+            <h2 style="color: {st.session_state.theme_color}; margin: 0;">NOW PLAYING: {current_song}</h2>
+        </div>
     """, unsafe_allow_html=True)
 
-# --- 5. SIDEBAR (ปรับแต่ง) ---
-with st.sidebar:
-    st.title("⚙️ SETTINGS")
-    st.session_state.theme_color = st.color_picker("Neon Color", st.session_state.theme_color)
-    st.session_state.bg_color = st.color_picker("Background Color", st.session_state.bg_color)
-    st.write("---")
-    st.markdown(f"**Slogan:**\n*'อยู่นิ่งๆ ไม่เจ็บตัว'*")
-
-# --- 6. MAIN INTERFACE ---
-st.markdown(f"<h1 style='text-align:center; text-shadow: 0 0 10px {st.session_state.theme_color};'>SYNAPSE OMNI V5</h1>", unsafe_allow_html=True)
-
-main_tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "📊 LOGS", "🎧 ROOMS"])
-
-# --- TAB: CORE (Hierarchy System) ---
-with main_tabs[0]:
-    if st.session_state.nav_level != "HOME":
-        if st.button("⬅️ BACK"):
-            if "." in st.session_state.nav_level:
-                st.session_state.nav_level = ".".join(st.session_state.nav_level.split(".")[:-1])
-            else: st.session_state.nav_level = "HOME"
-            st.rerun()
+    # เช็ค Visual (Video > Image > Default)
+    col_vis, col_list = st.columns([3, 2])
     
-    st.subheader(f"PATH: {st.session_state.nav_level}")
-    if st.session_state.nav_level == "HOME":
-        c1, c2 = st.columns(2)
-        if c1.button("กรอบที่ 1", use_container_width=True):
-            st.session_state.nav_level = "1"; save_log("ENTERED LEVEL 1"); st.rerun()
-        if c2.button("กรอบที่ 2", use_container_width=True):
-            st.session_state.nav_level = "2"; save_log("ENTERED LEVEL 2"); st.rerun()
+    with col_vis:
+        found_visual = False
+        # เช็ควิดีโอ (.mp4)
+        if os.path.exists(f"{base_name}.mp4"):
+            st.video(f"{base_name}.mp4", loop=True, autoplay=True, muted=True)
+            found_visual = True
+        # เช็คภาพ (.jpg, .png)
+        else:
+            for ext in [".jpg", ".png", ".jpeg"]:
+                if os.path.exists(base_name + ext):
+                    st.image(base_name + ext, use_container_width=True)
+                    found_visual = True
+                    break
+        
+        if not found_visual:
+            st.info(f"📡 ไม่มีข้อมูล Visual สำหรับ: {base_name}")
 
-# --- TAB: COMMS (Firebase Chat) ---
-with main_tabs[2]:
-    st.subheader("🌐 LOBBY SIGNALS")
-    chat_ref = db.reference('public_chat')
-    msg = st.text_input("ระบุสัญญาณ...")
-    if st.button("SEND"):
-        if msg:
-            chat_ref.push({'user': 'Ta101', 'msg': msg, 'ts': time.time()})
-            st.rerun()
-    
-    msgs = chat_ref.order_by_key().limit_to_last(10).get()
-    if msgs:
-        for m in reversed(list(msgs.values())):
-            st.write(f"💬 **{m['user']}:** {m['msg']}")
-
-# --- TAB: LOGS (History) ---
-with main_tabs[3]:
-    st.subheader("📊 ACTIVITY LOG")
-    today = datetime.now().strftime("%Y-%m-%d")
-    logs = db.reference(f'synapse_logs/{today}').get()
-    if logs:
-        for lid in reversed(list(logs.keys())):
-            l = logs[lid]
-            st.code(f"[{l['time']}] {l['action']}")
-
-# --- TAB: ROOMS (Music Player) ---
-with main_tabs[4]:
-    music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-    if music_files:
-        if 'song_idx' not in st.session_state: st.session_state.song_idx = 0
-        current_song = music_files[st.session_state.song_idx]
-        st.markdown(f"🎶 **NOW PLAYING:** {current_song}")
+        # เครื่องเล่นเพลง (เปิด Autoplay)
         st.audio(current_song, autoplay=True)
-        if st.button("⏭️ NEXT TRACK"):
-            st.session_state.song_idx = (st.session_state.song_idx + 1) % len(music_files)
+
+    # --- 4. รายชื่อเพลง (Playlist) ---
+    with col_list:
+        st.markdown(f"<h3 style='color: {st.session_state.theme_color}'>🎧 PLAYLIST</h3>", unsafe_allow_html=True)
+        with st.container(border=True, height=300):
+            for i, song in enumerate(music_files):
+                # ถ้าเป็นเพลงปัจจุบันให้มีสัญลักษณ์บอก
+                label = f"▶️ {song}" if i == st.session_state.song_index else f"🎵 {song}"
+                if st.button(label, key=f"song_{i}", use_container_width=True):
+                    st.session_state.song_index = i
+                    save_log(f"CHANGING TRACK TO: {song}") # บันทึก Log ทุกครั้งที่เปลี่ยนเพลง
+                    st.rerun()
+
+    # --- 5. ปุ่มควบคุม (Next / Random) ---
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("⏭️ เพลงถัดไป", use_container_width=True):
+            st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
             st.rerun()
-    else: st.warning("No MP3 files found in directory.")
+    with c2:
+        if st.button("🎲 สุ่มเพลง", use_container_width=True):
+            st.session_state.song_index = random.randint(0, len(music_files) - 1)
+            st.rerun()
+
+    # --- 6. ระบบเล่นต่อเนื่อง (JavaScript Bridge) ---
+    js_code = f"""
+    <script>
+    var audio = window.parent.document.querySelector('audio');
+    if (audio) {{
+        audio.onended = function() {{
+            var buttons = window.parent.document.querySelectorAll('button');
+            for (var i = 0; i < buttons.length; i++) {{
+                if (buttons[i].textContent.includes('เพลงถัดไป')) {{
+                    buttons[i].click();
+                    break;
+                }}
+            }}
+        }};
+    }}
+    </script>
+    """
+    components.html(js_code, height=0)
+
+
+def room_new_feature():
+    st.subheader("✨ ความสามารถใหม่ (อนาคต)")
+    st.info("พี่อยากเพิ่มอะไร แค่มาเขียนตรงนี้ครับ!")
+
+# ==========================================
+# 3. แผงวงจรหลัก (Main Switchboard)
+# ==========================================
+def main():
+    init_system()
+    
+    # เมนูเลือกห้องแบบ Dynamic (เพิ่มชื่อห้องตรงนี้ได้เลย)
+    room_map = {
+        "🚀 แกนหลัก": room_core,
+        "🛰️ เรดาร์": room_radar,
+        "💬 การสื่อสาร": room_comms,
+        "🎧 ห้องพัก": room_music,
+        "✨ อัปเกรด": room_new_feature  # แค่เพิ่มบรรทัดนี้ ห้องใหม่ก็โผล่มาทันที
+    }
+    
+    # วาดเมนู Tabs
+    tabs = st.tabs(list(room_map.keys()))
+    
+    for i, (room_name, room_func) in enumerate(room_map.items()):
+        with tabs[i]:
+            room_func()
+
+if __name__ == "__main__":
+    main()
