@@ -85,7 +85,47 @@ def room_comms():
             if msg_input:
                 chat_ref.push({'user': 'Ta101', 'msg': msg_input, 'ts': time.time()})
                 save_log(f"SENT MSG: {msg_input}")
-                st.rerun()
+   def room_comms():
+    st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
+    
+    chat_tabs = st.tabs(["🌐 Lobby (สาธารณะ)", "🔐 Private (ส่วนตัว)"])
+    
+    # --- แท็บที่ 1: Lobby ---
+    with chat_tabs[0]:
+        chat_ref = db.reference('public_chat')
+        with st.form("public_form", clear_on_submit=True):
+            msg = st.text_input("ส่งสัญญาณเข้า Lobby...")
+            if st.form_submit_button("SEND TO LOBBY"):
+                if msg:
+                    chat_ref.push({'user': 'Ta101', 'msg': msg, 'ts': time.time()})
+                    st.rerun()
+        
+        # แสดงผล (ดึงแบบปลอดภัยป้องกัน KeyError)
+        msgs = chat_ref.order_by_key().limit_to_last(10).get()
+        if msgs:
+            for m in reversed(list(msgs.values())):
+                st.write(f"🟢 **{m.get('user', '???')}:** {m.get('msg', '...')}")
+
+    # --- แท็บที่ 2: Private (สัญญาณลับ) ---
+    with chat_tabs[1]:
+        target_id = st.text_input("ระบุชื่อรหัสผู้รับ (เช่น Bas, Dad):", value="Admin")
+        private_ref = db.reference(f'private_messages/Ta101_{target_id}') # ท่อส่งเฉพาะคู่
+        
+        with st.form("private_form", clear_on_submit=True):
+            p_msg = st.text_area("ระบุข้อความลับ...")
+            if st.form_submit_button("SEND PRIVATE SIGNAL"):
+                if p_msg:
+                    private_ref.push({'sender': 'Ta101', 'msg': p_msg, 'ts': time.time()})
+                    save_log(f"SENT PRIVATE TO {target_id}")
+                    st.toast(f"ส่งสัญญาณลับให้ {target_id} แล้ว")
+        
+        # แสดงบทสนทนาลับ 5 รายการล่าสุด
+        p_msgs = private_ref.order_by_key().limit_to_last(5).get()
+        if p_msgs:
+            st.markdown("---")
+            for pm in reversed(list(p_msgs.values())):
+                st.caption(f"🔒 {pm.get('sender')}: {pm.get('msg')}")
+             st.rerun()
 
     # ดึงข้อมูลแบบปลอดภัยป้องกัน KeyError
     msgs = chat_ref.order_by_key().limit_to_last(10).get()
