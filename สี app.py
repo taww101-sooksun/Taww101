@@ -3,16 +3,52 @@ import firebase_admin
 from firebase_admin import credentials, db
 import folium
 from streamlit_folium import st_folium
+import os
+import random
+import time
 import streamlit.components.v1 as components
 
 # --- 1. SET UP & THEME ---
 st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
 
-# กำหนดสี Neon ตามสไตล์ที่พี่ชอบ
+# ระบบจำค่าสีนีออน (Color Selector จากโค้ดที่พี่ส่งมา)
 if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#39FF14" 
+if 'bg_color' not in st.session_state:
+    st.session_state.bg_color = "#000000"
 
-# --- 2. INITIALIZE FIREBASE (ดึงค่าจาก Secrets เท่านั้น ปลอดภัย 100%) ---
+with st.sidebar:
+    if os.path.exists("logo2.jpg"):
+        st.image("logo2.jpg", use_container_width=True)
+    st.markdown("### 🎨 ปรับแต่งสีระบบ")
+    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
+    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
+    st.write("---")
+    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
+
+# --- 2. CSS DYNAMIC THEME (นีออน & Marquee) ---
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+    .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.theme_color} !important; }}
+    .marquee {{
+        width: 100%; overflow: hidden; white-space: nowrap; background: rgba(0,0,0,0.6);
+        padding: 15px 0; border-radius: 12px; margin-bottom: 15px; border: 2px solid {st.session_state.theme_color};
+    }}
+    .marquee p {{
+        display: inline-block; padding-left: 100%; animation: marquee 20s linear infinite;
+        font-family: 'Orbitron', sans-serif; font-size: 22px; color: {st.session_state.theme_color};
+    }}
+    @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
+    .stButton>button {{
+        width: 100%; background-color: transparent !important; color: {st.session_state.theme_color} !important;
+        border: 3px solid {st.session_state.theme_color} !important; border-radius: 10px;
+    }}
+    h1, h2, h3, p, span, label {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 3. INITIALIZE FIREBASE (ใช้ Secrets ปลอดภัย 100%) ---
 if not firebase_admin._apps:
     try:
         fb_config = {
@@ -22,82 +58,91 @@ if not firebase_admin._apps:
             "client_email": st.secrets["client_email"],
             "token_uri": "https://oauth2.googleapis.com/token",
         }
-        
         cred = credentials.Certificate(fb_config)
-        # URL ฐานข้อมูลจริงจากรูปที่พี่ส่งมา (sooksun1)
-        database_url = "https://sooksun1-default-rtdb.firebaseio.com/"
-        
-        firebase_admin.initialize_app(cred, {'databaseURL': database_url})
-        st.toast("✅ SYNAPSE CORE: SOOKSUN1 ONLINE")
+        firebase_admin.initialize_app(cred, {'databaseURL': "https://sooksun1-default-rtdb.firebaseio.com/"})
+        st.toast("✅ SYNAPSE ONLINE")
     except Exception as e:
-        st.error(f"🚨 Connection Error: {e}")
+        st.error(f"🚨 Firebase Error: {e}")
 
-# --- 3. CSS STYLE (Dark Mode & Glow Effect) ---
-st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-    .stApp {{ background-color: #000 !important; color: {st.session_state.theme_color} !important; }}
-    .stButton>button {{
-        width: 100%; background-color: transparent !important; color: {st.session_state.theme_color} !important;
-        border: 2px solid {st.session_state.theme_color} !important; border-radius: 10px;
-        font-family: 'Orbitron';
-    }}
-    h1, h2, h3, p, span, label {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
-    </style>
-    """, unsafe_allow_html=True)
+# --- 4. MAIN INTERFACE (TABS) ---
+tabs = st.tabs(["🎸 MUSIC", "🛰️ RADAR", "📞 COMMS"])
 
-# --- 4. SIDEBAR (เมนูควบคุม) ---
-with st.sidebar:
-    st.title("🌐 CONTROL")
-    st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
-    st.write("---")
-    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
+# --- TAB 1: MUSIC PLAYER (ระบบจัดการเพลงที่พี่ให้มา) ---
+with tabs[0]:
+    music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+    if music_files:
+        if 'song_index' not in st.session_state: st.session_state.song_index = 0
+        current_song = music_files[st.session_state.song_index]
+        
+        st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
+        
+        # แสดงภาพประกอบเพลง
+        base_name = os.path.splitext(current_song)[0]
+        if os.path.exists(base_name + ".jpg"):
+            st.image(base_name + ".jpg", use_container_width=True)
+        
+        st.audio(current_song)
+        
+        # ปุ่มควบคุม
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("⏭️ เพลงถัดไป"):
+                st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+                st.rerun()
+        with col2:
+            if st.button("🎲 สุ่มเพลง"):
+                st.session_state.song_index = random.randint(0, len(music_files)-1)
+                st.rerun()
+    else:
+        st.warning("ไม่พบไฟล์เพลงใน GitHub")
 
-# --- 5. MAIN INTERFACE ---
-tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "📞 COMMS"])
-
-with tabs[0]: 
-    st.header("SYNAPSE COMMAND CENTER")
-    # เพลงยักษ์ในตัวฉัน (Auto Play ตามไฟล์ที่พี่มี)
-    music_url = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
-    st.audio(music_url, format="audio/mpeg", loop=True)
+# --- TAB 2: RADAR (แผนที่ดาวเทียม Google Hybrid) ---
+with tabs[1]:
+    st.subheader("🛰️ STRATEGIC RADAR (Google Hybrid)")
+    # พิกัดเบื้องต้น (กรุงเทพฯ)
+    lat_v, lon_v = 13.7563, 100.5018
+    google_hybrid = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
     
-    # ระบบ DATABASE STATUS (ยิงข้อมูลเข้า Firebase)
-    st.subheader("📡 DATABASE STATUS")
-    test_msg = st.text_input("ส่งข้อความเข้าฐานข้อมูล:", value="ทัก", key="db_msg")
-    if st.button("🚀 UPDATE STATUS"):
-        if test_msg:
-            try:
-                db.reference('logs').push({
-                    'msg': test_msg, 
-                    'user': 'Ta101',
-                    'time': '7 ชั่วโมงตามเวลา'
-                })
-                st.success(f"บันทึกข้อมูล '{test_msg}' สำเร็จ!")
-            except Exception as e:
-                st.error(f"เขียนข้อมูลไม่ได้: {e}")
-
-with tabs[1]: # แผนที่ดาวเทียม
-    st.subheader("🛰️ STRATEGIC RADAR")
-    # ใช้ Google Hybrid (ดาวเทียมผสมถนน)
-    m = folium.Map(location=[13.7563, 100.5018], zoom_start=16, 
-                   tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', 
-                   attr='Google Satellite')
+    m = folium.Map(location=[lat_v, lon_v], zoom_start=16, tiles=google_hybrid, attr='Google Satellite')
+    folium.Marker([lat_v, lon_v], popup="CENTER", icon=folium.Icon(color='red')).add_to(m)
     st_folium(m, width="100%", height=500)
 
-with tabs[2]: # ระบบสื่อสาร (Jitsi Meet)
-    st.subheader("💬 SECURE CALL")
-    components.html(f"""
+# --- TAB 3: COMMS (ฆ่าติ่ง JOIN / ระบบคอล) ---
+with tabs[2]:
+    st.subheader("💬 SECURE VOICE CALL")
+    # โค้ด Jitsi ที่พี่ต้องการ (ฆ่าติ่ง Join และลบ Watermark)
+    jitsi_code = f"""
         <div id="meet" style="height:500px; width:100%; border:2px solid {st.session_state.theme_color}; border-radius:15px;"></div>
         <script src="https://meet.jit.si/external_api.js"></script>
         <script>
             const options = {{
-                roomName: 'SYNAPSE_SOOKSUN1_ROOM',
+                roomName: 'SYNAPSE_SOOKSUN1_SECURE',
                 width: '100%', height: 500,
                 parentNode: document.querySelector('#meet'),
-                configOverwrite: {{ prejoinPageEnabled: false }},
-                interfaceConfigOverwrite: {{ SHOW_JITSI_WATERMARK: false }}
+                configOverwrite: {{
+                    prejoinPageEnabled: false,
+                    disableDeepLinking: true,
+                    startWithAudioMuted: false,
+                    startWithVideoMuted: false,
+                    enableWelcomePage: false
+                }},
+                interfaceConfigOverwrite: {{
+                    SHOW_JITSI_WATERMARK: false,
+                    HIDE_INVITE_ON_WELCOME_PAGE: true,
+                    TOOLBAR_BUTTONS: ['microphone', 'camera', 'hangup', 'chat']
+                }}
             }};
             new JitsiMeetExternalAPI('meet.jit.si', options);
         </script>
-    """, height=520)
+    """
+    components.html(jitsi_code, height=520)
+
+# --- 5. ระบบ DATABASE STATUS (ยิงข้อมูลเข้า Firebase) ---
+st.write("---")
+st.subheader("📡 SYSTEM STATUS UPDATE")
+msg = st.text_input("ระบุสถานะปัจจุบัน:", value="Online")
+if st.button("🚀 UPDATE STATUS"):
+    try:
+        db.reference('logs').push({'user': 'Ta101', 'msg': msg, 'ts': time.time()})
+        st.success("อัปเดตสถานะสำเร็จ!")
+    except: st.error("ส่งไม่สำเร็จ")
