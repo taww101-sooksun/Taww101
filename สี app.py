@@ -1,5 +1,5 @@
 import streamlit as st
-import os  # <<--- ตัวนี้แหละครับที่หายไป ทำให้เกิด Error
+import os  # แก้ปัญหา NameError
 import random
 import time
 from datetime import datetime
@@ -7,7 +7,30 @@ import firebase_admin
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
 
-import streamlit as st
+# --- ฟังก์ชันเสริม (Helper Functions) ---
+def init_system():
+    # ตรวจสอบ Theme Color เพื่อป้องกัน Error ใน room_music
+    if 'theme_color' not in st.session_state:
+        st.session_state.theme_color = "#39FF14"
+    
+    # เชื่อมต่อ Firebase (ใช้ Secrets จาก Streamlit Cloud)
+    if not firebase_admin._apps:
+        try:
+            cred = credentials.Certificate(dict(st.secrets["firebase"]))
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': st.secrets["firebase_db_url"]
+            })
+        except: pass
+
+def save_log(action):
+    try:
+        db.reference('synapse_logs').push({
+            'time': datetime.now().strftime("%H:%M:%S"),
+            'action': action,
+            'user': 'Ta101'
+        })
+    except: pass
+
 # ... (import อื่นๆ ตามที่พี่ส่งมาใน requirements.txt) ...
 
 # ==========================================
@@ -34,6 +57,25 @@ def room_radar():
 def room_comms():
     st.subheader("💬 ศูนย์สื่อสารลับ")
     # ใส่โค้ด Chat / Private Signal
+def room_comms():
+    st.subheader("💬 ศูนย์สื่อสารลับ")
+    chat_ref = db.reference('public_chat')
+    
+    # ส่วนส่งข้อความ
+    with st.form("chat_form", clear_on_submit=True):
+        msg_input = st.text_input("ระบุข้อความสัญญาณ...")
+        if st.form_submit_button("SEND SIGNAL"):
+            if msg_input:
+                chat_ref.push({'user': 'Ta101', 'msg': msg_input, 'ts': time.time()})
+                st.rerun()
+
+    # ส่วนแสดงผล (ใช้ .get() เพื่อความปลอดภัย)
+    msgs = chat_ref.order_by_key().limit_to_last(10).get()
+    if msgs:
+        for m in reversed(list(msgs.values())):
+            user = m.get('user', 'Unknown')
+            text = m.get('msg', '...') # ป้องกัน KeyError
+            st.write(f"🟢 **{user}:** {text}")
 
 def room_music():
     st.subheader("🎧 ห้องพักผ่อน (SYNAPSE ROOMS)")
