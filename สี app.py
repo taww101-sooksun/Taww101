@@ -39,7 +39,7 @@ st.markdown(f"""
     .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.theme_color} !important; }}
     .marquee {{
         width: 100%; overflow: hidden; white-space: nowrap; background: rgba(0,0,0,0.6);
-        padding: 15px 0; border-radius: 12px; margin-bottom: 15px; border: 2px solid {st.session_state.theme_color};
+        padding: 15px 0; border-radius: 12px; margin-bottom: 15px; border: 4px solid {st.session_state.theme_color};
     }}
     .marquee p {{
         display: inline-block; padding-left: 100%; animation: marquee 20s linear infinite;
@@ -49,14 +49,14 @@ st.markdown(f"""
     @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
     .stButton>button {{
         width: 100%; background-color: transparent !important; color: {st.session_state.theme_color} !important;
-        border-radius: 10px !important; border: 1px solid {st.session_state.theme_color} !important;
+        border-radius: 10px !important; border: 4px solid {st.session_state.theme_color} !important;
     }}
-    .stTextArea textarea {{ background-color: rgba(0,0,0,0.5) !important; color: {st.session_state.theme_color} !important; border: 1px solid {st.session_state.theme_color} !important; }}
+    .stTextArea textarea {{ background-color: rgba(0,0,0,0.5) !important; color: {st.session_state.theme_color} !important; border: 4px solid {st.session_state.theme_color} !important; }}
     h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
     
     /* Fallback Visual Box */
     .visual-box {{
-        width: 100%; height: 300px; border: 2px dashed {st.session_state.theme_color};
+        width: 100%; height: 300px; border: 4px dashed {st.session_state.theme_color};
         display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3);
     }}
     </style>
@@ -74,7 +74,7 @@ if music_files:
 
     col_l, col_r = st.columns([1, 5])
     with col_l:
-        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=500)
+        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=400)
     with col_r:
         st.title("🎸 SYNAPSE ROOMS 🎼 MUSIC")
 
