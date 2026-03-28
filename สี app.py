@@ -40,7 +40,7 @@ st.markdown(f"""
         width: 100%; background-color: transparent !important; color: {st.session_state.theme_color} !important;
         border-radius: 10px !important; border: 4px solid {st.session_state.theme_color} !important;
     }}
-    .stTextArea textarea {{ background-color: rgba(0,0,0,0.5) !important; color: {st.session_state.theme_color} !important; border: 1px solid {st.session_state.theme_color} !important; }}
+    .stTextArea textarea {{ background-color: rgba(0,0,0,0.5) !important; color: {st.session_state.theme_color} !important; border: 4px solid {st.session_state.theme_color} !important; }}
     h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
     </style>
     """, unsafe_allow_html=True)
@@ -56,7 +56,7 @@ if music_files:
 
     col_l, col_r = st.columns([1, 5])
     with col_l:
-        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=500)
+        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=200)
     with col_r:
         st.title("🎸 SYNAPSE ROOMS 🎼 MUSIC")
 
