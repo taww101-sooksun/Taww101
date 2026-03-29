@@ -1,167 +1,154 @@
 import streamlit as st
-import os 
-import time
-import base64
-from datetime import datetime, timedelta
-import firebase_admin
-from firebase_admin import credentials, db
+import os
+import random
 import streamlit.components.v1 as components
-import folium
-from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
 
-# ==========================================
-# 1. กลไกกลาง (Core Engine)
-# ==========================================
-def init_system():
-    if 'my_name' not in st.session_state: st.session_state.my_name = "Ta101"
-    if 'active_room' not in st.session_state: st.session_state.active_room = "🚀 แกนหลัก"
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
-    if 'song_index' not in st.session_state: st.session_state.song_index = 0
+# --- 1. SET UP & THEME ---
+st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
+
+# ระบบจำค่าสี
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#39FF14" 
+if 'bg_color' not in st.session_state:
+    st.session_state.bg_color = "#121212" 
+
+with st.sidebar:
+    if os.path.exists("logo2.jpg"):
+        st.image("logo2.jpg", use_container_width=True)
+    st.markdown("### 🎨 ปรับแต่งสีระบบ")
+    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
+    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
+    st.write("---")
+    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
+
+# --- 2. CSS DYNAMIC THEME ---
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+    .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.theme_color} !important; }}
+    .marquee {{
+        width: 100%; overflow: hidden; white-space: nowrap; background: rgba(0,0,0,0.6);
+        padding: 15px 0; border-radius: 12px; margin-bottom: 15px; border: 2px solid {st.session_state.theme_color};
+    }}
+    .marquee p {{
+        display: inline-block; padding-left: 100%; animation: marquee 20s linear infinite;
+        font-family: 'Orbitron', sans-serif; font-size: 22px; color: {st.session_state.theme_color};
+        text-shadow: 0px 0px 10px {st.session_state.theme_color}; margin: 0;
+    }}
+    @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
+    .stButton>button {{
+        width: 100%; background-color: transparent !important; color: {st.session_state.theme_color} !important;
+        border-radius: 10px !important; border: 1px solid {st.session_state.theme_color} !important;
+    }}
+    .stTextArea textarea {{ background-color: rgba(0,0,0,0.5) !important; color: {st.session_state.theme_color} !important; border: 1px solid {st.session_state.theme_color} !important; }}
+    h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 3. ระบบจัดการเพลง ---
+music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+
+if music_files:
+    if 'song_index' not in st.session_state:
+        st.session_state.song_index = 0
+    
+    current_song = music_files[st.session_state.song_index]
+
+    col_l, col_r = st.columns([1, 5])
+    with col_l:
+        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=500)
+    with col_r:
+        st.title("🎸 SYNAPSE ROOMS 🎼 MUSIC")
+
+    st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
+
+    base_name = os.path.splitext(current_song)[0]
+    if os.path.exists(base_name + ".mp4"):
+        st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
+    elif os.path.exists(base_name + ".jpg"):
+        st.image(base_name + ".jpg", use_container_width=True)
+    
+    st.audio(current_song)
+
+    # --- 4. ระบบแชตสาธารณะ & Playlist ---
+    st.markdown("---")
+    col_chat, col_list = st.columns([2, 1])
+
+    with col_chat:
+        st.subheader("🌐 PUBLIC LOBBY")
+        CHAT_FILE = "public_chat.txt"
         
-    if not firebase_admin._apps:
-        try:
-            fb_creds = dict(st.secrets["firebase_credentials"])
-            cred = credentials.Certificate(fb_creds)
-            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
-        except: pass
+        # ดึงข้อมูลแชต
+        if os.path.exists(CHAT_FILE):
+            with open(CHAT_FILE, "r", encoding="utf-8") as f:
+                chat_data = "".join(f.readlines()[-10:]) # โชว์ 10 บรรทัดล่าสุด
+        else:
+            chat_data = "ยังไม่มีข้อความ..."
 
-def get_base64_img(file_path):
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    return None
-
-# ==========================================
-# 2. พื้นที่เก็บห้อง (Modules)
-# ==========================================
-
-def room_core():
-    st.subheader(f"🚀 ศูนย์ควบคุม: {st.session_state.my_name}")
-    
-    # --- แก้ไขเวลา GPS ให้ตรงพิกัด ---
-    loc = get_geolocation()
-    if loc and 'coords' in loc:
-        lon = loc['coords']['longitude']
-        lat = loc['coords']['latitude']
+        st.text_area("Live Chat", value=chat_data, height=200, disabled=True, label_visibility="collapsed")
         
-        # คำนวณเวลาตามพิกัดจริง (Solar Time Estimate)
-        # ปกติ GMT+7 คือ 105 องศา, เราหาผลต่างเพื่อปรับเวลาให้ตรงจุดที่ยืน
-        utc_now = datetime.utcnow()
-        local_offset = lon / 15.0 # ทุก 15 องศาคือ 1 ชม.
-        gps_time = utc_now + timedelta(hours=local_offset)
-        
-        st.markdown(f"""
-            <div style='background: rgba(0,255,0,0.1); padding:15px; border-radius:10px; border-left: 5px solid {st.session_state.theme_color};'>
-                🕰️ <b>เวลาพิกัดจริง (GPS):</b> {gps_time.strftime('%H:%M:%S')}<br>
-                📍 <b>พิกัดดาวเทียม:</b> {lat:.4f}, {lon:.4f}
-            </div>
-        """, unsafe_allow_html=True)
+        with st.form("chat_form", clear_on_submit=True):
+            msg = st.text_input("พิมพ์ข้อความ...", key="chat_msg_input")
+            if st.form_submit_button("SEND"):
+                if msg:
+                    with open(CHAT_FILE, "a", encoding="utf-8") as f:
+                        f.write(f"> {msg}\n")
+                    st.rerun()
 
-    st.write("")
-    st.info("สถานะระบบ: ONLINE")
-    st.write(f"รหัสเรียกขาน: **{st.session_state.my_name}**")
-    st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
+    with col_list:
+        st.subheader("🎧 PLAYLIST")
+        with st.container(border=True, height=250):
+            for i, song in enumerate(music_files):
+                label = f"▶️ {song}" if i == st.session_state.song_index else f"{song}"
+                if st.button(label, key=f"list_{i}"):
+                    st.session_state.song_index = i
+                    st.rerun()
 
-def room_music():
-    st.subheader("🎧 ศูนย์ความบันเทิง (Auto-Next)")
-    
-    # ค้นหาไฟล์ทั้ง MP3 และ MP4
-    media_files = sorted([f for f in os.listdir('.') if f.lower().endswith((".mp3", ".mp4"))])
-    
-    if not media_files:
-        st.warning("⚠️ ไม่พบไฟล์สื่อในระบบ")
-        return
-    
-    cur_idx = st.session_state.song_index
-    cur_file = media_files[cur_idx]
-    
-    # แสดงผลตามชนิดไฟล์
-    if cur_file.lower().endswith(".mp4"):
-        st.video(cur_file, autoplay=True)
-    else:
-        # ถ้ามีรูปโลโก้ให้โชว์คู่กับเพลง
-        logo_data = get_base64_img("logo1.jpg")
-        if logo_data:
-            st.markdown(f'<center><img src="data:image/jpeg;base64,{logo_data}" style="width:200px; mix-blend-mode: screen;"></center>', unsafe_allow_html=True)
-        st.audio(cur_file, autoplay=True)
+    # ปุ่มควบคุมเพลง
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("⏭️ เพลงถัดไป"):
+            st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+            st.rerun()
+    with c2:
+        if st.button("🎲 สุ่มเพลง"):
+            st.session_state.song_index = random.randint(0, len(music_files) - 1)
+            st.rerun()
 
-    st.markdown(f"📡 กำลังเล่น: **{cur_file}**")
-
-    # ระบบเล่นต่อเนื่อง (Auto-Next JS)
-    # ค้นหาทั้งแท็ก <video> และ <audio> ถ้าจบให้กดปุ่ม 'ถัดไป'
-    js_auto = """
+    # --- 5. JAVASCRIPT: แบบปลอดภัย 100% ---
+    js_code = """
     <script>
-    function setupAutoNext() {
-        var media = window.parent.document.querySelector('video') || window.parent.document.querySelector('audio');
-        if (media) {
-            media.onended = function() {
-                var btns = window.parent.document.querySelectorAll('button');
-                for (var i=0; i<btns.length; i++) {
-                    if (btns[i].innerText.includes('ถัดไป')) {
-                        btns[i].click();
-                        break;
+    var fadeDuration = 12; 
+    function handleAudio() {
+        var audio = window.parent.document.querySelector('audio');
+        var buttons = window.parent.document.querySelectorAll('button');
+        if (audio) {
+            // ระบบเสียง Fade
+            if (audio.currentTime < fadeDuration && !audio.paused) {
+                audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
+            } else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {
+                audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
+            } else { audio.volume = 1; }
+
+            // ระบบเล่นเพลงถัดไป
+            audio.onended = function() {
+                for (var i = 0; i < buttons.length; i++) {
+                    if (buttons[i].textContent.includes('เพลงถัดไป')) {
+                        buttons[i].click(); break;
                     }
                 }
             };
+            
+            // Auto Play เบื้องต้น
+            if (audio.paused && audio.currentTime == 0) {
+                audio.play().catch(e => console.log("Interaction needed"));
+            }
         }
     }
-    setTimeout(setupAutoNext, 2000);
+    setInterval(handleAudio, 500);
     </script>
     """
-    components.html(js_auto, height=0)
+    components.html(js_code, height=0)
 
-    # ปุ่มควบคุม
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("⏮️ ย้อนกลับ"):
-            st.session_state.song_index = (cur_idx - 1) % len(media_files); st.rerun()
-    with c2:
-        if st.button("⏭️ ถัดไป"):
-            st.session_state.song_index = (cur_idx + 1) % len(media_files); st.rerun()
-
-# ==========================================
-# 3. แผงวงจรหลัก (UI & Styling)
-# ==========================================
-def main():
-    init_system()
-
-    st.markdown(f"""
-        <style>
-        .stApp {{ background-color: #000000 !important; color: #FFFFFF !important; }}
-        div.stButton > button {{
-            width: 100%; border-radius: 12px; border: 2px solid {st.session_state.theme_color};
-            background-color: rgba(0,0,0,0.4); color: {st.session_state.theme_color} !important;
-            padding: 12px; font-weight: bold; box-shadow: 0 6px 0 {st.session_state.theme_color};
-            transition: all 0.1s ease; margin-bottom: 10px;
-        }}
-        div.stButton > button:active {{ transform: translateY(4px); box-shadow: 0 1px 0 {st.session_state.theme_color}; }}
-        </style>
-        """, unsafe_allow_html=True)
-
-    # โลโก้ logo1.jpg แบบไร้ขอบ
-    logo_data = get_base64_img("logo1.jpg")
-    if logo_data:
-        st.markdown(f'<div style="text-align: center;"><img src="data:image/jpeg;base64,{logo_data}" style="width:220px; mix-blend-mode: screen; filter: drop-shadow(0 0 10px {st.session_state.theme_color});"></div>', unsafe_allow_html=True)
-
-    # เมนูเลือกห้อง
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("🚀 แกนหลัก"): st.session_state.active_room = "🚀 แกนหลัก"
-        if st.button("💬 การสื่อสาร"): st.session_state.active_room = "💬 การสื่อสาร"
-    with c2:
-        if st.button("🛰️ เรดาร์"): st.session_state.active_room = "🛰️ เรดาร์"
-        if st.button("🎧 ห้องพัก"): st.session_state.active_room = "🎧 ห้องพัก"
-
-    st.markdown("---")
-    
-    if st.session_state.active_room == "🚀 แกนหลัก":
-        room_core()
-    elif st.session_state.active_room == "🛰️ เรดาร์":
-        from room_radar_module import room_radar # แยกไฟล์เรดาร์ไว้เพื่อความสะอาด
-        room_radar()
-    elif st.session_state.active_room == "🎧 ห้องพัก":
-        room_music()
-
-if __name__ == "__main__":
-    main()
+else:
+    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์ครับ")
