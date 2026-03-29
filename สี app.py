@@ -32,8 +32,9 @@ def init_system():
 def save_log(action):
     try:
         now = datetime.utcnow() + timedelta(hours=7)
-        # แก้ไขจุดนี้: ใช้ปีกกาชั้นเดียวสำหรับ f-string ของ Python
-        db.reference(f'synapse_logs/{now.strftime("%Y-%m-%d")}').push({
+        # แก้ไข: ใช้ f-string ปกติ ไม่ต้องเบิ้ลปีกกาตรงนี้
+        path = f'synapse_logs/{now.strftime("%Y-%m-%d")}'
+        db.reference(path).push({
             'time': now.strftime("%H:%M:%S"),
             'action': action,
             'user': 'Ta101'
@@ -79,9 +80,11 @@ def room_radar():
         start_lat = loc['coords']['latitude']
         start_lon = loc['coords']['longitude']
 
-    # แก้ไขจุดนี้: tiles ของ folium ต้องเบิ้ลปีกกา {{x}}
+    # แก้ไขจุดนี้: ห้ามเบิ้ลปีกกาใน tiles เพราะไม่ได้ใช้ f-string ครอบบรรทัดนี้
+    google_satellite = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+    
     m = folium.Map(location=[start_lat, start_lon], zoom_start=15, 
-                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+                   tiles=google_satellite, 
                    attr="Google Satellite")
 
     if all_users:
@@ -132,7 +135,7 @@ def room_music():
 def room_sensor():
     st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง")
     theme_hex = st.session_state.theme_color
-    # จุดนี้ต้องเบิ้ลปีกกา {{ }} สำหรับ JavaScript ทุกจุด
+    # ส่วนนี้ใช้ f-string ต้องเบิ้ลปีกกา {{ }} สำหรับ JavaScript เท่านั้น
     audio_js = f"""
     <div style="background-color: #000; color: {theme_hex}; padding: 20px; border: 2px solid {theme_hex}; border-radius: 15px; text-align: center; font-family: monospace;">
         <h2 id="status">🔴 STANDBY</h2>
@@ -183,7 +186,7 @@ def room_sensor():
 # ==========================================
 def main():
     init_system()
-    # CSS ต้องเบิ้ลปีกกา {{ }}
+    # CSS ส่วนนี้ใช้ f-string ต้องเบิ้ลปีกกา {{ }}
     st.markdown(f"""
         <style>
         .stApp {{ 
