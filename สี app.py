@@ -2,7 +2,7 @@ import streamlit as st
 import os 
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
@@ -14,14 +14,11 @@ from streamlit_js_eval import get_geolocation
 # 1. กลไกกลาง (Core Engine)
 # ==========================================
 def init_system():
-    # --- ระบบควบคุม 3 ชุดสี ---
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
     if 'text_color' not in st.session_state: st.session_state.text_color = "#FFFFFF"
-    
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
         
-    # เชื่อมต่อ Firebase (ใช้ค่าจาก Secrets)
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
@@ -34,7 +31,7 @@ def init_system():
 
 def save_log(action):
     try:
-        now = datetime.now()
+        now = datetime.utcnow() + timedelta(hours=7)
         db.reference(f'synapse_logs/{now.strftime("%Y-%m-%d")}').push({
             'time': now.strftime("%H:%M:%S"),
             'action': action,
@@ -47,13 +44,8 @@ def save_log(action):
 # ==========================================
 def room_core():
     st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
-    
-    # --- แก้ไขตรงนี้เพื่อให้เวลาไทยตรงเป๊ะ ---
-    from datetime import timedelta
     now = datetime.utcnow() + timedelta(hours=7) 
-    # ------------------------------------
 
-    # คำนวณเปอร์เซ็นต์ของวันที่ผ่านไป (ใช้เวลาไทยที่แก้แล้ว)
     seconds_since_midnight = (now.hour * 3600) + (now.minute * 60) + now.second
     day_percent = seconds_since_midnight / 86400
     
@@ -71,28 +63,14 @@ def room_core():
         st.progress(min(day_percent, 1.0))
     
     st.markdown("---")
-    
-    # ส่วนอื่นเหมือนเดิม...
     st.info("สถานะระบบ: ONLINE")
     st.write(f"รหัสผู้ใช้งาน: **Ta101**")
     st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
-    st.code(f"Time: {now.strftime('%H:%M:%S')}\nUser: Ta101\nStatus: Active")
-
-
-    st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
-    st.info("สถานะระบบ: ONLINE")
-    st.write(f"รหัสผู้ใช้งาน: **Ta101**")
-    st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
-    st.markdown("---")
-    st.write("📊 สถิติระบบวันนี้:")
-    st.code(f"Time: {datetime.now().strftime('%H:%M:%S')}\nUser: Ta101\nStatus: Active")
+    st.code(f"Time: {now.strftime('%H:%M:%S')}\nUser: Ta101\nStatus: Active\nLoc: Roi-Et 101")
 
 def room_radar():
-    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม (Multi-User Radar)")
-    
-    # ดึงพิกัดตัวเอง
+    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม")
     loc = get_geolocation()
-    # ดึงพิกัดทุกคนจาก Firebase
     all_users = db.reference('users').get()
     
     start_lat, start_lon = 13.7367, 100.5231
@@ -100,262 +78,125 @@ def room_radar():
         start_lat = loc['coords']['latitude']
         start_lon = loc['coords']['longitude']
 
-    # สร้างแผนที่ดาวเทียม
     m = folium.Map(location=[start_lat, start_lon], zoom_start=15, 
                    tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
                    attr="Google Satellite")
 
-    # วางหมุดทุกคนที่ออนไลน์
     if all_users:
         for user_id, data in all_users.items():
-            u_lat = data.get('lat')
-            u_lon = data.get('lon')
+            u_lat, u_lon = data.get('lat'), data.get('lon')
             u_ts = data.get('ts', 0)
-            
             if u_lat and u_lon:
-                # เช็คสถานะ (Online ภายใน 1 ชม.)
                 is_active = (time.time() - u_ts) < 3600
                 icon_color = 'red' if user_id == "Ta101" else ('green' if is_active else 'gray')
-                
-                folium.Marker(
-                    [u_lat, u_lon],
-                    popup=f"User: {user_id}",
-                    tooltip=f"{user_id} ({'Active' if is_active else 'Inactive'})",
-                    icon=folium.Icon(color=icon_color, icon='user', prefix='fa')
-                ).add_to(m)
+                folium.Marker([u_lat, u_lon], tooltip=f"{user_id}",
+                              icon=folium.Icon(color=icon_color, icon='user', prefix='fa')).add_to(m)
 
     st_folium(m, width="100%", height=500)
-
     if loc:
-        if st.button("📡 กระจายพิกัดของฉันให้ทุกคนเห็น", use_container_width=True):
-            db.reference('users/Ta101').update({
-                'lat': loc['coords']['latitude'],
-                'lon': loc['coords']['longitude'],
-                'ts': time.time()
-            })
-            save_log("BROADCASTED LOCATION")
-            st.toast("ส่งพิกัดเข้าศูนย์บัญชาการแล้ว!")
+        if st.button("📡 กระจายพิกัดของฉัน", use_container_width=True):
+            db.reference('users/Ta101').update({'lat': start_lat, 'lon': start_lon, 'ts': time.time()})
             st.rerun()
 
 def room_comms():
     st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
-    
-    chat_tabs = st.tabs(["🌐 Lobby (สาธารณะ)", "🔐 Private (ส่วนตัว)"])
-    
+    chat_tabs = st.tabs(["🌐 Lobby", "🔐 Private"])
     with chat_tabs[0]:
         chat_ref = db.reference('public_chat')
         with st.form("public_form", clear_on_submit=True):
-            msg = st.text_input("ส่งสัญญาณเข้า Lobby...")
-            if st.form_submit_button("SEND TO LOBBY"):
-                if msg:
-                    chat_ref.push({'user': 'Ta101', 'msg': msg, 'ts': time.time()})
-                    save_log("SENT LOBBY MSG")
-                    st.rerun()
-        
+            msg = st.text_input("ส่งสัญญาณ...")
+            if st.form_submit_button("SEND"):
+                if msg: chat_ref.push({'user': 'Ta101', 'msg': msg, 'ts': time.time()}); st.rerun()
         msgs = chat_ref.order_by_key().limit_to_last(10).get()
         if msgs:
             for m in reversed(list(msgs.values())):
-                u = m.get('user', 'ระบบ')
-                txt = m.get('msg', '...')
-                st.write(f"🟢 **{u}:** {txt}")
-
-    with chat_tabs[1]:
-        target_id = st.text_input("ระบุรหัสผู้รับ:", value="Admin")
-        # สร้าง path ลับเฉพาะคนรับคนส่ง
-        private_ref = db.reference(f'private_messages/Ta101_{target_id}')
-        
-        with st.form("private_form", clear_on_submit=True):
-            p_msg = st.text_area("ระบุข้อความลับ...")
-            if st.form_submit_button("SEND PRIVATE"):
-                if p_msg:
-                    private_ref.push({'sender': 'Ta101', 'msg': p_msg, 'ts': time.time()})
-                    save_log(f"SENT PRIVATE TO {target_id}")
-                    st.rerun()
-        
-        p_msgs = private_ref.order_by_key().limit_to_last(5).get()
-        if p_msgs:
-            st.markdown("---")
-            for pm in reversed(list(p_msgs.values())):
-                st.caption(f"🔒 {pm.get('sender')}: {pm.get('msg')}")
+                st.write(f"🟢 **{m.get('user')}:** {m.get('msg')}")
 
 def room_music():
-    st.subheader("🎧 SYNAPSE ROOMS (BETA V5)")
+    st.subheader("🎧 SYNAPSE ROOMS")
     music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-    
     if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลง .mp3")
+        st.warning("⚠️ ไม่พบไฟล์เพลง")
         return
-
     current_song = music_files[st.session_state.song_index]
-    base_name = os.path.splitext(current_song)[0]
+    st.audio(current_song, autoplay=True)
+    for i, song in enumerate(music_files):
+        if st.button(f"🎵 {song}", key=f"s_{i}", use_container_width=True):
+            st.session_state.song_index = i
+            st.rerun()
 
-    st.markdown(f"<div style='border:2px solid {st.session_state.theme_color}; padding:10px; border-radius:10px; text-align:center;'>NOW PLAYING: {current_song}</div>", unsafe_allow_html=True)
-    
-    col_vis, col_list = st.columns([3, 2])
-    with col_vis:
-        if os.path.exists(f"{base_name}.mp4"):
-            st.video(f"{base_name}.mp4", loop=True, autoplay=True, muted=True)
-        elif os.path.exists(f"{base_name}.jpg"):
-            st.image(f"{base_name}.jpg", use_container_width=True)
-        st.audio(current_song, autoplay=True)
-
-    with col_list:
-        st.write("🎧 PLAYLIST")
-        for i, song in enumerate(music_files):
-            btn_label = f"▶️ {song}" if i == st.session_state.song_index else f"🎵 {song}"
-            if st.button(btn_label, key=f"s_{i}", use_container_width=True):
-                st.session_state.song_index = i
-                st.rerun()
-
-    # ระบบเล่นต่อเนื่อง
-    js_next = """
-    <script>
-    var audio = window.parent.document.querySelector('audio');
-    if (audio) {
-        audio.onended = function() {
-            var btns = window.parent.document.querySelectorAll('button');
-            for (var i=0; i<btns.length; i++) {
-                if (btns[i].textContent.includes('🎵') || btns[i].textContent.includes('▶️')) {
-                    btns[(i+1)%btns.length].click(); break;
-                }
-            }
-        };
-    }
-    </script>
-    """
-    components.html(js_next, height=0)
 def room_sensor():
-    st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง (Direct Sensor)")
-    
-    # ใช้สีจาก session_state เพื่อให้เข้ากับ Theme ที่คุณเลือกใน Sidebar
+    st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง")
     theme_hex = st.session_state.theme_color
-    
     audio_js = f"""
-    <div style="background-color: #000; color: {theme_hex}; padding: 20px; border: 2px solid {theme_hex}; border-radius: 15px; text-align: center; font-family: 'Courier New', Courier, monospace;">
-        <h2 id="status">🔴 กำลังสแกนคลื่นเสียง...</h2>
-        <hr style="border-color: {theme_hex}; opacity: 0.3;">
+    <div style="background-color: #000; color: {theme_hex}; padding: 20px; border: 2px solid {theme_hex}; border-radius: 15px; text-align: center; font-family: monospace;">
+        <h2 id="status">🔴 STANDBY</h2>
         <div style="display: flex; justify-content: space-around;">
-            <div>
-                <h3 style="font-size: 14px; letter-spacing: 2px;">ความดัง (dB)</h3>
-                <h1 id="db_val" style="font-size: 60px; margin: 10px 0;">0</h1>
-            </div>
-            <div>
-                <h3 style="font-size: 14px; letter-spacing: 2px;">ความถี่ (Hz)</h3>
-                <h1 id="hz_val" style="font-size: 60px; margin: 10px 0;">0</h1>
-            </div>
+            <div><h3>dB</h3><h1 id="db_val">0</h1></div>
+            <div><h3>Hz</h3><h1 id="hz_val">0</h1></div>
         </div>
-        <p id="info" style="color: #888; font-size: 12px;">สถานะ: รอสัญญาณคลื่นอากาศ</p>
     </div>
-
     <script>
-    async function startAudio() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    async function startAudio() {{
+        try {{
+            const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // เพิ่มบรรทัดนี้: บังคับให้ระบบเสียงทำงานเมื่อสถานะถูกระงับ
-            if (audioContext.state === 'suspended') {
-                await audioContext.resume();
-            }
-
+            if (audioContext.state === 'suspended') {{ await audioContext.resume(); }}
             const analyser = audioContext.createAnalyser();
             const source = audioContext.createMediaStreamSource(stream);
             source.connect(analyser);
-            analyser.fftSize = 256; // ปรับให้เล็กลงเพื่อให้ตอบสนองไวขึ้น
+            analyser.fftSize = 256;
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
-
-            function update() {
+            function update() {{
                 analyser.getByteFrequencyData(dataArray);
-                let sum = 0;
-                let maxVal = 0;
-                let maxIdx = 0;
-                for (let i = 0; i < bufferLength; i++) {
+                let sum = 0, maxVal = 0, maxIdx = 0;
+                for (let i = 0; i < bufferLength; i++) {{
                     sum += dataArray[i];
-                    if (dataArray[i] > maxVal) {
-                        maxVal = dataArray[i];
-                        maxIdx = i;
-                    }
+                    if (dataArray[i] > maxVal) {{ maxVal = dataArray[i]; maxIdx = i; }}
                 }
-                
-                // คำนวณความดังให้เห็นการขยับชัดๆ
-                let avg = sum / bufferLength;
-                let db = Math.round(avg * 3); 
+                let db = Math.round((sum / bufferLength) * 3);
                 let hz = Math.round(maxIdx * audioContext.sampleRate / analyser.fftSize);
-
-                // อัปเดตตัวเลข
                 document.getElementById('db_val').innerText = db;
                 document.getElementById('hz_val').innerText = hz;
-                
-                // ถ้ามีเสียง (db > 5) ให้ไฟสถานะเป็นสีเขียว
-                if (db > 5) {
-                    document.getElementById('status').innerText = "🟢 SENSING...";
-                    document.getElementById('status').style.color = "#39FF14";
-                } else {
-                    document.getElementById('status').innerText = "🟡 STANDBY (SILENT)";
-                    document.getElementById('status').style.color = "yellow";
-                }
-
+                document.getElementById('status').innerText = db > 5 ? "🟢 SENSING" : "🟡 IDLE";
                 requestAnimationFrame(update);
-            }
+            }}
             update();
-        } catch (err) {
-            document.getElementById('status').innerText = "❌ ERROR: " + err.message;
-        }
-    }
-    
-    // เริ่มทำงานเมื่อมีการคลิกหน้าจอ (เผื่อ Browser บล็อค Auto-start)
-    window.addEventListener('click', () => {
-        startAudio();
-    }, { once: true });
-    
-    startAudio(); // ลองเริ่มทำงานทันที
-</script>
+        }} catch (err) {{ document.getElementById('status').innerText = "❌ ERROR"; }}
+    }}
+    window.addEventListener('click', () => {{ startAudio(); }}, {{ once: true }});
+    startAudio();
+    </script>
+    """
+    components.html(audio_js, height=250)
 
 # ==========================================
-# 3. แผงวงจรหลัก (Main Switchboard)
+# 3. แผงวงจรหลัก
 # ==========================================
 def main():
     init_system()
-    
-        # CSS คุมบรรยากาศ (เช็คปีกกาดีๆ นะเพื่อน)
     st.markdown(f"""
         <style>
-        .stApp {{ 
-            background-color: {st.session_state.bg_color} !important; 
-            color: {st.session_state.text_color} !important; 
-        }}
-        .stButton>button {{ 
-            border: 2px solid {st.session_state.theme_color} !important; 
-            color: {st.session_state.theme_color} !important; 
-            background: transparent !important; 
-        }}
-        h1, h2, h3, p, span, div, label {{ 
-            color: {st.session_state.text_color} !important; 
-        }}
-        .stTabs [data-baseweb="tab-list"] {{ 
-            background-color: transparent !important; 
-        }}
+        .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.text_color} !important; }}
+        .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; }}
+        h1, h2, h3, p, span, div, label {{ color: {st.session_state.text_color} !important; }}
         </style>
         """, unsafe_allow_html=True)
 
-
     with st.sidebar:
         st.title("⚙️ SETTINGS")
-        st.session_state.theme_color = st.color_picker("🚨 สีหลัก (นีออน)", st.session_state.theme_color)
-        st.session_state.bg_color = st.color_picker("🌑 สีพื้นหลัง", st.session_state.bg_color)
-        st.session_state.text_color = st.color_picker("✍️ สีข้อความ", st.session_state.text_color)
-        st.markdown("---")
-        st.write(f'**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
+        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
+        st.session_state.text_color = st.color_picker("✍️ ข้อความ", st.session_state.text_color)
 
-        room_map = {
-        "🚀 หน้าแลก": room_core,
+    room_map = {
+        "🚀 แกนหลัก": room_core,
         "🛰️ เรดาร์": room_radar,
         "💬 สื่อสาร": room_comms,
-        "🎧 เเพลง": room_music,
-        "📟 วัดเสียง": room_sensor  # <-- เพิ่มบรรทัดนี้เข้าไป
-    
-
+        "🎧 เพลง": room_music,
+        "📟 วัดเสียง": room_sensor
+    }
     
     tabs = st.tabs(list(room_map.keys()))
     for i, room_func in enumerate(room_map.values()):
