@@ -1,7 +1,7 @@
-ถิ่นimport streamlit as st
+import streamlit as st
 import os 
-import random
 import time
+import base64
 from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, db
@@ -14,214 +14,154 @@ from streamlit_js_eval import get_geolocation
 # 1. กลไกกลาง (Core Engine)
 # ==========================================
 def init_system():
+    if 'my_name' not in st.session_state: st.session_state.my_name = "Ta101"
+    if 'active_room' not in st.session_state: st.session_state.active_room = "🚀 แกนหลัก"
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
-    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
-    if 'text_color' not in st.session_state: st.session_state.text_color = "#FFFFFF"
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
         
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
             cred = credentials.Certificate(fb_creds)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': st.secrets["firebase_db_url"]
-            })
-        except Exception as e:
-            st.error(f"🛰️ Firebase Connection Error: {e}")
+            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
+        except: pass
 
-def save_log(action):
-    try:
-        now = datetime.utcnow() + timedelta(hours=7)
-        log_path = 'synapse_logs/' + now.strftime("%Y-%m-%d")
-        db.reference(log_path).push({
-            'time': now.strftime("%H:%M:%S"),
-            'action': action,
-            'user': 'Ta101'
-        })
-    except: pass
+def get_base64_img(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return None
 
 # ==========================================
-# 2. พื้นที่เก็บห้อง (The Rooms / Modules)
+# 2. พื้นที่เก็บห้อง (Modules)
 # ==========================================
+
 def room_core():
-    st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
-    now = datetime.utcnow() + timedelta(hours=7) 
-    seconds_since_midnight = (now.hour * 3600) + (now.minute * 60) + now.second
-    day_percent = seconds_since_midnight / 86400
+    st.subheader(f"🚀 ศูนย์ควบคุม: {st.session_state.my_name}")
     
-    st.markdown(f"""
-        <div style="border: 1px solid {st.session_state.theme_color}; padding: 10px; border-radius: 5px; text-align: center;">
-            <h3 style="margin: 0; color: {st.session_state.theme_color}; font-family: monospace;">{now.strftime('%H:%M:%S')}</h3>
-            <small style="color: {st.session_state.theme_color}; opacity: 0.8;">THAILAND TIME</small>
-        </div>
-    """, unsafe_allow_html=True)
+    # --- แก้ไขเวลา GPS ให้ตรงพิกัด ---
+    loc = get_geolocation()
+    if loc and 'coords' in loc:
+        lon = loc['coords']['longitude']
+        lat = loc['coords']['latitude']
         
-    st.write(f"⏳ Day Progress: {day_percent*100:.2f}%")
-    st.progress(min(day_percent, 1.0))
-    st.markdown("---")
+        # คำนวณเวลาตามพิกัดจริง (Solar Time Estimate)
+        # ปกติ GMT+7 คือ 105 องศา, เราหาผลต่างเพื่อปรับเวลาให้ตรงจุดที่ยืน
+        utc_now = datetime.utcnow()
+        local_offset = lon / 15.0 # ทุก 15 องศาคือ 1 ชม.
+        gps_time = utc_now + timedelta(hours=local_offset)
+        
+        st.markdown(f"""
+            <div style='background: rgba(0,255,0,0.1); padding:15px; border-radius:10px; border-left: 5px solid {st.session_state.theme_color};'>
+                🕰️ <b>เวลาพิกัดจริง (GPS):</b> {gps_time.strftime('%H:%M:%S')}<br>
+                📍 <b>พิกัดดาวเทียม:</b> {lat:.4f}, {lon:.4f}
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.write("")
     st.info("สถานะระบบ: ONLINE")
-    st.write("รหัสผู้ใช้งาน: **Ta101**")
+    st.write(f"รหัสเรียกขาน: **{st.session_state.my_name}**")
     st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
 
-def room_radar():
-    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม")
-    loc = get_geolocation()
-    all_users = db.reference('users').get()
-    
-    start_lat, start_lon = 13.7367, 100.5231
-    if loc:
-        start_lat = loc['coords']['latitude']
-        start_lon = loc['coords']['longitude']
-
-    # จุดที่ 1: URL แผนที่ ห้ามใช้ f-string ครอบบรรทัดนี้เด็ดขาด
-    tile_url = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-    
-    m = folium.Map(location=[start_lat, start_lon], zoom_start=15, 
-                   tiles=tile_url, 
-                   attr="Google Satellite")
-
-    if all_users:
-        for user_id, data in all_users.items():
-            u_lat = data.get('lat')
-            u_lon = data.get('lon')
-            u_ts = data.get('ts', 0)
-            if u_lat and u_lon:
-                is_active = (time.time() - u_ts) < 3600
-                icon_color = 'red' if user_id == "Ta101" else ('green' if is_active else 'gray')
-                # จุดที่ 2: tooltip รับค่าตัวแปรโดยตรง ไม่ต้องครอบ f-string ถ้าไม่มีข้อความผสม
-                folium.Marker([u_lat, u_lon], 
-                              tooltip=user_id,
-                              icon=folium.Icon(color=icon_color, icon='user', prefix='fa')).add_to(m)
-
-    st_folium(m, width="100%", height=500)
-    if loc:
-        if st.button("📡 กระจายพิกัดของฉัน", use_container_width=True):
-            db.reference('users/Ta101').update({'lat': start_lat, 'lon': start_lon, 'ts': time.time()})
-            st.rerun()
-
-def room_comms():
-    st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
-    chat_tabs = st.tabs(["🌐 Lobby", "🔐 Private"])
-    with chat_tabs[0]:
-        chat_ref = db.reference('public_chat')
-        with st.form("public_form", clear_on_submit=True):
-            msg = st.text_input("ส่งสัญญาณ...")
-            if st.form_submit_button("SEND"):
-                if msg: 
-                    chat_ref.push({'user': 'Ta101', 'msg': msg, 'ts': time.time()})
-                    st.rerun()
-        msgs = chat_ref.order_by_key().limit_to_last(10).get()
-        if msgs:
-            for m in reversed(list(msgs.values())):
-                st.write(f"🟢 **{m.get('user')}:** {m.get('msg')}")
-
 def room_music():
-    st.subheader("🎧 SYNAPSE ROOMS")
-    music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-    if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลง")
-        return
-    current_song = music_files[st.session_state.song_index]
-    st.audio(current_song, autoplay=True)
-    for i, song in enumerate(music_files):
-        if st.button(f"🎵 {song}", key=f"s_{i}", use_container_width=True):
-            st.session_state.song_index = i
-            st.rerun()
-
-def room_sensor():
-    st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง")
-    theme_hex = st.session_state.theme_color
+    st.subheader("🎧 ศูนย์ความบันเทิง (Auto-Next)")
     
-    # จุดที่ 3: JavaScript ใน f-string ต้องใช้ปีกกาซ้อน {{ }} ทุกจุดที่เป็นโค้ด JS
-    audio_js = f"""
-    <div style="background-color: #000; color: {theme_hex}; padding: 20px; border: 2px solid {theme_hex}; border-radius: 15px; text-align: center; font-family: monospace;">
-        <h2 id="status">🔴 STANDBY</h2>
-        <div style="display: flex; justify-content: space-around;">
-            <div><h3>dB</h3><h1 id="db_val">0</h1></div>
-            <div><h3>Hz</h3><h1 id="hz_val">0</h1></div>
-        </div>
-    </div>
+    # ค้นหาไฟล์ทั้ง MP3 และ MP4
+    media_files = sorted([f for f in os.listdir('.') if f.lower().endswith((".mp3", ".mp4"))])
+    
+    if not media_files:
+        st.warning("⚠️ ไม่พบไฟล์สื่อในระบบ")
+        return
+    
+    cur_idx = st.session_state.song_index
+    cur_file = media_files[cur_idx]
+    
+    # แสดงผลตามชนิดไฟล์
+    if cur_file.lower().endswith(".mp4"):
+        st.video(cur_file, autoplay=True)
+    else:
+        # ถ้ามีรูปโลโก้ให้โชว์คู่กับเพลง
+        logo_data = get_base64_img("logo1.jpg")
+        if logo_data:
+            st.markdown(f'<center><img src="data:image/jpeg;base64,{logo_data}" style="width:200px; mix-blend-mode: screen;"></center>', unsafe_allow_html=True)
+        st.audio(cur_file, autoplay=True)
+
+    st.markdown(f"📡 กำลังเล่น: **{cur_file}**")
+
+    # ระบบเล่นต่อเนื่อง (Auto-Next JS)
+    # ค้นหาทั้งแท็ก <video> และ <audio> ถ้าจบให้กดปุ่ม 'ถัดไป'
+    js_auto = """
     <script>
-    async function startAudio() {{
-        try {{
-            const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioContext.state === 'suspended') {{ await audioContext.resume(); }}
-            const analyser = audioContext.createAnalyser();
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyser);
-            analyser.fftSize = 256;
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            function update() {{
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0, maxVal = 0, maxIdx = 0;
-                for (let i = 0; i < bufferLength; i++) {{
-                    sum += dataArray[i];
-                    if (dataArray[i] > maxVal) {{ maxVal = dataArray[i]; maxIdx = i; }}
-                }}
-                let db = Math.round((sum / bufferLength) * 3);
-                let hz = Math.round(maxIdx * audioContext.sampleRate / analyser.fftSize);
-                document.getElementById('db_val').innerText = db;
-                document.getElementById('hz_val').innerText = hz;
-                document.getElementById('status').innerText = db > 5 ? "🟢 SENSING" : "🟡 IDLE";
-                requestAnimationFrame(update);
-            }}
-            update();
-        }} catch (err) {{ 
-            document.getElementById('status').innerText = "❌ ERROR: " + err.message; 
-        }}
-    }}
-    window.addEventListener('click', () => {{ startAudio(); }}, {{ once: true }});
-    startAudio();
+    function setupAutoNext() {
+        var media = window.parent.document.querySelector('video') || window.parent.document.querySelector('audio');
+        if (media) {
+            media.onended = function() {
+                var btns = window.parent.document.querySelectorAll('button');
+                for (var i=0; i<btns.length; i++) {
+                    if (btns[i].innerText.includes('ถัดไป')) {
+                        btns[i].click();
+                        break;
+                    }
+                }
+            };
+        }
+    }
+    setTimeout(setupAutoNext, 2000);
     </script>
     """
-    components.html(audio_js, height=250)
+    components.html(js_auto, height=0)
+
+    # ปุ่มควบคุม
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("⏮️ ย้อนกลับ"):
+            st.session_state.song_index = (cur_idx - 1) % len(media_files); st.rerun()
+    with c2:
+        if st.button("⏭️ ถัดไป"):
+            st.session_state.song_index = (cur_idx + 1) % len(media_files); st.rerun()
 
 # ==========================================
-# 3. แผงวงจรหลัก
+# 3. แผงวงจรหลัก (UI & Styling)
 # ==========================================
 def main():
     init_system()
-    
-    # จุดที่ 4: CSS ใน f-string ต้องใช้ปีกกาซ้อน {{ }}
+
     st.markdown(f"""
         <style>
-        .stApp {{ 
-            background-color: {st.session_state.bg_color} !important; 
-            color: {st.session_state.text_color} !important; 
+        .stApp {{ background-color: #000000 !important; color: #FFFFFF !important; }}
+        div.stButton > button {{
+            width: 100%; border-radius: 12px; border: 2px solid {st.session_state.theme_color};
+            background-color: rgba(0,0,0,0.4); color: {st.session_state.theme_color} !important;
+            padding: 12px; font-weight: bold; box-shadow: 0 6px 0 {st.session_state.theme_color};
+            transition: all 0.1s ease; margin-bottom: 10px;
         }}
-        .stButton>button {{ 
-            border: 2px solid {st.session_state.theme_color} !important; 
-            color: {st.session_state.theme_color} !important; 
-            background: transparent !important; 
-        }}
-        h1, h2, h3, p, span, div, label {{ 
-            color: {st.session_state.text_color} !important; 
-        }}
+        div.stButton > button:active {{ transform: translateY(4px); box-shadow: 0 1px 0 {st.session_state.theme_color}; }}
         </style>
         """, unsafe_allow_html=True)
 
-    with st.sidebar:
-        st.title("⚙️ SETTINGS")
-        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
-        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
-        st.session_state.text_color = st.color_picker("✍️ ข้อความ", st.session_state.text_color)
-        st.markdown("---")
-        st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+    # โลโก้ logo1.jpg แบบไร้ขอบ
+    logo_data = get_base64_img("logo1.jpg")
+    if logo_data:
+        st.markdown(f'<div style="text-align: center;"><img src="data:image/jpeg;base64,{logo_data}" style="width:220px; mix-blend-mode: screen; filter: drop-shadow(0 0 10px {st.session_state.theme_color});"></div>', unsafe_allow_html=True)
 
-    room_map = {
-        "🚀 แกนหลัก": room_core,
-        "🛰️ เรดาร์": room_radar,
-        "💬 สื่อสาร": room_comms,
-        "🎧 เพลง": room_music,
-        "📟 วัดเสียง": room_sensor
-    }
+    # เมนูเลือกห้อง
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("🚀 แกนหลัก"): st.session_state.active_room = "🚀 แกนหลัก"
+        if st.button("💬 การสื่อสาร"): st.session_state.active_room = "💬 การสื่อสาร"
+    with c2:
+        if st.button("🛰️ เรดาร์"): st.session_state.active_room = "🛰️ เรดาร์"
+        if st.button("🎧 ห้องพัก"): st.session_state.active_room = "🎧 ห้องพัก"
+
+    st.markdown("---")
     
-    tabs = st.tabs(list(room_map.keys()))
-    for i, room_func in enumerate(room_map.values()):
-        with tabs[i]:
-            room_func()
+    if st.session_state.active_room == "🚀 แกนหลัก":
+        room_core()
+    elif st.session_state.active_room == "🛰️ เรดาร์":
+        from room_radar_module import room_radar # แยกไฟล์เรดาร์ไว้เพื่อความสะอาด
+        room_radar()
+    elif st.session_state.active_room == "🎧 ห้องพัก":
+        room_music()
 
 if __name__ == "__main__":
     main()
