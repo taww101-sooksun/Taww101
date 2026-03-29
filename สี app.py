@@ -48,20 +48,35 @@ def save_log(action):
 def room_core():
     st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
     
-    # คำนวณเวลาที่ผ่านไปใน 1 วัน
-    now = datetime.now()
-    seconds_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
-    day_percent = (seconds_since_midnight / 86400) * 100
+    # --- แก้ไขตรงนี้เพื่อให้เวลาไทยตรงเป๊ะ ---
+    from datetime import timedelta
+    now = datetime.utcnow() + timedelta(hours=7) 
+    # ------------------------------------
+
+    # คำนวณเปอร์เซ็นต์ของวันที่ผ่านไป (ใช้เวลาไทยที่แก้แล้ว)
+    seconds_since_midnight = (now.hour * 3600) + (now.minute * 60) + now.second
+    day_percent = seconds_since_midnight / 86400
     
-    col_t1, col_t2 = st.columns([1, 3])
+    col_t1, col_t2 = st.columns([1, 2])
     with col_t1:
-        st.metric("REAL-TIME", now.strftime("%H:%M"))
+        st.markdown(f"""
+            <div style="border: 1px solid {st.session_state.theme_color}; padding: 10px; border-radius: 5px; text-align: center;">
+                <h3 style="margin: 0; color: {st.session_state.theme_color}; font-family: monospace;">{now.strftime('%H:%M:%S')}</h3>
+                <small style="color: {st.session_state.theme_color}; opacity: 0.8;">THAILAND TIME</small>
+            </div>
+        """, unsafe_allow_html=True)
+        
     with col_t2:
-        st.write(f"⏳ Day Progress: {day_percent:.2f}%")
-        st.progress(day_percent / 100)
+        st.write(f"⏳ Day Progress: {day_percent*100:.2f}%")
+        st.progress(min(day_percent, 1.0))
     
+    st.markdown("---")
+    
+    # ส่วนอื่นเหมือนเดิม...
     st.info("สถานะระบบ: ONLINE")
-    # ... (Code เดิมของคุณ) ...
+    st.write(f"รหัสผู้ใช้งาน: **Ta101**")
+    st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
+    st.code(f"Time: {now.strftime('%H:%M:%S')}\nUser: Ta101\nStatus: Active")
 
 
     st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
