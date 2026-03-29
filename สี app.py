@@ -2,7 +2,7 @@ import streamlit as st
 import os 
 import time
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
@@ -14,8 +14,7 @@ from streamlit_js_eval import get_geolocation
 # 1. กลไกกลาง (Core Engine)
 # ==========================================
 def init_system():
-    # จัดการ session state สำหรับชื่อผู้ใช้และห้อง
-    if 'my_name' not in st.session_state: st.session_state.my_name = ""
+    if 'my_name' not in st.session_state: st.session_state.my_name = "Ta101"
     if 'active_room' not in st.session_state: st.session_state.active_room = "🚀 แกนหลัก"
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
@@ -39,68 +38,62 @@ def get_base64_img(file_path):
 
 def room_core():
     st.subheader(f"🚀 ศูนย์ควบคุม: {st.session_state.my_name}")
+    
+    # --- แก้ไขเวลา GPS ให้ตรงพิกัด ---
+    loc = get_geolocation()
+    if loc and 'coords' in loc:
+        lon = loc['coords']['longitude']
+        lat = loc['coords']['latitude']
+        
+        # คำนวณเวลาตามพิกัดจริง (Solar Time Estimate)
+        # ปกติ GMT+7 คือ 105 องศา, เราหาผลต่างเพื่อปรับเวลาให้ตรงจุดที่ยืน
+        utc_now = datetime.utcnow()
+        local_offset = lon / 15.0 # ทุก 15 องศาคือ 1 ชม.
+        gps_time = utc_now + timedelta(hours=local_offset)
+        
+        st.markdown(f"""
+            <div style='background: rgba(0,255,0,0.1); padding:15px; border-radius:10px; border-left: 5px solid {st.session_state.theme_color};'>
+                🕰️ <b>เวลาพิกัดจริง (GPS):</b> {gps_time.strftime('%H:%M:%S')}<br>
+                📍 <b>พิกัดดาวเทียม:</b> {lat:.4f}, {lon:.4f}
+            </div>
+        """, unsafe_allow_html=True)
+
+    st.write("")
     st.info("สถานะระบบ: ONLINE")
     st.write(f"รหัสเรียกขาน: **{st.session_state.my_name}**")
     st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
 
-def room_radar():
-    st.subheader("🛰️ ระบบเรดาร์ระบุชื่อ (Real-time)")
-    loc = get_geolocation()
-    all_users = db.reference('users').get()
-    
-    lat, lon = 13.7367, 100.5231
-    if loc and 'coords' in loc:
-        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-
-    # แผนที่ดาวเทียม
-    m = folium.Map(location=[lat, lon], zoom_start=15, 
-                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
-                   attr="Google Satellite")
-
-    if all_users:
-        for u_id, data in all_users.items():
-            u_lat, u_lon = data.get('lat'), data.get('lon')
-            if u_lat and u_lon:
-                # แก้ไข: ระบุชื่อบนหมุดแผนที่ (Tooltip & Popup)
-                folium.Marker(
-                    [u_lat, u_lon], 
-                    tooltip=f"<b>{u_id}</b>", 
-                    popup=u_id,
-                    icon=folium.Icon(color='red' if u_id == st.session_state.my_name else 'green', icon='user')
-                ).add_to(m)
-
-    st_folium(m, width="100%", height=450, key="radar_map")
-
-    if loc and st.button("📡 กระจายพิกัดระบุชื่อ", use_container_width=True):
-        db.reference(f'users/{st.session_state.my_name}').update({
-            'lat': lat, 'lon': lon, 'ts': time.time()
-        })
-        st.toast("อัปเดตตำแหน่งพิกัดแล้ว!")
-
 def room_music():
-    st.subheader("🎧 ห้องพักผ่อน (Auto-Next)")
-    music_files = sorted([f for f in os.listdir('.') if f.lower().endswith((".mp3", ".mp4"))])
+    st.subheader("🎧 ศูนย์ความบันเทิง (Auto-Next)")
     
-    if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์สื่อ")
+    # ค้นหาไฟล์ทั้ง MP3 และ MP4
+    media_files = sorted([f for f in os.listdir('.') if f.lower().endswith((".mp3", ".mp4"))])
+    
+    if not media_files:
+        st.warning("⚠️ ไม่พบไฟล์สื่อในระบบ")
         return
     
     cur_idx = st.session_state.song_index
-    cur_file = music_files[cur_idx]
+    cur_file = media_files[cur_idx]
     
-    # แสดงผลสื่อ
+    # แสดงผลตามชนิดไฟล์
     if cur_file.lower().endswith(".mp4"):
         st.video(cur_file, autoplay=True)
     else:
+        # ถ้ามีรูปโลโก้ให้โชว์คู่กับเพลง
+        logo_data = get_base64_img("logo1.jpg")
+        if logo_data:
+            st.markdown(f'<center><img src="data:image/jpeg;base64,{logo_data}" style="width:200px; mix-blend-mode: screen;"></center>', unsafe_allow_html=True)
         st.audio(cur_file, autoplay=True)
-    
+
     st.markdown(f"📡 กำลังเล่น: **{cur_file}**")
 
-    # แก้ไข: ระบบเล่นต่อเนื่อง (Auto-Next) แบบใหม่
-    js_next = """
+    # ระบบเล่นต่อเนื่อง (Auto-Next JS)
+    # ค้นหาทั้งแท็ก <video> และ <audio> ถ้าจบให้กดปุ่ม 'ถัดไป'
+    js_auto = """
     <script>
-    function checkEnd() {
-        var media = window.parent.document.querySelector('audio') || window.parent.document.querySelector('video');
+    function setupAutoNext() {
+        var media = window.parent.document.querySelector('video') || window.parent.document.querySelector('audio');
         if (media) {
             media.onended = function() {
                 var btns = window.parent.document.querySelectorAll('button');
@@ -113,59 +106,43 @@ def room_music():
             };
         }
     }
-    setTimeout(checkEnd, 2000);
+    setTimeout(setupAutoNext, 2000);
     </script>
     """
-    components.html(js_next, height=0)
+    components.html(js_auto, height=0)
 
+    # ปุ่มควบคุม
     c1, c2 = st.columns(2)
     with c1:
         if st.button("⏮️ ย้อนกลับ"):
-            st.session_state.song_index = (cur_idx - 1) % len(music_files); st.rerun()
+            st.session_state.song_index = (cur_idx - 1) % len(media_files); st.rerun()
     with c2:
         if st.button("⏭️ ถัดไป"):
-            st.session_state.song_index = (cur_idx + 1) % len(music_files); st.rerun()
+            st.session_state.song_index = (cur_idx + 1) % len(media_files); st.rerun()
 
 # ==========================================
-# 3. แผงวงจรหลัก (Switchboard & Login)
+# 3. แผงวงจรหลัก (UI & Styling)
 # ==========================================
 def main():
     init_system()
 
-    # CSS ปรับแต่งปุ่มและโลโก้
     st.markdown(f"""
         <style>
         .stApp {{ background-color: #000000 !important; color: #FFFFFF !important; }}
         div.stButton > button {{
             width: 100%; border-radius: 12px; border: 2px solid {st.session_state.theme_color};
             background-color: rgba(0,0,0,0.4); color: {st.session_state.theme_color} !important;
-            padding: 12px; font-weight: bold; box-shadow: 0 5px 0 {st.session_state.theme_color};
-            transition: all 0.1s ease;
+            padding: 12px; font-weight: bold; box-shadow: 0 6px 0 {st.session_state.theme_color};
+            transition: all 0.1s ease; margin-bottom: 10px;
         }}
         div.stButton > button:active {{ transform: translateY(4px); box-shadow: 0 1px 0 {st.session_state.theme_color}; }}
         </style>
         """, unsafe_allow_html=True)
 
-    # แก้ไข: ระบบใส่ชื่อก่อนเข้าแอป (Login Page)
-    if st.session_state.my_name == "":
-        logo_data = get_base64_img("logo1.jpg")
-        if logo_data:
-            st.markdown(f'<center><img src="data:image/jpeg;base64,{logo_data}" style="width:250px; mix-blend-mode: screen;"></center>', unsafe_allow_html=True)
-        
-        st.title("🛰️ SYNAPSE LOGIN")
-        name_input = st.text_input("ระบุรหัสเรียกขาน (Username):")
-        if st.button("เข้าสู่ระบบ (ENTER)"):
-            if name_input:
-                st.session_state.my_name = name_input
-                st.rerun()
-        return
-
-    # หน้าหลักแอป
-    with st.sidebar:
-        st.title("⚙️ SETTINGS")
-        if st.button("Logout"): 
-            st.session_state.my_name = ""
-            st.rerun()
+    # โลโก้ logo1.jpg แบบไร้ขอบ
+    logo_data = get_base64_img("logo1.jpg")
+    if logo_data:
+        st.markdown(f'<div style="text-align: center;"><img src="data:image/jpeg;base64,{logo_data}" style="width:220px; mix-blend-mode: screen; filter: drop-shadow(0 0 10px {st.session_state.theme_color});"></div>', unsafe_allow_html=True)
 
     # เมนูเลือกห้อง
     c1, c2 = st.columns(2)
@@ -178,11 +155,13 @@ def main():
 
     st.markdown("---")
     
-    # รันห้องที่เลือก
-    if st.session_state.active_room == "🚀 แกนหลัก": room_core()
-    elif st.session_state.active_room == "🛰️ เรดาร์": room_radar()
-    elif st.session_state.active_room == "🎧 ห้องพัก": room_music()
-    # (เพิ่มห้องสื่อสารตามโค้ดเดิมของพี่ได้เลย)
+    if st.session_state.active_room == "🚀 แกนหลัก":
+        room_core()
+    elif st.session_state.active_room == "🛰️ เรดาร์":
+        from room_radar_module import room_radar # แยกไฟล์เรดาร์ไว้เพื่อความสะอาด
+        room_radar()
+    elif st.session_state.active_room == "🎧 ห้องพัก":
+        room_music()
 
 if __name__ == "__main__":
     main()
