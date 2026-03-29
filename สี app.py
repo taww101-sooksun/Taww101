@@ -58,22 +58,32 @@ def room_core():
 def room_radar():
     st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม (Multi-User Radar)")
     
-    # ดึงพิกัดตัวเอง
+    # 1. ดึงพิกัด (ใช้ดักจับ Error เพื่อความปลอดภัย)
     loc = get_geolocation()
-    # ดึงพิกัดทุกคนจาก Firebase
-    all_users = db.reference('users').get()
     
-    start_lat, start_lon = 13.7367, 100.5231
-    if loc:
-        start_lat = loc['coords']['latitude']
-        start_lon = loc['coords']['longitude']
+    # กำหนดค่าเริ่มต้นเป็นกรุงเทพฯ เผื่อกรณี GPS ยังไม่มาแอปจะได้ไม่พัง
+    start_lat, start_lon = 13.7367, 100.5231 
 
-    # สร้างแผนที่ดาวเทียม
+    # ตรวจสอบว่า loc มีข้อมูลจริง และมี Key 'coords' อยู่ข้างใน
+    if loc and 'coords' in loc:
+        try:
+            start_lat = loc['coords']['latitude']
+            start_lon = loc['coords']['longitude']
+            st.success(f"📍 สัญญาณดาวเทียมเสถียร: {start_lat:.4f}, {start_lon:.4f}")
+        except KeyError:
+            st.warning("📡 กำลังรอการยืนยันพิกัดจากอุปกรณ์...")
+    else:
+        st.info("🛰️ กรุณาเปิด GPS และกด 'Allow' เพื่อให้เรดาร์ระบุตำแหน่งของคุณ")
+
+    # 2. ดึงพิกัดเพื่อนทุกคนจาก Firebase
+    all_users = db.reference('users').get()
+
+    # 3. สร้างแผนที่ดาวเทียม
     m = folium.Map(location=[start_lat, start_lon], zoom_start=15, 
                    tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
                    attr="Google Satellite")
 
-    # วางหมุดทุกคนที่ออนไลน์
+    # 4. วางหมุดสมาชิก
     if all_users:
         for user_id, data in all_users.items():
             u_lat = data.get('lat')
@@ -81,20 +91,21 @@ def room_radar():
             u_ts = data.get('ts', 0)
             
             if u_lat and u_lon:
-                # เช็คสถานะ (Online ภายใน 1 ชม.)
                 is_active = (time.time() - u_ts) < 3600
                 icon_color = 'red' if user_id == "Ta101" else ('green' if is_active else 'gray')
                 
                 folium.Marker(
                     [u_lat, u_lon],
                     popup=f"User: {user_id}",
-                    tooltip=f"{user_id} ({'Active' if is_active else 'Inactive'})",
+                    tooltip=f"{user_id} ({'Active' if is_active else 'Offline'})",
                     icon=folium.Icon(color=icon_color, icon='user', prefix='fa')
                 ).add_to(m)
 
-    st_folium(m, width="100%", height=500)
+    # แสดงแผนที่
+    st_folium(m, width="100%", height=500, key="radar_map")
 
-    if loc:
+    # 5. ปุ่มอัปเดตตำแหน่ง (เช็คความปลอดภัยก่อนกด)
+    if loc and 'coords' in loc:
         if st.button("📡 กระจายพิกัดของฉันให้ทุกคนเห็น", use_container_width=True):
             db.reference('users/Ta101').update({
                 'lat': loc['coords']['latitude'],
@@ -102,8 +113,9 @@ def room_radar():
                 'ts': time.time()
             })
             save_log("BROADCASTED LOCATION")
-            st.toast("ส่งพิกัดเข้าศูนย์บัญชาการแล้ว!")
+            st.toast("อัปเดตตำแหน่งบนเรดาร์เรียบร้อย!")
             st.rerun()
+
 
 def room_comms():
     st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
