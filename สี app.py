@@ -311,12 +311,14 @@ def main():
         st.markdown("---")
         st.write(f'**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
-    room_map = {
+        room_map = {
         "🚀 แกนหลัก": room_core,
         "🛰️ เรดาร์": room_radar,
         "💬 การสื่อสาร": room_comms,
-        "🎧 ห้องพัก": room_music
+        "🎧 ห้องพัก": room_music,
+        "🎙️ เซนเซอร์เสียง": room_sensor  # <-- เพิ่มบรรทัดนี้เข้าไป
     }
+
     
     tabs = st.tabs(list(room_map.keys()))
     for i, room_func in enumerate(room_map.values()):
