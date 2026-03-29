@@ -1,4 +1,4 @@
-import streamlit as st
+นะimport streamlit as st
 import os 
 import random
 import time
