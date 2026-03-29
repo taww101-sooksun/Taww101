@@ -337,12 +337,12 @@ def main():
         st.write(f'**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
         room_map = {
-        "🚀 แกนหลัก": room_core,
+        "🚀 หน้าแลก": room_core,
         "🛰️ เรดาร์": room_radar,
-        "💬 การสื่อสาร": room_comms,
-        "🎧 ห้องพัก": room_music,
-        "🎙️ เซนเซอร์เสียง": room_sensor  # <-- เพิ่มบรรทัดนี้เข้าไป
-    }
+        "💬 สื่อสาร": room_comms,
+        "🎧 เเพลง": room_music,
+        "📟 วัดเสียง": room_sensor  # <-- เพิ่มบรรทัดนี้เข้าไป
+    
 
     
     tabs = st.tabs(list(room_map.keys()))
