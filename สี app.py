@@ -32,9 +32,8 @@ def init_system():
 def save_log(action):
     try:
         now = datetime.utcnow() + timedelta(hours=7)
-        # แก้ไข: ใช้ f-string ปกติ ไม่ต้องเบิ้ลปีกกาตรงนี้
-        path = f'synapse_logs/{now.strftime("%Y-%m-%d")}'
-        db.reference(path).push({
+        log_path = 'synapse_logs/' + now.strftime("%Y-%m-%d")
+        db.reference(log_path).push({
             'time': now.strftime("%H:%M:%S"),
             'action': action,
             'user': 'Ta101'
@@ -47,28 +46,22 @@ def save_log(action):
 def room_core():
     st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
     now = datetime.utcnow() + timedelta(hours=7) 
-
     seconds_since_midnight = (now.hour * 3600) + (now.minute * 60) + now.second
     day_percent = seconds_since_midnight / 86400
     
-    col_t1, col_t2 = st.columns([1, 2])
-    with col_t1:
-        st.markdown(f"""
-            <div style="border: 1px solid {st.session_state.theme_color}; padding: 10px; border-radius: 5px; text-align: center;">
-                <h3 style="margin: 0; color: {st.session_state.theme_color}; font-family: monospace;">{now.strftime('%H:%M:%S')}</h3>
-                <small style="color: {st.session_state.theme_color}; opacity: 0.8;">THAILAND TIME</small>
-            </div>
-        """, unsafe_allow_html=True)
+    st.markdown(f"""
+        <div style="border: 1px solid {st.session_state.theme_color}; padding: 10px; border-radius: 5px; text-align: center;">
+            <h3 style="margin: 0; color: {st.session_state.theme_color}; font-family: monospace;">{now.strftime('%H:%M:%S')}</h3>
+            <small style="color: {st.session_state.theme_color}; opacity: 0.8;">THAILAND TIME</small>
+        </div>
+    """, unsafe_allow_html=True)
         
-    with col_t2:
-        st.write(f"⏳ Day Progress: {day_percent*100:.2f}%")
-        st.progress(min(day_percent, 1.0))
-    
+    st.write(f"⏳ Day Progress: {day_percent*100:.2f}%")
+    st.progress(min(day_percent, 1.0))
     st.markdown("---")
     st.info("สถานะระบบ: ONLINE")
-    st.write(f"รหัสผู้ใช้งาน: **Ta101**")
+    st.write("รหัสผู้ใช้งาน: **Ta101**")
     st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
-    st.code(f"Time: {now.strftime('%H:%M:%S')}\nUser: Ta101\nStatus: Active\nLoc: Roi-Et 101")
 
 def room_radar():
     st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม")
@@ -80,21 +73,24 @@ def room_radar():
         start_lat = loc['coords']['latitude']
         start_lon = loc['coords']['longitude']
 
-    # แก้ไขจุดนี้: ห้ามเบิ้ลปีกกาใน tiles เพราะไม่ได้ใช้ f-string ครอบบรรทัดนี้
-    google_satellite = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+    # จุดที่ 1: URL แผนที่ ห้ามใช้ f-string ครอบบรรทัดนี้เด็ดขาด
+    tile_url = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
     
     m = folium.Map(location=[start_lat, start_lon], zoom_start=15, 
-                   tiles=google_satellite, 
+                   tiles=tile_url, 
                    attr="Google Satellite")
 
     if all_users:
         for user_id, data in all_users.items():
-            u_lat, u_lon = data.get('lat'), data.get('lon')
+            u_lat = data.get('lat')
+            u_lon = data.get('lon')
             u_ts = data.get('ts', 0)
             if u_lat and u_lon:
                 is_active = (time.time() - u_ts) < 3600
                 icon_color = 'red' if user_id == "Ta101" else ('green' if is_active else 'gray')
-                folium.Marker([u_lat, u_lon], tooltip=f"{user_id}",
+                # จุดที่ 2: tooltip รับค่าตัวแปรโดยตรง ไม่ต้องครอบ f-string ถ้าไม่มีข้อความผสม
+                folium.Marker([u_lat, u_lon], 
+                              tooltip=user_id,
                               icon=folium.Icon(color=icon_color, icon='user', prefix='fa')).add_to(m)
 
     st_folium(m, width="100%", height=500)
@@ -135,7 +131,8 @@ def room_music():
 def room_sensor():
     st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง")
     theme_hex = st.session_state.theme_color
-    # ส่วนนี้ใช้ f-string ต้องเบิ้ลปีกกา {{ }} สำหรับ JavaScript เท่านั้น
+    
+    # จุดที่ 3: JavaScript ใน f-string ต้องใช้ปีกกาซ้อน {{ }} ทุกจุดที่เป็นโค้ด JS
     audio_js = f"""
     <div style="background-color: #000; color: {theme_hex}; padding: 20px; border: 2px solid {theme_hex}; border-radius: 15px; text-align: center; font-family: monospace;">
         <h2 id="status">🔴 STANDBY</h2>
@@ -162,7 +159,7 @@ def room_sensor():
                 for (let i = 0; i < bufferLength; i++) {{
                     sum += dataArray[i];
                     if (dataArray[i] > maxVal) {{ maxVal = dataArray[i]; maxIdx = i; }}
-                }
+                }}
                 let db = Math.round((sum / bufferLength) * 3);
                 let hz = Math.round(maxIdx * audioContext.sampleRate / analyser.fftSize);
                 document.getElementById('db_val').innerText = db;
@@ -186,7 +183,8 @@ def room_sensor():
 # ==========================================
 def main():
     init_system()
-    # CSS ส่วนนี้ใช้ f-string ต้องเบิ้ลปีกกา {{ }}
+    
+    # จุดที่ 4: CSS ใน f-string ต้องใช้ปีกกาซ้อน {{ }}
     st.markdown(f"""
         <style>
         .stApp {{ 
