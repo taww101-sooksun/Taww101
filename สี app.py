@@ -21,6 +21,7 @@ def init_system():
     
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
         
+    # เชื่อมต่อ Firebase (ใช้ค่าจาก Secrets)
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
@@ -50,27 +51,29 @@ def room_core():
     st.info("สถานะระบบ: ONLINE")
     st.write(f"รหัสผู้ใช้งาน: **Ta101**")
     st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
+    st.markdown("---")
+    st.write("📊 สถิติระบบวันนี้:")
+    st.code(f"Time: {datetime.now().strftime('%H:%M:%S')}\nUser: Ta101\nStatus: Active")
 
 def room_radar():
     st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม (Multi-User Radar)")
     
-    # 1. ดึงพิกัดตัวเอง
+    # ดึงพิกัดตัวเอง
     loc = get_geolocation()
-    
-    # 2. ดึงพิกัดเพื่อนทุกคนจาก Firebase
+    # ดึงพิกัดทุกคนจาก Firebase
     all_users = db.reference('users').get()
     
-    # สร้างแผนที่ (ถ้าไม่มีพิกัดตัวเอง ให้เริ่มที่จุดกลางประเทศไทยก่อน)
-    start_lat, start_lon = 13.7367, 100.5231 # กรุงเทพ
+    start_lat, start_lon = 13.7367, 100.5231
     if loc:
         start_lat = loc['coords']['latitude']
         start_lon = loc['coords']['longitude']
 
-    m = folium.Map(location=[start_lat, start_lon], zoom_start=12, 
+    # สร้างแผนที่ดาวเทียม
+    m = folium.Map(location=[start_lat, start_lon], zoom_start=15, 
                    tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
                    attr="Google Satellite")
 
-    # 3. วางหมุดทุกคนที่ออนไลน์ (ดึงจาก Firebase)
+    # วางหมุดทุกคนที่ออนไลน์
     if all_users:
         for user_id, data in all_users.items():
             u_lat = data.get('lat')
@@ -78,25 +81,19 @@ def room_radar():
             u_ts = data.get('ts', 0)
             
             if u_lat and u_lon:
-                # เช็คว่าออนไลน์ล่าสุดเมื่อไหร่ (ถ้าเกิน 1 ชม. ให้เป็นสีเทา)
+                # เช็คสถานะ (Online ภายใน 1 ชม.)
                 is_active = (time.time() - u_ts) < 3600
-                icon_color = 'green' if is_active else 'gray'
+                icon_color = 'red' if user_id == "Ta101" else ('green' if is_active else 'gray')
                 
-                # ถ้าเป็นตัวเอง (Ta101) ให้ใช้สีพิเศษที่เลือกจาก Sidebar
-                if user_id == "Ta101":
-                    icon_color = 'red' 
-
                 folium.Marker(
                     [u_lat, u_lon],
                     popup=f"User: {user_id}",
-                    tooltip=f"{user_id} ({'Online' if is_active else 'Offline'})",
+                    tooltip=f"{user_id} ({'Active' if is_active else 'Inactive'})",
                     icon=folium.Icon(color=icon_color, icon='user', prefix='fa')
                 ).add_to(m)
 
-    # แสดงแผนที่
     st_folium(m, width="100%", height=500)
 
-    # 4. ปุ่มอัปเดตตำแหน่งตัวเอง
     if loc:
         if st.button("📡 กระจายพิกัดของฉันให้ทุกคนเห็น", use_container_width=True):
             db.reference('users/Ta101').update({
@@ -107,15 +104,12 @@ def room_radar():
             save_log("BROADCASTED LOCATION")
             st.toast("ส่งพิกัดเข้าศูนย์บัญชาการแล้ว!")
             st.rerun()
-    else:
-        st.warning("🚨 กรุณาเปิด GPS เพื่อระบุตำแหน่งบนเรดาร์")
 
 def room_comms():
     st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
     
     chat_tabs = st.tabs(["🌐 Lobby (สาธารณะ)", "🔐 Private (ส่วนตัว)"])
     
-    # --- แท็บที่ 1: Lobby ---
     with chat_tabs[0]:
         chat_ref = db.reference('public_chat')
         with st.form("public_form", clear_on_submit=True):
@@ -123,7 +117,7 @@ def room_comms():
             if st.form_submit_button("SEND TO LOBBY"):
                 if msg:
                     chat_ref.push({'user': 'Ta101', 'msg': msg, 'ts': time.time()})
-                    save_log(f"SENT LOBBY MSG")
+                    save_log("SENT LOBBY MSG")
                     st.rerun()
         
         msgs = chat_ref.order_by_key().limit_to_last(10).get()
@@ -133,9 +127,9 @@ def room_comms():
                 txt = m.get('msg', '...')
                 st.write(f"🟢 **{u}:** {txt}")
 
-    # --- แท็บที่ 2: Private (สัญญาณลับ) ---
     with chat_tabs[1]:
-        target_id = st.text_input("ระบุรหัสผู้รับ (เช่น Bas, Dad):", value="Admin")
+        target_id = st.text_input("ระบุรหัสผู้รับ:", value="Admin")
+        # สร้าง path ลับเฉพาะคนรับคนส่ง
         private_ref = db.reference(f'private_messages/Ta101_{target_id}')
         
         with st.form("private_form", clear_on_submit=True):
@@ -144,7 +138,6 @@ def room_comms():
                 if p_msg:
                     private_ref.push({'sender': 'Ta101', 'msg': p_msg, 'ts': time.time()})
                     save_log(f"SENT PRIVATE TO {target_id}")
-                    st.toast(f"ส่งสัญญาณลับแล้ว")
                     st.rerun()
         
         p_msgs = private_ref.order_by_key().limit_to_last(5).get()
@@ -177,10 +170,12 @@ def room_music():
     with col_list:
         st.write("🎧 PLAYLIST")
         for i, song in enumerate(music_files):
-            if st.button(f"🎵 {song}", key=f"s_{i}", use_container_width=True):
+            btn_label = f"▶️ {song}" if i == st.session_state.song_index else f"🎵 {song}"
+            if st.button(btn_label, key=f"s_{i}", use_container_width=True):
                 st.session_state.song_index = i
                 st.rerun()
 
+    # ระบบเล่นต่อเนื่อง
     js_next = """
     <script>
     var audio = window.parent.document.querySelector('audio');
@@ -188,7 +183,7 @@ def room_music():
         audio.onended = function() {
             var btns = window.parent.document.querySelectorAll('button');
             for (var i=0; i<btns.length; i++) {
-                if (btns[i].textContent.includes('🎵')) {
+                if (btns[i].textContent.includes('🎵') || btns[i].textContent.includes('▶️')) {
                     btns[(i+1)%btns.length].click(); break;
                 }
             }
@@ -204,12 +199,13 @@ def room_music():
 def main():
     init_system()
     
-    # ฉีด CSS ควบคุมบรรยากาศตามสีที่เลือก
+    # CSS คุมบรรยากาศ
     st.markdown(f"""
         <style>
         .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.text_color} !important; }}
         .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; }}
-        h1, h2, h3, p, span, div {{ color: {st.session_state.text_color} !important; }}
+        h1, h2, h3, p, span, div, label {{ color: {st.session_state.text_color} !important; }}
+        .stTabs [data-baseweb="tab-list"] {{ background-color: transparent !important; }}
         </style>
         """, unsafe_allow_html=True)
 
@@ -218,6 +214,7 @@ def main():
         st.session_state.theme_color = st.color_picker("🚨 สีหลัก (นีออน)", st.session_state.theme_color)
         st.session_state.bg_color = st.color_picker("🌑 สีพื้นหลัง", st.session_state.bg_color)
         st.session_state.text_color = st.color_picker("✍️ สีข้อความ", st.session_state.text_color)
+        st.markdown("---")
         st.write(f'**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
     room_map = {
