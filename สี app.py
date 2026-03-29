@@ -248,44 +248,69 @@ def room_sensor():
     </div>
 
     <script>
-        async function startAudio() {{
-            try {{
-                const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const analyser = audioContext.createAnalyser();
-                const source = audioContext.createMediaStreamSource(stream);
-                source.connect(analyser);
-                analyser.fftSize = 2048;
-                const bufferLength = analyser.frequencyBinCount;
-                const dataArray = new Uint8Array(bufferLength);
+    async function startAudio() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // เพิ่มบรรทัดนี้: บังคับให้ระบบเสียงทำงานเมื่อสถานะถูกระงับ
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
 
-                function update() {{
-                    analyser.getByteFrequencyData(dataArray);
-                    let sum = 0; let maxVal = 0; let maxIdx = 0;
-                    for (let i = 0; i < bufferLength; i++) {{
-                        sum += dataArray[i];
-                        if (dataArray[i] > maxVal) {{ maxVal = dataArray[i]; maxIdx = i; }}
-                    }}
-                    let avg = sum / bufferLength;
-                    let db = Math.round(avg * 2.5); 
-                    let hz = Math.round(maxIdx * audioContext.sampleRate / analyser.fftSize);
+            const analyser = audioContext.createAnalyser();
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+            analyser.fftSize = 256; // ปรับให้เล็กลงเพื่อให้ตอบสนองไวขึ้น
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
 
-                    document.getElementById('db_val').innerText = db;
-                    document.getElementById('hz_val').innerText = hz;
-                    document.getElementById('status').innerText = "🟢 SYNAPSE SENSOR ONLINE";
-                    document.getElementById('info').innerText = "DATA SOURCE: HARDWARE MIC | REAL-TIME";
-                    requestAnimationFrame(update);
-                }}
-                update();
-            }} catch (err) {{
-                document.getElementById('status').innerText = "❌ เซนเซอร์ถูกปฏิเสธ";
-            }}
-        }}
+            function update() {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                let maxVal = 0;
+                let maxIdx = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                    if (dataArray[i] > maxVal) {
+                        maxVal = dataArray[i];
+                        maxIdx = i;
+                    }
+                }
+                
+                // คำนวณความดังให้เห็นการขยับชัดๆ
+                let avg = sum / bufferLength;
+                let db = Math.round(avg * 3); 
+                let hz = Math.round(maxIdx * audioContext.sampleRate / analyser.fftSize);
+
+                // อัปเดตตัวเลข
+                document.getElementById('db_val').innerText = db;
+                document.getElementById('hz_val').innerText = hz;
+                
+                // ถ้ามีเสียง (db > 5) ให้ไฟสถานะเป็นสีเขียว
+                if (db > 5) {
+                    document.getElementById('status').innerText = "🟢 SENSING...";
+                    document.getElementById('status').style.color = "#39FF14";
+                } else {
+                    document.getElementById('status').innerText = "🟡 STANDBY (SILENT)";
+                    document.getElementById('status').style.color = "yellow";
+                }
+
+                requestAnimationFrame(update);
+            }
+            update();
+        } catch (err) {
+            document.getElementById('status').innerText = "❌ ERROR: " + err.message;
+        }
+    }
+    
+    // เริ่มทำงานเมื่อมีการคลิกหน้าจอ (เผื่อ Browser บล็อค Auto-start)
+    window.addEventListener('click', () => {
         startAudio();
-    </script>
-    """
-    components.html(audio_js, height=300)
-    st.caption("⚠️ ระบบตรวจจับความจริง: ข้อมูลนี้ถูกดึงจากคลื่นอากาศรอบตัวคุณโดยตรง ไม่มีการปรุงแต่ง")
+    }, { once: true });
+    
+    startAudio(); // ลองเริ่มทำงานทันที
+</script>
 
 # ==========================================
 # 3. แผงวงจรหลัก (Main Switchboard)
