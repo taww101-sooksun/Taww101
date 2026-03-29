@@ -318,15 +318,27 @@ def room_sensor():
 def main():
     init_system()
     
-    # CSS คุมบรรยากาศ
+        # CSS คุมบรรยากาศ (เช็คปีกกาดีๆ นะเพื่อน)
     st.markdown(f"""
         <style>
-        .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.text_color} !important; }}
-        .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; }}
-        h1, h2, h3, p, span, div, label {{ color: {st.session_state.text_color} !important; }}
-        .stTabs [data-baseweb="tab-list"] {{ background-color: transparent !important; }}
+        .stApp {{ 
+            background-color: {st.session_state.bg_color} !important; 
+            color: {st.session_state.text_color} !important; 
+        }}
+        .stButton>button {{ 
+            border: 2px solid {st.session_state.theme_color} !important; 
+            color: {st.session_state.theme_color} !important; 
+            background: transparent !important; 
+        }}
+        h1, h2, h3, p, span, div, label {{ 
+            color: {st.session_state.text_color} !important; 
+        }}
+        .stTabs [data-baseweb="tab-list"] {{ 
+            background-color: transparent !important; 
+        }}
         </style>
         """, unsafe_allow_html=True)
+
 
     with st.sidebar:
         st.title("⚙️ SETTINGS")
