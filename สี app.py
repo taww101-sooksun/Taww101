@@ -32,6 +32,7 @@ def init_system():
 def save_log(action):
     try:
         now = datetime.utcnow() + timedelta(hours=7)
+        # แก้ไขจุดนี้: ใช้ปีกกาชั้นเดียวสำหรับ f-string ของ Python
         db.reference(f'synapse_logs/{now.strftime("%Y-%m-%d")}').push({
             'time': now.strftime("%H:%M:%S"),
             'action': action,
@@ -78,6 +79,7 @@ def room_radar():
         start_lat = loc['coords']['latitude']
         start_lon = loc['coords']['longitude']
 
+    # แก้ไขจุดนี้: tiles ของ folium ต้องเบิ้ลปีกกา {{x}}
     m = folium.Map(location=[start_lat, start_lon], zoom_start=15, 
                    tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
                    attr="Google Satellite")
@@ -106,7 +108,9 @@ def room_comms():
         with st.form("public_form", clear_on_submit=True):
             msg = st.text_input("ส่งสัญญาณ...")
             if st.form_submit_button("SEND"):
-                if msg: chat_ref.push({'user': 'Ta101', 'msg': msg, 'ts': time.time()}); st.rerun()
+                if msg: 
+                    chat_ref.push({'user': 'Ta101', 'msg': msg, 'ts': time.time()})
+                    st.rerun()
         msgs = chat_ref.order_by_key().limit_to_last(10).get()
         if msgs:
             for m in reversed(list(msgs.values())):
@@ -128,6 +132,7 @@ def room_music():
 def room_sensor():
     st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง")
     theme_hex = st.session_state.theme_color
+    # จุดนี้ต้องเบิ้ลปีกกา {{ }} สำหรับ JavaScript ทุกจุด
     audio_js = f"""
     <div style="background-color: #000; color: {theme_hex}; padding: 20px; border: 2px solid {theme_hex}; border-radius: 15px; text-align: center; font-family: monospace;">
         <h2 id="status">🔴 STANDBY</h2>
@@ -163,7 +168,9 @@ def room_sensor():
                 requestAnimationFrame(update);
             }}
             update();
-        }} catch (err) {{ document.getElementById('status').innerText = "❌ ERROR"; }}
+        }} catch (err) {{ 
+            document.getElementById('status').innerText = "❌ ERROR: " + err.message; 
+        }}
     }}
     window.addEventListener('click', () => {{ startAudio(); }}, {{ once: true }});
     startAudio();
@@ -176,11 +183,21 @@ def room_sensor():
 # ==========================================
 def main():
     init_system()
+    # CSS ต้องเบิ้ลปีกกา {{ }}
     st.markdown(f"""
         <style>
-        .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.text_color} !important; }}
-        .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; }}
-        h1, h2, h3, p, span, div, label {{ color: {st.session_state.text_color} !important; }}
+        .stApp {{ 
+            background-color: {st.session_state.bg_color} !important; 
+            color: {st.session_state.text_color} !important; 
+        }}
+        .stButton>button {{ 
+            border: 2px solid {st.session_state.theme_color} !important; 
+            color: {st.session_state.theme_color} !important; 
+            background: transparent !important; 
+        }}
+        h1, h2, h3, p, span, div, label {{ 
+            color: {st.session_state.text_color} !important; 
+        }}
         </style>
         """, unsafe_allow_html=True)
 
@@ -189,6 +206,8 @@ def main():
         st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
         st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
         st.session_state.text_color = st.color_picker("✍️ ข้อความ", st.session_state.text_color)
+        st.markdown("---")
+        st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
     room_map = {
         "🚀 แกนหลัก": room_core,
