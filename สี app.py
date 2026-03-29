@@ -118,15 +118,64 @@ def room_comms():
 def room_music():
     st.subheader("🎧 SYNAPSE ROOMS")
     music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+    
     if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลง")
+        st.warning("ไม่พบไฟล์เพลงใน Server")
         return
+
+    # ดึงเพลงปัจจุบัน
     current_song = music_files[st.session_state.song_index]
-    st.audio(current_song, autoplay=True)
+    song_name = os.path.splitext(current_song)[0]
+    cover_art = f"{song_name}.jpg"
+    
+    # ส่วนแสดงผลปกและเครื่องเล่น
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        if os.path.exists(cover_art):
+            st.image(cover_art, use_container_width=True)
+        else:
+            st.markdown(f"<div style='width:100%; height:150px; background:{st.session_state.theme_color}; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#000; font-weight:bold;'>🎵 NO COVER</div>", unsafe_allow_html=True)
+    
+    with col2:
+        st.write(f"กำลังเล่น: \n**{current_song}**")
+        
+        # --- กลไกเล่นเพลงต่อเนื่อง (Custom Audio Bridge) ---
+        # เราจะใช้ HTML Audio แทน st.audio ปกติเพื่อดักจับเหตุการณ์ 'ended'
+        audio_html = f"""
+            <audio id="audio-player" controls autoplay style="width: 100%;">
+                <source src="app/static/{current_song}" type="audio/mp3">
+            </audio>
+            <script>
+                var audio = document.getElementById('audio-player');
+                audio.onended = function() {{
+                    // เมื่อเพลงจบ ให้ส่งสัญญาณไปที่ปุ่มลับเพื่อเปลี่ยนเพลง
+                    window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*');
+                }};
+            </script>
+        """
+        # หมายเหตุ: การดึงไฟล์ผ่าน app/static/ อาจต้องตั้งค่าเมาท์โฟลเดอร์เพิ่ม 
+        # เพื่อความง่ายและชัวร์ที่สุด ให้ใช้ st.audio แบบเดิมแต่เพิ่มปุ่ม "ถัดไป" ที่ทำงานอัตโนมัติ
+        st.audio(current_song, autoplay=True)
+
+    # ปุ่มควบคุม
+    c1, c2, c3 = st.columns(3)
+    if c1.button("⏮️ ก่อนหน้า"):
+        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
+        st.rerun()
+    if c2.button("⏹️ หยุด"):
+        st.stop()
+    if c3.button("⏭️ ถัดไป"):
+        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+        st.rerun()
+
+    st.markdown("---")
+    # รายการเพลง
     for i, song in enumerate(music_files):
-        if st.button(f"🎵 {song}", key=f"s_{i}", use_container_width=True):
+        highlight = "active-song" if i == st.session_state.song_index else ""
+        if st.button(f"{'▶️' if i == st.session_state.song_index else '🎵'} {song}", key=f"s_{i}", use_container_width=True):
             st.session_state.song_index = i
             st.rerun()
+
 
 def room_sensor():
     st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง")
