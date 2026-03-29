@@ -224,6 +224,68 @@ def room_music():
     </script>
     """
     components.html(js_next, height=0)
+def room_sensor():
+    st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง (Direct Sensor)")
+    
+    # ใช้สีจาก session_state เพื่อให้เข้ากับ Theme ที่คุณเลือกใน Sidebar
+    theme_hex = st.session_state.theme_color
+    
+    audio_js = f"""
+    <div style="background-color: #000; color: {theme_hex}; padding: 20px; border: 2px solid {theme_hex}; border-radius: 15px; text-align: center; font-family: 'Courier New', Courier, monospace;">
+        <h2 id="status">🔴 กำลังสแกนคลื่นเสียง...</h2>
+        <hr style="border-color: {theme_hex}; opacity: 0.3;">
+        <div style="display: flex; justify-content: space-around;">
+            <div>
+                <h3 style="font-size: 14px; letter-spacing: 2px;">ความดัง (dB)</h3>
+                <h1 id="db_val" style="font-size: 60px; margin: 10px 0;">0</h1>
+            </div>
+            <div>
+                <h3 style="font-size: 14px; letter-spacing: 2px;">ความถี่ (Hz)</h3>
+                <h1 id="hz_val" style="font-size: 60px; margin: 10px 0;">0</h1>
+            </div>
+        </div>
+        <p id="info" style="color: #888; font-size: 12px;">สถานะ: รอสัญญาณคลื่นอากาศ</p>
+    </div>
+
+    <script>
+        async function startAudio() {{
+            try {{
+                const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                analyser.fftSize = 2048;
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+
+                function update() {{
+                    analyser.getByteFrequencyData(dataArray);
+                    let sum = 0; let maxVal = 0; let maxIdx = 0;
+                    for (let i = 0; i < bufferLength; i++) {{
+                        sum += dataArray[i];
+                        if (dataArray[i] > maxVal) {{ maxVal = dataArray[i]; maxIdx = i; }}
+                    }}
+                    let avg = sum / bufferLength;
+                    let db = Math.round(avg * 2.5); 
+                    let hz = Math.round(maxIdx * audioContext.sampleRate / analyser.fftSize);
+
+                    document.getElementById('db_val').innerText = db;
+                    document.getElementById('hz_val').innerText = hz;
+                    document.getElementById('status').innerText = "🟢 SYNAPSE SENSOR ONLINE";
+                    document.getElementById('info').innerText = "DATA SOURCE: HARDWARE MIC | REAL-TIME";
+                    requestAnimationFrame(update);
+                }}
+                update();
+            }} catch (err) {{
+                document.getElementById('status').innerText = "❌ เซนเซอร์ถูกปฏิเสธ";
+            }}
+        }}
+        startAudio();
+    </script>
+    """
+    components.html(audio_js, height=300)
+    st.caption("⚠️ ระบบตรวจจับความจริง: ข้อมูลนี้ถูกดึงจากคลื่นอากาศรอบตัวคุณโดยตรง ไม่มีการปรุงแต่ง")
 
 # ==========================================
 # 3. แผงวงจรหลัก (Main Switchboard)
