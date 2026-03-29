@@ -45,8 +45,25 @@ def save_log(action):
 # ==========================================
 # 2. พื้นที่เก็บห้อง (The Rooms / Modules)
 # ==========================================
-
 def room_core():
+    st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
+    
+    # คำนวณเวลาที่ผ่านไปใน 1 วัน
+    now = datetime.now()
+    seconds_since_midnight = (now - now.replace(hour=0, minute=0, second=0, microsecond=0)).total_seconds()
+    day_percent = (seconds_since_midnight / 86400) * 100
+    
+    col_t1, col_t2 = st.columns([1, 3])
+    with col_t1:
+        st.metric("REAL-TIME", now.strftime("%H:%M"))
+    with col_t2:
+        st.write(f"⏳ Day Progress: {day_percent:.2f}%")
+        st.progress(day_percent / 100)
+    
+    st.info("สถานะระบบ: ONLINE")
+    # ... (Code เดิมของคุณ) ...
+
+
     st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
     st.info("สถานะระบบ: ONLINE")
     st.write(f"รหัสผู้ใช้งาน: **Ta101**")
