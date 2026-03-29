@@ -1,154 +1,167 @@
 import streamlit as st
-import os
+import os 
 import random
+import time
+import base64
+from datetime import datetime, timedelta
+import firebase_admin
+from firebase_admin import credentials, db
 import streamlit.components.v1 as components
+import folium
+from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
 
-# --- 1. SET UP & THEME ---
-st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
-
-# ระบบจำค่าสี
-if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#39FF14" 
-if 'bg_color' not in st.session_state:
-    st.session_state.bg_color = "#121212" 
-
-with st.sidebar:
-    if os.path.exists("logo2.jpg"):
-        st.image("logo2.jpg", use_container_width=True)
-    st.markdown("### 🎨 ปรับแต่งสีระบบ")
-    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
-    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
-    st.write("---")
-    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
-
-# --- 2. CSS DYNAMIC THEME ---
-st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-    .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.theme_color} !important; }}
-    .marquee {{
-        width: 100%; overflow: hidden; white-space: nowrap; background: rgba(0,0,0,0.6);
-        padding: 15px 0; border-radius: 12px; margin-bottom: 15px; border: 2px solid {st.session_state.theme_color};
-    }}
-    .marquee p {{
-        display: inline-block; padding-left: 100%; animation: marquee 20s linear infinite;
-        font-family: 'Orbitron', sans-serif; font-size: 22px; color: {st.session_state.theme_color};
-        text-shadow: 0px 0px 10px {st.session_state.theme_color}; margin: 0;
-    }}
-    @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
-    .stButton>button {{
-        width: 100%; background-color: transparent !important; color: {st.session_state.theme_color} !important;
-        border-radius: 10px !important; border: 1px solid {st.session_state.theme_color} !important;
-    }}
-    .stTextArea textarea {{ background-color: rgba(0,0,0,0.5) !important; color: {st.session_state.theme_color} !important; border: 1px solid {st.session_state.theme_color} !important; }}
-    h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 3. ระบบจัดการเพลง ---
-music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-
-if music_files:
-    if 'song_index' not in st.session_state:
-        st.session_state.song_index = 0
+# ==========================================
+# 1. กลไกกลาง (Core Engine)
+# ==========================================
+def init_system():
+    if 'my_name' not in st.session_state: st.session_state.my_name = "Ta101"
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
+    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
+    if 'text_color' not in st.session_state: st.session_state.text_color = "#FFFFFF"
+    if 'song_index' not in st.session_state: st.session_state.song_index = 0
     
-    current_song = music_files[st.session_state.song_index]
+    if not firebase_admin._apps:
+        try:
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
+        except: pass
 
-    col_l, col_r = st.columns([1, 5])
-    with col_l:
-        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=500)
-    with col_r:
-        st.title("🎸 SYNAPSE ROOMS 🎼 MUSIC")
+def get_base64_img(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return None
 
-    st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
+# ==========================================
+# 2. ระบบห้องและฟีเจอร์ใหม่
+# ==========================================
 
-    base_name = os.path.splitext(current_song)[0]
-    if os.path.exists(base_name + ".mp4"):
-        st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
-    elif os.path.exists(base_name + ".jpg"):
-        st.image(base_name + ".jpg", use_container_width=True)
+def room_core():
+    # --- ส่วนนาฬิกาจับพิกัด (นาฬิกาที่คำนวณเวลาตามตำแหน่ง) ---
+    loc = get_geolocation()
+    current_time = datetime.now()
     
-    st.audio(current_song)
-
-    # --- 4. ระบบแชตสาธารณะ & Playlist ---
+    st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
+    
+    # คำนวณเวลาท้องถิ่นคร่าวๆ จาก Longitude (ทุก 15 องศาคือ 1 ชม.)
+    if loc and 'coords' in loc:
+        lon = loc['coords']['longitude']
+        offset = round(lon / 15) - 7 # เทียบจากเวลาไทย (GMT+7)
+        local_time = current_time + timedelta(hours=offset)
+        st.success(f"🕰️ เวลาพิกัดปัจจุบัน: {local_time.strftime('%H:%M:%S')} (Offset: {offset:+d}h)")
+        st.caption(f"📍 LAT: {loc['coords']['latitude']:.4f} | LON: {lon:.4f}")
+    
+    st.info("สถานะระบบ: ONLINE")
+    st.write(f"รหัสผู้ใช้งาน: **{st.session_state.my_name}**")
+    st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
     st.markdown("---")
-    col_chat, col_list = st.columns([2, 1])
+    st.code(f"System Sync: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\nStatus: Ready")
 
-    with col_chat:
-        st.subheader("🌐 PUBLIC LOBBY")
-        CHAT_FILE = "public_chat.txt"
+def room_radar():
+    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม (ระบุชื่อบนหมุด)")
+    loc = get_geolocation()
+    all_users = db.reference('users').get()
+    
+    lat, lon = 13.7367, 100.5231
+    if loc and 'coords' in loc:
+        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
+
+    m = folium.Map(location=[lat, lon], zoom_start=15, 
+                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+                   attr="Google Satellite")
+
+    if all_users:
+        for u_id, data in all_users.items():
+            u_lat, u_lon = data.get('lat'), data.get('lon')
+            if u_lat and u_lon:
+                # ใส่ชื่อลงไปในหมุด (Tooltip โชว์ตลอด / Popup คลิกโชว์)
+                folium.Marker(
+                    [u_lat, u_lon],
+                    popup=f"USER: {u_id}",
+                    tooltip=f"<b>{u_id}</b>", # โชว์ชื่อตัวหนาบนหมุด
+                    icon=folium.Icon(color='red' if u_id == st.session_state.my_name else 'green', icon='user')
+                ).add_to(m)
+
+    st_folium(m, width="100%", height=500, key="radar_main")
+
+    if loc and st.button("📡 กระจายพิกัดระบุตัวตน", use_container_width=True):
+        db.reference(f'users/{st.session_state.my_name}').update({
+            'lat': lat, 'lon': lon, 'ts': time.time()
+        })
+        st.toast("ส่งพิกัดเข้าศูนย์บัญชาการแล้ว!")
+
+# ==========================================
+# 3. หน้าจอหลักและการแต่งสวย (UI/UX)
+# ==========================================
+def main():
+    init_system()
+    
+    # CSS ชุดใหญ่: ปุ่ม 3D ยกสูง และธีมมืด
+    st.markdown(f"""
+        <style>
+        .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.text_color} !important; }}
         
-        # ดึงข้อมูลแชต
-        if os.path.exists(CHAT_FILE):
-            with open(CHAT_FILE, "r", encoding="utf-8") as f:
-                chat_data = "".join(f.readlines()[-10:]) # โชว์ 10 บรรทัดล่าสุด
-        else:
-            chat_data = "ยังไม่มีข้อความ..."
-
-        st.text_area("Live Chat", value=chat_data, height=200, disabled=True, label_visibility="collapsed")
+        /* ปุ่มเมนูแบบยกสูง 3D ชัดเจน */
+        div.stButton > button {{
+            width: 100%; border-radius: 15px; border: 2px solid {st.session_state.theme_color};
+            background-color: rgba(0,0,0,0.6); color: {st.session_state.theme_color} !important;
+            padding: 15px; font-weight: bold; font-size: 18px;
+            box-shadow: 0 8px 0 {st.session_state.theme_color}; /* ยกสูงขึ้น */
+            transition: all 0.1s ease; margin-bottom: 15px;
+        }}
+        div.stButton > button:active {{
+            transform: translateY(6px); /* ยุบลงเวลาคลิก */
+            box-shadow: 0 2px 0 {st.session_state.theme_color};
+        }}
         
-        with st.form("chat_form", clear_on_submit=True):
-            msg = st.text_input("พิมพ์ข้อความ...", key="chat_msg_input")
-            if st.form_submit_button("SEND"):
-                if msg:
-                    with open(CHAT_FILE, "a", encoding="utf-8") as f:
-                        f.write(f"> {msg}\n")
-                    st.rerun()
+        h1, h2, h3, p, span {{ color: {st.session_state.text_color} !important; }}
+        </style>
+        """, unsafe_allow_html=True)
 
-    with col_list:
-        st.subheader("🎧 PLAYLIST")
-        with st.container(border=True, height=250):
-            for i, song in enumerate(music_files):
-                label = f"▶️ {song}" if i == st.session_state.song_index else f"{song}"
-                if st.button(label, key=f"list_{i}"):
-                    st.session_state.song_index = i
-                    st.rerun()
-
-    # ปุ่มควบคุมเพลง
+    # --- ส่วนหัวและโลโก้ (logo1.jpg แบบไร้กรอบ) ---
+    logo_data = get_base64_img("logo1.jpg")
+    if logo_data:
+        st.markdown(f'''
+            <div style="text-align: center; padding: 20px;">
+                <img src="data:image/jpeg;base64,{logo_data}" width="280" 
+                     style="mix-blend-mode: screen; filter: drop-shadow(0 0 15px {st.session_state.theme_color});">
+            </div>
+        ''', unsafe_allow_html=True)
+    
+    # เมนูหลักแบบเดิม (ปุ่มกดแยก)
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("⏭️ เพลงถัดไป"):
-            st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
-            st.rerun()
+        btn_core = st.button("🚀 แกนหลัก")
+        btn_comms = st.button("💬 การสื่อสาร")
     with c2:
-        if st.button("🎲 สุ่มเพลง"):
-            st.session_state.song_index = random.randint(0, len(music_files) - 1)
-            st.rerun()
+        btn_radar = st.button("🛰️ เรดาร์")
+        btn_music = st.button("🎧 ห้องพัก")
 
-    # --- 5. JAVASCRIPT: แบบปลอดภัย 100% ---
-    js_code = """
-    <script>
-    var fadeDuration = 12; 
-    function handleAudio() {
-        var audio = window.parent.document.querySelector('audio');
-        var buttons = window.parent.document.querySelectorAll('button');
-        if (audio) {
-            // ระบบเสียง Fade
-            if (audio.currentTime < fadeDuration && !audio.paused) {
-                audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
-            } else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {
-                audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
-            } else { audio.volume = 1; }
+    # จัดการการเปลี่ยนหน้า
+    if btn_core: st.session_state.active_room = "🚀 แกนหลัก"
+    if btn_radar: st.session_state.active_room = "🛰️ เรดาร์"
+    if btn_comms: st.session_state.active_room = "💬 การสื่อสาร"
+    if btn_music: st.session_state.active_room = "🎧 ห้องพัก"
 
-            // ระบบเล่นเพลงถัดไป
-            audio.onended = function() {
-                for (var i = 0; i < buttons.length; i++) {
-                    if (buttons[i].textContent.includes('เพลงถัดไป')) {
-                        buttons[i].click(); break;
-                    }
-                }
-            };
-            
-            // Auto Play เบื้องต้น
-            if (audio.paused && audio.currentTime == 0) {
-                audio.play().catch(e => console.log("Interaction needed"));
-            }
-        }
-    }
-    setInterval(handleAudio, 500);
-    </script>
-    """
-    components.html(js_code, height=0)
+    st.markdown("---")
 
-else:
-    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์ครับ")
+    # แสดงห้องตามที่เลือก
+    if st.session_state.active_room == "🚀 แกนหลัก":
+        room_core()
+    elif st.session_state.active_room == "🛰️ เรดาร์":
+        room_radar()
+    elif st.session_state.active_room == "💬 การสื่อสาร":
+        room_comms()
+    elif st.session_state.active_room == "🎧 ห้องพัก":
+        room_music()
+
+    with st.sidebar:
+        st.title("⚙️ SETTINGS")
+        st.session_state.theme_color = st.color_picker("🚨 สีหลัก (นีออน)", st.session_state.theme_color)
+        st.session_state.bg_color = st.color_picker("🌑 สีพื้นหลัง", st.session_state.bg_color)
+        st.write(f'**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+
+if __name__ == "__main__":
+    main()
