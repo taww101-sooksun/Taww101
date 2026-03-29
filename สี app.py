@@ -1,8 +1,8 @@
-นะimport streamlit as st
+import streamlit as st
 import os 
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
@@ -14,11 +14,14 @@ from streamlit_js_eval import get_geolocation
 # 1. กลไกกลาง (Core Engine)
 # ==========================================
 def init_system():
+    # --- ระบบควบคุม 3 ชุดสี ---
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
     if 'text_color' not in st.session_state: st.session_state.text_color = "#FFFFFF"
+    
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
         
+    # เชื่อมต่อ Firebase (ใช้ค่าจาก Secrets)
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
@@ -31,9 +34,8 @@ def init_system():
 
 def save_log(action):
     try:
-        now = datetime.utcnow() + timedelta(hours=7)
-        log_path = 'synapse_logs/' + now.strftime("%Y-%m-%d")
-        db.reference(log_path).push({
+        now = datetime.now()
+        db.reference(f'synapse_logs/{now.strftime("%Y-%m-%d")}').push({
             'time': now.strftime("%H:%M:%S"),
             'action': action,
             'user': 'Ta101'
@@ -43,29 +45,22 @@ def save_log(action):
 # ==========================================
 # 2. พื้นที่เก็บห้อง (The Rooms / Modules)
 # ==========================================
+
 def room_core():
     st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
-    now = datetime.utcnow() + timedelta(hours=7) 
-    seconds_since_midnight = (now.hour * 3600) + (now.minute * 60) + now.second
-    day_percent = seconds_since_midnight / 86400
-    
-    st.markdown(f"""
-        <div style="border: 1px solid {st.session_state.theme_color}; padding: 10px; border-radius: 5px; text-align: center;">
-            <h3 style="margin: 0; color: {st.session_state.theme_color}; font-family: monospace;">{now.strftime('%H:%M:%S')}</h3>
-            <small style="color: {st.session_state.theme_color}; opacity: 0.8;">THAILAND TIME</small>
-        </div>
-    """, unsafe_allow_html=True)
-        
-    st.write(f"⏳ Day Progress: {day_percent*100:.2f}%")
-    st.progress(min(day_percent, 1.0))
-    st.markdown("---")
     st.info("สถานะระบบ: ONLINE")
-    st.write("รหัสผู้ใช้งาน: **Ta101**")
+    st.write(f"รหัสผู้ใช้งาน: **Ta101**")
     st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
+    st.markdown("---")
+    st.write("📊 สถิติระบบวันนี้:")
+    st.code(f"Time: {datetime.now().strftime('%H:%M:%S')}\nUser: Ta101\nStatus: Active")
 
 def room_radar():
-    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม")
+    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม (Multi-User Radar)")
+    
+    # ดึงพิกัดตัวเอง
     loc = get_geolocation()
+    # ดึงพิกัดทุกคนจาก Firebase
     all_users = db.reference('users').get()
     
     start_lat, start_lon = 13.7367, 100.5231
@@ -73,198 +68,160 @@ def room_radar():
         start_lat = loc['coords']['latitude']
         start_lon = loc['coords']['longitude']
 
-    # จุดที่ 1: URL แผนที่ ห้ามใช้ f-string ครอบบรรทัดนี้เด็ดขาด
-    tile_url = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-    
+    # สร้างแผนที่ดาวเทียม
     m = folium.Map(location=[start_lat, start_lon], zoom_start=15, 
-                   tiles=tile_url, 
+                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
                    attr="Google Satellite")
 
+    # วางหมุดทุกคนที่ออนไลน์
     if all_users:
         for user_id, data in all_users.items():
             u_lat = data.get('lat')
             u_lon = data.get('lon')
             u_ts = data.get('ts', 0)
+            
             if u_lat and u_lon:
+                # เช็คสถานะ (Online ภายใน 1 ชม.)
                 is_active = (time.time() - u_ts) < 3600
                 icon_color = 'red' if user_id == "Ta101" else ('green' if is_active else 'gray')
-                # จุดที่ 2: tooltip รับค่าตัวแปรโดยตรง ไม่ต้องครอบ f-string ถ้าไม่มีข้อความผสม
-                folium.Marker([u_lat, u_lon], 
-                              tooltip=user_id,
-                              icon=folium.Icon(color=icon_color, icon='user', prefix='fa')).add_to(m)
+                
+                folium.Marker(
+                    [u_lat, u_lon],
+                    popup=f"User: {user_id}",
+                    tooltip=f"{user_id} ({'Active' if is_active else 'Inactive'})",
+                    icon=folium.Icon(color=icon_color, icon='user', prefix='fa')
+                ).add_to(m)
 
     st_folium(m, width="100%", height=500)
+
     if loc:
-        if st.button("📡 กระจายพิกัดของฉัน", use_container_width=True):
-            db.reference('users/Ta101').update({'lat': start_lat, 'lon': start_lon, 'ts': time.time()})
+        if st.button("📡 กระจายพิกัดของฉันให้ทุกคนเห็น", use_container_width=True):
+            db.reference('users/Ta101').update({
+                'lat': loc['coords']['latitude'],
+                'lon': loc['coords']['longitude'],
+                'ts': time.time()
+            })
+            save_log("BROADCASTED LOCATION")
+            st.toast("ส่งพิกัดเข้าศูนย์บัญชาการแล้ว!")
             st.rerun()
 
 def room_comms():
     st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
-    chat_tabs = st.tabs(["🌐 Lobby", "🔐 Private"])
+    
+    chat_tabs = st.tabs(["🌐 Lobby (สาธารณะ)", "🔐 Private (ส่วนตัว)"])
+    
     with chat_tabs[0]:
         chat_ref = db.reference('public_chat')
         with st.form("public_form", clear_on_submit=True):
-            msg = st.text_input("ส่งสัญญาณ...")
-            if st.form_submit_button("SEND"):
-                if msg: 
+            msg = st.text_input("ส่งสัญญาณเข้า Lobby...")
+            if st.form_submit_button("SEND TO LOBBY"):
+                if msg:
                     chat_ref.push({'user': 'Ta101', 'msg': msg, 'ts': time.time()})
+                    save_log("SENT LOBBY MSG")
                     st.rerun()
+        
         msgs = chat_ref.order_by_key().limit_to_last(10).get()
         if msgs:
             for m in reversed(list(msgs.values())):
-                st.write(f"🟢 **{m.get('user')}:** {m.get('msg')}")
+                u = m.get('user', 'ระบบ')
+                txt = m.get('msg', '...')
+                st.write(f"🟢 **{u}:** {txt}")
+
+    with chat_tabs[1]:
+        target_id = st.text_input("ระบุรหัสผู้รับ:", value="Admin")
+        # สร้าง path ลับเฉพาะคนรับคนส่ง
+        private_ref = db.reference(f'private_messages/Ta101_{target_id}')
+        
+        with st.form("private_form", clear_on_submit=True):
+            p_msg = st.text_area("ระบุข้อความลับ...")
+            if st.form_submit_button("SEND PRIVATE"):
+                if p_msg:
+                    private_ref.push({'sender': 'Ta101', 'msg': p_msg, 'ts': time.time()})
+                    save_log(f"SENT PRIVATE TO {target_id}")
+                    st.rerun()
+        
+        p_msgs = private_ref.order_by_key().limit_to_last(5).get()
+        if p_msgs:
+            st.markdown("---")
+            for pm in reversed(list(p_msgs.values())):
+                st.caption(f"🔒 {pm.get('sender')}: {pm.get('msg')}")
 
 def room_music():
-    st.subheader("🎧 SYNAPSE ROOMS")
+    st.subheader("🎧 SYNAPSE ROOMS (BETA V5)")
     music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
     
     if not music_files:
-        st.warning("ไม่พบไฟล์เพลงใน Server")
+        st.warning("⚠️ ไม่พบไฟล์เพลง .mp3")
         return
 
-    # ดึงเพลงปัจจุบัน
     current_song = music_files[st.session_state.song_index]
-    song_name = os.path.splitext(current_song)[0]
-    cover_art = f"{song_name}.jpg"
+    base_name = os.path.splitext(current_song)[0]
+
+    st.markdown(f"<div style='border:2px solid {st.session_state.theme_color}; padding:10px; border-radius:10px; text-align:center;'>NOW PLAYING: {current_song}</div>", unsafe_allow_html=True)
     
-    # ส่วนแสดงผลปกและเครื่องเล่น
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if os.path.exists(cover_art):
-            st.image(cover_art, use_container_width=True)
-        else:
-            st.markdown(f"<div style='width:100%; height:150px; background:{st.session_state.theme_color}; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#000; font-weight:bold;'>🎵 NO COVER</div>", unsafe_allow_html=True)
-    
-    with col2:
-        st.write(f"กำลังเล่น: \n**{current_song}**")
-        
-        # --- กลไกเล่นเพลงต่อเนื่อง (Custom Audio Bridge) ---
-        # เราจะใช้ HTML Audio แทน st.audio ปกติเพื่อดักจับเหตุการณ์ 'ended'
-        audio_html = f"""
-            <audio id="audio-player" controls autoplay style="width: 100%;">
-                <source src="app/static/{current_song}" type="audio/mp3">
-            </audio>
-            <script>
-                var audio = document.getElementById('audio-player');
-                audio.onended = function() {{
-                    // เมื่อเพลงจบ ให้ส่งสัญญาณไปที่ปุ่มลับเพื่อเปลี่ยนเพลง
-                    window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*');
-                }};
-            </script>
-        """
-        # หมายเหตุ: การดึงไฟล์ผ่าน app/static/ อาจต้องตั้งค่าเมาท์โฟลเดอร์เพิ่ม 
-        # เพื่อความง่ายและชัวร์ที่สุด ให้ใช้ st.audio แบบเดิมแต่เพิ่มปุ่ม "ถัดไป" ที่ทำงานอัตโนมัติ
+    col_vis, col_list = st.columns([3, 2])
+    with col_vis:
+        if os.path.exists(f"{base_name}.mp4"):
+            st.video(f"{base_name}.mp4", loop=True, autoplay=True, muted=True)
+        elif os.path.exists(f"{base_name}.jpg"):
+            st.image(f"{base_name}.jpg", use_container_width=True)
         st.audio(current_song, autoplay=True)
 
-    # ปุ่มควบคุม
-    c1, c2, c3 = st.columns(3)
-    if c1.button("⏮️ ก่อนหน้า"):
-        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
-        st.rerun()
-    if c2.button("⏹️ หยุด"):
-        st.stop()
-    if c3.button("⏭️ ถัดไป"):
-        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
-        st.rerun()
+    with col_list:
+        st.write("🎧 PLAYLIST")
+        for i, song in enumerate(music_files):
+            btn_label = f"▶️ {song}" if i == st.session_state.song_index else f"🎵 {song}"
+            if st.button(btn_label, key=f"s_{i}", use_container_width=True):
+                st.session_state.song_index = i
+                st.rerun()
 
-    st.markdown("---")
-    # รายการเพลง
-    for i, song in enumerate(music_files):
-        highlight = "active-song" if i == st.session_state.song_index else ""
-        if st.button(f"{'▶️' if i == st.session_state.song_index else '🎵'} {song}", key=f"s_{i}", use_container_width=True):
-            st.session_state.song_index = i
-            st.rerun()
-
-
-def room_sensor():
-    st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง")
-    theme_hex = st.session_state.theme_color
-    
-    # จุดที่ 3: JavaScript ใน f-string ต้องใช้ปีกกาซ้อน {{ }} ทุกจุดที่เป็นโค้ด JS
-    audio_js = f"""
-    <div style="background-color: #000; color: {theme_hex}; padding: 20px; border: 2px solid {theme_hex}; border-radius: 15px; text-align: center; font-family: monospace;">
-        <h2 id="status">🔴 STANDBY</h2>
-        <div style="display: flex; justify-content: space-around;">
-            <div><h3>dB</h3><h1 id="db_val">0</h1></div>
-            <div><h3>Hz</h3><h1 id="hz_val">0</h1></div>
-        </div>
-    </div>
+    # ระบบเล่นต่อเนื่อง
+    js_next = """
     <script>
-    async function startAudio() {{
-        try {{
-            const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioContext.state === 'suspended') {{ await audioContext.resume(); }}
-            const analyser = audioContext.createAnalyser();
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyser);
-            analyser.fftSize = 256;
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            function update() {{
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0, maxVal = 0, maxIdx = 0;
-                for (let i = 0; i < bufferLength; i++) {{
-                    sum += dataArray[i];
-                    if (dataArray[i] > maxVal) {{ maxVal = dataArray[i]; maxIdx = i; }}
-                }}
-                let db = Math.round((sum / bufferLength) * 3);
-                let hz = Math.round(maxIdx * audioContext.sampleRate / analyser.fftSize);
-                document.getElementById('db_val').innerText = db;
-                document.getElementById('hz_val').innerText = hz;
-                document.getElementById('status').innerText = db > 5 ? "🟢 SENSING" : "🟡 IDLE";
-                requestAnimationFrame(update);
-            }}
-            update();
-        }} catch (err) {{ 
-            document.getElementById('status').innerText = "❌ ERROR: " + err.message; 
-        }}
-    }}
-    window.addEventListener('click', () => {{ startAudio(); }}, {{ once: true }});
-    startAudio();
+    var audio = window.parent.document.querySelector('audio');
+    if (audio) {
+        audio.onended = function() {
+            var btns = window.parent.document.querySelectorAll('button');
+            for (var i=0; i<btns.length; i++) {
+                if (btns[i].textContent.includes('🎵') || btns[i].textContent.includes('▶️')) {
+                    btns[(i+1)%btns.length].click(); break;
+                }
+            }
+        };
+    }
     </script>
     """
-    components.html(audio_js, height=250)
+    components.html(js_next, height=0)
 
 # ==========================================
-# 3. แผงวงจรหลัก
+# 3. แผงวงจรหลัก (Main Switchboard)
 # ==========================================
 def main():
     init_system()
     
-    # จุดที่ 4: CSS ใน f-string ต้องใช้ปีกกาซ้อน {{ }}
+    # CSS คุมบรรยากาศ
     st.markdown(f"""
         <style>
-        .stApp {{ 
-            background-color: {st.session_state.bg_color} !important; 
-            color: {st.session_state.text_color} !important; 
-        }}
-        .stButton>button {{ 
-            border: 2px solid {st.session_state.theme_color} !important; 
-            color: {st.session_state.theme_color} !important; 
-            background: transparent !important; 
-        }}
-        h1, h2, h3, p, span, div, label {{ 
-            color: {st.session_state.text_color} !important; 
-        }}
+        .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.text_color} !important; }}
+        .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; }}
+        h1, h2, h3, p, span, div, label {{ color: {st.session_state.text_color} !important; }}
+        .stTabs [data-baseweb="tab-list"] {{ background-color: transparent !important; }}
         </style>
         """, unsafe_allow_html=True)
 
     with st.sidebar:
         st.title("⚙️ SETTINGS")
-        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
-        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
-        st.session_state.text_color = st.color_picker("✍️ ข้อความ", st.session_state.text_color)
+        st.session_state.theme_color = st.color_picker("🚨 สีหลัก (นีออน)", st.session_state.theme_color)
+        st.session_state.bg_color = st.color_picker("🌑 สีพื้นหลัง", st.session_state.bg_color)
+        st.session_state.text_color = st.color_picker("✍️ สีข้อความ", st.session_state.text_color)
         st.markdown("---")
-        st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+        st.write(f'**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
     room_map = {
         "🚀 แกนหลัก": room_core,
         "🛰️ เรดาร์": room_radar,
-        "💬 สื่อสาร": room_comms,
-        "🎧 เพลง": room_music,
-        "📟 วัดเสียง": room_sensor
+        "💬 การสื่อสาร": room_comms,
+        "🎧 ห้องพัก": room_music
     }
     
     tabs = st.tabs(list(room_map.keys()))
