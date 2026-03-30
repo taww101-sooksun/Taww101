@@ -1,39 +1,4 @@
-import streamlit as st
-import os 
-import time
-import firebase_admin
-from firebase_admin import credentials, db
-import streamlit.components.v1 as components
-import folium
-from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
-import hashlib
-
-# ==========================================
-# 1. ระบบพื้นฐาน & ธีม (Matrix, Ocean, Ember, Rainbow)
-# ==========================================
-def init_system():
-    if 'theme_set' not in st.session_state: st.session_state.theme_set = "Matrix"
-    if 'song_index' not in st.session_state: st.session_state.song_index = 0
-    if 'auth_status' not in st.session_state: st.session_state.auth_status = False
-    if 'user' not in st.session_state: st.session_state.user = None
-    if 'active_target' not in st.session_state: st.session_state.active_target = None 
-
-    if not firebase_admin._apps:
-        try:
-            fb_creds = dict(st.secrets["firebase_credentials"])
-            cred = credentials.Certificate(fb_creds)
-            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
-        except Exception as e:
-            st.error(f"🛰️ Connection Error: {e}")
-
-def hash_pw(password):
-    return hashlib.sha256(str.encode(password)).hexdigest()
-
-def apply_theme():
-    themes = {
-        "Matrix":  {"bg": "#000000", "main": "#39FF14", "text": "#FFFFFF", "chat_user": "#39FF14", "chat_friend": "#333"},
-        "Ocean":   {"bg": "#001219", "main": "#00A8E8", "text": "#E0FBFC", "chat_user": "#00A8E8", "chat_friend": "#005F73"},
+ {"bg": "#001219", "main": "#00A8E8", "text": "#E0FBFC", "chat_user": "#00A8E8", "chat_friend": "#005F73"},
         "Ember":   {"bg": "#1a0000", "main": "#FF4D4D", "text": "#FFFFFF", "chat_user": "#FF4D4D", "chat_friend": "#990000"},
         "Rainbow": {"bg": "#FFFFFF", "main": "#FF69B4", "text": "#000000", "chat_user": "#FFB6C1", "chat_friend": "#E0FFFF"}
     }
