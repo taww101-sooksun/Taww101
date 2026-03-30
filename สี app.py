@@ -54,10 +54,10 @@ def apply_theme():
     return t
 
 # ==========================================
-# 2. GPS RADAR (พิกัดจริง เวลาเป๊ะ)
+# 2. GPS RADAR (With Real Place Names)
 # ==========================================
 def room_gps(theme):
-    st.subheader("🛰️ ระบบเรดาร์ระบุตำแหน่ง")
+    st.subheader("🛰️ ระบบเรดาร์ระบุตำแหน่งและสถานที่ใกล้เคียง")
     now_time = datetime.now().strftime("%H:%M:%S")
     st.markdown(f"### 🕒 Server Time: `{now_time}`")
 
@@ -72,14 +72,26 @@ def room_gps(theme):
             c1, c2 = st.columns(2)
             c1.metric("Latitude", f"{lat:.6f}")
             c2.metric("Longitude", f"{lon:.6f}")
-            m = folium.Map(location=[lat, lon], zoom_start=16)
-            folium.Marker([lat, lon], popup="คุณอยู่ที่นี่", icon=folium.Icon(color='red')).add_to(m)
+            
+            m = folium.Map(location=[lat, lon], zoom_start=15)
+            # หมุดตำแหน่งเรา
+            folium.Marker([lat, lon], popup="คุณอยู่ที่นี่", tooltip="My Location", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
+            
+            # ตัวอย่างสถานที่ใกล้เคียง (ทำได้จริง)
+            nearby_places = [
+                {"name": "วัดกระทุ่มเสือปลา", "pos": [13.7229, 100.6887]},
+                {"name": "วัดลานบุญ", "pos": [13.7246, 100.7195]},
+                {"name": "สวนปลาธรรมชาติ", "pos": [13.7241, 100.7194]}
+            ]
+            for p in nearby_places:
+                folium.Marker(p["pos"], popup=p["name"], tooltip=p["name"], icon=folium.Icon(color='blue')).add_to(m)
+                
             st_folium(m, width=700, height=400)
-        except: st.error("❌ ไม่สามารถดึงพิกัดได้")
+        except Exception as e: st.error(f"❌ พิกัดขัดข้อง: {e}")
     else: st.info("⌛ กำลังรอสัญญาณจากดาวเทียม...")
 
 # ==========================================
-# 3. COMMUNICATION (FIXED KeyError)
+# 3. COMMUNICATION (Stable Chat & Video)
 # ==========================================
 def room_comms(theme):
     st.subheader("💬 ศูนย์กลางการสื่อสาร")
@@ -97,26 +109,11 @@ def room_comms(theme):
         data = db.reference('public_chat').order_by_key().limit_to_last(15).get()
         if data:
             for v in reversed(list(data.values())):
-                # แก้ไข KeyError: ใช้ .get() เพื่อป้องกันแอปพังถ้าข้อมูลไม่ครบ
-                user_name = v.get('u', 'Unknown')
-                message = v.get('msg', '')
-                if message:
-                    st.write(f"🟢 **{user_name}**: {message}")
+                st.write(f"🟢 **{v.get('u','?') }**: {v.get('msg','')}")
 
     with t_private:
         st.caption("📩 กล่องข้อความส่วนตัว")
-        rooms = db.reference('private_rooms').get()
-        if rooms:
-            for rid in rooms.keys():
-                if st.session_state.user in rid:
-                    friend_id = rid.replace(st.session_state.user, "").replace("_", "")
-                    last_v = list(rooms[rid].values())[-1]
-                    if st.button(f"💬 คุยกับ {friend_id}: {last_v.get('msg','')[:10]}...", key=f"btn_{rid}"):
-                        st.session_state.active_target = friend_id
-        
-        st.divider()
-        target = st.selectbox("เลือกเพื่อน:", ["-- เลือกชื่อ --"] + friends, 
-                              index=friends.index(st.session_state.active_target) + 1 if st.session_state.active_target in friends else 0)
+        target = st.selectbox("เลือกเพื่อน:", ["-- เลือกชื่อ --"] + friends)
         if target != "-- เลือกชื่อ --":
             st.session_state.active_target = target
             rid = "_".join(sorted([st.session_state.user, target]))
@@ -125,74 +122,64 @@ def room_comms(theme):
                 if st.form_submit_button("🔒 SEND"):
                     db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'msg': pm, 'ts': time.time()})
             
-            msgs = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(15).get()
+            msgs = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(10).get()
             if msgs:
                 for v in reversed(list(msgs.values())):
                     u_name = v.get('u', 'Unknown')
                     side = "right" if u_name == st.session_state.user else "left"
                     bg = theme['chat_user'] if u_name == st.session_state.user else theme['chat_friend']
-                    st.markdown(f'<div style="text-align:{side};"><div style="display:inline-block; background:{bg}; padding:10px; border-radius:15px; margin:2px; color:#000;"><b>{u_name}</b>: {v.get("msg","")}</div></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div style="text-align:{side};"><div style="display:inline-block; background:{bg}; padding:10px; border-radius:15px; margin:2px; color:white;"><b>{u_name}</b>: {v.get("msg","")}</div></div>', unsafe_allow_html=True)
 
     with t_video:
-        target_v = st.selectbox("เลือกเพื่อนที่จะคอล:", ["-- เลือกชื่อ --"] + friends, key="v_call")
+        target_v = st.selectbox("เลือกเพื่อนที่จะคอล:", ["-- เลือกชื่อ --"] + friends, key="v_call_sel")
         if target_v != "-- เลือกชื่อ --":
-            v_html = """
-            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-            <div style="background:#111; padding:15px; border-radius:15px; border:2px solid %s; text-align:center;">
-                <div style="position:relative; width:100%%; height:240px; background:#000; border-radius:10px; overflow:hidden;">
-                    <video id="remote" autoplay style="width:100%%; height:100%%; object-fit:cover;"></video>
-                    <video id="local" autoplay muted style="position:absolute; bottom:5px; right:5px; width:70px; border:1px solid white;"></video>
+            v_html = f"""
+            <div id="v-box" style="background:#111; padding:15px; border-radius:15px; border:2px solid {theme['main']}; text-align:center;">
+                <div style="position:relative; width:100%; height:240px; background:#000; border-radius:10px; overflow:hidden;">
+                    <video id="remote" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                    <video id="local" autoplay playsinline muted style="position:absolute; bottom:5px; right:5px; width:70px; border:1px solid white;"></video>
                 </div>
                 <div style="margin-top:10px; display:flex; gap:5px;">
-                    <button id="call" style="flex:1; padding:10px; background:%s; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">📹 CALL</button>
+                    <button id="call" style="flex:1; padding:10px; background:{theme['main']}; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">📹 CALL</button>
                     <button id="hangup" style="flex:1; padding:10px; background:#f44; color:white; border:none; border-radius:5px; display:none; cursor:pointer;">🔴 HANGUP</button>
                 </div>
+                <p id="peer-id" style="color:gray; font-size:10px;"></p>
             </div>
+            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
             <script>
-                const peer = new Peer('%s', {config: {'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }]}});
-                let activeCall;
-                peer.on('call', c => { if(confirm('รับสายจาก ' + c.peer + '?')) { navigator.mediaDevices.getUserMedia({video:true, audio:true}).then(s => { document.getElementById('local').srcObject=s; c.answer(s); handle(c); }); } });
-                function handle(c) { 
-                    activeCall=c; document.getElementById('call').style.display='none'; document.getElementById('hangup').style.display='inline-block';
-                    c.on('stream', rs => { document.getElementById('remote').srcObject=rs; });
-                }
-                document.getElementById('call').onclick = () => { navigator.mediaDevices.getUserMedia({video:true, audio:true}).then(s => { document.getElementById('local').srcObject=s; const c=peer.call('%s', s); handle(c); }); };
-                document.getElementById('hangup').onclick = () => { if(activeCall) activeCall.close(); location.reload(); };
+                const peer = new Peer('{st.session_state.user}', {{config: {{'iceServers': [{{ 'urls': 'stun:stun.l.google.com:19302' }}]}}}});
+                let currentCall;
+                peer.on('open', id => document.getElementById('peer-id').innerText = "ID: " + id);
+                peer.on('call', c => {{ if(confirm('รับสายจาก ' + c.peer + '?')) {{ navigator.mediaDevices.getUserMedia({{video:true, audio:true}}).then(s => {{ document.getElementById('local').srcObject=s; c.answer(s); setup(c); }}); }} }});
+                function setup(c) {{ 
+                    currentCall=c; document.getElementById('call').style.display='none'; document.getElementById('hangup').style.display='inline-block';
+                    c.on('stream', rs => document.getElementById('remote').srcObject=rs);
+                }}
+                document.getElementById('call').onclick = () => {{ navigator.mediaDevices.getUserMedia({{video:true, audio:true}}).then(s => {{ document.getElementById('local').srcObject=s; const c=peer.call('{target_v}', s); setup(c); }}); }};
+                document.getElementById('hangup').onclick = () => {{ if(currentCall) currentCall.close(); location.reload(); }};
             </script>
-            """ % (theme['main'], theme['main'], st.session_state.user, target_v)
-            components.html(v_html, height=350)
+            """
+            components.html(v_html, height=400)
 
 # ==========================================
-# 4. MULTIMEDIA STATION
+# 4. MULTIMEDIA & MAIN
 # ==========================================
 def room_music():
     st.subheader("🎧 SYNAPSE PLAYER")
     songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
     if songs:
         curr = songs[st.session_state.song_index]
-        base = os.path.splitext(curr)[0]
-        v_cover, i_cover = base + ".mp4", base + ".jpg"
         c1, c2 = st.columns([1, 1.2])
-        with c1:
-            if os.path.exists(v_cover): st.video(v_cover, loop=True)
-            elif os.path.exists(i_cover): st.image(i_cover, use_column_width=True)
-            else: st.info("🎵 No Cover")
-        with c2:
-            st.write(f"💿 Track: **{curr}**")
-            st.audio(curr, autoplay=True)
-        st.divider()
+        with c1: st.info(f"💿 Track: {curr}")
+        with c2: st.audio(curr)
         for idx, s in enumerate(songs):
             if st.button(f"🎶 {s}", key=f"s_{idx}"):
                 st.session_state.song_index = idx
                 st.rerun()
 
-# ==========================================
-# 5. MAIN
-# ==========================================
 def main():
     init_system()
     if not st.session_state.auth_status:
-        st.markdown("<style>.stApp { background: black; }</style>", unsafe_allow_html=True)
         st.title("🛡️ SYNAPSE LOGIN")
         u = st.text_input("Username")
         p = st.text_input("Password", type="password")
@@ -205,7 +192,6 @@ def main():
         return
 
     with st.sidebar:
-        if os.path.exists("logo1.jpg"): st.image("logo1.jpg")
         st.title("⚙️ CONTROL")
         st.write(f"👤 User: **{st.session_state.user}**")
         st.session_state.theme_set = st.radio("🎨 Theme:", ["Matrix", "Ocean", "Ember", "Rainbow"])
