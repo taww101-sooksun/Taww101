@@ -1,14 +1,16 @@
 import streamlit as st
 import os 
 import time
-from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
+import folium
+from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
 import hashlib
 
 # ==========================================
-# 1. การตั้งค่าระบบพื้นฐาน (Core Settings)
+# 1. ระบบพื้นฐาน & ธีม (Matrix, Ocean, Ember, Rainbow)
 # ==========================================
 def init_system():
     if 'theme_set' not in st.session_state: st.session_state.theme_set = "Matrix"
@@ -23,14 +25,11 @@ def init_system():
             cred = credentials.Certificate(fb_creds)
             firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
         except Exception as e:
-            st.error(f"🛰️ Firebase Connection Error: {e}")
+            st.error(f"🛰️ Connection Error: {e}")
 
 def hash_pw(password):
     return hashlib.sha256(str.encode(password)).hexdigest()
 
-# ==========================================
-# 2. ระบบจัดการธีมสี (4 ชุดสี รวมสายรุ้ง)
-# ==========================================
 def apply_theme():
     themes = {
         "Matrix":  {"bg": "#000000", "main": "#39FF14", "text": "#FFFFFF", "chat_user": "#39FF14", "chat_friend": "#333"},
@@ -54,111 +53,124 @@ def apply_theme():
     return t
 
 # ==========================================
-# 3. หน้าเข้าสู่ระบบ (Authentication)
+# 2. ฟังก์ชันหลัก (GPS, Comms, Music)
 # ==========================================
-def login_page():
-    st.title("🛡️ SYNAPSE SECURITY GATE")
-    t1, t2 = st.tabs(["🔐 Login", "📝 Register"])
-    with t1:
-        u = st.text_input("ชื่อผู้ใช้", key="l_u")
-        p = st.text_input("รหัสผ่าน", type="password", key="l_p")
-        if st.button("เข้าสู่ระบบ", use_container_width=True):
-            data = db.reference(f'accounts/{u}').get()
-            if data and data.get('pw') == hash_pw(p):
-                st.session_state.auth_status, st.session_state.user = True, u
-                st.rerun()
-            else: st.error("❌ ข้อมูลไม่ถูกต้อง")
-    with t2:
-        ru = st.text_input("New User", key="r_u")
-        rp = st.text_input("New PW", type="password", key="r_p")
-        if st.button("สร้างบัญชี", use_container_width=True):
-            if ru and rp:
-                db.reference(f'accounts/{ru}').set({'pw': hash_pw(rp)})
-                st.success("✅ สำเร็จ!")
+def room_gps(theme):
+    st.subheader("🛰️ เรดาร์ระบุตำแหน่ง")
+    loc = get_geolocation()
+    if loc:
+        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
+        db.reference(f'locations/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
+        m = folium.Map(location=[lat, lon], zoom_start=15)
+        folium.Marker([lat, lon], popup="คุณ", icon=folium.Icon(color='red')).add_to(m)
+        st_folium(m, width=700, height=400)
+    else: st.info("⌛ รอพิกัด (กรุณากด Allow)...")
 
-# ==========================================
-# 4. ห้องสื่อสาร (Comms Room - FIXED)
-# ==========================================
 def room_comms(theme):
-    st.subheader("💬 ระบบสื่อสาร SYNAPSE")
-    tab_pub, tab_priv, tab_call = st.tabs(["🌐 Lobby", "🔐 แชตส่วนตัว", "📞 สายตรง (Call)"])
+    st.subheader("💬 ศูนย์สื่อสาร (Video Enabled)")
+    tab_pub, tab_priv, tab_call = st.tabs(["🌐 Lobby", "🔐 แชตส่วนตัว", "📹 วิดีโอคอล"])
     
     all_users = db.reference('accounts').get()
     friends = [uid for uid in all_users.keys() if uid != st.session_state.user] if all_users else []
 
     with tab_pub:
         with st.form("pub_chat", clear_on_submit=True):
-            msg = st.text_input("ส่งข้อความถึงทุกคน...")
+            msg = st.text_input("ส่งข้อความ...")
             if st.form_submit_button("SEND") and msg:
                 db.reference('public_chat').push({'u': st.session_state.user, 'msg': msg, 'ts': time.time()})
-        msgs = db.reference('public_chat').order_by_key().limit_to_last(15).get()
+        msgs = db.reference('public_chat').order_by_key().limit_to_last(10).get()
         if msgs:
-            for m in reversed(list(msgs.values())):
-                st.write(f"🟢 **{m.get('u')}**: {m.get('msg')}")
+            for m in reversed(list(msgs.values())): st.write(f"🟢 **{m.get('u')}**: {m.get('msg')}")
 
     with tab_priv:
-        st.caption("📩 ข้อความที่ทักมา")
         all_rooms = db.reference('private_rooms').get()
         if all_rooms:
             for rid in all_rooms.keys():
                 if st.session_state.user in rid:
                     f_name = rid.replace(st.session_state.user, "").replace("_", "")
                     last_m = list(all_rooms[rid].values())[-1]
-                    # แก้จุด Error: เปลี่ยนจาก pi เป็น last_m
                     if st.button(f"💬 {f_name}: {last_m['msg'][:15]}...", key=f"btn_{rid}"):
                         st.session_state.active_target = f_name
-        
         st.divider()
         target_p = st.selectbox("เลือกเพื่อน:", ["-- เลือกชื่อ --"] + friends, 
                                 index=friends.index(st.session_state.active_target) + 1 if st.session_state.active_target in friends else 0)
-        
         if target_p != "-- เลือกชื่อ --":
             st.session_state.active_target = target_p
             room_id = "_".join(sorted([st.session_state.user, target_p]))
-            with st.form("priv_chat", clear_on_submit=True):
-                pm = st.text_input(f"กระซิบถึง {target_p}...")
+            with st.form("p_chat", clear_on_submit=True):
+                pm = st.text_input(f"คุยกับ {target_p}...")
                 if st.form_submit_button("SEND"):
                     db.reference(f'private_rooms/{room_id}').push({'u': st.session_state.user, 'msg': pm, 'ts': time.time()})
-            
             p_msgs = db.reference(f'private_rooms/{room_id}').order_by_key().limit_to_last(15).get()
             if p_msgs:
                 for pi in reversed(list(p_msgs.values())):
                     align = "right" if pi.get('u') == st.session_state.user else "left"
                     bg = theme['chat_user'] if pi.get('u') == st.session_state.user else theme['chat_friend']
-                    st.markdown(f'<div style="text-align:{align};"><div style="display:inline-block; background:{bg}; padding:8px 12px; border-radius:10px; margin:2px; color:#000;"><b>{pi.get('u')}</b>: {pi.get('msg')}</div></div>', unsafe_allow_html=True)
+                    st.markdown(f'<div style="text-align:{align};"><div style="display:inline-block; background:{bg}; padding:8px 12px; border-radius:10px; margin:2px; color:#000;"><b>{pi.get("u")}</b>: {pi.get("msg")}</div></div>', unsafe_allow_html=True)
 
     with tab_call:
-        target_c = st.selectbox("โทรหาใคร:", ["-- เลือกชื่อ --"] + friends, key="c_sel")
+        target_c = st.selectbox("เลือกเพื่อนที่จะคอล:", ["-- เลือกชื่อ --"] + friends, key="vc_sel")
         if target_c != "-- เลือกชื่อ --":
-            call_html = """
+            # --- อัปเกรดเป็น Video Call ---
+            video_html = """
             <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-            <div style="background:#111; padding:20px; border-radius:15px; border:2px solid %s; text-align:center;">
-                <p style="color:white;">ID: %s -> %s</p>
-                <button id="callBtn" style="padding:15px; background:%s; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">🟢 โทรออก</button>
-                <button id="hangupBtn" style="padding:15px; background:#FF4D4D; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer; display:none;">🔴 วางสาย</button>
-                <audio id="remoteAudio" autoplay></audio>
+            <div style="background:#111; padding:15px; border-radius:15px; border:2px solid %s; text-align:center;">
+                <div style="position:relative; width:100%%; height:250px; background:#000; border-radius:10px; overflow:hidden; margin-bottom:10px;">
+                    <video id="remoteVideo" autoplay style="width:100%%; height:100%%; object-fit:cover;"></video>
+                    <video id="localVideo" autoplay muted style="position:absolute; bottom:10px; right:10px; width:80px; height:60px; border:2px solid white; border-radius:5px; object-fit:cover;"></video>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button id="startVideo" style="flex:1; padding:12px; background:%s; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">📹 เริ่มคอล</button>
+                    <button id="endVideo" style="flex:1; padding:12px; background:#FF4D4D; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; display:none;">🔴 วางสาย</button>
+                </div>
+                <p id="vStatus" style="color:#888; font-size:12px; margin-top:8px;">สถานะ: พร้อมวิดีโอคอล</p>
             </div>
             <script>
                 const peer = new Peer('%s', {config: {'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }]}});
-                let currCall = null;
-                peer.on('call', c => { navigator.mediaDevices.getUserMedia({audio:true}).then(s => { c.answer(s); handle(c); }); });
-                function handle(c) { 
-                    currCall = c; 
-                    document.getElementById('callBtn').style.display='none'; 
-                    document.getElementById('hangupBtn').style.display='inline';
-                    c.on('stream', rs => { document.getElementById('remoteAudio').srcObject = rs; });
-                }
-                document.getElementById('callBtn').onclick = () => { navigator.mediaDevices.getUserMedia({audio:true}).then(s => { const c = peer.call('%s', s); handle(c); }); };
-                document.getElementById('hangupBtn').onclick = () => { if(currCall) currCall.close(); location.reload(); };
-            </script>
-            """ % (theme['main'], st.session_state.user, target_c, theme['main'], st.session_state.user, target_c)
-            components.html(call_html, height=250)
+                let myStream = null;
+                let activeCall = null;
 
-# ==========================================
-# 5. ห้องเพลง & Main
-# ==========================================
+                peer.on('call', call => {
+                    if(confirm('สายเข้าจาก ' + call.peer + ' รับวิดีโอคอลหรือไม่?')) {
+                        navigator.mediaDevices.getUserMedia({video:true, audio:true}).then(stream => {
+                            myStream = stream;
+                            document.getElementById('localVideo').srcObject = stream;
+                            call.answer(stream);
+                            handleCall(call);
+                        });
+                    }
+                });
+
+                function handleCall(call) {
+                    activeCall = call;
+                    document.getElementById('startVideo').style.display = 'none';
+                    document.getElementById('endVideo').style.display = 'inline-block';
+                    document.getElementById('vStatus').innerText = 'สถานะ: กำลังคุย...';
+                    call.on('stream', remoteStream => {
+                        document.getElementById('remoteVideo').srcObject = remoteStream;
+                    });
+                }
+
+                document.getElementById('startVideo').onclick = () => {
+                    navigator.mediaDevices.getUserMedia({video:true, audio:true}).then(stream => {
+                        myStream = stream;
+                        document.getElementById('localVideo').srcObject = stream;
+                        const call = peer.call('%s', stream);
+                        handleCall(call);
+                    }).catch(err => alert('ไม่สามารถเข้าถึงกล้องได้: ' + err));
+                };
+
+                document.getElementById('endVideo').onclick = () => {
+                    if(activeCall) activeCall.close();
+                    if(myStream) myStream.getTracks().forEach(t => t.stop());
+                    location.reload();
+                };
+            </script>
+            """ % (theme['main'], theme['main'], st.session_state.user, target_c)
+            components.html(video_html, height=400)
+
 def room_music():
-    st.subheader("🎧 SYNAPSE MUSIC")
+    st.subheader("🎧 เพลง")
     files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
     if files:
         st.audio(files[st.session_state.song_index], autoplay=True)
@@ -167,22 +179,39 @@ def room_music():
                 st.session_state.song_index = idx
                 st.rerun()
 
+# ==========================================
+# 3. ส่วนประกอบหลัก (Main Application)
+# ==========================================
 def main():
     init_system()
     if not st.session_state.auth_status:
-        login_page()
+        st.title("🛡️ SYNAPSE GATE")
+        t1, t2 = st.tabs(["🔐 Login", "📝 Register"])
+        with t1:
+            u = st.text_input("Username")
+            p = st.text_input("Password", type="password")
+            if st.button("ENTER"):
+                data = db.reference(f'accounts/{u}').get()
+                if data and data.get('pw') == hash_pw(p):
+                    st.session_state.auth_status, st.session_state.user = True, u
+                    st.rerun()
+        with t2:
+            ru = st.text_input("New User")
+            rp = st.text_input("New PW", type="password")
+            if st.button("REGISTER"):
+                if ru and rp: db.reference(f'accounts/{ru}').set({'pw': hash_pw(rp)}); st.success("OK!")
         return
+
     with st.sidebar:
         st.title("⚙️ CONTROL")
         st.write(f"👤 User: **{st.session_state.user}**")
-        st.session_state.theme_set = st.radio("🎨 เลือกธีม:", ["Matrix", "Ocean", "Ember", "Rainbow"])
+        st.session_state.theme_set = st.radio("🎨 ชุดสี:", ["Matrix", "Ocean", "Ember", "Rainbow"])
         if st.button("🚪 LOGOUT"): st.session_state.auth_status = False; st.rerun()
     
     t = apply_theme()
-    menu = {"💬 สื่อสาร": lambda: room_comms(t), "🎧 เพลง": room_music}
+    menu = {"🛰️ เรดาร์": lambda: room_gps(t), "💬 สื่อสาร": lambda: room_comms(t), "🎧 เพลง": room_music}
     tabs = st.tabs(list(menu.keys()))
     for i, func in enumerate(menu.values()):
         with tabs[i]: func()
 
-if __name__ == "__main__":
-    main()
+if __name__ == "__main__": main()
