@@ -182,89 +182,25 @@ def room_comms():
                         });
                     });
                 }
-def room_comms():
-    st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
-    chat_tabs = st.tabs(["🌐 Lobby", "📹 VIDEO CALL"])
-    
-    with chat_tabs[0]:
-        chat_ref = db.reference('public_chat')
-        with st.form("public_form", clear_on_submit=True):
-            msg = st.text_input("ส่งสัญญาณ...")
-            if st.form_submit_button("SEND"):
-                if msg: 
-                    chat_ref.push({'user': st.session_state.user, 'msg': msg, 'ts': time.time()})
-                    st.rerun()
-        msgs = chat_ref.order_by_key().limit_to_last(10).get()
-        if msgs:
-            for m in reversed(list(msgs.values())):
-                st.write(f"🟢 **{m.get('user')}:** {m.get('msg')}")
+            });
 
-    with chat_tabs[1]:
-        st.write("📹 ระบบวิดีโอคอลแบบ Peer-to-Peer")
-        all_u = db.reference('users').get()
-        friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
-        target = st.selectbox("เลือกเพื่อนที่จะคอลหา:", [""] + friends)
-        
-        if target:
-            # รวมระบบ Video Call ไว้ในชุดเดียว
-            v_call_html = """
-            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-            <div style="background:#000; padding:15px; border-radius:15px; border:2px solid %s; text-align:center; font-family:monospace;">
-                <div style="position:relative; width:100%%; height:300px; background:#111; border-radius:10px; overflow:hidden; margin-bottom:10px;">
-                    <video id="remoteVideo" autoplay playsinline style="width:100%%; height:100%%; object-fit:cover;"></video>
-                    <video id="localVideo" autoplay playsinline muted style="position:absolute; bottom:10px; right:10px; width:100px; border:2px solid %s; border-radius:5px;"></video>
-                </div>
-                
-                <p style="color:white; font-size:0.9em;">USER: <b style="color:%s">%s</b> 🛰️ TARGET: <b style="color:%s">%s</b></p>
-                
-                <div style="display:flex; gap:10px;">
-                    <button id="callBtn" style="flex:1; padding:12px; background:%s; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">📹 CALL</button>
-                    <button id="hangupBtn" onclick="location.reload()" style="flex:0.5; padding:12px; background:#ff4444; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">❌ OFF</button>
-                </div>
-                <p id="status" style="color:gray; margin-top:10px; font-size:0.8em;">สถานะ: สแตนบาย</p>
-            </div>
-
-            <script>
-                const peer = new Peer('%s');
-                const localVideo = document.getElementById('localVideo');
-                const remoteVideo = document.getElementById('remoteVideo');
-                const status = document.getElementById('status');
-
-                // ฝั่งรับสาย
-                peer.on('call', call => {
-                    if(confirm("มีสายเข้าจาก " + call.peer + " รับหรือไม่?")) {
-                        navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
-                            localVideo.srcObject = stream;
-                            call.answer(stream);
-                            call.on('stream', remStream => {
-                                remoteVideo.srcObject = remStream;
-                                status.innerText = "🔴 IN CALL";
-                            });
-                        });
-                    }
+            // โทรออก (Outbound)
+            document.getElementById('callBtn').onclick = () => {
+                navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
+                    localVideo.srcObject = stream;
+                    const call = peer.call('%s', stream);
+                    status.innerText = "🟡 กำลังเรียกสาย...";
+                    call.on('stream', remStream => {
+                        remoteVideo.srcObject = remStream;
+                        status.innerText = "🔴 เชื่อมต่อแล้ว";
+                    });
+                }).catch(err => {
+                    alert("เข้าถึงกล้องไม่ได้: " + err);
                 });
-
-                // ฝั่งโทรออก
-                document.getElementById('callBtn').onclick = () => {
-                    navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
-                        localVideo.srcObject = stream;
-                        const call = peer.call('%s', stream);
-                        status.innerText = "🟡 CALLING...";
-                        call.on('stream', remStream => {
-                            remoteVideo.srcObject = remStream;
-                            status.innerText = "🔴 CONNECTED";
-                        });
-                    }).catch(err => { alert("กรุณาเปิดกล้อง/ไมค์: " + err); });
-                };
-            </script>
-            """ % (
-                st.session_state.theme_color, st.session_state.theme_color, 
-                st.session_state.theme_color, st.session_state.user, 
-                st.session_state.theme_color, target, 
-                st.session_state.theme_color, st.session_state.user, target
-            )
-            components.html(v_call_html, height=480)
-
+            };
+        </script>
+        """ % (st.session_state.theme_color, st.session_state.theme_color, st.session_state.user, target, st.session_state.theme_color, st.session_state.user, target)
+        components.html(call_html, height=450)
 
 
 def room_music():
