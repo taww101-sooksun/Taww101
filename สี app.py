@@ -518,39 +518,3 @@ def room_bio():
 
 
 # ==========================================
-# MAIN EXECUTION
-# ==========================================
-
-def main():
-    init_system()
-    
-    with st.sidebar:
-        st.title("⚙️ SETTINGS")
-        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
-        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
-        st.write("---")
-        st.markdown(f'<h3 style="color:{st.session_state.theme_color}">"อยู่นิ่งๆ ไม่เจ็บตัว"</h3>', unsafe_allow_html=True)
-        st.caption("SYNAPSE v2.5 PRO")
-
-    # ปรับแต่ง CSS พื้นหลัง
-    st.markdown(f"""
-        <style>
-        .stApp {{ background-color: {st.session_state.bg_color}; }}
-        h1, h2, h3, p, span, div, label {{ color: white !important; }}
-        </style>
-    """, unsafe_allow_html=True)
-
-    # สร้าง 8 ห้องแยกกันเด็ดขาด
-    tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "🌐 แชตรวม", "🔐 แชตส่วนตัว", "📞 โทร", "🎧 เพลง", "🩺 ตรวจร่างกาย", "📝 ภารกิจ"])
-    
-    with tabs[0]: room_core()
-    with tabs[1]: room_radar()
-    with tabs[2]: room_public()
-    with tabs[3]: room_private()
-    with tabs[4]: room_call()
-    with tabs[5]: room_music()
-    with tabs[6]: room_bio()
-    with tabs[7]: room_mission()
-
-if __name__ == "__main__":
-    main()
