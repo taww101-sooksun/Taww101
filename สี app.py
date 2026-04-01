@@ -70,42 +70,44 @@ def room_core():
     st.info("สถานะระบบ: ONLINE")
     st.write(f"รหัสผู้ใช้งาน: **{st.session_state.user}**")
     st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
-
 def room_radar():
-    st.subheader("🛰️ เรดาร์ตรวจจับพิกัดและระยะห่าง")
+    st.subheader("🛰️ เรดาร์ตรวจจับพิกัดและระยะห่าง (Tactical Edition)")
+    
+    # --- ลูกเล่นที่ 5: สลับโหมดแผนที่ (วางไว้บนสุดก่อนสร้าง Map) ---
+    map_mode = st.radio("🗺️ โหมดแผนที่:", ["ดาวเทียม", "ถนนปกติ", "Dark Mode"], horizontal=True)
+    tile_url = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" # Satellite Hybrid
+    if map_mode == "ถนนปกติ":
+        tile_url = "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+    elif map_mode == "Dark Mode":
+        tile_url = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+
     loc = get_geolocation()
     all_users = db.reference('users').get()
     
-    # พิกัดเริ่มต้น (ถ้า GPS ยังไม่มา)
     my_lat, my_lon = 13.7367, 100.5231 
     if loc:
         my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
 
-    # 1. สร้างแผนที่ดาวเทียม Google Hybrid
+    # สร้างแผนที่ตามโหมดที่เลือก (ใช้ tile_url จากด้านบน)
     m = folium.Map(location=[my_lat, my_lon], zoom_start=16, 
-                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
-                   attr="Google Satellite")
+                   tiles=tile_url, 
+                   attr="SYNAPSE Strategic Map")
 
-    # 2. วาด "วงกลมรัศมี" รอบตัวเรา (รัศมี 500 เมตร) เพื่อดูระยะประชิด
+    # วาดรัศมี 500 เมตร (ของเดิม)
     folium.Circle(
         location=[my_lat, my_lon],
-        radius=500,  # หน่วยเป็นเมตร
+        radius=500,
         color=st.session_state.theme_color,
         fill=True,
         fill_opacity=0.1,
         tooltip="เขตรัศมี 500 เมตร"
     ).add_to(m)
 
-    # 3. ปักหมุดตัวเรา (Base)
-    folium.Marker(
-        [my_lat, my_lon], 
-        tooltip="ตำแหน่งของคุณ", 
-        icon=folium.Icon(color='red', icon='star')
-    ).add_to(m)
+    # ปักหมุดตัวเรา (Base)
+    folium.Marker([my_lat, my_lon], tooltip="ตำแหน่งของคุณ", icon=folium.Icon(color='red', icon='star')).add_to(m)
 
-    # 4. คำนวณระยะห่างเพื่อนทุกคนในระบบ
     if all_users:
-        st.write("### 👥 รายงานระยะห่างจากฐาน (Base)")
+        st.write("### 👥 รายงานสถานะพิกัดเป้าหมาย")
         col1, col2 = st.columns(2)
         
         for index, (uid, data) in enumerate(all_users.items()):
@@ -113,21 +115,44 @@ def room_radar():
             
             u_lat, u_lon = data.get('lat'), data.get('lon')
             if u_lat and u_lon:
-                # ใช้สูตร Haversine คำนวณระยะทางจริง
+                # --- ลูกเล่นที่ 3: คำนวณระยะทาง & ETA ---
                 dist = haversine(my_lat, my_lon, u_lat, u_lon)
+                avg_speed = 40 # สมมติความเร็วเดินทางเฉลี่ย 40 กม./ชม.
+                eta_mins = (dist / avg_speed) * 60
+                
                 is_active = (time.time() - data.get('ts', 0)) < 600
                 
-                # แสดงผลเป็นข้อความบอกระยะ
+                # แสดงผล (ของเดิม + ETA)
                 with (col1 if index % 2 == 0 else col2):
                     color_status = "🟢" if is_active else "⚪"
-                    st.write(f"{color_status} **{uid}**: `{dist:.2f} กม.`")
+                    st.write(f"{color_status} **{uid}**: `{dist:.2f} กม.` | ⏳ `{int(eta_mins)} นาที`")
                 
-                # ปักหมุดเพื่อนพร้อมระบุระยะทางบน Tooltip
+                # ปักหมุดเพื่อน
                 folium.Marker(
                     [u_lat, u_lon], 
-                    tooltip=f"{uid} (ห่าง {dist:.2f} km)", 
+                    tooltip=f"{uid} (ห่าง {dist:.2f} km | ETA: {int(eta_mins)}m)", 
                     icon=folium.Icon(color='green' if is_active else 'gray', icon='user', prefix='fa')
                 ).add_to(m)
+
+                # --- ลูกเล่นที่ 2: เส้น Tactical Line (ลากเส้นประจากเราไปหาเพื่อน) ---
+                folium.PolyLine(
+                    [[my_lat, my_lon], [u_lat, u_lon]], 
+                    color=st.session_state.theme_color, 
+                    weight=1, 
+                    opacity=0.4, 
+                    dash_array='5',
+                    tooltip=f"เส้นทางไปหา {uid}"
+                ).add_to(m)
+
+    # แสดงแผนที่
+    st_folium(m, width="100%", height=500)
+    
+    # อย่าลืมปุ่มกดส่งพิกัดเดิมของคุณ
+    if loc and st.button("📡 กระจายพิกัดเข้าศูนย์บัญชาการ", use_container_width=True):
+        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
+        st.success("ส่งพิกัดแล้ว!")
+        st.rerun()
+
 
     # 5. แสดงแผนที่
     st_folium(m, width="100%", height=500)
