@@ -554,31 +554,38 @@ def room_bio_sensor():
 # 3. แผงวงจรหลัก
 # ==========================================
 def main():
+    # 1. เริ่มต้นระบบ
     init_system()
-            st.markdown(f"""
-            <style>
-            .stApp {{
-                background-color: {st.session_state.bg_color};
-            }}
-            .stButton>button {{
-                border-radius: 10px;
-                border: 1px solid {st.session_state.theme_color};
-            }}
-            h1, h2, h3, p, span, div, label {{
-                color: {st.session_state.text_color} !important;
-            }}
-            </style>
-            """, unsafe_allow_html=True)
 
-
+    # 2. ส่วนของ Sidebar สำหรับตั้งค่า
     with st.sidebar:
         st.title("⚙️ SETTINGS")
-        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
-        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
-        st.session_state.text_color = st.color_picker("✍️ ข้อความ", st.session_state.text_color)
+        # รับค่าสีและเก็บลง session_state ทันที
+        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.get('theme_color', '#00FF00'))
+        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.get('bg_color', '#0E1117'))
+        st.session_state.text_color = st.color_picker("✍️ ข้อความ", st.session_state.get('text_color', '#FFFFFF'))
         st.markdown("---")
         st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
+    # 3. ส่วนของ CSS (ย้ายมาไว้ตรงนี้เพื่อให้ค่าสีอัปเดตแบบ Real-time)
+    st.markdown(f"""
+        <style>
+        .stApp {{
+            background-color: {st.session_state.bg_color};
+        }}
+        .stButton>button {{
+            border-radius: 10px;
+            border: 1px solid {st.session_state.theme_color};
+            background-color: transparent;
+            color: {st.session_state.text_color};
+        }}
+        h1, h2, h3, p, span, div, label {{
+            color: {st.session_state.text_color} !important;
+        }}
+        </style>
+        """, unsafe_allow_html=True)
+
+    # 4. การจัดการแผนที่ห้อง (Tabs)
     room_map = {
         "🚀 แกนหลัก": room_core,
         "🛰️ เรดาร์": room_radar,
