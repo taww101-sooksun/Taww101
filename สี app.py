@@ -10,37 +10,17 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import hashlib
-from math import radians, cos, sin, asin, sqrt
-
-# ==========================================
-# 0. ฟังก์ชันสนับสนุน (Helper Functions)
-# ==========================================
-
-def haversine(lat1, lon1, lat2, lon2):
-    """
-    คำนวณระยะห่างระหว่าง 2 พิกัดบนผิวโลก (หน่วย: กิโลเมตร)
-    """
-    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-    dlon = lon2 - lon1 
-    dlat = lat2 - lat1 
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a)) 
-    r = 6371 
-    return c * r
 
 # ==========================================
 # 1. กลไกกลาง (Core Engine)
 # ==========================================
-
 def init_system():
-    # ตั้งค่า Session State เริ่มต้น
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
     if 'text_color' not in st.session_state: st.session_state.text_color = "#FFFFFF"
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
-    if 'user' not in st.session_state: st.session_state.user = "Ta101"
+    if 'user' not in st.session_state: st.session_state.user = "Ta101" # กำหนด User เริ่มต้น
         
-    # เชื่อมต่อ Firebase
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
@@ -54,30 +34,25 @@ def init_system():
 # ==========================================
 # 2. พื้นที่เก็บห้อง (The Rooms / Modules)
 # ==========================================
-
 def room_core():
-    """
-    ห้องแกนกลาง: แสดงเวลาและสถานะระบบ
-    """
     st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
     now = datetime.utcnow() + timedelta(hours=7) 
     seconds_since_midnight = (now.hour * 3600) + (now.minute * 60) + now.second
     day_percent = seconds_since_midnight / 84600
     
     st.markdown(f"""
-        <div style="border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; background: rgba(0,0,0,0.5);">
-            <h1 style="margin: 0; color: {st.session_state.theme_color}; font-family: 'Courier New', Courier, monospace; font-size: 3em;">{now.strftime('%H:%M:%S')}</h1>
-            <p style="color: {st.session_state.theme_color}; opacity: 0.8; letter-spacing: 2px;">SYNAPSE STANDBY</p>
+        <div style="border: 1px solid {st.session_state.theme_color}; padding: 10px; border-radius: 5px; text-align: center;">
+            <h3 style="margin: 0; color: {st.session_state.theme_color}; font-family: monospace;">{now.strftime('%H:%M:%S')}</h3>
+            <small style="color: {st.session_state.theme_color}; opacity: 0.8;">THAILAND TIME</small>
         </div>
     """, unsafe_allow_html=True)
         
     st.write(f"⏳ Day Progress: {day_percent*100:.2f}%")
     st.progress(min(day_percent, 1.0))
     st.markdown("---")
-    st.info("สถานะระบบ: ONLINE (CONNECTED TO SATELLITE)")
+    st.info("สถานะระบบ: ONLINE")
     st.write(f"รหัสผู้ใช้งาน: **{st.session_state.user}**")
-    st.write(f"สโลแกน: **'อยู่นิ่งๆ ไม่เจ็บตัว'**")
-
+    st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
 
 def room_radar():
     """
@@ -154,113 +129,96 @@ def room_radar():
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
         st.success("ส่งพิกัดเข้าดาวเทียมเรียบร้อย!")
         st.rerun()
-
-
 def room_comms():
-    """
-    ห้องสื่อสาร: แชทโลกและวิดีโอคอลแบบ Peer-to-Peer
-    """
     st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
-    chat_tabs = st.tabs(["🌐 Lobby (แชท)", "📹 Video Call"])
+    chat_tabs = st.tabs(["🌐 Lobby", "📞 CALL (โทรฟรี)"])
     
     with chat_tabs[0]:
         chat_ref = db.reference('public_chat')
         with st.form("public_form", clear_on_submit=True):
-            msg = st.text_input("พิมพ์ข้อความ...")
+            msg = st.text_input("ส่งสัญญาณ...")
             if st.form_submit_button("SEND"):
                 if msg: 
                     chat_ref.push({'user': st.session_state.user, 'msg': msg, 'ts': time.time()})
                     st.rerun()
-        
-        msgs = chat_ref.order_by_key().limit_to_last(15).get()
+        msgs = chat_ref.order_by_key().limit_to_last(10).get()
         if msgs:
             for m in reversed(list(msgs.values())):
                 st.write(f"🟢 **{m.get('user')}:** {m.get('msg')}")
 
     with chat_tabs[1]:
+        st.write("📞 ระบบโทรฟรีแบบ Peer-to-Peer")
+        # ดึงรายชื่อเพื่อนจาก Firebase
         all_u = db.reference('users').get()
         friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
-        target = st.selectbox("เลือกเป้าหมายที่จะคอล:", [""] + friends)
+        target = st.selectbox("เลือกเพื่อนที่จะโทรหา:", [""] + friends)
         
         if target:
+            # ใช้สัญลักษณ์ % แทน f-string เพื่อป้องกัน SyntaxError จากปีกกา JS
             call_html = """
             <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-            <div style="background:#000; padding:15px; border-radius:15px; border:2px solid %s; text-align:center;">
-                <div style="position:relative; width:100%%; height:300px; background:#111; border-radius:10px; overflow:hidden; margin-bottom:10px;">
-                    <video id="remoteVideo" autoplay playsinline style="width:100%%; height:100%%; object-fit:cover;"></video>
-                    <video id="localVideo" autoplay playsinline muted style="position:absolute; bottom:10px; right:10px; width:100px; border:2px solid %s; border-radius:5px;"></video>
-                </div>
-                <p style="color:white; font-size:0.8em;">ID: <b>%s</b> | กำลังเชื่อมต่อ: <b>%s</b></p>
-                <div style="display:flex; gap:10px;">
-                    <button id="callBtn" style="flex:1; padding:12px; background:%s; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">📹 CALL</button>
-                    <button id="hangupBtn" onclick="location.reload()" style="flex:0.5; padding:12px; background:#ff4444; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">❌ วางสาย</button>
-                </div>
+            <div style="background:#111; padding:20px; border-radius:10px; border:1px solid %s; color:white; text-align:center;">
+                <p>ID ของคุณ: <b style="color:%s">%s</b></p>
+                <button id="callBtn" style="width:100%%; padding:15px; background:#28a745; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">🟢 กดโทรออกหา %s</button>
+                <p id="status" style="margin-top:10px; font-size:0.8em;">สถานะ: พร้อมใช้งาน</p>
+                <audio id="remoteAudio" autoplay></audio>
             </div>
             <script>
                 const peer = new Peer('%s');
-                const localVideo = document.getElementById('localVideo');
-                const remoteVideo = document.getElementById('remoteVideo');
-
+                peer.on('open', id => { document.getElementById('status').innerText = "ออนไลน์ (ID: " + id + ")"; });
+                
+                // รับสาย
                 peer.on('call', call => {
-                    if(confirm("มีสายเรียกเข้า... รับหรือไม่?")) {
-                        navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
-                            localVideo.srcObject = stream;
-                            call.answer(stream);
-                            call.on('stream', remStream => { remoteVideo.srcObject = remStream; });
+                    navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
+                        call.answer(stream);
+                        call.on('stream', remStream => {
+                            document.getElementById('remoteAudio').srcObject = remStream;
+                            document.getElementById('status').innerText = "🔴 กำลังคุยสาย...";
                         });
-                    }
+                    });
                 });
 
+                // โทรออก
                 document.getElementById('callBtn').onclick = () => {
-                    navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
-                        localVideo.srcObject = stream;
+                    navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
                         const call = peer.call('%s', stream);
-                        call.on('stream', remStream => { remoteVideo.srcObject = remStream; });
+                        document.getElementById('status').innerText = "🟡 กำลังเรียกสาย...";
+                        call.on('stream', remStream => {
+                            document.getElementById('remoteAudio').srcObject = remStream;
+                            document.getElementById('status').innerText = "🔴 กำลังคุยสาย...";
+                        });
                     });
                 };
             </script>
-            """ % (st.session_state.theme_color, st.session_state.theme_color, st.session_state.user, target, st.session_state.theme_color, st.session_state.user, target)
-            components.html(call_html, height=450)
-
+            """ % (st.session_state.theme_color, st.session_state.theme_color, st.session_state.user, target, st.session_state.user, target)
+            components.html(call_html, height=250)
 
 def room_music():
-    """
-    ห้องฟังเพลง: เล่นไฟล์ MP3 ในโฟลเดอร์
-    """
-    st.subheader("🎧 SYNAPSE MUSIC PLAYER")
+    st.subheader("🎧 SYNAPSE ROOMS")
     music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
     if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ")
+        st.warning("⚠️ ไม่พบไฟล์เพลง")
         return
-        
     current_song = music_files[st.session_state.song_index]
-    st.info(f"กำลังเล่น: {current_song}")
     st.audio(current_song)
-    
-    st.write("---")
     for i, song in enumerate(music_files):
         if st.button(f"🎵 {song}", key=f"s_{i}", use_container_width=True):
             st.session_state.song_index = i
             st.rerun()
 
-
 def room_sensor():
-    """
-    ห้องวัดเสียง: แสดงระดับความดังและคลื่นความถี่
-    """
-    st.subheader("📟 เครื่องวัดคลื่นเสียงดิจิทัล")
+    st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง")
     theme_hex = st.session_state.theme_color
     audio_js = f"""
     <div style="background-color: #000; color: {theme_hex}; padding: 20px; border: 2px solid {theme_hex}; border-radius: 15px; text-align: center; font-family: monospace;">
         <h2 id="status">🔴 STANDBY</h2>
-        <div style="display: flex; justify-content: space-around; margin-top: 20px;">
-            <div><h3>POWER (dB)</h3><h1 id="db_val" style="font-size: 3em;">0</h1></div>
-            <div><h3>FREQ (Hz)</h3><h1 id="hz_val" style="font-size: 3em;">0</h1></div>
+        <div style="display: flex; justify-content: space-around;">
+            <div><h3>dB</h3><h1 id="db_val">0</h1></div>
+            <div><h3>Hz</h3><h1 id="hz_val">0</h1></div>
         </div>
-        <button id="startBtn" style="margin-top:20px; width:100%; padding:15px; background:{theme_hex}; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">START SENSOR</button>
     </div>
     <script>
-    document.getElementById('startBtn').onclick = async function() {{
+    async function startAudio() {{
         try {{
             const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
             const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -269,10 +227,6 @@ def room_sensor():
             source.connect(analyser);
             analyser.fftSize = 256;
             const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            
-            this.style.display = 'none';
-            document.getElementById('status').innerText = "🟢 SENSING...";
-
             function update() {{
                 analyser.getByteFrequencyData(dataArray);
                 let sum = 0, maxVal = 0, maxIdx = 0;
@@ -280,228 +234,55 @@ def room_sensor():
                     sum += dataArray[i];
                     if (dataArray[i] > maxVal) {{ maxVal = dataArray[i]; maxIdx = i; }}
                 }}
-                let db = Math.round((sum / dataArray.length) * 2.5);
+                let db = Math.round((sum / dataArray.length) * 3);
                 let hz = Math.round(maxIdx * audioContext.sampleRate / analyser.fftSize);
                 document.getElementById('db_val').innerText = db;
                 document.getElementById('hz_val').innerText = hz;
+                document.getElementById('status').innerText = db > 5 ? "🟢 SENSING" : "🟡 IDLE";
                 requestAnimationFrame(update);
             }}
             update();
-        }} catch (err) {{ alert("Error: " + err.message); }}
-    }};
+        }} catch (err) {{ document.getElementById('status').innerText = "❌ ERROR: " + err.message; }}
+    }}
+    window.addEventListener('click', () => {{ startAudio(); }}, {{ once: true }});
+    startAudio();
     </script>
     """
-    components.html(audio_js, height=300)
-
-
-def room_mission():
-    """
-    ห้องปฏิบัติการภารกิจ: บันทึก To-do list ลง Firebase
-    """
-    st.subheader("📝 ศูนย์ปฏิบัติการภารกิจ")
-    
-    with st.form("mission_form", clear_on_submit=True):
-        task = st.text_input("ระบุภารกิจใหม่:")
-        priority = st.select_slider("ระดับความสำคัญ", options=["ต่ำ", "กลาง", "สูง"])
-        if st.form_submit_button("บันทึกภารกิจ"):
-            if task:
-                db.reference('missions').push({
-                    'user': st.session_state.user,
-                    'task': task,
-                    'priority': priority,
-                    'ts': time.time()
-                })
-                st.success("บันทึกภารกิจเรียบร้อย!")
-                st.rerun()
-
-    st.write("---")
-    st.write("📋 **รายการภารกิจล่าสุด**")
-    missions_data = db.reference('missions').get()
-    
-    if missions_data:
-        m_list = list(missions_data.values())
-        m_list.reverse() 
-        for m in m_list[:8]:
-            p_color = "🔴" if m.get('priority') == "สูง" else "🟡" if m.get('priority') == "กลาง" else "🟢"
-            st.info(f"{p_color} **{m.get('task')}** (โดย: {m.get('user')})")
-    else:
-        st.write("ยังไม่มีภารกิจในฐานข้อมูล")
-
-
-def room_bio_sensor():
-    """
-    ห้องตรวจร่างกาย: วัดชีพจรผ่านกล้อง (จำลองการประมวลผลแสง RGB)
-    """
-    st.subheader("🩺 SYNAPSE X - BIO SENSOR")
-    st.write("📡 **คำแนะนำ:** วางปลายนิ้วให้ปิดหน้าเลนส์กล้องหลังและไฟแฟลชให้สนิท")
-    
-    t_color = st.session_state.theme_color
-    
-    bio_js = f"""
-    <div style="background-color: #111; color: {t_color}; padding: 20px; border: 2px solid {t_color}; border-radius: 15px; font-family: monospace;">
-        <video id="v" style="display:none;" autoplay playsinline></video>
-        <canvas id="c" width="100" height="100" style="display:none;"></canvas>
-        
-        <div style="margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px;">
-                <span>SCANNING PROGRESS</span>
-                <span id="p_percent">0%</span>
-            </div>
-            <div style="width: 100%; background: #222; height: 12px; border-radius: 6px; overflow: hidden;">
-                <div id="p_bar" style="width: 0%; height: 100%; background: {t_color}; transition: width 0.3s;"></div>
-            </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: center;">
-            <div style="border: 1px solid #333; padding: 15px; border-radius: 10px;">
-                <small>BPM (HEART RATE)</small>
-                <h1 id="bpm" style="margin:10px 0; font-size: 2.5em;">0</h1>
-            </div>
-            <div style="border: 1px solid #333; padding: 15px; border-radius: 10px;">
-                <small>SpO2 (OXYGEN)</small>
-                <h1 id="spo2" style="margin:10px 0; font-size: 2.5em;">0</h1>
-            </div>
-        </div>
-        
-        <div id="status" style="margin-top: 20px; text-align: center; font-weight: bold; color: #f00; padding: 10px; border-radius: 8px; background: rgba(255,0,0,0.1);">
-            🔴 กรุณาวางนิ้วที่เลนส์กล้อง
-        </div>
-    </div>
-
-    <script>
-        const v = document.getElementById('v');
-        const c = document.getElementById('c');
-        const ctx = c.getContext('2d', {{alpha: false}});
-        let progress = 0;
-        let isFinished = false;
-
-        async function startCamera() {{
-            try {{
-                const stream = await navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }});
-                v.srcObject = stream;
-                processVideo();
-            }} catch (e) {{ document.getElementById('status').innerText = "❌ เข้าถึงกล้องไม่ได้"; }}
-        }}
-
-        function processVideo() {{
-            if (isFinished) return;
-
-            ctx.drawImage(v, 0, 0, 100, 100);
-            const data = ctx.getImageData(0, 0, 100, 100).data;
-            let r = 0, g = 0;
-            for (let i = 0; i < data.length; i += 4) {{ r += data[i]; g += data[i+1]; }}
-            r /= 2500; g /= 2500;
-
-            const statusEl = document.getElementById('status');
-            
-            if (r > 160 && g < 100) {{
-                statusEl.innerText = "🟢 ตรวจพบสัญญาณ... กรุณาอยู่นิ่งๆ";
-                statusEl.style.color = "#0f0";
-                statusEl.style.background = "rgba(0,255,0,0.1)";
-
-                progress += 0.4; 
-                if (progress > 100) progress = 100;
-                
-                document.getElementById('p_bar').style.width = progress + "%";
-                document.getElementById('p_percent').innerText = Math.round(progress) + "%";
-
-                document.getElementById('bpm').innerText = Math.round(68 + (Math.random() * 8));
-                document.getElementById('spo2').innerText = Math.round(96 + (Math.random() * 3));
-
-                if (progress >= 100) {{
-                    isFinished = true;
-                    statusEl.innerText = "✅ การวัดเสร็จสิ้นสมบูรณ์!";
-                    statusEl.style.background = "{t_color}";
-                    statusEl.style.color = "#000";
-                }}
-            }} else {{
-                if (progress < 100) {{
-                    progress = 0;
-                    document.getElementById('p_bar').style.width = "0%";
-                    document.getElementById('p_percent').innerText = "0%";
-                    statusEl.innerText = "🔴 กรุณาวางนิ้วให้ปิดหน้ากล้อง";
-                    statusEl.style.color = "#f00";
-                    statusEl.style.background = "rgba(255,0,0,0.1)";
-                }}
-            }}
-            requestAnimationFrame(processVideo);
-        }}
-        startCamera();
-    </script>
-    """
-    components.html(bio_js, height=380)
+    components.html(audio_js, height=250)
 
 # ==========================================
-# 3. แผงวงจรหลัก (Main Entry)
+# 3. แผงวงจรหลัก
 # ==========================================
-
 def main():
     init_system()
-
-    with st.sidebar:
-        st.title("⚙️ SYNAPSE SETTINGS")
-        theme_clr = st.session_state.get('theme_color', '#39FF14')
-        bg_clr = st.session_state.get('bg_color', '#000000')
-        txt_clr = st.session_state.get('text_color', '#FFFFFF')
-
-        st.session_state.theme_color = st.color_picker("🚨 สีหลัก (Neon)", theme_clr)
-        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", bg_clr)
-        st.session_state.text_color = st.color_picker("✍️ ข้อความ", txt_clr)
-        
-        st.markdown("---")
-        st.write('**Personal Slogan:**')
-        st.write(f'<h3 style="color:{st.session_state.theme_color}">"อยู่นิ่งๆ ไม่เจ็บตัว"</h3>', unsafe_allow_html=True)
-        st.write("---")
-        st.caption("SYNAPSE COMMAND CENTER v2.0")
-
-    # ปรับแต่งธีมด้วย CSS
     st.markdown(f"""
         <style>
-        .stApp {{
-            background-color: {st.session_state.bg_color};
-        }}
-        .stButton>button {{
-            border-radius: 8px;
-            border: 1px solid {st.session_state.theme_color};
-            color: {st.session_state.text_color};
-            background-color: transparent;
-            transition: 0.3s;
-        }}
-        .stButton>button:hover {{
-            background-color: {st.session_state.theme_color};
-            color: black;
-            box-shadow: 0 0 10px {st.session_state.theme_color};
-        }}
-        h1, h2, h3, p, span, div, label, .stMarkdown {{
-            color: {st.session_state.text_color} !important;
-        }}
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 10px;
-        }}
-        .stTabs [data-baseweb="tab"] {{
-            border: 1px solid {st.session_state.theme_color};
-            padding: 5px 15px;
-            border-radius: 5px;
-        }}
+        .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.text_color} !important; }}
+        .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; }}
+        h1, h2, h3, p, span, div, label {{ color: {st.session_state.text_color} !important; }}
         </style>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-    # รายชื่อห้องทั้งหมด
+    with st.sidebar:
+        st.title("⚙️ SETTINGS")
+        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
+        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
+        st.session_state.text_color = st.color_picker("✍️ ข้อความ", st.session_state.text_color)
+        st.markdown("---")
+        st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+
     room_map = {
         "🚀 แกนหลัก": room_core,
         "🛰️ เรดาร์": room_radar,
         "💬 สื่อสาร": room_comms,
-        "🎧 ฟังเพลง": room_music,
-        "📟 วัดเสียง": room_sensor,
-        "📝 ภารกิจ": room_mission,
-        "🩺 ตรวจร่างกาย": room_bio_sensor,
+        "🎧 เพลง": room_music,
+        "📟 วัดเสียง": room_sensor
     }
     
     tabs = st.tabs(list(room_map.keys()))
-    for i, (name, room_func) in enumerate(room_map.items()):
+    for i, room_func in enumerate(room_map.values()):
         with tabs[i]:
             room_func()
 
-# รันแอปพลิเคชัน
 if __name__ == "__main__":
     main()
