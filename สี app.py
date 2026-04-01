@@ -228,68 +228,111 @@ def room_comms(theme):
             if target_v != "-- เลือกชื่อ --":
                 # ระบบ P2P พร้อม STUN Server ของ Google เพื่อเจาะ Firewall
                 v_html = f"""
-                <div id="v-box" style="background:#000; padding:15px; border-radius:15px; border:2px solid {theme['main']}; text-align:center; font-family:monospace;">
-                    <div style="position:relative; width:100%; height:300px; background:#111; border-radius:10px; overflow:hidden;">
-                        <video id="remote" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
-                        <video id="local" autoplay playsinline muted style="position:absolute; bottom:10px; right:10px; width:100px; border:2px solid {theme['main']}; border-radius:5px;"></video>
-                    </div>
-                    <div style="margin-top:15px; display:flex; gap:10px;">
-                        <button id="call" style="flex:2; padding:12px; background:{theme['main']}; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">📹 ESTABLISH CONNECTION</button>
-                        <button id="hangup" style="flex:1; padding:12px; background:#f44; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">❌ DISCONNECT</button>
-                    </div>
-                    <p id="status-msg" style="color:{theme['main']}; font-size:12px; margin-top:10px;">📡 SYSTEM READY</p>
+def room_comms(theme):
+    st.subheader("🛰️ SYNAPSE P2P HEALING SYSTEM")
+    
+    all_users = db.reference('accounts').get()
+    friends = [uid for uid in all_users.keys() if uid != st.session_state.user] if all_users else []
+    
+    t_p2p, t_lobby = st.tabs(["🔒 P2P Direct Link", "🌐 Public Lobby"])
+
+    with t_p2p:
+        target = st.selectbox("เลือกเป้าหมายเพื่อสร้างท่อสัญญาณ:", ["-- ว่าง --"] + friends)
+        if target != "-- ว่าง --":
+            # ดึงพิกัดเราเตรียมไว้ส่ง
+            loc = get_geolocation()
+            my_lat = loc['coords']['latitude'] if loc else 0
+            my_lon = loc['coords']['longitude'] if loc else 0
+
+            p2p_html = f"""
+            <div style="background:#000; padding:15px; border-radius:15px; border:2px solid {theme['main']}; color:{theme['main']}; font-family:monospace;">
+                <div id="status" style="margin-bottom:10px;">🔴 OFFLINE</div>
+                <div id="gps-display" style="font-size:12px; color:#888;">GPS: Waiting for link...</div>
+                <hr style="border-color:{theme['main']}; opacity:0.3;">
+                
+                <div id="chat-area" style="height:150px; overflow-y:auto; margin-bottom:10px; font-size:14px;"></div>
+                
+                <input id="msg-input" type="text" placeholder="ส่งข้อความผ่านท่อ P2P..." 
+                    style="width:100%; background:#111; border:1px solid {theme['main']}; color:white; padding:8px; border-radius:5px;">
+                
+                <div style="display:flex; gap:5px; margin-top:10px;">
+                    <button id="call-btn" style="flex:1; padding:10px; background:{theme['main']}; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">🎤 VOICE CALL</button>
+                    <button id="send-gps" style="flex:1; padding:10px; background:#444; color:white; border:none; border-radius:5px; cursor:pointer;">📍 SHARE GPS</button>
                 </div>
+                <audio id="remoteAudio" autoplay></audio>
+            </div>
 
-                <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-                <script>
-                    const peer = new Peer('{st.session_state.user}', {{
-                        config: {{ 'iceServers': [{{ 'urls': 'stun:stun.l.google.com:19302' }}] }}
+            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+            <script>
+                const peer = new Peer('SYNAPSE_{st.session_state.user}', {{
+                    config: {{ 'iceServers': [{{ 'urls': 'stun:stun.l.google.com:19302' }}] }}
+                }});
+
+                let conn; // สำหรับ Data (Chat/GPS)
+                let currentCall; // สำหรับ Voice
+
+                // 1. รับการเชื่อมต่อ (Incoming)
+                peer.on('connection', c => {{
+                    conn = c;
+                    setupDataHandlers();
+                }});
+
+                peer.on('call', call => {{
+                    if(confirm('รับสายเสียงจาก ' + call.peer + '?')) {{
+                        navigator.mediaDevices.getUserMedia({{audio:true}}).then(stream => {{
+                            call.answer(stream);
+                            call.on('stream', rs => document.getElementById('remoteAudio').srcObject = rs);
+                        }});
+                    }}
+                }});
+
+                // 2. จัดการข้อมูลที่ได้รับ (เหมือนท่อลับใน Flutter)
+                function setupDataHandlers() {{
+                    conn.on('open', () => {{
+                        document.getElementById('status').innerText = "🟢 P2P LINK ESTABLISHED";
                     }});
-                    
-                    let currentCall;
-                    const status = document.getElementById('status-msg');
-
-                    peer.on('open', id => status.innerText = "ONLINE ID: " + id);
-                    
-                    // เมื่อรับสาย
-                    peer.on('call', call => {{
-                        status.innerText = "🛰️ INCOMING SIGNAL...";
-                        if(confirm('รับสายจาก ' + call.peer + '?')) {{
-                            navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
-                                document.getElementById('local').srcObject = stream;
-                                call.answer(stream);
-                                call.on('stream', remoteStream => {{
-                                    document.getElementById('remote').srcObject = remoteStream;
-                                    status.innerText = "🟢 CONNECTION ENCRYPTED";
-                                }});
-                                currentCall = call;
-                            }}).catch(err => status.innerText = "❌ Camera Error");
+                    conn.on('data', data => {{
+                        if(data.startsWith("GPS:")) {{
+                            document.getElementById('gps-display').innerText = "📍 เพื่อนอยู่ที่: " + data.replace("GPS:","");
+                        }} else {{
+                            const area = document.getElementById('chat-area');
+                            area.innerHTML += "<div><b>" + conn.peer.replace("SYNAPSE_","") + ":</b> " + data + "</div>";
                         }}
                     }});
+                }}
 
-                    // เมื่อกดโทรออก
-                    document.getElementById('call').onclick = () => {{
-                        status.innerText = "📡 ATTEMPTING CONNECTION...";
-                        navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
-                            document.getElementById('local').srcObject = stream;
-                            const call = peer.call('{target_v}', stream);
-                            call.on('stream', remoteStream => {{
-                                document.getElementById('remote').srcObject = remoteStream;
-                                status.innerText = "🟢 ENCRYPTED CHANNEL OPEN";
-                            }});
-                            currentCall = call;
-                        }}).catch(err => status.innerText = "❌ Access Denied");
-                    }};
+                // 3. ปุ่มส่งข้อความ
+                document.getElementById('msg-input').onkeypress = (e) => {{
+                    if(e.key === 'Enter' && conn) {{
+                        const m = e.target.value;
+                        conn.send(m);
+                        document.getElementById('chat-area').innerHTML += "<div style='color:#888;'><b>Me:</b> " + m + "</div>";
+                        e.target.value = "";
+                    }}
+                }};
 
-                    document.getElementById('hangup').onclick = () => {{
-                        if(currentCall) currentCall.close();
-                        location.reload();
-                    }};
-                </script>
-                """
-                components.html(v_html, height=480)
+                // 4. ปุ่มโทรและแชร์ GPS (เหมือนใน Flutter)
+                document.getElementById('call-btn').onclick = () => {{
+                    navigator.mediaDevices.getUserMedia({{audio:true}}).then(stream => {{
+                        const call = peer.call('SYNAPSE_{target}', stream);
+                        call.on('stream', rs => document.getElementById('remoteAudio').srcObject = rs);
+                    }});
+                }};
 
+                document.getElementById('send-gps').onclick = () => {{
+                    if(!conn) conn = peer.connect('SYNAPSE_{target}');
+                    setupDataHandlers();
+                    setTimeout(() => {{
+                        conn.send("GPS:{my_lat},{my_lon}");
+                    }}, 1000);
+                }};
+            </script>
+            """
+            components.html(p2p_html, height=450)
 
+    with t_lobby:
+        st.info("แชตรวมปกติผ่าน Firebase (สำหรับส่งข้อความทิ้งไว้)")
+        # ... (โค้ด Lobby เดิมของคุณ) ...
 
 def room_music():
     """
