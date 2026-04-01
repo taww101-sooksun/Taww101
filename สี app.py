@@ -237,26 +237,87 @@ def room_public():
 # 4. ห้องแชตส่วนตัว (Private Room)
 # ==========================================
 
+import base64
+
 def room_private():
-    st.subheader("🔐 แชตส่วนตัว (Private Line)")
+    st.subheader("🔐 แชตส่วนตัวสายลับ (Secure Media Chat)")
+    
+    # ดึงรายชื่อ AGENT ทั้งหมดมาให้เลือก
     users = db.reference('users').get()
     friends = [u for u in users.keys() if u != st.session_state.user] if users else []
     
-    target = st.selectbox("เลือกคู่สาย AGENT:", ["-- เลือกเป้าหมาย --"] + friends)
+    target = st.selectbox("🎯 เลือกคู่สาย AGENT:", ["-- เลือกเป้าหมาย --"] + friends)
+    
     if target != "-- เลือกเป้าหมาย --":
+        # สร้าง ID ห้องแชตเฉพาะระหว่าง 2 คน (เรียงชื่อตามตัวอักษร)
         rid = "_".join(sorted([st.session_state.user, target]))
-        with st.form("priv_chat", clear_on_submit=True):
-            msg = st.text_input(f"ส่งข้อความลับถึง {target}")
-            if st.form_submit_button("🔒 LOCK & SEND") and msg:
-                db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'ts': time.time()})
-                st.rerun()
         
-        msgs = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(15).get()
-        if msgs:
-            for v in reversed(list(msgs.values())):
-                align = "right" if v['u'] == st.session_state.user else "left"
-                color = st.session_state.theme_color if v['u'] == st.session_state.user else "#333"
-                st.markdown(f"<div style='text-align:{align}; margin-bottom:5px;'><span style='background:{color}; padding:8px 15px; border-radius:15px; color:white;'>{v['m']}</span></div>", unsafe_allow_html=True)
+        # 1. ส่วนส่งข้อความและลากไฟล์วาง
+        with st.form("private_media_form", clear_on_submit=True):
+            msg = st.text_input(f"🔒 ส่งข้อความลับถึง {target}...")
+            uploaded_file = st.file_uploader("📸 ส่งรูป/คลิปส่วนตัว (ลากวางได้)", type=['jpg', 'png', 'mp4', 'mov'])
+            
+            if st.form_submit_button("🚀 LOCK & SEND"):
+                file_data = None
+                file_type = None
+                
+                if uploaded_file is not None:
+                    # แปลงไฟล์เป็น Base64
+                    bytes_data = uploaded_file.getvalue()
+                    file_data = base64.b64encode(bytes_data).decode()
+                    file_type = uploaded_file.type
+
+                if msg or file_data:
+                    db.reference(f'private_rooms/{rid}').push({
+                        'u': st.session_state.user,
+                        'm': msg,
+                        'file': file_data,
+                        'ft': file_type,
+                        'ts': time.time()
+                    })
+                    st.rerun()
+
+        # 2. ส่วนแสดงผลข้อความในห้องลับ
+        st.write("---")
+        msgs_ref = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(15).get()
+        
+        if msgs_ref:
+            for v in reversed(list(msgs_ref.values())):
+                u_name = v.get('u', 'Unknown')
+                msg_text = v.get('m', '')
+                f_data = v.get('file')
+                f_type = v.get('ft')
+                
+                # จัดตำแหน่งข้อความ (เราอยู่ขวา เพื่อนอยู่ซ้าย)
+                side = "right" if u_name == st.session_state.user else "left"
+                bg_color = st.session_state.theme_color if u_name == st.session_state.user else "#333333"
+                
+                st.markdown(f"""
+                    <div style="text-align:{side}; margin-bottom:15px;">
+                        <div style="display:inline-block; background:{bg_color}; padding:10px 15px; border-radius:15px; color:white; max-width:80%;">
+                            <small style="opacity:0.7;">{u_name}</small><br>
+                            {f'<p style="margin:5px 0;">{msg_text}</p>' if msg_text else ''}
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                # ถ้ามีไฟล์แนบในแชตส่วนตัว
+                if f_data:
+                    with st.container():
+                        # แสดงผลไฟล์ในฝั่งที่ถูกต้อง
+                        col1, col2, col3 = st.columns([1, 2, 1])
+                        with (col3 if side == "right" else col1):
+                            try:
+                                decoded = base64.b64decode(f_data)
+                                if "image" in f_type:
+                                    st.image(decoded, use_container_width=True)
+                                elif "video" in f_type:
+                                    st.video(decoded)
+                            except:
+                                st.error("⚠️ ไฟล์เสียหาย")
+        else:
+            st.caption("🌑 ยังไม่มีการสนทนาในห้องลับนี้")
+
 
 # ==========================================
 # 5. ห้องโทร (Voice/Call)
