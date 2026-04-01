@@ -394,7 +394,7 @@ def main():
         "💬 สื่อสาร": room_comms,
         "🎧 เพลง": room_music,
         "📟 วัดเสียง": room_sensor
-        "📝 ภารกิจ": room_mission
+        "📝 ภารกิจ": room_mission,
     }
     
     tabs = st.tabs(list(room_map.keys()))
