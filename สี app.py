@@ -272,26 +272,65 @@ def room_bio_sensor():
     components.html(bio_js, height=200)
 
 # ==========================================
-# 3. แผงวงจรหลัก
+# 1. กลไกกลาง (Core Engine) - เพิ่มสถานะ Login
+# ==========================================
+def init_system():
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
+    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
+    if 'text_color' not in st.session_state: st.session_state.text_color = "#FFFFFF"
+    if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    
+    # 🚨 จุดสำคัญ: เพิ่มตัวเช็คสถานะ Login
+    if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+    if 'user' not in st.session_state: st.session_state.user = ""
+        
+    if not firebase_admin._apps:
+        try:
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': st.secrets["firebase_db_url"]
+            })
+        except Exception as e:
+            st.error(f"🛰️ Firebase Connection Error: {e}")
+
+# ==========================================
+# 3. แผงวงจรหลัก - เชื่อมระบบ Login
 # ==========================================
 def main():
     init_system()
 
+    # แสดงผล CSS พื้นฐาน (มีผลทั้งหน้า Login และหน้า App)
+    st.markdown(f"""
+        <style>
+        .stApp {{ background-color: {st.session_state.bg_color}; }}
+        .stButton>button {{ border-radius: 10px; border: 1px solid {st.session_state.theme_color}; color: {st.session_state.text_color}; background: transparent; }}
+        h1, h2, h3, p, span, div, label {{ color: {st.session_state.text_color} !important; }}
+        /* ปรับสี Tab ให้เข้ากับ Theme */
+        .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {{ color: {st.session_state.text_color}; }}
+        </style>
+    """, unsafe_allow_html=True)
+
+    # 🔐 ตรวจสอบการเข้าสู่ระบบ
+    if not st.session_state.logged_in:
+        auth_system()
+        return # หยุดการทำงานตรงนี้ถ้ายังไม่ Login
+
+    # --- ส่วนที่แสดงเมื่อ Login สำเร็จแล้วเท่านั้น ---
     with st.sidebar:
+        st.title(f"👤 {st.session_state.user}")
+        if st.button("🚪 LOGOUT", use_container_width=True):
+            st.session_state.logged_in = False
+            st.session_state.user = ""
+            st.rerun()
+
+        st.markdown("---")
         st.title("⚙️ SETTINGS")
         st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
         st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
         st.session_state.text_color = st.color_picker("✍️ ข้อความ", st.session_state.text_color)
         st.markdown("---")
         st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
-
-    st.markdown(f"""
-        <style>
-        .stApp {{ background-color: {st.session_state.bg_color}; }}
-        .stButton>button {{ border-radius: 10px; border: 1px solid {st.session_state.theme_color}; color: {st.session_state.text_color}; background: transparent; }}
-        h1, h2, h3, p, span, div, label {{ color: {st.session_state.text_color} !important; }}
-        </style>
-    """, unsafe_allow_html=True)
 
     room_map = {
         "🚀 แกนหลัก": room_core,
