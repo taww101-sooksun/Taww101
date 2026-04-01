@@ -515,6 +515,54 @@ def room_bio():
     **💡 ความจริงจากระบบ:** การตรวจวัดนี้เป็นการวิเคราะห์เบื้องต้นจากอัตราการเต้นของหัวใจ (Heart Rate) 
     ไม่สามารถทดสอบค่าเคมีในเลือดหรือไขมันได้จริง (ต้องใช้การเจาะเลือดที่สถานพยาบาลเท่านั้น)
     """)
-
-
 # ==========================================
+# MAIN EXECUTION - แก้ไขจุด NameError
+# ==========================================
+
+def main():
+    init_system() # ตรวจสอบการเชื่อมต่อ Firebase และค่าเริ่มต้น
+    
+    with st.sidebar:
+        st.title("⚙️ SETTINGS")
+        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
+        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
+        st.write("---")
+        st.markdown(f'<h3 style="color:{st.session_state.theme_color}">"อยู่นิ่งๆ ไม่เจ็บตัว"</h3>', unsafe_allow_html=True)
+        st.caption("SYNAPSE v2.5 PRO")
+
+    # ปรับแต่ง CSS พื้นหลังและสีตัวอักษร
+    st.markdown(f"""
+        <style>
+        .stApp {{ background-color: {st.session_state.bg_color}; }}
+        h1, h2, h3, p, span, div, label, .stMarkdown {{ color: white !important; }}
+        /* ปรับสีปุ่มและ Tab ให้เข้ากับธีม */
+        .stButton>button {{ border-color: {st.session_state.theme_color}; color: white; }}
+        </style>
+    """, unsafe_allow_html=True)
+
+    # สร้าง 8 ห้อง (Index 0 ถึง 7)
+    tabs = st.tabs([
+        "🚀 แกนหลัก", 
+        "🛰️ เรดาร์", 
+        "🌐 แชตรวม", 
+        "🔐 แชตส่วนตัว", 
+        "📞 โทร", 
+        "🎧 เพลง", 
+        "🩺 ตรวจร่างกาย", 
+        "📝 ภารกิจ"
+    ])
+    
+    # เรียกใช้ฟังก์ชันให้ตรงกับชื่อที่ประกาศไว้ข้างบน
+    with tabs[0]: room_core()      # ห้องที่ 1
+    with tabs[1]: room_radar()     # ห้องที่ 2
+    with tabs[2]: room_public()    # ห้องที่ 3
+    with tabs[3]: room_private()   # ห้องที่ 4
+    with tabs[4]: room_call()      # ห้องที่ 5
+    with tabs[5]: room_music()     # ห้องที่ 6
+    with tabs[6]: room_bio()       # ห้องที่ 7 (อันที่เราแก้ใหม่)
+    with tabs[7]: room_mission()   # ห้องที่ 8 (จุดที่เคย Error)
+
+if __name__ == "__main__":
+    main()
+
+
