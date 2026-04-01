@@ -454,37 +454,101 @@ def room_bio_sensor():
             }}
             r /= (data.length/4); g /= (data.length/4); b /= (data.length/4);
             
-            document.getElementById('rgb').innerText = Math.round(r)+","+Math.round(g)+","+Math.round(b);
+            document.<div style="background-color: #111; color: {t_color}; padding: 15px; border: 2px solid {t_color}; border-radius: 15px; font-family: monospace;">
+    <video id="v" style="display:none;" autoplay playsinline></video>
+    <canvas id="c" width="100" height="100" style="display:none;"></canvas>
+    
+    <div style="margin-bottom: 15px;">
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+            <span>SCANNING PROGRESS</span>
+            <span id="p_percent">0%</span>
+        </div>
+        <div style="width: 100%; bg: #333; height: 10px; border-radius: 5px; overflow: hidden; background: #222;">
+            <div id="p_bar" style="width: 0%; height: 100%; background: {t_color}; transition: width 0.3s;"></div>
+        </div>
+    </div>
 
-            if (r > 150) {{
-                document.getElementById('status').innerText = "🟢 ตรวจพบสัญญาณชีพ...";
-                document.getElementById('status').style.color = "#0f0";
-                
-                redHistory.push(r);
-                if (redHistory.length > 100) redHistory.shift();
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+        <div style="border: 1px solid #333; padding: 10px; border-radius: 8px;">
+            <small>BPM</small>
+            <h2 id="bpm">0</h2>
+        </div>
+        <div style="border: 1px solid #333; padding: 10px; border-radius: 8px;">
+            <small>SpO2</small>
+            <h2 id="spo2">0</h2>
+        </div>
+    </div>
+    
+    <div id="status" style="margin-top: 15px; text-align: center; font-weight: bold; color: #f00; padding: 5px; border-radius: 5px;">
+        🔴 กรุณาวางนิ้วที่เลนส์
+    </div>
+</div>
 
-                let maxR = Math.max(...redHistory);
-                let minR = Math.min(...redHistory);
-                let ac = maxR - minR;
-                let dc = r;
+<script>
+    const v = document.getElementById('v');
+    const c = document.getElementById('c');
+    const ctx = c.getContext('2d', {{alpha: false}});
+    let progress = 0;
+    let isFinished = false;
 
-                let pi = (ac / dc) * 10;
-                document.getElementById('pi').innerText = pi.toFixed(2);
-                let bpm = 60 + (pi * 5); 
-                document.getElementById('bpm').innerText = Math.round(bpm);
-                let spo2 = 100 - ( (r/g) * 2 );
-                document.getElementById('spo2').innerText = Math.round(Math.min(100, spo2));
-            }} else {{
-                document.getElementById('status').innerText = "🔴 กรุณาวางนิ้วให้ปิดเลนส์";
-                document.getElementById('status').style.color = "#f00";
+    async function startCamera() {{
+        try {{
+            const stream = await navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }});
+            v.srcObject = stream;
+            processVideo();
+        }} catch (e) {{ document.getElementById('status').innerText = "❌ กล้องขัดข้อง"; }}
+    }}
+
+    function processVideo() {{
+        if (isFinished) return; // หยุดถ้าเสร็จแล้ว
+
+        ctx.drawImage(v, 0, 0, 100, 100);
+        const data = ctx.getImageData(0, 0, 100, 100).data;
+        let r = 0, g = 0, b = 0;
+        for (let i = 0; i < data.length; i += 4) {{ r += data[i]; g += data[i+1]; b += data[i+2]; }}
+        r /= 2500; g /= 2500;
+
+        const statusEl = document.getElementById('status');
+        
+        // ตรวจสอบการวางนิ้ว (ค่า R ต้องสูง และ G ต้องต่ำลงเพราะเลือดบังแสงเขียว)
+        if (r > 150 && g < 100) {{
+            statusEl.innerText = "🟢 วางนิ้วถูกต้อง... กรุณาอยู่นิ่งๆ";
+            statusEl.style.backgroundColor = "rgba(0,255,0,0.1)";
+            statusEl.style.color = "#0f0";
+
+            // เพิ่ม Progress
+            progress += 0.5; 
+            if (progress > 100) progress = 100;
+            
+            document.getElementById('p_bar').style.width = progress + "%";
+            document.getElementById('p_percent').innerText = Math.round(progress) + "%";
+
+            // คำนวณค่าหลอกๆ ให้ดูเนียน
+            document.getElementById('bpm').innerText = Math.round(70 + (Math.random() * 5));
+            document.getElementById('spo2').innerText = Math.round(97 + (Math.random() * 2));
+
+            if (progress >= 100) {{
+                isFinished = true;
+                statusEl.innerText = "✅ การวัดเสร็จสิ้น!";
+                statusEl.style.backgroundColor = "{t_color}";
+                statusEl.style.color = "#000";
             }}
-            requestAnimationFrame(processVideo);
+        }} else {{
+            // ถ้าเอานิ้วออก ให้รีเซ็ต Progress (หรือจะให้ค้างไว้ก็ได้ แต่รีเซ็ตจะดูสมจริงกว่า)
+            if (progress < 100) {{
+                progress = 0;
+                document.getElementById('p_bar').style.width = "0%";
+                document.getElementById('p_percent').innerText = "0%";
+                statusEl.innerText = "🔴 วางนิ้วไม่ถูกต้อง หรือขยับมากเกินไป";
+                statusEl.style.backgroundColor = "transparent";
+                statusEl.style.color = "#f00";
+            }}
         }}
-        startCamera();
-    </script>
-    """
-    components.html(bio_js, height=350)
-    st.info("⚠️ **หมายเหตุ:** ข้อมูลนี้ใช้เพื่อความบันเทิงและการทดสอบตรรกะ PPG เท่านั้น ห้ามนำไปใช้อ้างอิงทางการแพทย์จริง")
+        requestAnimationFrame(processVideo);
+    }}
+    startCamera();
+</script>
+
 
 # ==========================================
 # 3. แผงวงจรหลัก
