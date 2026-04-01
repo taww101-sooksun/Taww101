@@ -554,20 +554,25 @@ def room_bio_sensor():
 # 3. แผงวงจรหลัก
 # ==========================================
 def main():
-    # 1. เริ่มต้นระบบ
+    # 1. เริ่มต้นระบบ (ฟังก์ชันนี้ต้องถูกสร้างไว้แล้วข้างบน)
     init_system()
 
     # 2. ส่วนของ Sidebar สำหรับตั้งค่า
     with st.sidebar:
         st.title("⚙️ SETTINGS")
-        # รับค่าสีและเก็บลง session_state ทันที
-        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.get('theme_color', '#00FF00'))
-        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.get('bg_color', '#0E1117'))
-        st.session_state.text_color = st.color_picker("✍️ ข้อความ", st.session_state.get('text_color', '#FFFFFF'))
+        # ใช้ .get เพื่อป้องกัน Error กรณีรันครั้งแรก
+        theme_clr = st.session_state.get('theme_color', '#00FF00')
+        bg_clr = st.session_state.get('bg_color', '#0E1117')
+        txt_clr = st.session_state.get('text_color', '#FFFFFF')
+
+        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", theme_clr)
+        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", bg_clr)
+        st.session_state.text_color = st.color_picker("✍️ ข้อความ", txt_clr)
+        
         st.markdown("---")
         st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
-    # 3. ส่วนของ CSS (ย้ายมาไว้ตรงนี้เพื่อให้ค่าสีอัปเดตแบบ Real-time)
+    # 3. ส่วนของ CSS (ใช้ f-string และ {{ }} สำหรับ CSS ปกติ)
     st.markdown(f"""
         <style>
         .stApp {{
@@ -597,7 +602,7 @@ def main():
     }
     
     tabs = st.tabs(list(room_map.keys()))
-    for i, room_func in enumerate(room_map.values()):
+    for i, (name, room_func) in enumerate(room_map.items()):
         with tabs[i]:
             room_func()
 
