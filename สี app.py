@@ -529,38 +529,105 @@ def room_bio_sensor():
 
             if (progress >= 100) {{
                 isFinished = true;
-                statusEl.innerText = "✅ การวัดเสร็จสิ้น!";
-                statusEl.style.backgroundColor = "{t_color}";
-                statusEl.style.color = "#000";
-            }}
-        }} else {{
-            // ถ้าเอานิ้วออก ให้รีเซ็ต Progress (หรือจะให้ค้างไว้ก็ได้ แต่รีเซ็ตจะดูสมจริงกว่า)
-            if (progress < 100) {{
-                progress = 0;
-                document.getElementById('p_bar').style.width = "0%";
-                document.getElementById('p_percent').innerText = "0%";
-                statusEl.innerText = "🔴 วางนิ้วไม่ถูกต้อง หรือขยับมากเกินไป";
-                statusEl.style.backgroundColor = "transparent";
-                statusEl.style.color = "#f00";
-            }}
-        }}
-        requestAnimationFrame(processVideo);
-    }}
-    startCamera();
-</script>
+                statusEl.innerText = "✅ การวัดเdef room_bio_sensor():
+    st.subheader("🩺 SYNAPSE X - BIO SENSOR")
+    st.write("📡 **คำแนะนำ:** วางปลายนิ้วให้ปิดหน้าเลนส์กล้องหลังและไฟแฟลชให้สนิท")
+    
+    t_color = st.session_state.get('theme_color', '#39FF14')
+    
+    bio_js = f"""
+    <div style="background-color: #111; color: {t_color}; padding: 15px; border: 2px solid {t_color}; border-radius: 15px; font-family: monospace;">
+        <video id="v" style="display:none;" autoplay playsinline></video>
+        <canvas id="c" width="100" height="100" style="display:none;"></canvas>
+        
+        <div style="margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                <span>SCANNING PROGRESS</span>
+                <span id="p_percent">0%</span>
+            </div>
+            <div style="width: 100%; background: #222; height: 10px; border-radius: 5px; overflow: hidden;">
+                <div id="p_bar" style="width: 0%; height: 100%; background: {t_color}; transition: width 0.3s;"></div>
+            </div>
+        </div>
 
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+            <div style="border: 1px solid #333; padding: 10px; border-radius: 8px;">
+                <small>BPM</small>
+                <h2 id="bpm">0</h2>
+            </div>
+            <div style="border: 1px solid #333; padding: 10px; border-radius: 8px;">
+                <small>SpO2</small>
+                <h2 id="spo2">0</h2>
+            </div>
+        </div>
+        
+        <div id="status" style="margin-top: 15px; text-align: center; font-weight: bold; color: #f00; padding: 5px; border-radius: 5px;">
+            🔴 กรุณาวางนิ้วที่เลนส์
+        </div>
+    </div>
+
+    <script>
+        const v = document.getElementById('v');
+        const c = document.getElementById('c');
+        const ctx = c.getContext('2d', {{alpha: false}});
+        let progress = 0;
+        let isFinished = false;
+
+        async function startCamera() {{
+            try {{
+                const stream = await navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }});
+                v.srcObject = stream;
+                processVideo();
+            }} catch (e) {{ document.getElementById('status').innerText = "❌ กล้องขัดข้อง"; }}
+        }}
+
+        function processVideo() {{
+            if (isFinished) return;
+            ctx.drawImage(v, 0, 0, 100, 100);
+            const data = ctx.getImageData(0, 0, 100, 100).data;
+            let r = 0, g = 0;
+            for (let i = 0; i < data.length; i += 4) {{ r += data[i]; g += data[i+1]; }}
+            r /= 2500; g /= 2500;
+
+            const statusEl = document.getElementById('status');
+            if (r > 150 && g < 100) {{
+                statusEl.innerText = "🟢 วางนิ้วถูกต้อง... กรุณาอยู่นิ่งๆ";
+                statusEl.style.color = "#0f0";
+                progress += 0.5; 
+                if (progress > 100) progress = 100;
+                document.getElementById('p_bar').style.width = progress + "%";
+                document.getElementById('p_percent').innerText = Math.round(progress) + "%";
+                document.getElementById('bpm').innerText = Math.round(70 + (Math.random() * 5));
+                document.getElementById('spo2').innerText = Math.round(97 + (Math.random() * 2));
+                if (progress >= 100) {{
+                    isFinished = true;
+                    statusEl.innerText = "✅ การวัดเสร็จสิ้น!";
+                    statusEl.style.color = "{t_color}";
+                }}
+            }} else {{
+                if (progress < 100) {{
+                    progress = 0;
+                    document.getElementById('p_bar').style.width = "0%";
+                    document.getElementById('p_percent').innerText = "0%";
+                    statusEl.innerText = "🔴 วางนิ้วไม่ถูกต้อง";
+                    statusEl.style.color = "#f00";
+                }}
+            }}
+            requestAnimationFrame(processVideo);
+        }}
+        startCamera();
+    </script>
+    """
+    components.html(bio_js, height=300)
 
 # ==========================================
 # 3. แผงวงจรหลัก
 # ==========================================
 def main():
-    # 1. เริ่มต้นระบบ
     init_system()
 
-    # 2. ส่วนของ Sidebar สำหรับตั้งค่า
     with st.sidebar:
         st.title("⚙️ SETTINGS")
-        # ดึงค่าสีปัจจุบันมาตั้งต้น
         theme_clr = st.session_state.get('theme_color', '#00FF00')
         bg_clr = st.session_state.get('bg_color', '#0E1117')
         txt_clr = st.session_state.get('text_color', '#FFFFFF')
@@ -572,24 +639,23 @@ def main():
         st.markdown("---")
         st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
-    # 3. ส่วนของ CSS (ย่อหน้าให้ตรงกับ with st.sidebar)
     st.markdown(f"""
-<style>
-.stApp {{
-    background-color: {st.session_state.bg_color};
-}}
-.stButton>button {{
-    border-radius: 10px;
-    border: 1px solid {st.session_state.theme_color};
-    color: {st.session_state.text_color};
-}}
-h1, h2, h3, p, span, div, label {{
-    color: {st.session_state.text_color} !important;
-}}
-</style>
+        <style>
+        .stApp {{
+            background-color: {st.session_state.bg_color};
+        }}
+        .stButton>button {{
+            border-radius: 10px;
+            border: 1px solid {st.session_state.theme_color};
+            color: {st.session_state.text_color};
+            background-color: transparent;
+        }}
+        h1, h2, h3, p, span, div, label {{
+            color: {st.session_state.text_color} !important;
+        }}
+        </style>
     """, unsafe_allow_html=True)
 
-    # 4. การจัดการแผนที่ห้อง (Tabs)
     room_map = {
         "🚀 แกนหลัก": room_core,
         "🛰️ เรดาร์": room_radar,
@@ -604,3 +670,6 @@ h1, h2, h3, p, span, div, label {{
     for i, (name, room_func) in enumerate(room_map.items()):
         with tabs[i]:
             room_func()
+
+if __name__ == "__main__":
+    main()
