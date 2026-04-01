@@ -175,18 +175,63 @@ def room_radar():
 # 3. ห้องแชตรวม (Public Lobby)
 # ==========================================
 
+import base64
+
 def room_public():
-    st.subheader("🌐 แชตรวม (Public Lobby)")
-    with st.form("pub_chat", clear_on_submit=True):
-        msg = st.text_input("พิมพ์ข้อความสาธารณะ...")
-        if st.form_submit_button("📢 SEND MESSAGE") and msg:
-            db.reference('public_chat').push({'u': st.session_state.user, 'm': msg, 'ts': time.time()})
-            st.rerun()
+    st.subheader("🌐 แชตรวมระบบส่งไฟล์ (Public & Media)")
     
-    data = db.reference('public_chat').order_by_key().limit_to_last(15).get()
+    # 1. ส่วนส่งข้อความและลากไฟล์วาง
+    with st.form("media_chat", clear_on_submit=True):
+        msg = st.text_input("พิมพ์ข้อความ...")
+        uploaded_file = st.file_uploader("📸 ลากรูปภาพหรือคลิปมาวางตรงนี้", type=['jpg', 'png', 'mp4', 'mov'])
+        
+        if st.form_submit_button("📢 ส่งเข้าเครือข่าย"):
+            file_data = None
+            file_type = None
+            
+            if uploaded_file is not None:
+                # แปลงไฟล์เป็น Base64 เพื่อเก็บลงฐานข้อมูล (สำหรับไฟล์ขนาดเล็ก)
+                # หมายเหตุ: ถ้าไฟล์ใหญ่เกิน 1MB แนะนำให้ใช้ Firebase Storage แทนครับ
+                bytes_data = uploaded_file.getvalue()
+                file_data = base64.b64encode(bytes_data).decode()
+                file_type = uploaded_file.type
+
+            if msg or file_data:
+                db.reference('public_chat').push({
+                    'u': st.session_state.user,
+                    'm': msg,
+                    'file': file_data, # เก็บข้อมูลไฟล์ที่เข้ารหัสแล้ว
+                    'ft': file_type,   # เก็บประเภทไฟล์
+                    'ts': time.time()
+                })
+                st.rerun()
+
+    # 2. ส่วนแสดงผลแชต
+    st.write("---")
+    data = db.reference('public_chat').order_by_key().limit_to_last(10).get()
     if data:
         for v in reversed(list(data.values())):
-            st.markdown(f"**{v.get('u')}**: {v.get('m')}")
+            user = v.get('u', 'Unknown')
+            msg_text = v.get('m', '')
+            f_data = v.get('file')
+            f_type = v.get('ft')
+
+            st.markdown(f"**{user}**:")
+            if msg_text:
+                st.write(msg_text)
+            
+            # ถ้ามีไฟล์แนบมา ให้แสดงผลตามประเภท
+            if f_data:
+                try:
+                    decoded_file = base64.b64decode(f_data)
+                    if "image" in f_type:
+                        st.image(decoded_file, use_container_width=True)
+                    elif "video" in f_type:
+                        st.video(decoded_file)
+                except:
+                    st.error("⚠️ ไม่สามารถโหลดไฟล์ได้")
+            st.write("---")
+
 
 # ==========================================
 # 4. ห้องแชตส่วนตัว (Private Room)
