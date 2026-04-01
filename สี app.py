@@ -82,7 +82,6 @@ def room_radar():
         if st.button("📡 กระจายพิกัดของฉัน", use_container_width=True):
             db.reference(f'users/{st.session_state.user}').update({'lat': start_lat, 'lon': start_lon, 'ts': time.time()})
             st.rerun()
-
 def room_comms():
     st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
     chat_tabs = st.tabs(["🌐 Lobby", "📞 CALL (โทรฟรี)"])
