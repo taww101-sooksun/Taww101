@@ -102,22 +102,37 @@ def room_radar():
 def room_comms():
     st.subheader("💬 ศูนย์สื่อสาร")
     chat_tabs = st.tabs(["🌐 Lobby", "📞 CALL (Video)"])
+    
     with chat_tabs[0]:
         chat_ref = db.reference('public_chat')
         with st.form("chat_form", clear_on_submit=True):
             msg = st.text_input("ส่งสัญญาณ...")
             if st.form_submit_button("SEND") and msg:
-                chat_ref.push({'user': st.session_state.user, 'msg': msg, 'ts': time.time()})
+                chat_ref.push({
+                    'user': st.session_state.user, 
+                    'msg': msg, 
+                    'ts': time.time()
+                })
                 st.rerun()
-        msgs = chat_ref.limit_to_last(10).get()
-        if msgs:
-            for m in reversed(list(msgs.values())): st.write(f"🟢 **{m.get('user')}:** {m.get('msg')}")
+        
+        # --- แก้ไขจุดที่ทำให้ Error ตรงนี้ครับ ---
+        # ใช้ order_by_key() ก่อนค่อย limit_to_last
+        msgs_data = chat_ref.order_by_key().limit_to_last(10).get()
+        
+        if msgs_data:
+            # แปลงเป็น list แล้วเรียงใหม่ให้อันล่าสุดอยู่บน
+            for m in reversed(list(msgs_data.values())):
+                st.write(f"🟢 **{m.get('user')}:** {m.get('msg')}")
+        else:
+            st.write("ยังไม่มีข้อความใน Lobby")
 
     with chat_tabs[1]:
+        # ส่วนวิดีโอคอล (ใช้โค้ดเดิมที่คุณมีได้เลยครับ)
         all_u = db.reference('users').get()
         friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
         target = st.selectbox("เลือกเป้าหมาย:", [""] + friends)
         if target:
+            # ... (โค้ด HTML/JS Video Call เดิม) ...
             call_html = f"""
             <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
             <div style="background:#000; padding:15px; border-radius:15px; border:2px solid {st.session_state.theme_color}; text-align:center; color:white;">
