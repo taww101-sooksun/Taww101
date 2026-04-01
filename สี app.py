@@ -519,50 +519,50 @@ def room_bio():
 # MAIN EXECUTION - แก้ไขจุด NameError
 # ==========================================
 
+# --- ย้ายก้อนนี้มาไว้ก่อนฟังก์ชัน main() ---
+def room_mission():
+    st.subheader("📝 บันทึกภารกิจ (Missions)")
+    # ส่วนบันทึก
+    with st.form("m_form", clear_on_submit=True):
+        t = st.text_input("ระบุภารกิจใหม่:")
+        if st.form_submit_button("💾 บันทึก") and t:
+            try:
+                db.reference('missions').push({'u': st.session_state.user, 't': t, 'ts': time.time()})
+                st.success("บันทึกสำเร็จ!")
+                time.sleep(0.5)
+                st.rerun()
+            except:
+                st.error("📡 เชื่อมต่อฐานข้อมูลไม่ได้")
+    
+    st.write("---")
+    # ส่วนแสดงผล
+    try:
+        data = db.reference('missions').limit_to_last(10).get()
+        if data:
+            for key, v in reversed(list(data.items())):
+                st.info(f"📌 {v.get('t')} (โดย: {v.get('u')})")
+    except:
+        pass
+
+# --- ฟังก์ชัน main() ต้องอยู่ล่างสุดของไฟล์เสมอ ---
 def main():
-    init_system() # ตรวจสอบการเชื่อมต่อ Firebase และค่าเริ่มต้น
+    init_system()
     
-    with st.sidebar:
-        st.title("⚙️ SETTINGS")
-        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
-        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
-        st.write("---")
-        st.markdown(f'<h3 style="color:{st.session_state.theme_color}">"อยู่นิ่งๆ ไม่เจ็บตัว"</h3>', unsafe_allow_html=True)
-        st.caption("SYNAPSE v2.5 PRO")
+    # ... ส่วน Settings และ CSS ...
 
-    # ปรับแต่ง CSS พื้นหลังและสีตัวอักษร
-    st.markdown(f"""
-        <style>
-        .stApp {{ background-color: {st.session_state.bg_color}; }}
-        h1, h2, h3, p, span, div, label, .stMarkdown {{ color: white !important; }}
-        /* ปรับสีปุ่มและ Tab ให้เข้ากับธีม */
-        .stButton>button {{ border-color: {st.session_state.theme_color}; color: white; }}
-        </style>
-    """, unsafe_allow_html=True)
-
-    # สร้าง 8 ห้อง (Index 0 ถึง 7)
-    tabs = st.tabs([
-        "🚀 แกนหลัก", 
-        "🛰️ เรดาร์", 
-        "🌐 แชตรวม", 
-        "🔐 แชตส่วนตัว", 
-        "📞 โทร", 
-        "🎧 เพลง", 
-        "🩺 ตรวจร่างกาย", 
-        "📝 ภารกิจ"
-    ])
+    tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "🌐 แชตรวม", "🔐 แชตส่วนตัว", "📞 โทร", "🎧 เพลง", "🩺 ตรวจร่างกาย", "📝 ภารกิจ"])
     
-    # เรียกใช้ฟังก์ชันให้ตรงกับชื่อที่ประกาศไว้ข้างบน
-    with tabs[0]: room_core()      # ห้องที่ 1
-    with tabs[1]: room_radar()     # ห้องที่ 2
-    with tabs[2]: room_public()    # ห้องที่ 3
-    with tabs[3]: room_private()   # ห้องที่ 4
-    with tabs[4]: room_call()      # ห้องที่ 5
-    with tabs[5]: room_music()     # ห้องที่ 6
-    with tabs[6]: room_bio()       # ห้องที่ 7 (อันที่เราแก้ใหม่)
-    with tabs[7]: room_mission()   # ห้องที่ 8 (จุดที่เคย Error)
+    with tabs[0]: room_core()
+    with tabs[1]: room_radar()
+    with tabs[2]: room_public()
+    with tabs[3]: room_private()
+    with tabs[4]: room_call()
+    with tabs[5]: room_music()
+    with tabs[6]: room_bio()
+    with tabs[7]: room_mission() # <--- เช็กชื่อตรงนี้ให้เหมือนกับ def ข้างบนเป๊ะๆ
 
 if __name__ == "__main__":
     main()
+
 
 
