@@ -228,6 +228,7 @@ def room_comms(theme):
             if target_v != "-- เลือกชื่อ --":
                 # ระบบ P2P พร้อม STUN Server ของ Google เพื่อเจาะ Firewall
                 v_html = f"""
+                
 def room_comms(theme):
     st.subheader("🛰️ SYNAPSE P2P HEALING SYSTEM")
     
