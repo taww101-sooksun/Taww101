@@ -369,21 +369,66 @@ def room_call():
 # ==========================================
 
 def room_music():
-    st.subheader("🎧 ห้องฟังเพลง (Music Player)")
-    files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    if not files:
-        st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ใน Directory")
+    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)")
+    
+    # 1. ตรวจสอบไฟล์เพลงในโฟลเดอร์
+    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+    
+    if not music_files:
+        st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในระบบ")
         return
+
+    # 2. เลือกเพลงปัจจุบัน
+    current_song = music_files[st.session_state.song_index]
+    st.info(f"🎵 กำลังเล่น: {current_song} (ลำดับที่ {st.session_state.song_index + 1}/{len(music_files)})")
+
+    # 3. ใช้ HTML5 Audio + JS เพื่อให้เล่นต่อเนื่อง (Auto-next)
+    # เราจะแปลงไฟล์เป็น Base64 เพื่อให้ส่งเข้า Player ได้ชัวร์ๆ
+    with open(current_song, "rb") as f:
+        data = f.read()
+        b64 = base64.b64encode(data).decode()
+        mime = "audio/mp3"
+        audio_url = f"data:{mime};base64,{b64}"
+
+    # เทคนิค: ใส่ Event Listener 'ended' เมื่อเพลงจบให้กดปุ่ม 'ถัดไป' อัตโนมัติ
+    audio_html = f"""
+        <audio id="audio-player" controls autoplay style="width: 100%;">
+            <source src="{audio_url}" type="{mime}">
+        </audio>
+        <script>
+            var audio = document.getElementById('audio-player');
+            audio.onended = function() {{
+                // เมื่อเพลงจบ ให้ส่งสัญญาณไปที่ Streamlit เพื่อเปลี่ยนเพลง
+                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*');
+            }};
+        </script>
+    """
     
-    current = files[st.session_state.song_index]
-    st.info(f"🎵 กำลังเล่น: {current}")
-    st.audio(current)
+    # ใช้ components เพื่อรัน HTML/JS
+    result = components.html(audio_html, height=100)
+
+    # 4. ส่วนควบคุมการเปลี่ยนเพลง
+    col1, col2, col3 = st.columns(3)
+    if col1.button("⏮️ ก่อนหน้า"):
+        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
+        st.rerun()
     
+    if col2.button("🔄 เริ่มใหม่"):
+        st.rerun()
+
+    if col3.button("⏭️ ถัดไป") or result == 'next':
+        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+        st.rerun()
+
+    # 5. รายชื่อเพลงทั้งหมด (คลิกเลือกได้)
     st.write("---")
-    for i, f in enumerate(files):
-        if st.button(f"▶️ {f}", key=f"m_{i}", use_container_width=True):
-            st.session_state.song_index = i
-            st.rerun()
+    with st.expander("📂 รายชื่อเพลงในคลัง"):
+        for i, f in enumerate(music_files):
+            if st.button(f"🎼 {f}", key=f"song_{i}", use_container_width=True):
+                st.session_state.song_index = i
+                st.rerun()
+
+            
 
 # ==========================================
 # 7. ห้องตรวจร่างกาย (Bio Sensor)
