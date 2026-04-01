@@ -156,58 +156,138 @@ def room_radar():
         st.rerun()
 
 
-def room_comms():
-    st.subheader("💬 ศูนย์สื่อสาร SYNAPSE (P2P MODE)")
+def room_comms(theme):
+    st.subheader("💬 ศูนย์กลางการสื่อสาร")
     
-    # ดึง User อื่นๆ มาให้เลือก (เพื่อไม่ให้พิมพ์ ID ผิด)
-    all_u = db.reference('users').get()
-    friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
-    target = st.selectbox("เลือกเป้าหมายที่จะคอล:", [""] + friends)
-    
-    if target:
-        # ใช้ Public Server ของ PeerJS แบบระบุ Key (ป้องกัน ID ซ้ำระดับหนึ่ง)
-        # และเพิ่มคำสั่งป้องกันการหลุด
-        peer_html = f"""
-        <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-        <div style="background:#000; padding:15px; border-radius:15px; border:2px solid {st.session_state.theme_color}; text-align:center;">
-            <div style="position:relative; width:100%; height:300px; background:#111; border-radius:10px; overflow:hidden; margin-bottom:10px;">
-                <video id="remoteVideo" autoplay playsinline style="width:100%; height:100%; object-fit:cover; background:#222;"></video>
-                <video id="localVideo" autoplay playsinline muted style="position:absolute; bottom:10px; right:10px; width:100px; border:2px solid {st.session_state.theme_color}; border-radius:5px;"></video>
-            </div>
-            <div style="display:flex; gap:10px;">
-                <button id="callBtn" style="flex:1; padding:12px; background:{st.session_state.theme_color}; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">📹 CONNECT SATELLITE</button>
-            </div>
-        </div>
+    # ดึงรายชื่อเพื่อนจาก Firebase (กัน Error กรณีไม่มีข้อมูล)
+    all_users = db.reference('accounts').get()
+    friends = [uid for uid in all_users.keys() if uid != st.session_state.user] if all_users else []
 
-        <script>
-            // สร้าง ID ที่เดายากขึ้นโดยเอา User มาผสม (ป้องกันการชนกับคนอื่นในโลก)
-            const myId = "SYNAPSE_" + "{st.session_state.user}";
-            const targetId = "SYNAPSE_" + "{target}";
-            
-            const peer = new Peer(myId);
-            const localVideo = document.getElementById('localVideo');
-            const remoteVideo = document.getElementById('remoteVideo');
+    t_lobby, t_private, t_video = st.tabs(["🌐 Lobby", "🔐 แชตส่วนตัว", "📹 วิดีโอคอล"])
 
-            // เมื่อมีสายเข้า
-            peer.on('call', call => {{
-                navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
-                    localVideo.srcObject = stream;
-                    call.answer(stream);
-                    call.on('stream', remStream => {{ remoteVideo.srcObject = remStream; }});
-                }}).catch(err => alert("Camera Error: " + err));
-            }});
+    # --- 1. แชทรวม (Lobby) ---
+    with t_lobby:
+        with st.form("lobby_form", clear_on_submit=True):
+            m = st.text_input("พิมพ์ข้อความสาธารณะ...")
+            if st.form_submit_button("📢 SEND") and m:
+                db.reference('public_chat').push({
+                    'u': st.session_state.user, 
+                    'msg': m, 
+                    'ts': time.time()
+                })
+                st.rerun()
+        
+        data = db.reference('public_chat').order_by_key().limit_to_last(15).get()
+        if data:
+            for v in reversed(list(data.values())):
+                st.markdown(f"**{v.get('u','?')}**: {v.get('msg','')}")
 
-            // เมื่อกดโทรออก
-            document.getElementById('callBtn').onclick = () => {{
-                navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
-                    localVideo.srcObject = stream;
-                    const call = peer.call(targetId, stream);
-                    call.on('stream', remStream => {{ remoteVideo.srcObject = remStream; }});
-                }}).catch(err => alert("Camera Error: " + err));
-            }};
-        </script>
-        """
-        components.html(peer_html, height=450)
+    # --- 2. แชตส่วนตัว (Private Chat) ---
+    with t_private:
+        if not friends:
+            st.warning("📡 ยังไม่มี AGENT ท่านอื่นออนไลน์ในขณะนี้")
+        else:
+            target = st.selectbox("เลือกเพื่อน:", ["-- เลือกชื่อ --"] + friends)
+            if target != "-- เลือกชื่อ --":
+                # สร้าง Room ID ที่เหมือนกันทั้งสองฝั่ง
+                rid = "_".join(sorted([st.session_state.user, target]))
+                
+                with st.form("priv_form", clear_on_submit=True):
+                    pm = st.text_input(f"ส่งข้อความถึง {target}")
+                    if st.form_submit_button("🔒 SEND") and pm:
+                        db.reference(f'private_rooms/{rid}').push({
+                            'u': st.session_state.user, 
+                            'msg': pm, 
+                            'ts': time.time()
+                        })
+                        st.rerun()
+                
+                msgs = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(10).get()
+                if msgs:
+                    for v in reversed(list(msgs.values())):
+                        u_name = v.get('u', 'Unknown')
+                        side = "right" if u_name == st.session_state.user else "left"
+                        # ปรับสี Bubble ตามทีม
+                        bg = theme['chat_user'] if u_name == st.session_state.user else theme['chat_friend']
+                        text_c = "#000" if theme['theme_set'] == "Rainbow" else "#fff"
+                        
+                        st.markdown(f"""
+                            <div style="text-align:{side}; margin-bottom:10px;">
+                                <div style="display:inline-block; background:{bg}; padding:8px 15px; border-radius:15px; color:{text_c};">
+                                    <small style="opacity:0.7;">{u_name}</small><br>{v.get('msg','')}
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+
+    # --- 3. วิดีโอคอล (PeerJS - Optimized for Real-world) ---
+    with t_video:
+        if not friends:
+            st.warning("📡 ไม่พบเป้าหมายสำหรับการเชื่อมต่อวิดีโอ")
+        else:
+            target_v = st.selectbox("เลือกเพื่อนที่จะคอล:", ["-- เลือกชื่อ --"] + friends, key="v_call_sel")
+            if target_v != "-- เลือกชื่อ --":
+                # ระบบ P2P พร้อม STUN Server ของ Google เพื่อเจาะ Firewall
+                v_html = f"""
+                <div id="v-box" style="background:#000; padding:15px; border-radius:15px; border:2px solid {theme['main']}; text-align:center; font-family:monospace;">
+                    <div style="position:relative; width:100%; height:300px; background:#111; border-radius:10px; overflow:hidden;">
+                        <video id="remote" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                        <video id="local" autoplay playsinline muted style="position:absolute; bottom:10px; right:10px; width:100px; border:2px solid {theme['main']}; border-radius:5px;"></video>
+                    </div>
+                    <div style="margin-top:15px; display:flex; gap:10px;">
+                        <button id="call" style="flex:2; padding:12px; background:{theme['main']}; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">📹 ESTABLISH CONNECTION</button>
+                        <button id="hangup" style="flex:1; padding:12px; background:#f44; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">❌ DISCONNECT</button>
+                    </div>
+                    <p id="status-msg" style="color:{theme['main']}; font-size:12px; margin-top:10px;">📡 SYSTEM READY</p>
+                </div>
+
+                <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+                <script>
+                    const peer = new Peer('{st.session_state.user}', {{
+                        config: {{ 'iceServers': [{{ 'urls': 'stun:stun.l.google.com:19302' }}] }}
+                    }});
+                    
+                    let currentCall;
+                    const status = document.getElementById('status-msg');
+
+                    peer.on('open', id => status.innerText = "ONLINE ID: " + id);
+                    
+                    // เมื่อรับสาย
+                    peer.on('call', call => {{
+                        status.innerText = "🛰️ INCOMING SIGNAL...";
+                        if(confirm('รับสายจาก ' + call.peer + '?')) {{
+                            navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
+                                document.getElementById('local').srcObject = stream;
+                                call.answer(stream);
+                                call.on('stream', remoteStream => {{
+                                    document.getElementById('remote').srcObject = remoteStream;
+                                    status.innerText = "🟢 CONNECTION ENCRYPTED";
+                                }});
+                                currentCall = call;
+                            }}).catch(err => status.innerText = "❌ Camera Error");
+                        }}
+                    }});
+
+                    // เมื่อกดโทรออก
+                    document.getElementById('call').onclick = () => {{
+                        status.innerText = "📡 ATTEMPTING CONNECTION...";
+                        navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
+                            document.getElementById('local').srcObject = stream;
+                            const call = peer.call('{target_v}', stream);
+                            call.on('stream', remoteStream => {{
+                                document.getElementById('remote').srcObject = remoteStream;
+                                status.innerText = "🟢 ENCRYPTED CHANNEL OPEN";
+                            }});
+                            currentCall = call;
+                        }}).catch(err => status.innerText = "❌ Access Denied");
+                    }};
+
+                    document.getElementById('hangup').onclick = () => {{
+                        if(currentCall) currentCall.close();
+                        location.reload();
+                    }};
+                </script>
+                """
+                components.html(v_html, height=480)
 
 
 
