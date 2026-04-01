@@ -146,6 +146,62 @@ def room_comms():
             </script>
             """ % (st.session_state.theme_color, st.session_state.theme_color, st.session_state.user, target, st.session_state.user, target)
             components.html(call_html, height=250)
+                    # แก้ไข HTML/JS สำหรับ Video Call
+        call_html = """
+        <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+        <div style="background:#000; padding:15px; border-radius:15px; border:2px solid %s; text-align:center;">
+            <div style="position:relative; width:100%%; height:300px; background:#111; border-radius:10px; overflow:hidden; margin-bottom:10px;">
+                <video id="remoteVideo" autoplay playsinline style="width:100%%; height:100%%; object-fit:cover;"></video>
+                <video id="localVideo" autoplay playsinline muted style="position:absolute; bottom:10px; right:10px; width:100px; border:2px solid %s; border-radius:5px;"></video>
+            </div>
+            
+            <p style="color:white; font-size:0.8em;">ID: <b>%s</b> | กำลังจะคอลหา: <b>%s</b></p>
+            
+            <div style="display:flex; gap:10px;">
+                <button id="callBtn" style="flex:1; padding:12px; background:%s; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">📹 เริ่มวิดีโอคอล</button>
+                <button id="hangupBtn" onclick="location.reload()" style="flex:0.5; padding:12px; background:#ff4444; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">❌ วางสาย</button>
+            </div>
+            <p id="status" style="color:gray; margin-top:10px; font-size:0.7em;">สถานะ: สแตนบาย</p>
+        </div>
+
+        <script>
+            const peer = new Peer('%s');
+            const localVideo = document.getElementById('localVideo');
+            const remoteVideo = document.getElementById('remoteVideo');
+            const status = document.getElementById('status');
+
+            // รับสาย (Inbound)
+            peer.on('call', call => {
+                if(confirm("มีสายวิดีโอคอลเข้า รับหรือไม่?")) {
+                    navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
+                        localVideo.srcObject = stream;
+                        call.answer(stream);
+                        call.on('stream', remStream => {
+                            remoteVideo.srcObject = remStream;
+                            status.innerText = "🔴 กำลังคุยสาย...";
+                        });
+                    });
+                }
+            });
+
+            // โทรออก (Outbound)
+            document.getElementById('callBtn').onclick = () => {
+                navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
+                    localVideo.srcObject = stream;
+                    const call = peer.call('%s', stream);
+                    status.innerText = "🟡 กำลังเรียกสาย...";
+                    call.on('stream', remStream => {
+                        remoteVideo.srcObject = remStream;
+                        status.innerText = "🔴 เชื่อมต่อแล้ว";
+                    });
+                }).catch(err => {
+                    alert("เข้าถึงกล้องไม่ได้: " + err);
+                });
+            };
+        </script>
+        """ % (st.session_state.theme_color, st.session_state.theme_color, st.session_state.user, target, st.session_state.theme_color, st.session_state.user, target)
+        components.html(call_html, height=450)
+
 
 def room_music():
     st.subheader("🎧 SYNAPSE ROOMS")
