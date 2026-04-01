@@ -240,53 +240,125 @@ def room_comms(theme):
     with t_p2p:
         target = st.selectbox("เลือกเป้าหมายเพื่อสร้างท่อสัญญาณ:", ["-- ว่าง --"] + friends)
         if target != "-- ว่าง --":
-            # ดึงพิกัดเราเตรียมไว้ส่ง
             loc = get_geolocation()
             my_lat = loc['coords']['latitude'] if loc else 0
             my_lon = loc['coords']['longitude'] if loc else 0
 
-                        # สังเกตการใช้ {{ }} ในส่วนของ CSS และ JavaScript นะครับเพื่อน
-            p2p_html = f"""
+            # แก้ปัญหา SyntaxError โดยใช้การนิยาม HTML แยกส่วน
+            html_content = f"""
             <div style="background:#000; padding:15px; border-radius:15px; border:2px solid {theme['main']}; color:{theme['main']}; font-family:monospace;">
                 <div id="status" style="margin-bottom:10px;">🔴 OFFLINE</div>
                 <div id="gps-display" style="font-size:12px; color:#888;">GPS: Waiting for link...</div>
                 <hr style="border-color:{theme['main']}; opacity:0.3;">
-                
-                <div id="chat-area" style="height:150px; overflow-y:auto; margin-bottom:10px; font-size:14px;"></div>
-                
-                <input id="msg-input" type="text" placeholder="ส่งข้อความผ่านท่อ P2P..." 
-                    style="width:100%; background:#111; border:1px solid {theme['main']}; color:white; padding:8px; border-radius:5px;">
-                
+                <div id="chat-area" style="height:150px; overflow-y:auto; margin-bottom:10px; font-size:14px; border-bottom:1px solid #222;"></div>
+                <input id="msg-input" type="text" placeholder="พิมพ์ข้อความลับ..." style="width:100%; background:#111; border:1px solid {theme['main']}; color:white; padding:8px; border-radius:5px;">
                 <div style="display:flex; gap:5px; margin-top:10px;">
-                    <button id="call-btn" style="flex:1; padding:10px; background:{theme['main']}; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">🎤 VOICE CALL</button>
+                    <button id="call-btn" style="flex:1; padding:10px; background:{theme['main']}; color:black; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">🎤 VOICE CALL</button>
                     <button id="send-gps" style="flex:1; padding:10px; background:#444; color:white; border:none; border-radius:5px; cursor:pointer;">📍 SHARE GPS</button>
                 </div>
                 <audio id="remoteAudio" autoplay></audio>
             </div>
+            """
 
+            # ส่วน JavaScript แยกออกมาเพื่อเลี่ยง SyntaxError จากปีกกา {}
+            js_code = """
             <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
             <script>
-                // ใน f-string ของ Python ต้องใช้ {{ }} สำหรับปีกกาของ JavaScript
-                const peer = new Peer('SYNAPSE_{st.session_state.user}', {{
-                    config: {{ 'iceServers': [{{ 'urls': 'stun:stun.l.google.com:19302' }}] }}
-                }});
+                const peer = new Peer('SYNAPSE_REPLACE_USER', {
+                    config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
+                });
 
                 let conn;
-                let currentCall;
+                const chatArea = document.getElementById('chat-area');
+                const status = document.getElementById('status');
 
-                peer.on('connection', c => {{
+                function setupDataHandlers() {
+                    conn.on('open', () => {
+                        status.innerText = "🟢 P2P LINK ESTABLISHED";
+                        status.style.color = "lime";
+                    });
+                    conn.on('data', data => {
+                        if(data.startsWith("GPS:")) {
+                            document.getElementById('gps-display').innerText = "📍 พิกัดเป้าหมาย: " + data.replace("GPS:","");
+                        } else {
+                            chatArea.innerHTML += `<div><b style="color:lime;">Partner:</b> ${data}</div>`;
+                            chatArea.scrollTop = chatArea.scrollHeight;
+                        }
+                    });
+                }
+
+                peer.on('connection', c => {
                     conn = c;
                     setupDataHandlers();
-                }});
+                });
 
-                // ... โค้ดส่วนที่เหลือต้องเปลี่ยน { } เป็น {{ }} ทั้งหมดครับ ...
+                peer.on('call', call => {
+                    if(confirm('รับสายเสียง P2P?')) {
+                        navigator.mediaDevices.getUserMedia({audio:true}).then(stream => {
+                            call.answer(stream);
+                            call.on('stream', rs => {
+                                document.getElementById('remoteAudio').srcObject = rs;
+                            });
+                        });
+                    }
+                });
+
+                document.getElementById('msg-input').onkeypress = (e) => {
+                    if(e.key === 'Enter' && e.target.value) {
+                        if(!conn) conn = peer.connect('SYNAPSE_REPLACE_TARGET');
+                        const m = e.target.value;
+                        if(conn.open) {
+                            conn.send(m);
+                            chatArea.innerHTML += `<div><b style="color:#888;">Me:</b> ${m}</div>`;
+                            chatArea.scrollTop = chatArea.scrollHeight;
+                            e.target.value = "";
+                        }
+                    }
+                };
+
+                document.getElementById('call-btn').onclick = () => {
+                    navigator.mediaDevices.getUserMedia({audio:true}).then(stream => {
+                        const call = peer.call('SYNAPSE_REPLACE_TARGET', stream);
+                        call.on('stream', rs => {
+                            document.getElementById('remoteAudio').srcObject = rs;
+                        });
+                    });
+                };
+
+                document.getElementById('send-gps').onclick = () => {
+                    if(!conn || !conn.open) conn = peer.connect('SYNAPSE_REPLACE_TARGET');
+                    setTimeout(() => {
+                        if(conn.open) conn.send("GPS:REPLACE_LAT,REPLACE_LON");
+                    }, 1000);
+                };
             </script>
             """
-            components.html(p2p_html, height=450)
+            
+            # แทนที่ตัวแปรใน JS ก่อนส่งไปแสดงผล
+            final_js = js_code.replace("SYNAPSE_REPLACE_USER", f"SYNAPSE_{st.session_state.user}")\
+                              .replace("SYNAPSE_REPLACE_TARGET", f"SYNAPSE_{target}")\
+                              .replace("REPLACE_LAT", str(my_lat))\
+                              .replace("REPLACE_LON", str(my_lon))
+            
+            components.html(html_content + final_js, height=450)
 
     with t_lobby:
-        st.info("แชตรวมปกติผ่าน Firebase (สำหรับส่งข้อความทิ้งไว้)")
-        # ... (โค้ด Lobby เดิมของคุณ) ...
+        st.info("🌐 Lobby: แชตสาธารณะ (ผ่าน Firebase)")
+        with st.form("lobby_form", clear_on_submit=True):
+            m = st.text_input("พิมพ์ข้อความสาธารณะ...")
+            if st.form_submit_button("📢 SEND") and m:
+                db.reference('public_chat').push({
+                    'u': st.session_state.user, 
+                    'msg': m, 
+                    'ts': time.time()
+                })
+                st.rerun()
+        
+        data = db.reference('public_chat').order_by_key().limit_to_last(15).get()
+        if data:
+            for v in reversed(list(data.values())):
+                st.write(f"**{v.get('u','?')}**: {v.get('msg','')}")
+
 
 def room_music():
     """
