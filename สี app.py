@@ -157,17 +157,19 @@ def room_comms():
             for m in reversed(list(msgs.values())):
                 st.write(f"🟢 **{m.get('user')}:** {m.get('msg')}")
 
-    # --- [ใหม่] Private Chat ---
-    with t2:
-        all_u = db.reference('users').get()
-        # รายชื่อเพื่อน (ยกเว้นตัวเอง)
-        friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
-        
-        target_user = st.selectbox("เลือกเพื่อนที่จะคุยด้วย:", [""] + friends, key="p_target")
+    # ตัวอย่างการเขียนใน Tab Private
+with t2: # Tab Private
+    all_u = db.reference('users').get()
+    if all_u:
+        friends = [uid for uid in all_u.keys() if uid != st.session_state.user]
+        target_user = st.selectbox("เลือกเพื่อนที่จะคุยด้วย:", [""] + friends, key="private_msg_select")
         
         if target_user:
-            chat_id = get_chat_id(st.session_state.user, target_user)
-            p_chat_ref = db.reference(f'private_messages/{chat_id}')
+            # บรรทัดนี้แหละที่เคย Error เพราะหาฟังก์ชันไม่เจอ
+            chat_id = get_chat_id(st.session_state.user, target_user) 
+            # ... โค้ดส่วนที่เหลือ ...
+
+    
             
             # ฟอร์มส่งข้อความ
             with st.form("private_chat_form", clear_on_submit=True):
