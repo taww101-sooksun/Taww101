@@ -55,33 +55,76 @@ def room_core():
     st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
 
 def room_radar():
-    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม")
+    st.subheader("🛰️ เรดาร์ตรวจจับพิกัดและระยะห่าง")
     loc = get_geolocation()
     all_users = db.reference('users').get()
     
-    start_lat, start_lon = 13.7367, 100.5231
+    # พิกัดเริ่มต้น (ถ้า GPS ยังไม่มา)
+    my_lat, my_lon = 13.7367, 100.5231 
     if loc:
-        start_lat = loc['coords']['latitude']
-        start_lon = loc['coords']['longitude']
+        my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
 
-    tile_url = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-    m = folium.Map(location=[start_lat, start_lon], zoom_start=15, tiles=tile_url, attr="Google Satellite")
+    # 1. สร้างแผนที่ดาวเทียม Google Hybrid
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=16, 
+                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+                   attr="Google Satellite")
 
+    # 2. วาด "วงกลมรัศมี" รอบตัวเรา (รัศมี 500 เมตร) เพื่อดูระยะประชิด
+    folium.Circle(
+        location=[my_lat, my_lon],
+        radius=500,  # หน่วยเป็นเมตร
+        color=st.session_state.theme_color,
+        fill=True,
+        fill_opacity=0.1,
+        tooltip="เขตรัศมี 500 เมตร"
+    ).add_to(m)
+
+    # 3. ปักหมุดตัวเรา (Base)
+    folium.Marker(
+        [my_lat, my_lon], 
+        tooltip="ตำแหน่งของคุณ", 
+        icon=folium.Icon(color='red', icon='star')
+    ).add_to(m)
+
+    # 4. คำนวณระยะห่างเพื่อนทุกคนในระบบ
     if all_users:
-        for user_id, data in all_users.items():
-            u_lat = data.get('lat')
-            u_lon = data.get('lon')
-            u_ts = data.get('ts', 0)
+        st.write("### 👥 รายงานระยะห่างจากฐาน (Base)")
+        col1, col2 = st.columns(2)
+        
+        for index, (uid, data) in enumerate(all_users.items()):
+            if uid == st.session_state.user: continue
+            
+            u_lat, u_lon = data.get('lat'), data.get('lon')
             if u_lat and u_lon:
-                is_active = (time.time() - u_ts) < 3600
-                icon_color = 'red' if user_id == st.session_state.user else ('green' if is_active else 'gray')
-                folium.Marker([u_lat, u_lon], tooltip=user_id, icon=folium.Icon(color=icon_color, icon='user', prefix='fa')).add_to(m)
+                # ใช้สูตร Haversine คำนวณระยะทางจริง
+                dist = haversine(my_lat, my_lon, u_lat, u_lon)
+                is_active = (time.time() - data.get('ts', 0)) < 600
+                
+                # แสดงผลเป็นข้อความบอกระยะ
+                with (col1 if index % 2 == 0 else col2):
+                    color_status = "🟢" if is_active else "⚪"
+                    st.write(f"{color_status} **{uid}**: `{dist:.2f} กม.`")
+                
+                # ปักหมุดเพื่อนพร้อมระบุระยะทางบน Tooltip
+                folium.Marker(
+                    [u_lat, u_lon], 
+                    tooltip=f"{uid} (ห่าง {dist:.2f} km)", 
+                    icon=folium.Icon(color='green' if is_active else 'gray', icon='user', prefix='fa')
+                ).add_to(m)
 
+    # 5. แสดงแผนที่
     st_folium(m, width="100%", height=500)
+    
     if loc:
-        if st.button("📡 กระจายพิกัดของฉัน", use_container_width=True):
-            db.reference(f'users/{st.session_state.user}').update({'lat': start_lat, 'lon': start_lon, 'ts': time.time()})
+        if st.button("📡 ยืนยันพิกัดและส่งสัญญาณ", use_container_width=True):
+            db.reference(f'users/{st.session_state.user}').update({
+                'lat': my_lat, 
+                'lon': my_lon, 
+                'ts': time.time()
+            })
+            st.success("ส่งพิกัดเข้าดาวเทียมเรียบร้อย!")
             st.rerun()
+
 
 def room_comms():
     st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
