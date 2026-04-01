@@ -344,6 +344,28 @@ def room_sensor():
     </script>
     """
     components.html(audio_js, height=250)
+def room_mission():
+    st.subheader("📝 ศูนย์ปฏิบัติการภารกิจ")
+    
+    # ตัวอย่างลูกเล่นในห้องนี้: ระบบจด Note ลง Firebase
+    with st.form("mission_form", clear_on_submit=True):
+        task = st.text_input("ระบุภารกิจใหม่:")
+        priority = st.select_slider("ระดับความสำคัญ", options=["ต่ำ", "กลาง", "สูง"])
+        if st.form_submit_button("บันทึกภารกิจ"):
+            db.reference('missions').push({
+                'user': st.session_state.user,
+                'task': task,
+                'priority': priority,
+                'time': time.time()
+            })
+            st.success("บันทึกภารกิจลงฐานข้อมูลแล้ว!")
+
+    # ดึงข้อมูลภารกิจมาโชว์
+    st.write("---")
+    missions = db.reference('missions').limit_to_last(5).get()
+    if missions:
+        for m in reversed(list(missions.values())):
+            st.info(f"📌 {m['task']} (ระดับ: {m['priority']}) - โดย {m['user']}")
 
 # ==========================================
 # 3. แผงวงจรหลัก
@@ -372,6 +394,7 @@ def main():
         "💬 สื่อสาร": room_comms,
         "🎧 เพลง": room_music,
         "📟 วัดเสียง": room_sensor
+        "📝 ภารกิจ": room_mission
     }
     
     tabs = st.tabs(list(room_map.keys()))
