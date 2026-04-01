@@ -522,12 +522,18 @@ def main():
         st.write("---")
         st.caption("SYNAPSE COMMAND CENTER v2.0")
 
+    # --- สร้างตัวแปร theme เพื่อส่งเข้าไปในห้องสื่อสาร (ป้องกัน TypeError) ---
+    current_theme = {
+        'main': st.session_state.theme_color,
+        'chat_user': st.session_state.theme_color,
+        'chat_friend': '#333333', # สีเทาสำหรับข้อความเพื่อน
+        'theme_set': 'Custom'      # ระบุสถานะธีม
+    }
+
     # ปรับแต่งธีมด้วย CSS
     st.markdown(f"""
         <style>
-        .stApp {{
-            background-color: {st.session_state.bg_color};
-        }}
+        .stApp {{ background-color: {st.session_state.bg_color}; }}
         .stButton>button {{
             border-radius: 8px;
             border: 1px solid {st.session_state.theme_color};
@@ -540,12 +546,10 @@ def main():
             color: black;
             box-shadow: 0 0 10px {st.session_state.theme_color};
         }}
-        h1, h2, h3, p, span, div, label, .stMarkdown {{
+        h1, h2, h3, p, span, div, label, .stMarkdown, .stMetric {{
             color: {st.session_state.text_color} !important;
         }}
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 10px;
-        }}
+        .stTabs [data-baseweb="tab-list"] {{ gap: 10px; }}
         .stTabs [data-baseweb="tab"] {{
             border: 1px solid {st.session_state.theme_color};
             padding: 5px 15px;
@@ -554,21 +558,24 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    # รายชื่อห้องทั้งหมด
+    # รายชื่อห้องทั้งหมด (ใช้ lambda เพื่อส่งตัวแปรเฉพาะห้องที่ต้องการ)
     room_map = {
-        "🚀 แกนหลัก": room_core,
-        "🛰️ เรดาร์": room_radar,
-        "💬 สื่อสาร": room_comms,
-        "🎧 ฟังเพลง": room_music,
-        "📟 วัดเสียง": room_sensor,
-        "📝 ภารกิจ": room_mission,
-        "🩺 ตรวจร่างกาย": room_bio_sensor,
+        "🚀 แกนหลัก": lambda: room_core(),
+        "🛰️ เรดาร์": lambda: room_radar(),
+        "💬 สื่อสาร": lambda: room_comms(current_theme), # ส่ง current_theme เข้าไปที่นี่
+        "🎧 ฟังเพลง": lambda: room_music(),
+        "📟 วัดเสียง": lambda: room_sensor(),
+        "📝 ภารกิจ": lambda: room_mission(),
+        "🩺 ตรวจร่างกาย": lambda: room_bio_sensor(),
     }
     
     tabs = st.tabs(list(room_map.keys()))
     for i, (name, room_func) in enumerate(room_map.items()):
         with tabs[i]:
-            room_func()
+            try:
+                room_func() # เรียกใช้ฟังก์ชันผ่าน lambda
+            except Exception as e:
+                st.error(f"❌ ระบบขัดข้องในห้อง {name}: {e}")
 
 # รันแอปพลิเคชัน
 if __name__ == "__main__":
