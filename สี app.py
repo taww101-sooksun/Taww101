@@ -347,25 +347,41 @@ def room_sensor():
 def room_mission():
     st.subheader("📝 ศูนย์ปฏิบัติการภารกิจ")
     
-    # ตัวอย่างลูกเล่นในห้องนี้: ระบบจด Note ลง Firebase
+    # ส่วนฟอร์มบันทึก (ของเดิมดีอยู่แล้ว)
     with st.form("mission_form", clear_on_submit=True):
         task = st.text_input("ระบุภารกิจใหม่:")
         priority = st.select_slider("ระดับความสำคัญ", options=["ต่ำ", "กลาง", "สูง"])
         if st.form_submit_button("บันทึกภารกิจ"):
-            db.reference('missions').push({
-                'user': st.session_state.user,
-                'task': task,
-                'priority': priority,
-                'time': time.time()
-            })
-            st.success("บันทึกภารกิจลงฐานข้อมูลแล้ว!")
+            if task: # เช็คว่าไม่ได้เว้นว่าง
+                db.reference('missions').push({
+                    'user': st.session_state.user,
+                    'task': task,
+                    'priority': priority,
+                    'ts': time.time()
+                })
+                st.success("บันทึกภารกิจลงฐานข้อมูลแล้ว!")
+                time.sleep(1)
+                st.rerun()
 
-    # ดึงข้อมูลภารกิจมาโชว์
     st.write("---")
-    missions = db.reference('missions').limit_to_last(5).get()
-    if missions:
-        for m in reversed(list(missions.values())):
-            st.info(f"📌 {m['task']} (ระดับ: {m['priority']}) - โดย {m['user']}")
+    st.write("📋 **รายการภารกิจล่าสุด**")
+    
+    # --- วิธีดึงข้อมูลที่ถูกต้อง (แก้จากที่ Error) ---
+    missions_ref = db.reference('missions')
+    # ดึงข้อมูลทั้งหมดมาก่อน แล้วค่อยมาตัดเอา 5 อันล่าสุดใน Python แทน (วิธีนี้ไม่ Error แน่นอน)
+    missions_data = missions_ref.get()
+    
+    if missions_data:
+        # แปลงเป็น List และเรียงจากใหม่ไปเก่า
+        m_list = list(missions_data.values())
+        m_list.reverse() # เอาอันล่าสุดขึ้นก่อน
+        
+        for m in m_list[:5]: # เอาแค่ 5 อันล่าสุด
+            p_color = "🔴" if m.get('priority') == "สูง" else "🟡" if m.get('priority') == "กลาง" else "🟢"
+            st.info(f"{p_color} **{m.get('task')}**\n\n(ระดับ: {m.get('priority')} | โดย: {m.get('user')})")
+    else:
+        st.write("ยังไม่มีภารกิจในระบบ")
+
 
 # ==========================================
 # 3. แผงวงจรหลัก
