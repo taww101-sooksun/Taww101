@@ -54,29 +54,84 @@ def room_core():
 # ==========================================
 
 def room_radar():
-    st.subheader("🛰️ เรดาร์ตรวจจับพิกัด")
+    st.subheader("🛰️ ระบบเรดาร์ตรวจจับสัญญาณ AGENT")
+    
+    # ดึงพิกัดปัจจุบันของคุณ (Real-time GPS)
     loc = get_geolocation()
-    my_lat, my_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.7367, 100.5231)
+    if loc:
+        my_lat = loc['coords']['latitude']
+        my_lon = loc['coords']['longitude']
+        st.session_state.my_pos = (my_lat, my_lon)
+    else:
+        # พิกัดสำรองถ้า GPS ยังไม่ทำงาน
+        my_lat, my_lon = 13.7367, 100.5231
+        st.warning("📡 กำลังค้นหาสัญญาณดาวเทียม... (ใช้พิกัดสำรอง)")
+
+    # สร้างแผนที่ธีม Dark Ops
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=14, tiles="CartoDB dark_matter")
     
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=15, tiles="CartoDB dark_matter")
-    folium.Marker([my_lat, my_lon], tooltip="ตำแหน่งของคุณ", icon=folium.Icon(color='red', icon='star')).add_to(m)
-    
-    # ดึงพิกัดเพื่อนจาก Firebase
+    # 🔴 จุดของคุณ (Center)
+    folium.Marker(
+        [my_lat, my_lon], 
+        tooltip="คุณ (ORIGIN)",
+        icon=folium.Icon(color='red', icon='crosshairs', prefix='fa')
+    ).add_to(m)
+
+    # วงแหวนเรดาร์ (รัศมี 1km, 3km, 5km)
+    for radius in [1000, 3000, 5000]:
+        folium.Circle(
+            radius=radius,
+            location=[my_lat, my_lon],
+            color=st.session_state.theme_color,
+            fill=False,
+            dash_array='10, 10',
+            opacity=0.3
+        ).add_to(m)
+
+    # 🟢 ดึงข้อมูลเพื่อนและคำนวณระยะห่าง
     try:
-        users = db.reference('users').get()
-        if users:
-            for uid, data in users.items():
+        users_ref = db.reference('users').get()
+        if users_ref:
+            for uid, data in users_ref.items():
                 if uid != st.session_state.user:
-                    u_lat, u_lon = data.get('lat'), data.get('lon')
+                    u_lat = data.get('lat')
+                    u_lon = data.get('lon')
+                    
                     if u_lat and u_lon:
+                        # คำนวณระยะห่างเป็นกิโลเมตร
                         dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                        folium.Marker([u_lat, u_lon], tooltip=f"{uid} ({dist:.2f}km)", icon=folium.Icon(color='green')).add_to(m)
-    except: pass
-    
-    st_folium(m, width="100%", height=400)
-    if st.button("📡 กระจายพิกัดเข้าศูนย์บัญชาการ", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-        st.success("ส่งพิกัดเข้าดาวเทียมเรียบร้อย!")
+                        
+                        # ปักหมุดเพื่อนพร้อมบอกระยะ
+                        folium.Marker(
+                            [u_lat, u_lon],
+                            popup=f"AGENT: {uid}<br>ระยะห่าง: {dist:.2f} กม.",
+                            tooltip=f"{uid}: {dist:.2f} km",
+                            icon=folium.Icon(color='green', icon='signal', prefix='fa')
+                        ).add_to(m)
+                        
+                        # ลากเส้นเชื่อมต่อประวิบวับ
+                        folium.PolyLine(
+                            locations=[[my_lat, my_lon], [u_lat, u_lon]],
+                            color=st.session_state.theme_color,
+                            weight=1,
+                            opacity=0.6,
+                            dash_array='5, 5'
+                        ).add_to(m)
+    except Exception as e:
+        st.error(f"📡 เรดาร์ขัดข้อง: {e}")
+
+    # แสดงผลแผนที่แบบเต็มหน้าจอ
+    st_folium(m, width="100%", height=500)
+
+    # ปุ่มอัปเดตพิกัดสด
+    if st.button("🛰️ กระจายสัญญาณพิกัดสด (LIVE UPDATE)", use_container_width=True):
+        db.reference(f'users/{st.session_state.user}').update({
+            'lat': my_lat, 
+            'lon': my_lon, 
+            'ts': time.time()
+        })
+        st.success(f"พิกัด {my_lat}, {my_lon} ถูกส่งเข้าดาวเทียมแล้ว!")
+
 
 # ==========================================
 # 3. ห้องแชตรวม (Public Lobby)
