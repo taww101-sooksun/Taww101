@@ -11,6 +11,54 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import hashlib
 from math import radians, cos, sin, asin, sqrt
+# ฟังก์ชันเข้ารหัสผ่าน (ป้องกันคนแอบดูใน Database)
+def hash_pass(password):
+    return hashlib.sha256(str.encode(password)).hexdigest()
+
+def check_pass(password, hashed_pw):
+    return hash_pass(password) == hashed_pw
+def auth_system():
+    st.markdown(f"<h2 style='text-align:center; color:{st.session_state.theme_color};'>🔐 SYNAPSE ACCESS</h2>", unsafe_allow_html=True)
+    
+    auth_tab = st.tabs(["เข้าสู่ระบบ", "ลงทะเบียน"])
+    
+    with auth_tab[0]: # Login
+        with st.form("login_form"):
+            user_in = st.text_input("Username")
+            pass_in = st.text_input("Password", type="password")
+            if st.form_submit_button("LOGIN", use_container_width=True):
+                # ดึงข้อมูลจาก Firebase มาเช็ค
+                user_data = db.reference(f'users/{user_in}').get()
+                if user_data and check_pass(pass_in, user_data.get('password')):
+                    st.session_state.user = user_in
+                    st.session_state.logged_in = True
+                    st.success("กำลังเข้าสู่ระบบ...")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("ชื่อผู้ใช้หรือรหัสผ่านผิดพลาด")
+
+    with auth_tab[1]: # Register
+        with st.form("reg_form"):
+            new_user = st.text_input("สร้าง Username (อังกฤษเท่านั้น)")
+            new_pass = st.text_input("สร้าง Password", type="password")
+            conf_pass = st.text_input("ยืนยัน Password", type="password")
+            if st.form_submit_button("REGISTER", use_container_width=True):
+                if new_pass != conf_pass:
+                    st.warning("รหัสผ่านไม่ตรงกัน")
+                elif len(new_user) < 3:
+                    st.warning("Username สั้นเกินไป")
+                else:
+                    # เช็คว่ามีคนใช้ชื่อนี้หรือยัง
+                    exists = db.reference(f'users/{new_user}').get()
+                    if exists:
+                        st.error("ชื่อนี้ถูกใช้งานแล้ว")
+                    else:
+                        db.reference(f'users/{new_user}').set({
+                            'password': hash_pass(new_pass),
+                            'created_at': time.time()
+                        })
+                        st.success("ลงทะเบียนสำเร็จ! ไปที่หน้าเข้าสู่ระบบได้เลย")
 
 # ==========================================
 # 0. ฟังก์ชันคำนวณระยะทาง
