@@ -572,23 +572,23 @@ def main():
         st.markdown("---")
         st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
-    # 3. ส่วนของ CSS (ใช้ f-string และ {{ }} สำหรับ CSS ปกติ)
+     # ... โค้ดส่วนบน ...
     st.markdown(f"""
-        <style>
-        .stApp {{
-            background-color: {st.session_state.bg_color};
-        }}
-        .stButton>button {{
-            border-radius: 10px;
-            border: 1px solid {st.session_state.theme_color};
-            background-color: transparent;
-            color: {st.session_state.text_color};
-        }}
-        h1, h2, h3, p, span, div, label {{
-            color: {st.session_state.text_color} !important;
-        }}
-        </style>
-        """, unsafe_allow_html=True)
+<style>
+.stApp {{
+    background-color: {st.session_state.bg_color};
+}}
+.stButton>button {{
+    border-radius: 10px;
+    border: 1px solid {st.session_state.theme_color};
+}}
+h1, h2, h3, p, span, div, label {{
+    color: {st.session_state.text_color} !important;
+}}
+</style>
+    """, unsafe_allow_html=True)
+    # ... โค้ดส่วนล่าง ...
+
 
     # 4. การจัดการแผนที่ห้อง (Tabs)
     room_map = {
