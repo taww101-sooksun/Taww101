@@ -50,11 +50,11 @@ def room_core():
     st.write(f"🚩 SLOGAN: **'อยู่นิ่งๆ ไม่เจ็บตัว'**")
 
 # ==========================================
-# 2. ห้องเรดาร์ (Satellite Radar)
+# 2. ห้องเรดาร์ (Satellite Radar) - ฉบับเน้นความชัดเจนและตัวหนังสือ
 # ==========================================
 
 def room_radar():
-    st.subheader("🛰️ ระบบเรดาร์ตรวจจับสัญญาณ AGENT")
+    st.subheader("🛰️ ระบบเรดาร์และพิกัดแผนที่ละเอียด")
     
     # ดึงพิกัดปัจจุบันของคุณ (Real-time GPS)
     loc = get_geolocation()
@@ -63,29 +63,37 @@ def room_radar():
         my_lon = loc['coords']['longitude']
         st.session_state.my_pos = (my_lat, my_lon)
     else:
-        # พิกัดสำรองถ้า GPS ยังไม่ทำงาน
+        # พิกัดสำรองถ้า GPS ยังไม่ทำงาน (กรุงเทพฯ)
         my_lat, my_lon = 13.7367, 100.5231
-        st.warning("📡 กำลังค้นหาสัญญาณดาวเทียม... (ใช้พิกัดสำรอง)")
+        st.info("📡 กำลังค้นหาสัญญาณดาวเทียม... (แสดงพิกัดล่าสุดที่ตรวจพบ)")
 
-    # สร้างแผนที่ธีม Dark Ops
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=14, tiles="CartoDB dark_matter")
+    # --- ส่วนที่เปลี่ยน: ใช้แผนที่มาตรฐาน เห็นชื่อถนนชัดเจน ---
+    # zoom_start=16 จะเห็นระดับซอยและชื่อสถานที่ชัดที่สุด
+    m = folium.Map(
+        location=[my_lat, my_lon], 
+        zoom_start=16, 
+        tiles="OpenStreetMap" 
+    )
     
-    # 🔴 จุดของคุณ (Center)
+    # 🔴 จุดของคุณ (ตัวหนังสือจะปรากฏเมื่อเอาเมาส์ไปชี้หรือกดที่หมุด)
     folium.Marker(
         [my_lat, my_lon], 
-        tooltip="คุณ (ORIGIN)",
+        popup=f"ตำแหน่งของคุณ: {my_lat:.5f}, {my_lon:.5f}",
+        tooltip="คลิกเพื่อดูพิกัดของคุณ",
         icon=folium.Icon(color='red', icon='crosshairs', prefix='fa')
     ).add_to(m)
 
-    # วงแหวนเรดาร์ (รัศมี 1km, 3km, 5km)
-    for radius in [1000, 3000, 5000]:
+    # วงแหวนเรดาร์บอกระยะห่าง (100ม. , 500ม. , 1กม.)
+    # ปรับวงให้เล็กลงเพื่อให้เข้ากับระยะซูมที่เห็นชื่อถนน
+    for radius in [100, 500, 1000]:
         folium.Circle(
             radius=radius,
             location=[my_lat, my_lon],
-            color=st.session_state.theme_color,
-            fill=False,
-            dash_array='10, 10',
-            opacity=0.3
+            color="#FF4B4B",
+            fill=True,
+            fill_opacity=0.1,
+            weight=1,
+            dash_array='5, 5'
         ).add_to(m)
 
     # 🟢 ดึงข้อมูลเพื่อนและคำนวณระยะห่าง
@@ -98,39 +106,41 @@ def room_radar():
                     u_lon = data.get('lon')
                     
                     if u_lat and u_lon:
-                        # คำนวณระยะห่างเป็นกิโลเมตร
                         dist = haversine(my_lat, my_lon, u_lat, u_lon)
                         
-                        # ปักหมุดเพื่อนพร้อมบอกระยะ
+                        # ปักหมุดเพื่อนพร้อมบอกระยะและชื่อถนนใกล้เคียง
                         folium.Marker(
                             [u_lat, u_lon],
-                            popup=f"AGENT: {uid}<br>ระยะห่าง: {dist:.2f} กม.",
-                            tooltip=f"{uid}: {dist:.2f} km",
+                            popup=f"AGENT: {uid}<br>ระยะห่างจากคุณ: {dist:.2f} กม.",
+                            tooltip=f"{uid} ({dist:.2f} km)",
                             icon=folium.Icon(color='green', icon='signal', prefix='fa')
                         ).add_to(m)
                         
-                        # ลากเส้นเชื่อมต่อประวิบวับ
+                        # ลากเส้นเชื่อมต่อ
                         folium.PolyLine(
                             locations=[[my_lat, my_lon], [u_lat, u_lon]],
-                            color=st.session_state.theme_color,
-                            weight=1,
-                            opacity=0.6,
-                            dash_array='5, 5'
+                            color="#39FF14",
+                            weight=2,
+                            opacity=0.5,
+                            dash_array='10, 10'
                         ).add_to(m)
     except Exception as e:
         st.error(f"📡 เรดาร์ขัดข้อง: {e}")
 
-    # แสดงผลแผนที่แบบเต็มหน้าจอ
+    # แสดงผลแผนที่
     st_folium(m, width="100%", height=500)
 
+    # แสดงพิกัดเป็นตัวเลขข้างล่างเพื่อให้ดูง่ายขึ้น
+    st.write(f"📍 พิกัดปัจจุบันของคุณ: `{my_lat:.6f}, {my_lon:.6f}`")
+
     # ปุ่มอัปเดตพิกัดสด
-    if st.button("🛰️ กระจายสัญญาณพิกัดสด (LIVE UPDATE)", use_container_width=True):
+    if st.button("🛰️ กระจายสัญญาณพิกัดเข้าศูนย์บัญชาการ", use_container_width=True):
         db.reference(f'users/{st.session_state.user}').update({
             'lat': my_lat, 
             'lon': my_lon, 
             'ts': time.time()
         })
-        st.success(f"พิกัด {my_lat}, {my_lon} ถูกส่งเข้าดาวเทียมแล้ว!")
+        st.success("อัปเดตพิกัดเรียบร้อย! เพื่อนๆ จะเห็นคุณบนแผนที่ชัดเจน")
 
 
 # ==========================================
