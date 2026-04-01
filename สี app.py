@@ -9,6 +9,57 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from math import radians, cos, sin, asin, sqrt
+from folium.features import DivIcon # เพิ่มการ Import ตัวนี้ไว้บนสุดของไฟล์ด้วยนะครับ
+
+def room_radar():
+    # ... (ส่วนดึงพิกัด my_lat, my_lon เดิม) ...
+
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=16, tiles="OpenStreetMap")
+
+    # 1. ปักหมุดตัวเรา + เขียนตัวหนังสือแปะไว้บนหัว
+    folium.Marker(
+        [my_lat, my_lon],
+        icon=folium.Icon(color='red', icon='info-sign')
+    ).add_to(m)
+
+    # --- ส่วนที่เพิ่ม: ตัวหนังสือบอกตำแหน่งแบบลอย (Static Text) ---
+    folium.Marker(
+        [my_lat - 0.0002, my_lon], # ขยับตำแหน่งตัวหนังสือลงมานิดนึงจะได้ไม่ทับหมุด
+        icon=DivIcon(
+            icon_size=(150,36),
+            icon_anchor=(75,0),
+            html=f'<div style="font-size: 12pt; color: red; font-weight: bold; text-align: center; background: rgba(255,255,255,0.7); border-radius: 5px; padding: 2px;">📍 ตำแหน่งของต๊ะ</div>',
+        )
+    ).add_to(m)
+
+    # 2. ปักหมุดเพื่อน + เขียนชื่อเพื่อนและระยะห่างแปะไว้เลย
+    try:
+        users_ref = db.reference('users').get()
+        if users_ref:
+            for uid, data in users_ref.items():
+                if uid != st.session_state.user:
+                    u_lat, u_lon = data.get('lat'), data.get('lon')
+                    if u_lat and u_lon:
+                        dist = haversine(my_lat, my_lon, u_lat, u_lon)
+                        
+                        # หมุดเพื่อน
+                        folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green')).add_to(m)
+                        
+                        # ตัวหนังสือบอกชื่อเพื่อนและระยะห่าง (ลอยค้างไว้เลย)
+                        folium.Marker(
+                            [u_lat - 0.0002, u_lon],
+                            icon=DivIcon(
+                                icon_size=(150,36),
+                                icon_anchor=(75,0),
+                                html=f'<div style="font-size: 10pt; color: green; font-weight: bold; text-align: center; background: rgba(255,255,255,0.7); border-radius: 5px; padding: 2px;">👤 {uid}<br>📏 {dist:.2f} km</div>',
+                            )
+                        ).add_to(m)
+    except: pass
+
+    st_folium(m, width="100%", height=500)
+    
+    # แสดงพิกัดเป็นข้อความใต้แผนที่อีกชั้นเพื่อความชัวร์
+    st.info(f"🛰️ ระบบระบุตำแหน่ง: ขณะนี้คุณอยู่ที่ละติจูด {my_lat:.5f} ลองจิจูด {my_lon:.5f}")
 
 # ==========================================
 # 0. ฟังก์ชันสนับสนุน (Helper Functions)
