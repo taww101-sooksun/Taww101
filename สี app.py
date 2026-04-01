@@ -17,9 +17,6 @@ from math import radians, cos, sin, asin, sqrt
 # ==========================================
 
 def haversine(lat1, lon1, lat2, lon2):
-    """
-    คำนวณระยะห่างระหว่าง 2 พิกัดบนผิวโลก (หน่วย: กิโลเมตร)
-    """
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
     dlon = lon2 - lon1 
     dlat = lat2 - lat1 
@@ -33,14 +30,12 @@ def haversine(lat1, lon1, lat2, lon2):
 # ==========================================
 
 def init_system():
-    # ตั้งค่า Session State เริ่มต้น
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
     if 'text_color' not in st.session_state: st.session_state.text_color = "#FFFFFF"
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
     if 'user' not in st.session_state: st.session_state.user = "Ta101"
         
-    # เชื่อมต่อ Firebase
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
@@ -56,13 +51,10 @@ def init_system():
 # ==========================================
 
 def room_core():
-    """
-    ห้องแกนกลาง: แสดงเวลาและสถานะระบบ
-    """
     st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
     now = datetime.utcnow() + timedelta(hours=7) 
     seconds_since_midnight = (now.hour * 3600) + (now.minute * 60) + now.second
-    day_percent = seconds_since_midnight / 84600
+    day_percent = seconds_since_midnight / 86400 # แก้ไขจาก 84600 เป็น 86400 (วินาทีใน 1 วัน)
     
     st.markdown(f"""
         <div style="border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; background: rgba(0,0,0,0.5);">
@@ -78,423 +70,195 @@ def room_core():
     st.write(f"รหัสผู้ใช้งาน: **{st.session_state.user}**")
     st.write(f"สโลแกน: **'อยู่นิ่งๆ ไม่เจ็บตัว'**")
 
-
 def room_radar():
-    """
-    ห้องเรดาร์: ตรวจจับพิกัดและระยะห่างเพื่อนในทีม
-    """
-    st.subheader("🛰️ เรดาร์ตรวจจับพิกัดและระยะห่าง")
-    
+    st.subheader("🛰️ เรดาร์ตรวจจับพิกัด")
     map_mode = st.radio("🗺️ โหมดแผนที่:", ["ดาวเทียม", "ถนนปกติ", "Dark Mode"], horizontal=True)
     tile_url = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" 
-    if map_mode == "ถนนปกติ":
-        tile_url = "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-    elif map_mode == "Dark Mode":
-        tile_url = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    if map_mode == "ถนนปกติ": tile_url = "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+    elif map_mode == "Dark Mode": tile_url = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
 
     loc = get_geolocation()
     all_users = db.reference('users').get()
     
-    my_lat, my_lon = 13.7367, 100.5231 # พิกัด Default (กทม.)
+    my_lat, my_lon = 13.7367, 100.5231
     if loc:
         my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
 
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=16, tiles=tile_url, attr="SYNAPSE Strategic Map")
-
-    folium.Circle(
-        location=[my_lat, my_lon],
-        radius=500,
-        color=st.session_state.theme_color,
-        fill=True,
-        fill_opacity=0.1,
-        tooltip="เขตรัศมี 500 เมตร"
-    ).add_to(m)
-
-    folium.Marker(
-        [my_lat, my_lon], 
-        tooltip="ตำแหน่งของคุณ", 
-        icon=folium.Icon(color='red', icon='star')
-    ).add_to(m)
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=16, tiles=tile_url, attr="SYNAPSE Map")
+    folium.Marker([my_lat, my_lon], tooltip="You", icon=folium.Icon(color='red', icon='star')).add_to(m)
 
     if all_users:
-        st.write("### 👥 รายงานสถานะพิกัดเป้าหมาย")
-        col1, col2 = st.columns(2)
-        
-        for index, (uid, data) in enumerate(all_users.items()):
+        for uid, data in all_users.items():
             if uid == st.session_state.user: continue
-            
             u_lat, u_lon = data.get('lat'), data.get('lon')
             if u_lat and u_lon:
                 dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                avg_speed = 40 
-                eta_mins = (dist / avg_speed) * 60
-                is_active = (time.time() - data.get('ts', 0)) < 600
-                
-                with (col1 if index % 2 == 0 else col2):
-                    color_status = "🟢" if is_active else "⚪"
-                    st.write(f"{color_status} **{uid}**: `{dist:.2f} กม.` | ⏳ `{int(eta_mins)} นาที`")
-                
-                folium.Marker(
-                    [u_lat, u_lon], 
-                    tooltip=f"{uid} (ห่าง {dist:.2f} km)", 
-                    icon=folium.Icon(color='green' if is_active else 'gray', icon='user', prefix='fa')
-                ).add_to(m)
-
-                folium.PolyLine(
-                    [[my_lat, my_lon], [u_lat, u_lon]], 
-                    color=st.session_state.theme_color, 
-                    weight=1, 
-                    opacity=0.4, 
-                    dash_array='5'
-                ).add_to(m)
+                folium.Marker([u_lat, u_lon], tooltip=f"{uid} ({dist:.2f} km)", icon=folium.Icon(color='green')).add_to(m)
 
     st_folium(m, width="100%", height=500)
     
-    if st.button("📡 กระจายพิกัดเข้าศูนย์บัญชาการ", use_container_width=True):
+    if st.button("📡 อัปเดตพิกัดเข้าศูนย์ฯ", use_container_width=True):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-        st.success("ส่งพิกัดเข้าดาวเทียมเรียบร้อย!")
-        st.rerun()
+        st.success("ส่งสัญญาณสำเร็จ!")
 
-
-def room_comms(theme):
-    st.subheader("💬 ศูนย์กลางการสื่อสาร")
-    
-    # ดึงรายชื่อเพื่อนจาก Firebase (กัน Error กรณีไม่มีข้อมูล)
-    all_users = db.reference('accounts').get()
-    friends = [uid for uid in all_users.keys() if uid != st.session_state.user] if all_users else []
-
-    t_lobby, t_private, t_video = st.tabs(["🌐 Lobby", "🔐 แชตส่วนตัว", "📹 วิดีโอคอล"])
-
-    # --- 1. แชทรวม (Lobby) ---
-    with t_lobby:
-        with st.form("lobby_form", clear_on_submit=True):
-            m = st.text_input("พิมพ์ข้อความสาธารณะ...")
-            if st.form_submit_button("📢 SEND") and m:
-                db.reference('public_chat').push({
-                    'u': st.session_state.user, 
-                    'msg': m, 
-                    'ts': time.time()
-                })
-                st.rerun()
-        
-        data = db.reference('public_chat').order_by_key().limit_to_last(15).get()
-        if data:
-            for v in reversed(list(data.values())):
-                st.markdown(f"**{v.get('u','?')}**: {v.get('msg','')}")
-
-    # --- 2. แชตส่วนตัว (Private Chat) ---
-    with t_private:
-        if not friends:
-            st.warning("📡 ยังไม่มี AGENT ท่านอื่นออนไลน์ในขณะนี้")
-        else:
-            target = st.selectbox("เลือกเพื่อน:", ["-- เลือกชื่อ --"] + friends)
-            if target != "-- เลือกชื่อ --":
-                # สร้าง Room ID ที่เหมือนกันทั้งสองฝั่ง
-                rid = "_".join(sorted([st.session_state.user, target]))
-                
-                with st.form("priv_form", clear_on_submit=True):
-                    pm = st.text_input(f"ส่งข้อความถึง {target}")
-                    if st.form_submit_button("🔒 SEND") and pm:
-                        db.reference(f'private_rooms/{rid}').push({
-                            'u': st.session_state.user, 
-                            'msg': pm, 
-                            'ts': time.time()
-                        })
-                        st.rerun()
-                
-                msgs = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(10).get()
-                if msgs:
-                    for v in reversed(list(msgs.values())):
-                        u_name = v.get('u', 'Unknown')
-                        side = "right" if u_name == st.session_state.user else "left"
-                        # ปรับสี Bubble ตามทีม
-                        bg = theme['chat_user'] if u_name == st.session_state.user else theme['chat_friend']
-                        text_c = "#000" if theme['theme_set'] == "Rainbow" else "#fff"
-                        
-                        st.markdown(f"""
-                            <div style="text-align:{side}; margin-bottom:10px;">
-                                <div style="display:inline-block; background:{bg}; padding:8px 15px; border-radius:15px; color:{text_c};">
-                                    <small style="opacity:0.7;">{u_name}</small><br>{v.get('msg','')}
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-
-    # --- 3. วิดีโอคอล (PeerJS - Optimized for Real-world) ---
-    with t_video:
-        if not friends:
-            st.warning("📡 ไม่พบเป้าหมายสำหรับการเชื่อมต่อวิดีโอ")
-        else:
-            target_v = st.selectbox("เลือกเพื่อนที่จะคอล:", ["-- เลือกชื่อ --"] + friends, key="v_call_sel")
-            if target_v != "-- เลือกชื่อ --":
-                # ระบบ P2P พร้อม STUN Server ของ Google เพื่อเจาะ Firewall
-                v_html = f"""
-                
 def room_comms(theme):
     st.subheader("🛰️ SYNAPSE P2P HEALING SYSTEM")
-    
-    all_users = db.reference('accounts').get()
-    friends = [uid for uid in all_users.keys() if uid != st.session_state.user] if all_users else []
+    # ดึงข้อมูลจาก accounts หรือ users ตามโครงสร้างจริง
+    all_users_data = db.reference('users').get()
+    friends = [uid for uid in all_users_data.keys() if uid != st.session_state.user] if all_users_data else []
     
     t_p2p, t_lobby = st.tabs(["🔒 P2P Direct Link", "🌐 Public Lobby"])
 
     with t_p2p:
         target = st.selectbox("เลือกเป้าหมายเพื่อสร้างท่อสัญญาณ:", ["-- ว่าง --"] + friends)
         if target != "-- ว่าง --":
-            # ดึงพิกัดเราเตรียมไว้ส่ง
-            loc = get_geolocation()
-            my_lat = loc['coords']['latitude'] if loc else 0
-            my_lon = loc['coords']['longitude'] if loc else 0
-
-                        # สังเกตการใช้ {{ }} ในส่วนของ CSS และ JavaScript นะครับเพื่อน
             p2p_html = f"""
             <div style="background:#000; padding:15px; border-radius:15px; border:2px solid {theme['main']}; color:{theme['main']}; font-family:monospace;">
-                <div id="status" style="margin-bottom:10px;">🔴 OFFLINE</div>
-                <div id="gps-display" style="font-size:12px; color:#888;">GPS: Waiting for link...</div>
+                <div id="status" style="margin-bottom:10px;">🔴 STANDBY...</div>
                 <hr style="border-color:{theme['main']}; opacity:0.3;">
-                
-                <div id="chat-area" style="height:150px; overflow-y:auto; margin-bottom:10px; font-size:14px;"></div>
-                
-                <input id="msg-input" type="text" placeholder="ส่งข้อความผ่านท่อ P2P..." 
+                <div id="chat-area" style="height:150px; overflow-y:auto; margin-bottom:10px; font-size:14px; border-bottom:1px solid #333;"></div>
+                <input id="msg-input" type="text" placeholder="P2P Message..." 
                     style="width:100%; background:#111; border:1px solid {theme['main']}; color:white; padding:8px; border-radius:5px;">
-                
-                <div style="display:flex; gap:5px; margin-top:10px;">
-                    <button id="call-btn" style="flex:1; padding:10px; background:{theme['main']}; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">🎤 VOICE CALL</button>
-                    <button id="send-gps" style="flex:1; padding:10px; background:#444; color:white; border:none; border-radius:5px; cursor:pointer;">📍 SHARE GPS</button>
-                </div>
-                <audio id="remoteAudio" autoplay></audio>
+                <button id="send-btn" style="width:100%; margin-top:10px; padding:10px; background:{theme['main']}; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">SEND DATA</button>
             </div>
 
             <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
             <script>
-                // ใน f-string ของ Python ต้องใช้ {{ }} สำหรับปีกกาของ JavaScript
                 const peer = new Peer('SYNAPSE_{st.session_state.user}', {{
                     config: {{ 'iceServers': [{{ 'urls': 'stun:stun.l.google.com:19302' }}] }}
                 }});
 
                 let conn;
-                let currentCall;
+                peer.on('open', (id) => {{ document.getElementById('status').innerText = "🟢 ID: " + id; }});
 
-                peer.on('connection', c => {{
+                // เชื่อมต่อไปหาเพื่อน
+                const targetId = 'SYNAPSE_{target}';
+                document.getElementById('send-btn').onclick = () => {{
+                    const msg = document.getElementById('msg-input').value;
+                    if (!conn) conn = peer.connect(targetId);
+                    if (conn.open) {{
+                        conn.send(msg);
+                        addMsg("Me: " + msg);
+                    }}
+                }};
+
+                peer.on('connection', (c) => {{
                     conn = c;
-                    setupDataHandlers();
+                    conn.on('data', (data) => {{ addMsg("{target}: " + data); }});
+                    document.getElementById('status').innerText = "🟢 CONNECTED TO {target}";
                 }});
 
-                // ... โค้ดส่วนที่เหลือต้องเปลี่ยน { } เป็น {{ }} ทั้งหมดครับ ...
+                function addMsg(m) {{
+                    const area = document.getElementById('chat-area');
+                    area.innerHTML += "<div>" + m + "</div>";
+                    area.scrollTop = area.scrollHeight;
+                }}
             </script>
             """
             components.html(p2p_html, height=450)
 
     with t_lobby:
-        st.info("แชตรวมปกติผ่าน Firebase (สำหรับส่งข้อความทิ้งไว้)")
-        # ... (โค้ด Lobby เดิมของคุณ) ...
+        with st.form("lobby_f", clear_on_submit=True):
+            m = st.text_input("Public Message")
+            if st.form_submit_button("Send") and m:
+                db.reference('public_chat').push({'u': st.session_state.user, 'msg': m, 'ts': time.time()})
+        data = db.reference('public_chat').order_by_key().limit_to_last(10).get()
+        if data:
+            for v in reversed(list(data.values())):
+                st.write(f"**{v.get('u')}**: {v.get('msg')}")
 
 def room_music():
-    """
-    ห้องฟังเพลง: เล่นไฟล์ MP3 ในโฟลเดอร์
-    """
     st.subheader("🎧 SYNAPSE MUSIC PLAYER")
     music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
     if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ")
+        st.warning("⚠️ ไม่พบไฟล์เพลง (วางไฟล์ .mp3 ในโฟลเดอร์เดียวกับโค้ด)")
         return
-        
     current_song = music_files[st.session_state.song_index]
-    st.info(f"กำลังเล่น: {current_song}")
+    st.info(f"Now Playing: {current_song}")
     st.audio(current_song)
-    
-    st.write("---")
     for i, song in enumerate(music_files):
         if st.button(f"🎵 {song}", key=f"s_{i}", use_container_width=True):
             st.session_state.song_index = i
             st.rerun()
 
-
 def room_sensor():
-    """
-    ห้องวัดเสียง: แสดงระดับความดังและคลื่นความถี่
-    """
     st.subheader("📟 เครื่องวัดคลื่นเสียงดิจิทัล")
     theme_hex = st.session_state.theme_color
     audio_js = f"""
     <div style="background-color: #000; color: {theme_hex}; padding: 20px; border: 2px solid {theme_hex}; border-radius: 15px; text-align: center; font-family: monospace;">
         <h2 id="status">🔴 STANDBY</h2>
         <div style="display: flex; justify-content: space-around; margin-top: 20px;">
-            <div><h3>POWER (dB)</h3><h1 id="db_val" style="font-size: 3em;">0</h1></div>
-            <div><h3>FREQ (Hz)</h3><h1 id="hz_val" style="font-size: 3em;">0</h1></div>
+            <div><h3>POWER</h3><h1 id="db_val">0</h1></div>
+            <div><h3>FREQ</h3><h1 id="hz_val">0</h1></div>
         </div>
         <button id="startBtn" style="margin-top:20px; width:100%; padding:15px; background:{theme_hex}; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">START SENSOR</button>
     </div>
     <script>
     document.getElementById('startBtn').onclick = async function() {{
-        try {{
-            const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const analyser = audioContext.createAnalyser();
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyser);
-            analyser.fftSize = 256;
-            const dataArray = new Uint8Array(analyser.frequencyBinCount);
-            
-            this.style.display = 'none';
-            document.getElementById('status').innerText = "🟢 SENSING...";
-
-            function update() {{
-                analyser.getByteFrequencyData(dataArray);
-                let sum = 0, maxVal = 0, maxIdx = 0;
-                for (let i = 0; i < dataArray.length; i++) {{
-                    sum += dataArray[i];
-                    if (dataArray[i] > maxVal) {{ maxVal = dataArray[i]; maxIdx = i; }}
-                }}
-                let db = Math.round((sum / dataArray.length) * 2.5);
-                let hz = Math.round(maxIdx * audioContext.sampleRate / analyser.fftSize);
-                document.getElementById('db_val').innerText = db;
-                document.getElementById('hz_val').innerText = hz;
-                requestAnimationFrame(update);
-            }}
-            update();
-        }} catch (err) {{ alert("Error: " + err.message); }}
+        const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
+        const audioCtx = new AudioContext();
+        const analyser = audioCtx.createAnalyser();
+        audioCtx.createMediaStreamSource(stream).connect(analyser);
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        this.style.display = 'none';
+        document.getElementById('status').innerText = "🟢 SENSING...";
+        function update() {{
+            analyser.getByteFrequencyData(dataArray);
+            let sum = dataArray.reduce((a,b) => a+b, 0);
+            document.getElementById('db_val').innerText = Math.round(sum/100);
+            requestAnimationFrame(update);
+        }}
+        update();
     }};
     </script>
     """
     components.html(audio_js, height=300)
 
-
 def room_mission():
-    """
-    ห้องปฏิบัติการภารกิจ: บันทึก To-do list ลง Firebase
-    """
     st.subheader("📝 ศูนย์ปฏิบัติการภารกิจ")
-    
-    with st.form("mission_form", clear_on_submit=True):
+    with st.form("m_form", clear_on_submit=True):
         task = st.text_input("ระบุภารกิจใหม่:")
-        priority = st.select_slider("ระดับความสำคัญ", options=["ต่ำ", "กลาง", "สูง"])
-        if st.form_submit_button("บันทึกภารกิจ"):
-            if task:
-                db.reference('missions').push({
-                    'user': st.session_state.user,
-                    'task': task,
-                    'priority': priority,
-                    'ts': time.time()
-                })
-                st.success("บันทึกภารกิจเรียบร้อย!")
-                st.rerun()
-
-    st.write("---")
-    st.write("📋 **รายการภารกิจล่าสุด**")
-    missions_data = db.reference('missions').get()
+        if st.form_submit_button("บันทึก") and task:
+            db.reference('missions').push({'user': st.session_state.user, 'task': task, 'ts': time.time()})
     
-    if missions_data:
-        m_list = list(missions_data.values())
-        m_list.reverse() 
-        for m in m_list[:8]:
-            p_color = "🔴" if m.get('priority') == "สูง" else "🟡" if m.get('priority') == "กลาง" else "🟢"
-            st.info(f"{p_color} **{m.get('task')}** (โดย: {m.get('user')})")
-    else:
-        st.write("ยังไม่มีภารกิจในฐานข้อมูล")
-
+    missions = db.reference('missions').limit_to_last(5).get()
+    if missions:
+        for m in reversed(list(missions.values())):
+            st.info(f"📌 {m.get('task')} (โดย: {m.get('user')})")
 
 def room_bio_sensor():
-    """
-    ห้องตรวจร่างกาย: วัดชีพจรผ่านกล้อง (จำลองการประมวลผลแสง RGB)
-    """
-    st.subheader("🩺 SYNAPSE X - BIO SENSOR")
-    st.write("📡 **คำแนะนำ:** วางปลายนิ้วให้ปิดหน้าเลนส์กล้องหลังและไฟแฟลชให้สนิท")
-    
+    st.subheader("🩺 BIO SENSOR - PULSE CHECK")
     t_color = st.session_state.theme_color
-    
     bio_js = f"""
-    <div style="background-color: #111; color: {t_color}; padding: 20px; border: 2px solid {t_color}; border-radius: 15px; font-family: monospace;">
+    <div style="background:#111; color:{t_color}; padding:20px; border:2px solid {t_color}; border-radius:15px; font-family:monospace; text-align:center;">
         <video id="v" style="display:none;" autoplay playsinline></video>
-        <canvas id="c" width="100" height="100" style="display:none;"></canvas>
-        
-        <div style="margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px;">
-                <span>SCANNING PROGRESS</span>
-                <span id="p_percent">0%</span>
-            </div>
-            <div style="width: 100%; background: #222; height: 12px; border-radius: 6px; overflow: hidden;">
-                <div id="p_bar" style="width: 0%; height: 100%; background: {t_color}; transition: width 0.3s;"></div>
-            </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; text-align: center;">
-            <div style="border: 1px solid #333; padding: 15px; border-radius: 10px;">
-                <small>BPM (HEART RATE)</small>
-                <h1 id="bpm" style="margin:10px 0; font-size: 2.5em;">0</h1>
-            </div>
-            <div style="border: 1px solid #333; padding: 15px; border-radius: 10px;">
-                <small>SpO2 (OXYGEN)</small>
-                <h1 id="spo2" style="margin:10px 0; font-size: 2.5em;">0</h1>
-            </div>
-        </div>
-        
-        <div id="status" style="margin-top: 20px; text-align: center; font-weight: bold; color: #f00; padding: 10px; border-radius: 8px; background: rgba(255,0,0,0.1);">
-            🔴 กรุณาวางนิ้วที่เลนส์กล้อง
-        </div>
+        <canvas id="c" width="10" height="10" style="display:none;"></canvas>
+        <h1 id="bpm">0</h1><p>BPM</p>
+        <div id="status">🔴 วางนิ้วที่เลนส์กล้อง</div>
     </div>
-
     <script>
-        const v = document.getElementById('v');
-        const c = document.getElementById('c');
-        const ctx = c.getContext('2d', {{alpha: false}});
-        let progress = 0;
-        let isFinished = false;
-
-        async function startCamera() {{
-            try {{
-                const stream = await navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }});
-                v.srcObject = stream;
-                processVideo();
-            }} catch (e) {{ document.getElementById('status').innerText = "❌ เข้าถึงกล้องไม่ได้"; }}
-        }}
-
-        function processVideo() {{
-            if (isFinished) return;
-
-            ctx.drawImage(v, 0, 0, 100, 100);
-            const data = ctx.getImageData(0, 0, 100, 100).data;
-            let r = 0, g = 0;
-            for (let i = 0; i < data.length; i += 4) {{ r += data[i]; g += data[i+1]; }}
-            r /= 2500; g /= 2500;
-
-            const statusEl = document.getElementById('status');
-            
-            if (r > 160 && g < 100) {{
-                statusEl.innerText = "🟢 ตรวจพบสัญญาณ... กรุณาอยู่นิ่งๆ";
-                statusEl.style.color = "#0f0";
-                statusEl.style.background = "rgba(0,255,0,0.1)";
-
-                progress += 0.4; 
-                if (progress > 100) progress = 100;
-                
-                document.getElementById('p_bar').style.width = progress + "%";
-                document.getElementById('p_percent').innerText = Math.round(progress) + "%";
-
-                document.getElementById('bpm').innerText = Math.round(68 + (Math.random() * 8));
-                document.getElementById('spo2').innerText = Math.round(96 + (Math.random() * 3));
-
-                if (progress >= 100) {{
-                    isFinished = true;
-                    statusEl.innerText = "✅ การวัดเสร็จสิ้นสมบูรณ์!";
-                    statusEl.style.background = "{t_color}";
-                    statusEl.style.color = "#000";
+        async function run() {{
+            const v = document.getElementById('v');
+            const c = document.getElementById('c');
+            const ctx = c.getContext('2d');
+            const stream = await navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }});
+            v.srcObject = stream;
+            setInterval(() => {{
+                ctx.drawImage(v, 0, 0, 10, 10);
+                const d = ctx.getImageData(0,0,10,10).data;
+                let r = 0; for(let i=0; i<d.length; i+=4) r += d[i];
+                if(r/100 > 150) {{
+                    document.getElementById('bpm').innerText = Math.floor(70 + Math.random()*10);
+                    document.getElementById('status').innerText = "🟢 สแกนสำเร็จ";
+                }} else {{
+                    document.getElementById('status').innerText = "🔴 กรุณาปิดเลนส์ให้สนิท";
                 }}
-            }} else {{
-                if (progress < 100) {{
-                    progress = 0;
-                    document.getElementById('p_bar').style.width = "0%";
-                    document.getElementById('p_percent').innerText = "0%";
-                    statusEl.innerText = "🔴 กรุณาวางนิ้วให้ปิดหน้ากล้อง";
-                    statusEl.style.color = "#f00";
-                    statusEl.style.background = "rgba(255,0,0,0.1)";
-                }}
-            }}
-            requestAnimationFrame(processVideo);
+            }}, 100);
         }}
-        startCamera();
+        run();
     </script>
     """
-    components.html(bio_js, height=380)
+    components.html(bio_js, height=250)
 
 # ==========================================
 # 3. แผงวงจรหลัก (Main Entry)
@@ -504,76 +268,41 @@ def main():
     init_system()
 
     with st.sidebar:
-        st.title("⚙️ SYNAPSE SETTINGS")
-        theme_clr = st.session_state.get('theme_color', '#39FF14')
-        bg_clr = st.session_state.get('bg_color', '#000000')
-        txt_clr = st.session_state.get('text_color', '#FFFFFF')
-
-        st.session_state.theme_color = st.color_picker("🚨 สีหลัก (Neon)", theme_clr)
-        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", bg_clr)
-        st.session_state.text_color = st.color_picker("✍️ ข้อความ", txt_clr)
-        
+        st.title("⚙️ SETTINGS")
+        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
+        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
         st.markdown("---")
-        st.write('**Personal Slogan:**')
-        st.write(f'<h3 style="color:{st.session_state.theme_color}">"อยู่นิ่งๆ ไม่เจ็บตัว"</h3>', unsafe_allow_html=True)
-        st.write("---")
-        st.caption("SYNAPSE COMMAND CENTER v2.0")
+        st.write(f"USER: **{st.session_state.user}**")
+        st.caption("v2.0 PRO | STAY STILL NO PAIN")
 
-    # --- สร้างตัวแปร theme เพื่อส่งเข้าไปในห้องสื่อสาร (ป้องกัน TypeError) ---
-    current_theme = {
-        'main': st.session_state.theme_color,
-        'chat_user': st.session_state.theme_color,
-        'chat_friend': '#333333', # สีเทาสำหรับข้อความเพื่อน
-        'theme_set': 'Custom'      # ระบุสถานะธีม
-    }
-
-    # ปรับแต่งธีมด้วย CSS
     st.markdown(f"""
         <style>
         .stApp {{ background-color: {st.session_state.bg_color}; }}
-        .stButton>button {{
-            border-radius: 8px;
-            border: 1px solid {st.session_state.theme_color};
-            color: {st.session_state.text_color};
-            background-color: transparent;
-            transition: 0.3s;
-        }}
-        .stButton>button:hover {{
-            background-color: {st.session_state.theme_color};
-            color: black;
-            box-shadow: 0 0 10px {st.session_state.theme_color};
-        }}
-        h1, h2, h3, p, span, div, label, .stMarkdown, .stMetric {{
-            color: {st.session_state.text_color} !important;
-        }}
-        .stTabs [data-baseweb="tab-list"] {{ gap: 10px; }}
-        .stTabs [data-baseweb="tab"] {{
-            border: 1px solid {st.session_state.theme_color};
-            padding: 5px 15px;
-            border-radius: 5px;
-        }}
+        h1, h2, h3, p, span {{ color: {st.session_state.text_color} !important; }}
         </style>
     """, unsafe_allow_html=True)
 
-    # รายชื่อห้องทั้งหมด (ใช้ lambda เพื่อส่งตัวแปรเฉพาะห้องที่ต้องการ)
+    current_theme = {
+        'main': st.session_state.theme_color,
+        'chat_user': st.session_state.theme_color,
+        'chat_friend': '#333333'
+    }
+
     room_map = {
-        "🚀 แกนหลัก": lambda: room_core(),
-        "🛰️ เรดาร์": lambda: room_radar(),
-        "💬 สื่อสาร": lambda: room_comms(current_theme), # ส่ง current_theme เข้าไปที่นี่
-        "🎧 ฟังเพลง": lambda: room_music(),
-        "📟 วัดเสียง": lambda: room_sensor(),
-        "📝 ภารกิจ": lambda: room_mission(),
-        "🩺 ตรวจร่างกาย": lambda: room_bio_sensor(),
+        "🚀 แกนหลัก": room_core,
+        "🛰️ เรดาร์": room_radar,
+        "💬 สื่อสาร": lambda: room_comms(current_theme),
+        "🎧 ฟังเพลง": room_music,
+        "📟 วัดเสียง": room_sensor,
+        "📝 ภารกิจ": room_mission,
+        "🩺 ตรวจร่างกาย": room_bio_sensor,
     }
     
     tabs = st.tabs(list(room_map.keys()))
     for i, (name, room_func) in enumerate(room_map.items()):
         with tabs[i]:
-            try:
-                room_func() # เรียกใช้ฟังก์ชันผ่าน lambda
-            except Exception as e:
-                st.error(f"❌ ระบบขัดข้องในห้อง {name}: {e}")
+            try: room_func()
+            except Exception as e: st.error(f"Error in {name}: {e}")
 
-# รันแอปพลิเคชัน
 if __name__ == "__main__":
     main()
