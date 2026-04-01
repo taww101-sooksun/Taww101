@@ -10,6 +10,23 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import hashlib
+from math import radians, cos, sin, asin, sqrt
+
+# --- ต้องมีฟังก์ชันนี้ก่อน ระบบถึงจะวัดระยะห่างได้ ---
+def haversine(lat1, lon1, lat2, lon2):
+    """
+    คำนวณระยะห่างระหว่าง 2 พิกัดบนผิวโลก (หน่วย: กิโลเมตร)
+    """
+    # แปลงองศาเป็นเรเดียน
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    
+    # สูตร Haversine
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a)) 
+    r = 6371 # รัศมีของโลกเฉลี่ย (กิโลเมตร)
+    return c * r
 
 # ==========================================
 # 1. กลไกกลาง (Core Engine)
