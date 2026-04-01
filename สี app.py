@@ -393,7 +393,7 @@ def main():
         "🛰️ เรดาร์": room_radar,
         "💬 สื่อสาร": room_comms,
         "🎧 เพลง": room_music,
-        "📟 วัดเสียง": room_sensor
+        "📟 วัดเสียง": room_sensor,
         "📝 ภารกิจ": room_mission,
     }
     
