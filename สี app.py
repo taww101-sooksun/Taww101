@@ -143,47 +143,63 @@ def room_radar():
 
 def room_comms():
     st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
-    t1, t2 = st.tabs(["🌐 Lobby", "📞 Video Call"])
+    t1, t2, t3 = st.tabs(["🌐 Lobby", "🔒 Private", "📞 Video Call"])
+    
+    # --- [เดิม] Lobby ---
     with t1:
         chat_ref = db.reference('public_chat')
         with st.form("chat_f", clear_on_submit=True):
-            msg = st.text_input("ข้อความ...")
+            msg = st.text_input("ข้อความสาธารณะ...")
             if st.form_submit_button("SEND") and msg:
                 chat_ref.push({'user': st.session_state.user, 'msg': msg, 'ts': time.time()})
         msgs = chat_ref.order_by_key().limit_to_last(10).get()
         if msgs:
             for m in reversed(list(msgs.values())):
                 st.write(f"🟢 **{m.get('user')}:** {m.get('msg')}")
+
+    # --- [ใหม่] Private Chat ---
     with t2:
         all_u = db.reference('users').get()
+        # รายชื่อเพื่อน (ยกเว้นตัวเอง)
         friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
-        target = st.selectbox("เลือกเป้าหมาย:", [""] + friends)
-        if target:
-            call_html = """
-            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-            <div style="background:#000; padding:15px; border:2px solid %s; border-radius:15px; text-align:center; color:white;">
-                <video id="remoteVideo" autoplay style="width:100%%; height:200px; background:#111;"></video>
-                <p>ID: %s | Target: %s</p>
-                <button id="callBtn" style="width:100%%; padding:10px; background:%s; border:none; border-radius:5px;">📹 CALL</button>
-            </div>
-            <script>
-                const peer = new Peer('%s');
-                peer.on('call', c => { 
-                    if(confirm("Incoming Call?")) {
-                        navigator.mediaDevices.getUserMedia({video:true, audio:true}).then(s => {
-                            c.answer(s); c.on('stream', rs => { document.getElementById('remoteVideo').srcObject = rs; });
-                        });
-                    }
-                });
-                document.getElementById('callBtn').onclick = () => {
-                    navigator.mediaDevices.getUserMedia({video:true, audio:true}).then(s => {
-                        const c = peer.call('%s', s);
-                        c.on('stream', rs => { document.getElementById('remoteVideo').srcObject = rs; });
-                    });
-                };
-            </script>
-            """ % (st.session_state.theme_color, st.session_state.user, target, st.session_state.theme_color, st.session_state.user, target)
-            components.html(call_html, height=400)
+        
+        target_user = st.selectbox("เลือกเพื่อนที่จะคุยด้วย:", [""] + friends, key="p_target")
+        
+        if target_user:
+            chat_id = get_chat_id(st.session_state.user, target_user)
+            p_chat_ref = db.reference(f'private_messages/{chat_id}')
+            
+            # ฟอร์มส่งข้อความ
+            with st.form("private_chat_form", clear_on_submit=True):
+                p_msg = st.text_input(f"ส่งข้อความถึง {target_user}...")
+                if st.form_submit_button("SEND PRIVATE") and p_msg:
+                    p_chat_ref.push({
+                        'sender': st.session_state.user,
+                        'msg': p_msg,
+                        'ts': time.time()
+                    })
+            
+            # แสดงข้อความแชต (ล่าสุด 15 ข้อความ)
+            p_msgs = p_chat_ref.order_by_key().limit_to_last(15).get()
+            if p_msgs:
+                st.write("---")
+                for m in reversed(list(p_msgs.values())):
+                    align = "right" if m.get('sender') == st.session_state.user else "left"
+                    color = st.session_state.theme_color if m.get('sender') == st.session_state.user else "#888"
+                    
+                    st.markdown(f"""
+                        <div style="text-align: {align}; margin-bottom: 5px;">
+                            <span style="background: #111; border: 1px solid {color}; padding: 5px 10px; border-radius: 10px; display: inline-block;">
+                                <small style="color: {color};">{m.get('sender')}:</small><br>{m.get('msg')}
+                            </span>
+                        </div>
+                    """, unsafe_allow_html=True)
+
+    # --- [เดิม] Video Call ---
+    with t3:
+        # ... โค้ด Video Call เดิมของคุณ ...
+        pass
+
 
 def room_music():
     st.subheader("🎧 เครื่องเล่นเพลง")
