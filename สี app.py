@@ -89,24 +89,7 @@ def room_gps(theme):
             st_folium(m, width=700, height=400)
         except Exception as e: st.error(f"❌ พิกัดขัดข้อง: {e}")
     else: st.info("⌛ กำลังรอสัญญาณจากดาวเทียม...")
-# สูตรลับ: lyrs=y คือภาพดาวเทียม + ชื่อถนนภาษาไทย
-google_hybrid = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
 
-m = folium.Map(
-    location=[lat_v, lon_v], 
-    zoom_start=18, # ซูมระดับ 18 จะเห็นชื่อซอยชัดเจนมาก
-    tiles=google_hybrid,
-    attr='Google'
-)
-
-# ปักหมุดตรงพิกัดที่ดึงมา
-folium.Marker(
-    [lat_v, lon_v], 
-    popup=f"ตำแหน่ง: {st.session_state.user_name}",
-    icon=ft.Icon(color='red', icon='info-sign')
-).add_to(m)
-
-st_folium(m, width=700, height=500)
 # ==========================================
 # 3. COMMUNICATION (Stable Chat & Video)
 # ==========================================
