@@ -54,41 +54,92 @@ def apply_theme():
     return t
 
 # ==========================================
-# 2. GPS RADAR (With Real Place Names)
+# 2. GPS RADAR (อัปเกรดแผนที่ดาวเทียม & เวลาจริง)
 # ==========================================
 def room_gps(theme):
-    st.subheader("🛰️ ระบบเรดาร์ระบุตำแหน่งและสถานที่ใกล้เคียง")
-    now_time = datetime.now().strftime("%H:%M:%S")
-    st.markdown(f"### 🕒 Server Time: `{now_time}`")
-
+    st.subheader("🛰️ SYNAPSE RADAR SYSTEM")
+    
+    # ส่วนแสดงเวลาแบบ Real-time
+    t_col1, t_col2 = st.columns([2, 1])
+    with t_col1:
+        # ใช้ JavaScript เพื่อให้เวลาเดินวินาทีต่อวินาทีบนหน้าจอโดยไม่ต้อง Rerun ทั้งหน้า
+        st.components.v1.html(f"""
+            <div style="background:rgba(0,0,0,0.5); padding:10px; border-radius:10px; border:1px solid {theme['main']};">
+                <h3 style="color:{theme['main']}; margin:0; font-family:monospace;">
+                    🕒 SYSTEM TIME: <span id="clock">00:00:00</span>
+                </h3>
+            </div>
+            <script>
+                setInterval(() => {{
+                    const now = new Date();
+                    document.getElementById('clock').innerText = now.toLocaleTimeString('th-TH');
+                }}, 1000);
+            </script>
+        """, height=70)
+    
+    # ดึงพิกัดจริงจากอุปกรณ์
     loc = get_geolocation()
+    
     if loc:
         try:
-            lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
+            lat = loc['coords']['latitude']
+            lon = loc['coords']['longitude']
+            
+            # อัปเดตพิกัดลง Firebase เพื่อให้เพื่อนเห็นเรา
             db.reference(f'locations/{st.session_state.user}').update({
-                'lat': lat, 'lon': lon, 'ts': time.time(),
-                'last_update': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                'lat': lat, 'lon': lon, 
+                'ts': time.time(),
+                'last_seen': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
+
             c1, c2 = st.columns(2)
-            c1.metric("Latitude", f"{lat:.6f}")
-            c2.metric("Longitude", f"{lon:.6f}")
+            c1.metric("📍 LATITUDE", f"{lat:.6f}")
+            c2.metric("📍 LONGITUDE", f"{lon:.6f}")
             
-            m = folium.Map(location=[lat, lon], zoom_start=15)
-            # หมุดตำแหน่งเรา
-            folium.Marker([lat, lon], popup="คุณอยู่ที่นี่", tooltip="My Location", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
+            # --- ตั้งค่าแผนที่ดาวเทียม (Hybrid) ---
+            google_hybrid = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
             
-            # ตัวอย่างสถานที่ใกล้เคียง (ทำได้จริง)
-            nearby_places = [
-                {"name": "วัดกระทุ่มเสือปลา", "pos": [13.7229, 100.6887]},
+            m = folium.Map(
+                location=[lat, lon], 
+                zoom_start=18, # ซูมระดับ 18 เห็นหลังคาบ้านชัด
+                tiles=google_hybrid,
+                attr='Google Satellite'
+            )
+
+            # หมุดระบุตัวตนของคุณ (สีแดง)
+            folium.Marker(
+                [lat, lon], 
+                popup=f"AGENT: {st.session_state.user}", 
+                tooltip="ตำแหน่งปัจจุบันของคุณ",
+                icon=folium.Icon(color='red', icon='user', prefix='fa')
+            ).add_to(m)
+
+            # --- ระบบระบุสถานที่ใกล้เคียง (ปักหมุดสถานที่จริง) ---
+            # คุณสามารถเพิ่มชื่อสถานที่ใกล้เคียงที่ต้องการให้ระบบแจ้งเตือนได้ที่นี่
+            poi_list = [
+                {"name": "วัดกระทุ่มเสือปลา (หลวงพ่อดำ)", "pos": [13.7229, 100.6887]},
                 {"name": "วัดลานบุญ", "pos": [13.7246, 100.7195]},
-                {"name": "สวนปลาธรรมชาติ", "pos": [13.7241, 100.7194]}
+                {"name": "สน.ประเวศ", "pos": [13.7208, 100.6531]},
+                {"name": "สนามบินสุวรรณภูมิ", "pos": [13.6895, 100.7501]}
             ]
-            for p in nearby_places:
-                folium.Marker(p["pos"], popup=p["name"], tooltip=p["name"], icon=folium.Icon(color='blue')).add_to(m)
+
+            for poi in poi_list:
+                folium.Marker(
+                    poi["pos"], 
+                    popup=poi["name"], 
+                    tooltip=poi["name"],
+                    icon=folium.Icon(color='blue', icon='location-dot', prefix='fa')
+                ).add_to(m)
                 
-            st_folium(m, width=700, height=400)
-        except Exception as e: st.error(f"❌ พิกัดขัดข้อง: {e}")
-    else: st.info("⌛ กำลังรอสัญญาณจากดาวเทียม...")
+            # แสดงแผนที่
+            st_folium(m, width=1000, height=500)
+            
+            st.success(f"✅ ระบุตำแหน่งสำเร็จ: กำลังติดตามสัญญาณของ {st.session_state.user}")
+
+        except Exception as e: 
+            st.error(f"❌ พิกัดขัดข้อง: {e}")
+    else: 
+        st.warning("📡 กำลังค้นหาสัญญาณจากดาวเทียม... กรุณากด 'Allow' เพื่อเข้าถึงตำแหน่ง")
 
 # ==========================================
 # 3. COMMUNICATION (Stable Chat & Video)
