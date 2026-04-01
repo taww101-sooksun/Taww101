@@ -554,13 +554,13 @@ def room_bio_sensor():
 # 3. แผงวงจรหลัก
 # ==========================================
 def main():
-    # 1. เริ่มต้นระบบ (ฟังก์ชันนี้ต้องถูกสร้างไว้แล้วข้างบน)
+    # 1. เริ่มต้นระบบ
     init_system()
 
     # 2. ส่วนของ Sidebar สำหรับตั้งค่า
     with st.sidebar:
         st.title("⚙️ SETTINGS")
-        # ใช้ .get เพื่อป้องกัน Error กรณีรันครั้งแรก
+        # ดึงค่าสีปัจจุบันมาตั้งต้น
         theme_clr = st.session_state.get('theme_color', '#00FF00')
         bg_clr = st.session_state.get('bg_color', '#0E1117')
         txt_clr = st.session_state.get('text_color', '#FFFFFF')
@@ -572,7 +572,7 @@ def main():
         st.markdown("---")
         st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
-     # ... โค้ดส่วนบน ...
+    # 3. ส่วนของ CSS (ย่อหน้าให้ตรงกับ with st.sidebar)
     st.markdown(f"""
 <style>
 .stApp {{
@@ -581,14 +581,13 @@ def main():
 .stButton>button {{
     border-radius: 10px;
     border: 1px solid {st.session_state.theme_color};
+    color: {st.session_state.text_color};
 }}
 h1, h2, h3, p, span, div, label {{
     color: {st.session_state.text_color} !important;
 }}
 </style>
     """, unsafe_allow_html=True)
-    # ... โค้ดส่วนล่าง ...
-
 
     # 4. การจัดการแผนที่ห้อง (Tabs)
     room_map = {
@@ -605,6 +604,3 @@ h1, h2, h3, p, span, div, label {{
     for i, (name, room_func) in enumerate(room_map.items()):
         with tabs[i]:
             room_func()
-
-if __name__ == "__main__":
-    main()
