@@ -322,40 +322,47 @@ def room_private():
 # ==========================================
 # 5. ห้องโทร (Voice/Call)
 # ==========================================
-
 def room_call():
     st.subheader("📞 ระบบโทร P2P (Voice Call)")
-    target = st.text_input("ระบุ ID เป้าหมายที่จะโทรหา (เช่น: Friend101)")
+    
+    # 1. เช็คสถานะสายเรียกเข้า (Incoming Check)
+    my_call_ref = db.reference(f'calls/{st.session_state.user}')
+    call_data = my_call_ref.get()
+
+    if call_data and call_data.get('status') == 'ringing':
+        caller = call_data.get('caller')
+        st.warning(f"🚨 AGENT {caller} กำลังโทรหาคุณ...")
+        col1, col2 = st.columns(2)
+        if col1.button("✅ รับสาย", use_container_width=True):
+            my_call_ref.update({'status': 'connected'})
+            st.rerun()
+        if col2.button("❌ ปฏิเสธ", use_container_width=True):
+            my_call_ref.update({'status': 'missed', 'end_ts': time.time()})
+            st.rerun()
+
+    # 2. ส่วนการโทรออก
+    target = st.text_input("ระบุ ID เป้าหมายที่จะโทรหา:", placeholder="เช่น: Ta102")
     if target:
-        call_html = f"""
-        <div style="background:#111; padding:20px; border-radius:15px; border:1px solid {st.session_state.theme_color}; text-align:center;">
-            <h3 id="status" style="color:{st.session_state.theme_color};">🔴 พร้อมเชื่อมต่อ</h3>
-            <button id="callBtn" style="padding:15px 30px; background:{st.session_state.theme_color}; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">📞 เริ่มการโทร</button>
-            <audio id="remoteAudio" autoplay></audio>
-        </div>
-        <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-        <script>
-            const peer = new Peer('SYNAPSE_{st.session_state.user}');
-            document.getElementById('callBtn').onclick = async () => {{
-                const stream = await navigator.mediaDevices.getUserMedia({{audio: true}});
-                const call = peer.call('SYNAPSE_{target}', stream);
-                document.getElementById('status').innerText = "🟡 กำลังเรียกสาย...";
-                call.on('stream', (s) => {{ 
-                    document.getElementById('remoteAudio').srcObject = s;
-                    document.getElementById('status').innerText = "🟢 ในสาย (ACTIVE)";
-                }});
-            }};
-            peer.on('call', async (call) => {{
-                const stream = await navigator.mediaDevices.getUserMedia({{audio: true}});
-                call.answer(stream);
-                call.on('stream', (s) => {{ 
-                    document.getElementById('remoteAudio').srcObject = s;
-                    document.getElementById('status').innerText = "🟢 รับสายแล้ว";
-                }});
-            }});
-        </script>
-        """
-        components.html(call_html, height=300)
+        if st.button("📞 เริ่มการโทร", use_container_width=True):
+            # ส่งสัญญาณไปเครื่องเป้าหมาย
+            db.reference(f'calls/{target}').set({
+                'caller': st.session_state.user,
+                'status': 'ringing',
+                'start_ts': time.time()
+            })
+            st.info(f"🟡 กำลังเรียกสาย {target}...")
+
+    # 3. ประวัติการไม่รับสาย (Missed Calls)
+    st.write("---")
+    st.caption("📜 ประวัติการติดต่อ")
+    if call_data and call_data.get('status') == 'missed':
+        st.error(f"⚠️ พลาดการรับสายจาก: {call_data.get('caller')}")
+        if st.button("รับทราบ/ล้างรายการ"):
+            my_call_ref.delete()
+            st.rerun()
+            
+    # --- (ส่วน PeerJS สำหรับคุยเสียง ใส่ต่อท้ายเหมือนเดิม) ---
+    # ... โค้ด JavaScript PeerJS ของต๊ะ ...
 
 # ==========================================
 # 6. ห้องเพลง (Music Player)
