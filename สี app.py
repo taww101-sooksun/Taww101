@@ -555,13 +555,21 @@ def room_bio_sensor():
 # ==========================================
 def main():
     init_system()
-    st.markdown(f"""
-        <style>
-        .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.text_color} !important; }}
-        .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; }}
-        h1, h2, h3, p, span, div, label {{ color: {st.session_state.text_color} !important; }}
-        </style>
-        """, unsafe_allow_html=True)
+            st.markdown(f"""
+            <style>
+            .stApp {{
+                background-color: {st.session_state.bg_color};
+            }}
+            .stButton>button {{
+                border-radius: 10px;
+                border: 1px solid {st.session_state.theme_color};
+            }}
+            h1, h2, h3, p, span, div, label {{
+                color: {st.session_state.text_color} !important;
+            }}
+            </style>
+            """, unsafe_allow_html=True)
+
 
     with st.sidebar:
         st.title("⚙️ SETTINGS")
