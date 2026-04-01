@@ -34,54 +34,37 @@ def init_system():
 # ==========================================
 # 2. พื้นที่เก็บห้อง (The Rooms / Modules)
 # ==========================================
-def room_core():
-    st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
-    now = datetime.utcnow() + timedelta(hours=7) 
-    seconds_since_midnight = (now.hour * 3600) + (now.minute * 60) + now.second
-    day_percent = seconds_since_midnight / 84600
-    
-    st.markdown(f"""
-        <div style="border: 1px solid {st.session_state.theme_color}; padding: 10px; border-radius: 5px; text-align: center;">
-            <h3 style="margin: 0; color: {st.session_state.theme_color}; font-family: monospace;">{now.strftime('%H:%M:%S')}</h3>
-            <small style="color: {st.session_state.theme_color}; opacity: 0.8;">THAILAND TIME</small>
-        </div>
-    """, unsafe_allow_html=True)
-        
-    st.write(f"⏳ Day Progress: {day_percent*100:.2f}%")
-    st.progress(min(day_percent, 1.0))
-    st.markdown("---")
-    st.info("สถานะระบบ: ONLINE")
-    st.write(f"รหัสผู้ใช้งาน: **{st.session_state.user}**")
-    st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
-
 def room_radar():
-    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม")
+    st.subheader("🛰️ เรดาร์ระบุพิกัดจริง")
     loc = get_geolocation()
     all_users = db.reference('users').get()
     
-    start_lat, start_lon = 13.7367, 100.5231
+    my_lat, my_lon = 13.7367, 100.5231
     if loc:
-        start_lat = loc['coords']['latitude']
-        start_lon = loc['coords']['longitude']
+        my_deflat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
 
-    tile_url = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-    m = folium.Map(location=[start_lat, start_lon], zoom_start=15, tiles=tile_url, attr="Google Satellite")
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=16, 
+                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+                   attr="Google Satellite")
+
+    folium.Marker([my_lat, my_lon], tooltip="คุณอยู่ที่นี่", icon=folium.Icon(color='red', icon='star')).add_to(m)
 
     if all_users:
-        for user_id, data in all_users.items():
-            u_lat = data.get('lat')
-            u_lon = data.get('lon')
-            u_ts = data.get('ts', 0)
+        for uid, data in all_users.items():
+            if uid == st.session_state.user: continue
+            u_lat, u_lon = data.get('lat'), data.get('lon')
             if u_lat and u_lon:
-                is_active = (time.time() - u_ts) < 3600
-                icon_color = 'red' if user_id == st.session_state.user else ('green' if is_active else 'gray')
-                folium.Marker([u_lat, u_lon], tooltip=user_id, icon=folium.Icon(color=icon_color, icon='user', prefix='fa')).add_to(m)
+                dist = haversine(my_lat, my_lon, u_lat, u_lon)
+                is_active = (time.time() - data.get('ts', 0)) < 600
+                color = 'green' if is_active else 'gray'
+                folium.Marker([u_lat, u_lon], tooltip=f"{uid} ({dist:.2f} km)", 
+                              icon=folium.Icon(color=color, icon='user', prefix='fa')).add_to(m)
+                st.write(f"📍 **{uid}**: ห่างจากคุณ `{dist:.2f}` กม. ({'Active' if is_active else 'Offline'})")
 
-    st_folium(m, width="100%", height=500)
-    if loc:
-        if st.button("📡 กระจายพิกัดของฉัน", use_container_width=True):
-            db.reference(f'users/{st.session_state.user}').update({'lat': start_lat, 'lon': start_lon, 'ts': time.time()})
-            st.rerun()
+    st_folium(m, width="100%", height=450)
+    if loc and st.button("📡 กระจายพิกัดจริงลงดาวเทียม", use_container_width=True):
+        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
+        st.success("พิกัดอัปเดตแล้ว!")
 
 def room_comms():
     st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
