@@ -13,14 +13,18 @@ from math import radians, cos, sin, asin, sqrt
 from folium.features import DivIcon
 
 # ==========================================
-# 0. ระบบพื้นฐานและ Helper Functions
+# 0. ฟังก์ชันสนับสนุน (Helper Functions)
 # ==========================================
 
+def haversine(lat1, lon1, lat2, lon2):
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    d = 2 * asin(sqrt(sin((lat2-lat1)/2)**2 + cos(lat1) * cos(lat2) * sin((lon2-lon1)/2)**2)) 
+    return d * 6371
+
 def init_system():
-    """ตั้งค่าระบบเริ่มต้นและเชื่อมต่อ Firebase"""
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
-    if 'user' not in st.session_state: st.session_state.user = "Guest"
+    if 'user' not in st.session_state: st.session_state.user = "Ta101"
     if 'logged_in' not in st.session_state: st.session_state.logged_in = False
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
         
@@ -31,12 +35,6 @@ def init_system():
             firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
         except Exception as e:
             st.error(f"🛰️ Firebase Connection Error: {e}")
-
-def haversine(lat1, lon1, lat2, lon2):
-    """คำนวณระยะห่างระหว่างพิกัด (กิโลเมตร)"""
-    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-    d = 2 * asin(sqrt(sin((lat2-lat1)/2)**2 + cos(lat1) * cos(lat2) * sin((lon2-lon1)/2)**2)) 
-    return d * 6371
 
 # ==========================================
 # 1. ระบบจัดการ AGENT (Login/Register)
@@ -55,14 +53,14 @@ def room_login():
     
     with tab1:
         with st.form("login_form"):
-            user_id = st.text_input("AGENT ID")
-            password = st.text_input("PASSWORD", type="password")
+            u_id = st.text_input("AGENT ID")
+            u_pw = st.text_input("PASSWORD", type="password")
             if st.form_submit_button("UNLOCK SYSTEM", use_container_width=True):
-                user_data = db.reference(f'users/{user_id}').get()
-                if user_data and user_data.get('pw') == password:
-                    st.session_state.user = user_id
+                user_data = db.reference(f'users/{u_id}').get()
+                if user_data and user_data.get('pw') == u_pw:
+                    st.session_state.user = u_id
                     st.session_state.logged_in = True
-                    st.success(f"ยินดีต้อนรับ AGENT {user_id}")
+                    st.success(f"ยินดีต้อนรับ AGENT {u_id}")
                     time.sleep(1)
                     st.rerun()
                 else:
@@ -72,13 +70,10 @@ def room_login():
         with st.form("reg_form"):
             new_id = st.text_input("ตั้งชื่อ AGENT ID")
             new_pw = st.text_input("ตั้งรหัสผ่าน", type="password")
-            confirm_pw = st.text_input("ยืนยันรหัสผ่าน", type="password")
             if st.form_submit_button("REGISTER AGENT", use_container_width=True):
-                if new_pw == confirm_pw and new_id:
-                    db.reference(f'users/{new_id}').set({'pw': new_pw, 'created_at': time.time()})
+                if new_id and new_pw:
+                    db.reference(f'users/{new_id}').set({'pw': new_pw, 'ts': time.time()})
                     st.success("ลงทะเบียนสำเร็จ!")
-                else:
-                    st.error("ตรวจสอบข้อมูลอีกครั้ง")
 
 # ==========================================
 # 2. ฟังก์ชันห้องต่างๆ (Room Functions)
@@ -199,78 +194,66 @@ def room_music():
     if col3.button("⏭️"): st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files); st.rerun()
 
 def room_bio():
-    st.subheader("🩺 Bio-Analysis")
-    # (ใช้ HTML/JS ตามที่นายเขียนมาได้เลย แต่อย่าลืมเช็คเรื่องความปลอดภัยของเบราว์เซอร์ในการเข้าถึงกล้องนะ)
-    st.info("💡 ความจริงจากระบบ: วัดค่าสมมติจากอัตราการเต้นของหัวใจผ่านกล้องเท่านั้น")
+    st.subheader("🩺 ศูนย์วิเคราะห์สภาวะร่างกาย (Bio-Analysis)")
+    st.write("📡 **หลักการทำงาน:** วัดพัลส์เบื้องต้นผ่านกล้อง")
+    # (HTML/JS Bio Sensor ของนาย)
+    st.info("💡 ความจริงจากระบบ: เป็นการวิเคราะห์เบื้องต้นเท่านั้น ไม่สามารถใช้แทนอุปกรณ์การแพทย์ได้")
 
 def room_mission():
     st.subheader("📝 บันทึกภารกิจ (Missions)")
-    
-    # 1. ส่วนบันทึกภารกิจ
     with st.form("m_form", clear_on_submit=True):
         t = st.text_input("ระบุภารกิจใหม่:")
         if st.form_submit_button("💾 บันทึก") and t:
             try:
-                # ใช้ firebase_admin.db เพื่อความชัวร์ว่าตัวแปรไม่หาย
-                firebase_admin.db.reference('missions').push({
-                    'u': st.session_state.user, 
-                    't': t, 
-                    'ts': time.time()
-                })
+                db.reference('missions').push({'u': st.session_state.user, 't': t, 'ts': time.time()})
                 st.success("บันทึกสำเร็จ!")
                 time.sleep(0.5)
                 st.rerun()
-            except Exception as e:
-                st.error(f"📡 บันทึกไม่ได้: {e}")
+            except:
+                st.error("📡 เชื่อมต่อฐานข้อมูลไม่ได้")
     
     st.write("---")
-    
-    # 2. ส่วนแสดงผล (เพิ่มการดัก Error เพื่อไม่ให้แอปล่ม)
     try:
-        # ตรวจสอบก่อนว่า App ถูก Initialize หรือยัง
-        if firebase_admin._apps:
-            missions_ref = firebase_admin.db.reference('missions')
-            data = missions_ref.limit_to_last(10).get()
-            
-            if data:
-                for key, v in reversed(list(data.items())):
-                    with st.expander(f"📌 {v.get('t')[:20]}..."):
-                        st.write(f"**ภารกิจ:** {v.get('t')}")
-                        st.caption(f"โดย: {v.get('u')} | เมื่อ: {datetime.fromtimestamp(v.get('ts')).strftime('%H:%M')}")
-            else:
-                st.caption("🌑 ยังไม่มีภารกิจในฐานข้อมูล")
-        else:
-            st.error("🚨 ระบบ Firebase ยังไม่พร้อมใช้งาน")
-    except Exception as e:
-        st.error(f"⚠️ เกิดข้อผิดพลาดในการดึงข้อมูล: {e}")
+        data = db.reference('missions').limit_to_last(10).get()
+        if data:
+            for key, v in reversed(list(data.items())):
+                st.info(f"📌 {v.get('t')} (โดย: {v.get('u')})")
+    except: pass
 
 # ==========================================
-# 3. Main Execution
+# 3. Main Execution (ล่างสุดของไฟล์)
 # ==========================================
 
 def main():
-    st.set_page_config(page_title="SYNAPSE", layout="wide")
+    st.set_page_config(page_title="SYNAPSE PRO", layout="wide")
     init_system()
 
     if not st.session_state.logged_in:
         room_login()
-    else:
-        with st.sidebar:
-            st.title("⚙️ SETTINGS")
-            st.write(f"AGENT: **{st.session_state.user}**")
-            if st.button("🚪 LOGOUT"):
-                st.session_state.logged_in = False
-                st.rerun()
+        return
 
-        tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "🌐 แชตรวม", "🔐 แชตส่วนตัว", "📞 โทร", "🎧 เพลง", "🩺 ตรวจร่างกาย", "📝 ภารกิจ"])
-        with tabs[0]: room_core()
-        with tabs[1]: room_radar()
-        with tabs[2]: room_public()
-        with tabs[3]: room_private()
-        with tabs[4]: room_call()
-        with tabs[5]: room_music()
-        with tabs[6]: room_bio()
-        with tabs[7]: room_mission()
+    with st.sidebar:
+        st.title("⚙️ SETTINGS")
+        st.write(f"👤 AGENT: **{st.session_state.user}**")
+        if st.button("🚪 LOGOUT"):
+            st.session_state.logged_in = False
+            st.rerun()
+        st.write("---")
+        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
+        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
+
+    st.markdown(f"<style>.stApp {{ background-color: {st.session_state.bg_color}; }}</style>", unsafe_allow_html=True)
+
+    tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "🌐 แชตรวม", "🔐 แชตส่วนตัว", "📞 โทร", "🎧 เพลง", "🩺 ตรวจร่างกาย", "📝 ภารกิจ"])
+    
+    with tabs[0]: room_core()
+    with tabs[1]: room_radar()
+    with tabs[2]: room_public()
+    with tabs[3]: room_private()
+    with tabs[4]: room_call()
+    with tabs[5]: room_music()
+    with tabs[6]: room_bio()
+    with tabs[7]: room_mission()
 
 if __name__ == "__main__":
     main()
