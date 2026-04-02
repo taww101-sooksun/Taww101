@@ -13,40 +13,45 @@ from math import radians, cos, sin, asin, sqrt
 from folium.features import DivIcon
 
 # ==========================================
-# 0. ระบบพื้นฐาน & CSS สีรุ้ง
+# 0. ระบบพื้นฐาน & CSS สีรุ้ง (คืนชีพชุดสีรุ้ง)
 # ==========================================
 
 def init_system():
     if 'user' not in st.session_state: st.session_state.user = "Ta101"
     if 'logged_in' not in st.session_state: st.session_state.logged_in = False
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
+    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
     
-    # CSS สำหรับทำให้ตัวหนังสือและกรอบเป็นสีรุ้งวิ่งได้
-    rainbow_css = """
+    # CSS สำหรับสีรุ้งวิ่งได้ (ตัวหนังสือและกรอบ)
+    rainbow_style = """
     <style>
-    @keyframes rainbow {
+    @keyframes rainbow_animation {
         0% { color: #ff0000; border-color: #ff0000; }
-        20% { color: #ff8000; border-color: #ff8000; }
-        40% { color: #ffff00; border-color: #ffff00; }
-        60% { color: #00ff00; border-color: #00ff00; }
-        80% { color: #0000ff; border-color: #0000ff; }
+        17% { color: #ff00ff; border-color: #ff00ff; }
+        33% { color: #0000ff; border-color: #0000ff; }
+        50% { color: #00ffff; border-color: #00ffff; }
+        67% { color: #00ff00; border-color: #00ff00; }
+        83% { color: #ffff00; border-color: #ffff00; }
         100% { color: #ff0000; border-color: #ff0000; }
     }
     .rainbow-text {
-        animation: rainbow 3s linear infinite;
+        animation: rainbow_animation 4s linear infinite;
         font-weight: bold;
+        filter: drop-shadow(0 0 5px rgba(255,255,255,0.3));
     }
     .rainbow-box {
-        border: 3px solid;
+        border: 4px solid;
         padding: 20px;
-        border-radius: 15px;
-        animation: rainbow 3s linear infinite;
-        background: rgba(0,0,0,0.5);
-        text-align: center;
+        border-radius: 20px;
+        animation: rainbow_animation 4s linear infinite;
+        background: rgba(0,0,0,0.6);
+        box-shadow: 0 0 15px rgba(255,255,255,0.1);
     }
+    .stApp { background-color: #000000; }
     </style>
     """
-    st.markdown(rainbow_css, unsafe_allow_html=True)
+    st.markdown(rainbow_style, unsafe_allow_html=True)
     
     if not firebase_admin._apps:
         try:
@@ -56,64 +61,74 @@ def init_system():
         except: pass
 
 # ==========================================
-# 1. ฟังก์ชันแสดงโลโก้ (เรียกใช้ทุกหน้า)
+# 1. ฟังก์ชันแสดงโลโก้ (สำหรับใส่ทุกหน้า)
 # ==========================================
 
 def show_logo():
-    col1, col2, col3 = st.columns([1, 1, 1])
+    col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         try:
-            # พยายามโหลดโลโก้ของต๊ะ
+            # พยายามเรียกไฟล์โลโก้
             st.image("logo1.jpg", use_container_width=True)
         except:
-            st.markdown("<h1 class='rainbow-text' style='text-align:center;'>SYNAPSE</h1>", unsafe_allow_html=True)
+            st.markdown("<h1 class='rainbow-text' style='text-align:center;'>SYNAPSE PRO</h1>", unsafe_allow_html=True)
 
 # ==========================================
-# 2. ห้องเพลง (แก้ไขให้รายชื่อเพลงไม่หาย)
+# 2. ห้องเพลง (คืนชีพรายชื่อเพลง)
 # ==========================================
 
 def room_music():
-    st.subheader("🎧 ระบบสถานีเพลง (Non-Stop)")
+    st.markdown("<h2 class='rainbow-text'>🎧 Music Station</h2>", unsafe_allow_html=True)
     
-    # สแกนหาไฟล์ .mp3 ในโฟลเดอร์ปัจจุบัน
-    files = [f for f in os.listdir('.') if f.endswith(".mp3")]
+    # ดึงไฟล์เพลงใหม่ทุกครั้งที่เปิดหน้า
+    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     
-    if not files:
-        st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ (กรุณาอัปโหลดไฟล์ .mp3 ไว้ในโฟลเดอร์แอป)")
+    if not music_files:
+        st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ")
         return
 
-    # แสดงรายชื่อเพลงทั้งหมดในรูปแบบตารางเลือก
-    with st.expander("📂 คลังเพลงทั้งหมด (เลือกเล่นได้)", expanded=True):
-        for i, f in enumerate(files):
-            # เน้นสีรุ้งที่เพลงที่กำลังเล่นอยู่
-            label = f"🎶 {f}" if i == st.session_state.song_index else f"🎵 {f}"
-            if st.button(label, key=f"s_{i}", use_container_width=True):
-                st.session_state.song_index = i
-                st.rerun()
+    # แสดงรายชื่อเพลง
+    st.write("---")
+    with st.container():
+        st.caption("📂 คลังเพลง AGENT (เลือกเพื่อเปลี่ยนเพลง)")
+        for i, song in enumerate(music_files):
+            # ตกแต่งปุ่มที่กำลังเล่นอยู่
+            if i == st.session_state.song_index:
+                if st.button(f"▶️ NOW PLAYING: {song}", key=f"s_{i}", use_container_width=True):
+                    pass
+            else:
+                if st.button(f"🎵 {song}", key=f"s_{i}", use_container_width=True):
+                    st.session_state.song_index = i
+                    st.rerun()
 
-    # ส่วนตัวเล่นเพลง
-    current = files[st.session_state.song_index]
-    st.markdown(f"กำลังเล่น: <span class='rainbow-text'>{current}</span>", unsafe_allow_html=True)
+    st.write("---")
+    
+    # ระบบเล่นเพลง
+    current_song = music_files[st.session_state.song_index]
+    st.markdown(f"กำลังขับขาน: <span class='rainbow-text'>{current_song}</span>", unsafe_allow_html=True)
     
     try:
-        with open(current, "rb") as f:
+        with open(current_song, "rb") as f:
             b64 = base64.b64encode(f.read()).decode()
-            st.components.v1.html(f'<audio controls autoplay style="width:100%"><source src="data:audio/mp3;base64,{b64}"></audio>', height=80)
+            audio_html = f'<audio id="p" controls autoplay style="width:100%"><source src="data:audio/mp3;base64,{b64}"></audio>'
+            components.html(audio_html, height=100)
     except:
-        st.error("เล่นเพลงไม่ได้")
+        st.error("ไม่สามารถโหลดไฟล์เสียงได้")
 
 # ==========================================
-# 3. ห้องภารกิจ & แกนหลัก (ฉบับสีรุ้ง)
+# 3. ห้องแกนหลัก & ภารกิจ (ฉบับสีรุ้ง)
 # ==========================================
 
 def room_core():
+    st.markdown("<h2 class='rainbow-text'>🚀 COMMAND CENTER</h2>", unsafe_allow_html=True)
     now = datetime.utcnow() + timedelta(hours=7)
     st.markdown(f"""
         <div class="rainbow-box">
-            <h1 style="font-size: 4em; margin:0;">{now.strftime('%H:%M:%S')}</h1>
-            <p style="letter-spacing: 5px;">SYSTEM ONLINE</p>
+            <h1 style="font-size: 4em; margin:0; color: white;">{now.strftime('%H:%M:%S')}</h1>
+            <p style="letter-spacing: 5px; color: white; opacity:0.8;">AGENT STATUS: ONLINE</p>
         </div>
     """, unsafe_allow_html=True)
+    st.write("")
     st.markdown(f"🚩 SLOGAN: <span class='rainbow-text'>'อยู่นิ่งๆ ไม่เจ็บตัว'</span>", unsafe_allow_html=True)
 
 # ==========================================
@@ -121,31 +136,48 @@ def room_core():
 # ==========================================
 
 def main():
-    st.set_page_config(page_title="SYNAPSE RAINBOW", layout="wide")
+    st.set_page_config(page_title="SYNAPSE PRO RAINBOW", layout="wide")
     init_system()
 
-    if not st.session_state.get('logged_in', False):
-        # หน้า Login ก็ใส่โลโก้
+    if not st.session_state.logged_in:
         show_logo()
-        # ... (โค้ดส่วน Login เหมือนเดิม) ...
-        # สมมติถ้าต๊ะ Login ผ่านแล้วให้เปลี่ยนค่าเป็น True
-        if st.button("UNLOCK (DEMO)"): 
-            st.session_state.logged_in = True
-            st.rerun()
+        # ส่วน Login
+        with st.form("login"):
+            u = st.text_input("AGENT ID")
+            p = st.text_input("PASSWORD", type="password")
+            if st.form_submit_button("UNLOCK SYSTEM", use_container_width=True):
+                user_data = db.reference(f'users/{u}').get()
+                if user_data and user_data.get('pw') == p:
+                    st.session_state.user = u
+                    st.session_state.logged_in = True
+                    st.rerun()
+                else: st.error("เข้าถึงไม่ได้")
         return
 
     # --- ส่วนที่แสดงทุกหน้าหลัง Login ---
-    show_logo() # แสดงโลโก้ด้านบนสุดของทุกหน้า
+    show_logo() # โลโก้มาแล้วทุกหน้า!
     
-    tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "🎧 เพลง", "📝 ภารกิจ"])
+    tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "🌐 แชตรวม", "🔐 แชตลับ", "📞 โทร", "🎧 เพลง", "🩺 ตรวจร่างกาย", "📝 ภารกิจ"])
     
     with tabs[0]: room_core()
-    with tabs[1]: st.write("ส่วนเรดาร์ (โค้ดเดิมของต๊ะทำงานได้ปกติ)")
-    with tabs[2]: room_music()
-    with tabs[3]: 
-        st.subheader("📝 บันทึกภารกิจ")
-        st.markdown("<p class='rainbow-text'>กำลังตรวจสอบสถานะภารกิจ...</p>", unsafe_allow_html=True)
-        # ... (โค้ด Mission เดิม) ...
+    with tabs[1]:
+        from math import radians # กัน Error
+        # ส่วนเรดาร์เรียกใช้ตามเดิม
+        st.subheader("🛰️ ระบบเรดาร์")
+        # (ก๊อปปี้โค้ดห้องเรดาร์เดิมใส่ตรงนี้ได้เลย)
+    
+    with tabs[5]: room_music() # ห้องเพลงคืนชีพ
+    
+    with tabs[7]:
+        st.markdown("<h2 class='rainbow-text'>📝 MISSION LOG</h2>", unsafe_allow_html=True)
+        # (ก๊อปปี้โค้ดห้องภารกิจเดิมใส่ตรงนี้ได้เลย)
+
+    with st.sidebar:
+        st.title("⚙️ SETTINGS")
+        st.write(f"AGENT: **{st.session_state.user}**")
+        if st.button("🚪 LOGOUT"):
+            st.session_state.logged_in = False
+            st.rerun()
 
 if __name__ == "__main__":
     main()
