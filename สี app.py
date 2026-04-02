@@ -205,16 +205,44 @@ def room_bio():
 
 def room_mission():
     st.subheader("📝 บันทึกภารกิจ (Missions)")
+    
+    # 1. ส่วนบันทึกภารกิจ
     with st.form("m_form", clear_on_submit=True):
         t = st.text_input("ระบุภารกิจใหม่:")
         if st.form_submit_button("💾 บันทึก") and t:
-            db.reference('missions').push({'u': st.session_state.user, 't': t, 'ts': time.time()})
-            st.rerun()
+            try:
+                # ใช้ firebase_admin.db เพื่อความชัวร์ว่าตัวแปรไม่หาย
+                firebase_admin.db.reference('missions').push({
+                    'u': st.session_state.user, 
+                    't': t, 
+                    'ts': time.time()
+                })
+                st.success("บันทึกสำเร็จ!")
+                time.sleep(0.5)
+                st.rerun()
+            except Exception as e:
+                st.error(f"📡 บันทึกไม่ได้: {e}")
     
-    data = db.reference('missions').limit_to_last(10).get()
-    if data:
-        for v in reversed(list(data.values())):
-            st.info(f"📌 {v.get('t')} (โดย: {v.get('u')})")
+    st.write("---")
+    
+    # 2. ส่วนแสดงผล (เพิ่มการดัก Error เพื่อไม่ให้แอปล่ม)
+    try:
+        # ตรวจสอบก่อนว่า App ถูก Initialize หรือยัง
+        if firebase_admin._apps:
+            missions_ref = firebase_admin.db.reference('missions')
+            data = missions_ref.limit_to_last(10).get()
+            
+            if data:
+                for key, v in reversed(list(data.items())):
+                    with st.expander(f"📌 {v.get('t')[:20]}..."):
+                        st.write(f"**ภารกิจ:** {v.get('t')}")
+                        st.caption(f"โดย: {v.get('u')} | เมื่อ: {datetime.fromtimestamp(v.get('ts')).strftime('%H:%M')}")
+            else:
+                st.caption("🌑 ยังไม่มีภารกิจในฐานข้อมูล")
+        else:
+            st.error("🚨 ระบบ Firebase ยังไม่พร้อมใช้งาน")
+    except Exception as e:
+        st.error(f"⚠️ เกิดข้อผิดพลาดในการดึงข้อมูล: {e}")
 
 # ==========================================
 # 3. Main Execution
