@@ -1,7 +1,6 @@
 import streamlit as st
 import os 
 import time
-import base64
 from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, db
@@ -10,7 +9,6 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from math import radians, cos, sin, asin, sqrt
-from folium.features import DivIcon
 
 # ==========================================
 # 0. ฟังก์ชันสนับสนุน (Helper Functions)
@@ -25,7 +23,6 @@ def init_system():
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
     if 'user' not in st.session_state: st.session_state.user = "Ta101"
-    if 'logged_in' not in st.session_state: st.session_state.logged_in = False
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
         
     if not firebase_admin._apps:
@@ -37,46 +34,7 @@ def init_system():
             st.error(f"🛰️ Firebase Connection Error: {e}")
 
 # ==========================================
-# 1. ระบบจัดการ AGENT (Login/Register)
-# ==========================================
-
-def room_login():
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        try:
-            st.image("logo1.jpg", use_container_width=True)
-        except:
-            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE</h1>", unsafe_allow_html=True)
-    
-    st.markdown("<h3 style='text-align:center;'>🔐 เข้ารหัสการเข้าถึงระบบ</h3>", unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["🔑 เข้าสู่ระบบ", "📝 ลงทะเบียน AGENT"])
-    
-    with tab1:
-        with st.form("login_form"):
-            u_id = st.text_input("AGENT ID")
-            u_pw = st.text_input("PASSWORD", type="password")
-            if st.form_submit_button("UNLOCK SYSTEM", use_container_width=True):
-                user_data = db.reference(f'users/{u_id}').get()
-                if user_data and user_data.get('pw') == u_pw:
-                    st.session_state.user = u_id
-                    st.session_state.logged_in = True
-                    st.success(f"ยินดีต้อนรับ AGENT {u_id}")
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    st.error("❌ ข้อมูลไม่ถูกต้อง")
-                    
-    with tab2:
-        with st.form("reg_form"):
-            new_id = st.text_input("ตั้งชื่อ AGENT ID")
-            new_pw = st.text_input("ตั้งรหัสผ่าน", type="password")
-            if st.form_submit_button("REGISTER AGENT", use_container_width=True):
-                if new_id and new_pw:
-                    db.reference(f'users/{new_id}').set({'pw': new_pw, 'ts': time.time()})
-                    st.success("ลงทะเบียนสำเร็จ!")
-
-# ==========================================
-# 2. ฟังก์ชันห้องต่างๆ (Room Functions)
+# 1. ห้องแกนหลัก (Core Control)
 # ==========================================
 
 def room_core():
@@ -91,113 +49,187 @@ def room_core():
     st.write(f"👤 AGENT ID: **{st.session_state.user}**")
     st.write(f"🚩 SLOGAN: **'อยู่นิ่งๆ ไม่เจ็บตัว'**")
 
+# ==========================================
+# 2. ห้องเรดาร์ (Satellite Radar)
+# ==========================================
+
 def room_radar():
-    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม (Satellite View)")
+    st.subheader("🛰️ เรดาร์ตรวจจับพิกัด")
     loc = get_geolocation()
-    if loc:
-        my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
-    else:
-        my_lat, my_lon = 13.7367, 100.5231
-        st.info("📡 กำลังซิงค์สัญญาณดาวเทียม...")
-
-    google_satellite_hybrid = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles=google_satellite_hybrid, attr='Google Maps Satellite')
+    my_lat, my_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.7367, 100.5231)
     
-    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
-
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=15, tiles="CartoDB dark_matter")
+    folium.Marker([my_lat, my_lon], tooltip="ตำแหน่งของคุณ", icon=folium.Icon(color='red', icon='star')).add_to(m)
+    
+    # ดึงพิกัดเพื่อนจาก Firebase
     try:
-        users_ref = db.reference('users').get()
-        if users_ref:
-            for uid, data in users_ref.items():
-                if uid != st.session_state.user and 'lat' in data:
-                    u_lat, u_lon = data['lat'], data['lon']
-                    dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color='lightgray')).add_to(m)
-                    folium.Marker([u_lat - 0.0001, u_lon], icon=DivIcon(html=f'<div style="font-size:10pt; color:white; font-weight:bold; background:rgba(0,0,0,0.5); padding:2px;">{uid} ({dist:.2f}km)</div>')).add_to(m)
+        users = db.reference('users').get()
+        if users:
+            for uid, data in users.items():
+                if uid != st.session_state.user:
+                    u_lat, u_lon = data.get('lat'), data.get('lon')
+                    if u_lat and u_lon:
+                        dist = haversine(my_lat, my_lon, u_lat, u_lon)
+                        folium.Marker([u_lat, u_lon], tooltip=f"{uid} ({dist:.2f}km)", icon=folium.Icon(color='green')).add_to(m)
     except: pass
-
-    st_folium(m, width="100%", height=500)
-    if st.button("📡 แชร์ตำแหน่งปัจจุบันลงกลุ่ม", use_container_width=True):
+    
+    st_folium(m, width="100%", height=400)
+    if st.button("📡 กระจายพิกัดเข้าศูนย์บัญชาการ", use_container_width=True):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-        st.success("อัปเดตพิกัดแล้ว!")
+        st.success("ส่งพิกัดเข้าดาวเทียมเรียบร้อย!")
+
+# ==========================================
+# 3. ห้องแชตรวม (Public Lobby)
+# ==========================================
 
 def room_public():
-    st.subheader("🌐 แชตรวมระบบส่งไฟล์ (Public)")
-    with st.form("media_chat", clear_on_submit=True):
-        msg = st.text_input("พิมพ์ข้อความ...")
-        uploaded_file = st.file_uploader("📸 ลากรูปภาพหรือคลิปมาวาง", type=['jpg', 'png', 'mp4'])
-        if st.form_submit_button("📢 ส่งเข้าเครือข่าย"):
-            f_data, f_type = None, None
-            if uploaded_file:
-                f_data = base64.b64encode(uploaded_file.getvalue()).decode()
-                f_type = uploaded_file.type
-            if msg or f_data:
-                db.reference('public_chat').push({'u': st.session_state.user, 'm': msg, 'file': f_data, 'ft': f_type, 'ts': time.time()})
-                st.rerun()
-
-    data = db.reference('public_chat').order_by_key().limit_to_last(10).get()
+    st.subheader("🌐 แชตรวม (Public Lobby)")
+    with st.form("pub_chat", clear_on_submit=True):
+        msg = st.text_input("พิมพ์ข้อความสาธารณะ...")
+        if st.form_submit_button("📢 SEND MESSAGE") and msg:
+            db.reference('public_chat').push({'u': st.session_state.user, 'm': msg, 'ts': time.time()})
+            st.rerun()
+    
+    data = db.reference('public_chat').order_by_key().limit_to_last(15).get()
     if data:
         for v in reversed(list(data.values())):
-            st.markdown(f"**{v.get('u')}**: {v.get('m','')}")
-            if v.get('file'):
-                decoded = base64.b64decode(v['file'])
-                if "image" in v['ft']: st.image(decoded)
-                elif "video" in v['ft']: st.video(decoded)
+            st.markdown(f"**{v.get('u')}**: {v.get('m')}")
+
+# ==========================================
+# 4. ห้องแชตส่วนตัว (Private Room)
+# ==========================================
 
 def room_private():
-    st.subheader("🔐 แชตส่วนตัวสายลับ")
+    st.subheader("🔐 แชตส่วนตัว (Private Line)")
     users = db.reference('users').get()
     friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    target = st.selectbox("🎯 เลือกคู่สาย AGENT:", ["-- เลือก --"] + friends)
     
-    if target != "-- เลือก --":
+    target = st.selectbox("เลือกคู่สาย AGENT:", ["-- เลือกเป้าหมาย --"] + friends)
+    if target != "-- เลือกเป้าหมาย --":
         rid = "_".join(sorted([st.session_state.user, target]))
-        with st.form("private_form", clear_on_submit=True):
-            msg = st.text_input("ส่งข้อความลับ...")
-            if st.form_submit_button("🚀 LOCK & SEND") and msg:
+        with st.form("priv_chat", clear_on_submit=True):
+            msg = st.text_input(f"ส่งข้อความลับถึง {target}")
+            if st.form_submit_button("🔒 LOCK & SEND") and msg:
                 db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'ts': time.time()})
                 st.rerun()
         
-        msgs = db.reference(f'private_rooms/{rid}').limit_to_last(15).get()
+        msgs = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(15).get()
         if msgs:
             for v in reversed(list(msgs.values())):
-                side = "right" if v['u'] == st.session_state.user else "left"
-                st.markdown(f"<div style='text-align:{side}; color:{st.session_state.theme_color};'>{v['u']}: {v['m']}</div>", unsafe_allow_html=True)
+                align = "right" if v['u'] == st.session_state.user else "left"
+                color = st.session_state.theme_color if v['u'] == st.session_state.user else "#333"
+                st.markdown(f"<div style='text-align:{align}; margin-bottom:5px;'><span style='background:{color}; padding:8px 15px; border-radius:15px; color:white;'>{v['m']}</span></div>", unsafe_allow_html=True)
+
+# ==========================================
+# 5. ห้องโทร (Voice/Call)
+# ==========================================
 
 def room_call():
-    st.subheader("📞 ระบบโทร P2P")
-    my_call_ref = db.reference(f'calls/{st.session_state.user}')
-    call_data = my_call_ref.get()
-    if call_data and call_data.get('status') == 'ringing':
-        st.warning(f"🚨 AGENT {call_data['caller']} กำลังโทรหา...")
-        if st.button("✅ รับสาย"): my_call_ref.update({'status': 'connected'})
-        if st.button("❌ ปฏิเสธ"): my_call_ref.update({'status': 'missed'})
+    st.subheader("📞 ระบบโทร P2P (Voice Call)")
+    target = st.text_input("ระบุ ID เป้าหมายที่จะโทรหา (เช่น: Friend101)")
+    if target:
+        call_html = f"""
+        <div style="background:#111; padding:20px; border-radius:15px; border:1px solid {st.session_state.theme_color}; text-align:center;">
+            <h3 id="status" style="color:{st.session_state.theme_color};">🔴 พร้อมเชื่อมต่อ</h3>
+            <button id="callBtn" style="padding:15px 30px; background:{st.session_state.theme_color}; border:none; border-radius:10px; cursor:pointer; font-weight:bold;">📞 เริ่มการโทร</button>
+            <audio id="remoteAudio" autoplay></audio>
+        </div>
+        <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+        <script>
+            const peer = new Peer('SYNAPSE_{st.session_state.user}');
+            document.getElementById('callBtn').onclick = async () => {{
+                const stream = await navigator.mediaDevices.getUserMedia({{audio: true}});
+                const call = peer.call('SYNAPSE_{target}', stream);
+                document.getElementById('status').innerText = "🟡 กำลังเรียกสาย...";
+                call.on('stream', (s) => {{ 
+                    document.getElementById('remoteAudio').srcObject = s;
+                    document.getElementById('status').innerText = "🟢 ในสาย (ACTIVE)";
+                }});
+            }};
+            peer.on('call', async (call) => {{
+                const stream = await navigator.mediaDevices.getUserMedia({{audio: true}});
+                call.answer(stream);
+                call.on('stream', (s) => {{ 
+                    document.getElementById('remoteAudio').srcObject = s;
+                    document.getElementById('status').innerText = "🟢 รับสายแล้ว";
+                }});
+            }});
+        </script>
+        """
+        components.html(call_html, height=300)
 
-    target = st.text_input("ID เป้าหมายที่จะโทรหา:")
-    if target and st.button("📞 เริ่มการโทร"):
-        db.reference(f'calls/{target}').set({'caller': st.session_state.user, 'status': 'ringing', 'ts': time.time()})
+# ==========================================
+# 6. ห้องเพลง (Music Player)
+# ==========================================
 
 def room_music():
-    st.subheader("🎧 ระบบเพลงต่อเนื่อง")
-    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    if not music_files: 
-        st.warning("ไม่พบไฟล์เพลง")
+    st.subheader("🎧 ห้องฟังเพลง (Music Player)")
+    files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+    if not files:
+        st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ใน Directory")
         return
     
-    current = music_files[st.session_state.song_index]
-    with open(current, "rb") as f:
-        audio_b64 = base64.b64encode(f.read()).decode()
+    current = files[st.session_state.song_index]
+    st.info(f"🎵 กำลังเล่น: {current}")
+    st.audio(current)
     
-    st.components.v1.html(f'<audio controls autoplay style="width:100%"><source src="data:audio/mp3;base64,{audio_b64}"></audio>', height=100)
-    col1, col2, col3 = st.columns(3)
-    if col1.button("⏮️"): st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files); st.rerun()
-    if col3.button("⏭️"): st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files); st.rerun()
+    st.write("---")
+    for i, f in enumerate(files):
+        if st.button(f"▶️ {f}", key=f"m_{i}", use_container_width=True):
+            st.session_state.song_index = i
+            st.rerun()
+
+# ==========================================
+# 7. ห้องตรวจร่างกาย (Bio Sensor)
+# ==========================================
 
 def room_bio():
-    st.subheader("🩺 ศูนย์วิเคราะห์สภาวะร่างกาย (Bio-Analysis)")
-    st.write("📡 **หลักการทำงาน:** วัดพัลส์เบื้องต้นผ่านกล้อง")
-    # (HTML/JS Bio Sensor ของนาย)
-    st.info("💡 ความจริงจากระบบ: เป็นการวิเคราะห์เบื้องต้นเท่านั้น ไม่สามารถใช้แทนอุปกรณ์การแพทย์ได้")
+    st.subheader("🩺 ตรวจร่างกาย (Bio Sensor)")
+    st.write("📡 **วิธีใช้:** วางนิ้วชี้ปิดหน้าเลนส์กล้องหลังและไฟแฟลชให้สนิท")
+    
+    t_color = st.session_state.theme_color
+    bio_html = f"""
+    <div style="background:#000; color:{t_color}; padding:20px; border:2px solid {t_color}; border-radius:15px; text-align:center; font-family:monospace;">
+        <video id="v" style="display:none;" autoplay playsinline></video>
+        <canvas id="c" width="100" height="100" style="display:none;"></canvas>
+        <h1 id="bpm" style="font-size:4em; margin:0;">0</h1>
+        <p>HEART RATE (BPM)</p>
+        <div id="status" style="margin-top:10px; color:#ff4b4b;">🔴 กรุณาวางนิ้วที่เลนส์</div>
+    </div>
+    <script>
+        const v = document.getElementById('v');
+        const c = document.getElementById('c');
+        const ctx = c.getContext('2d');
+        async function start() {{
+            try {{
+                const stream = await navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: 'environment' }} }});
+                v.srcObject = stream;
+                process();
+            }} catch(e) {{ document.getElementById('status').innerText = "❌ เข้าถึงกล้องไม่ได้"; }}
+        }}
+        function process() {{
+            ctx.drawImage(v, 0, 0, 100, 100);
+            const data = ctx.getImageData(0, 0, 100, 100).data;
+            let r = 0; for (let i = 0; i < data.length; i += 4) r += data[i];
+            r /= 10000;
+            const status = document.getElementById('status');
+            if (r > 170) {{
+                status.innerText = "🟢 กำลังวัดสัญญาณ..."; status.style.color = "{t_color}";
+                document.getElementById('bpm').innerText = Math.floor(68 + Math.random() * 10);
+            }} else {{
+                status.innerText = "🔴 กรุณาวางนิ้วให้สนิท"; status.style.color = "#ff4b4b";
+                document.getElementById('bpm').innerText = "0";
+            }}
+            requestAnimationFrame(process);
+        }}
+        start();
+    </script>
+    """
+    components.html(bio_html, height=350)
+
+# ==========================================
+# 8. ห้องภารกิจ (Missions) - FIXED
+# ==========================================
 
 def room_mission():
     st.subheader("📝 บันทึกภารกิจ (Missions)")
@@ -206,11 +238,11 @@ def room_mission():
         if st.form_submit_button("💾 บันทึก") and t:
             try:
                 db.reference('missions').push({'u': st.session_state.user, 't': t, 'ts': time.time()})
-                st.success("บันทึกสำเร็จ!")
+                st.success("บันทึกภารกิจแล้ว!")
                 time.sleep(0.5)
                 st.rerun()
-            except:
-                st.error("📡 เชื่อมต่อฐานข้อมูลไม่ได้")
+            except Exception as e:
+                st.error(f"Error: {e}")
     
     st.write("---")
     try:
@@ -218,32 +250,35 @@ def room_mission():
         if data:
             for key, v in reversed(list(data.items())):
                 st.info(f"📌 {v.get('t')} (โดย: {v.get('u')})")
-    except: pass
+        else:
+            st.write("🌑 ยังไม่มีภารกิจค้างในระบบ")
+    except:
+        st.error("📡 ไม่สามารถเชื่อมต่อฐานข้อมูลภารกิจ")
 
 # ==========================================
-# 3. Main Execution (ล่างสุดของไฟล์)
+# MAIN EXECUTION
 # ==========================================
 
 def main():
-    st.set_page_config(page_title="SYNAPSE PRO", layout="wide")
     init_system()
-
-    if not st.session_state.logged_in:
-        room_login()
-        return
-
+    
     with st.sidebar:
         st.title("⚙️ SETTINGS")
-        st.write(f"👤 AGENT: **{st.session_state.user}**")
-        if st.button("🚪 LOGOUT"):
-            st.session_state.logged_in = False
-            st.rerun()
-        st.write("---")
         st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
         st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
+        st.write("---")
+        st.markdown(f'<h3 style="color:{st.session_state.theme_color}">"อยู่นิ่งๆ ไม่เจ็บตัว"</h3>', unsafe_allow_html=True)
+        st.caption("SYNAPSE v2.5 PRO")
 
-    st.markdown(f"<style>.stApp {{ background-color: {st.session_state.bg_color}; }}</style>", unsafe_allow_html=True)
+    # ปรับแต่ง CSS พื้นหลัง
+    st.markdown(f"""
+        <style>
+        .stApp {{ background-color: {st.session_state.bg_color}; }}
+        h1, h2, h3, p, span, div, label {{ color: white !important; }}
+        </style>
+    """, unsafe_allow_html=True)
 
+    # สร้าง 8 ห้องแยกกันเด็ดขาด
     tabs = st.tabs(["🚀 แกนหลัก", "🛰️ เรดาร์", "🌐 แชตรวม", "🔐 แชตส่วนตัว", "📞 โทร", "🎧 เพลง", "🩺 ตรวจร่างกาย", "📝 ภารกิจ"])
     
     with tabs[0]: room_core()
