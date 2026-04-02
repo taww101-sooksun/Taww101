@@ -518,6 +518,81 @@ def room_bio():
 # ==========================================
 # MAIN EXECUTION - แก้ไขจุด NameError
 # ==========================================
+def room_login():
+    # แสดงโลโก้ logo1.jpg ที่กลางหน้าจอ
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        try:
+            st.image("logo1.jpg", use_container_width=True)
+        except:
+            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE</h1>", unsafe_allow_html=True)
+    
+    st.markdown("<h3 style='text-align:center;'>🔐 เข้ารหัสการเข้าถึงระบบ</h3>", unsafe_allow_html=True)
+    
+    tab1, tab2 = st.tabs(["🔑 เข้าสู่ระบบ", "📝 ลงทะเบียน AGENT"])
+    
+    with tab1:
+        with st.form("login_form"):
+            user_id = st.text_input("AGENT ID", placeholder="เช่น: Ta101")
+            password = st.text_input("PASSWORD", type="password")
+            if st.form_submit_button("UNLOCK SYSTEM", use_container_width=True):
+                # ตรวจสอบข้อมูลใน Firebase
+                user_data = db.reference(f'users/{user_id}').get()
+                if user_data and user_data.get('pw') == password:
+                    st.session_state.user = user_id
+                    st.session_state.logged_in = True
+                    st.success(f"ยินดีต้อนรับ AGENT {user_id}")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("❌ ข้อมูลการเข้าถึงไม่ถูกต้อง")
+                    
+    with tab2:
+        with st.form("reg_form"):
+            new_id = st.text_input("ตั้งชื่อ AGENT ID", placeholder="ตัวอักษรภาษาอังกฤษและตัวเลข")
+            new_pw = st.text_input("ตั้งรหัสผ่าน PASSWORD", type="password")
+            confirm_pw = st.text_input("ยืนยันรหัสผ่าน", type="password")
+            
+            if st.form_submit_button("REGISTER AGENT", use_container_width=True):
+                if not new_id or not new_pw:
+                    st.warning("กรุณากรอกข้อมูลให้ครบ")
+                elif new_pw != confirm_pw:
+                    st.error("รหัสผ่านไม่ตรงกัน")
+                else:
+                    # บันทึกลง Firebase
+                    db.reference(f'users/{new_id}').set({
+                        'pw': new_pw,
+                        'created_at': time.time()
+                    })
+                    st.success("ลงทะเบียนสำเร็จ! กรุณาเข้าสู่ระบบ")
+
+# ==========================================
+# ปรับแก้ใน main() เพื่อให้บังคับ Login ก่อน
+# ==========================================
+
+def main():
+    init_system()
+    
+    # เพิ่มตัวแปรเช็คสถานะ Login ใน session_state
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+
+    # ถ้ายังไม่ได้ Login ให้ค้างอยู่ที่หน้า Login
+    if not st.session_state.logged_in:
+        room_login()
+        return # หยุดการทำงาน ไม่ให้เห็น Tab อื่นๆ
+
+    # --- ถ้า Login แล้วถึงจะเห็นส่วนข้างล่างนี้ ---
+    
+    with st.sidebar:
+        st.title("⚙️ SETTINGS")
+        st.write(f"👤 AGENT: **{st.session_state.user}**")
+        if st.button("🚪 LOGOUT"):
+            st.session_state.logged_in = False
+            st.rerun()
+        # ... ส่วนตั้งค่าเดิม ...
+
+    # ... ส่วน Tabs ทั้ง 8 ห้องเดิม ...
 
 # --- ย้ายก้อนนี้มาไว้ก่อนฟังก์ชัน main() ---
 def room_mission():
