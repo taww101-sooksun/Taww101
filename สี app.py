@@ -164,66 +164,21 @@ def room_call():
 
 def room_music():
     st.subheader("🎧 NON-STOP STATION")
-    
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    if not music_files:
-        return st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ")
-
-    if 'song_index' not in st.session_state:
-        st.session_state.song_index = 0
-    
-    st.session_state.song_index %= len(music_files)
-    current_song = music_files[st.session_state.song_index]
-
-    with open(current_song, "rb") as f:
+    if not music_files: return st.warning("ไม่พบไฟล์เพลงใน Directory")
+    current = music_files[st.session_state.song_index]
+    with open(current, "rb") as f:
         audio_b64 = base64.b64encode(f.read()).decode()
-
-    st.success(f"กำลังเล่น: 🎵 {current_song}")
-
-    # แก้ไขจุดนี้: ใช้ไอเดีย "Query Parameter" หรือ "Key" ที่เปลี่ยนตามเพลง
-    playback_html = f"""
-        <audio id="audio-player" controls autoplay style="width:100%;">
-            <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3">
-        </audio>
-        <script>
-            var audio = document.getElementById('audio-player');
-            audio.onended = function() {{
-                // แจ้งเตือน Streamlit ผ่านการคลิกปุ่มล่องหน หรือเปลี่ยนค่า Value
-                window.parent.postMessage({{
-                    type: 'streamlit:setComponentValue',
-                    value: '{current_song}_ended' 
-                }}, '*');
-            }};
-        </script>
-    """
-    
-    # ดักจับสัญญาณเพลงจบ
-    auto_next_signal = components.html(playback_html, height=100, key=f"player_{st.session_state.song_index}")
-
-    # ตรวจสอบสัญญาณเพลงจบ (ถ้าค่าที่ส่งมาไม่ใช่ None และมีคำว่า _ended)
-    if auto_next_signal and "_ended" in str(auto_next_signal):
-        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
-        st.rerun()
-
-    col1, col2 = st.columns(2)
-    if col1.button("⏮️ ก่อนหน้า", use_container_width=True):
+    audio_html = f"""<audio id="player" controls autoplay style="width:100%;"><source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3"></audio>
+        <script>document.getElementById('player').onended = function() {{ window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*'); }};</script>"""
+    res = components.html(audio_html, height=100)
+    col1, col2, col3 = st.columns(3)
+    if col1.button("⏮️ PREV"):
         st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
         st.rerun()
-    if col2.button("⏭️ ถัดไป", use_container_width=True):
+    if col3.button("⏭️ NEXT") or res == 'next':
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
-
-    st.markdown("---")
-    st.markdown("### 📋 รายชื่อเพลงทั้งหมด")
-    for i, file in enumerate(music_files):
-        if i == st.session_state.song_index:
-            st.info(f"▶️ {i+1}. {file}")
-        else:
-            if st.button(f"🎵 {i+1}. {file}", key=f"list_song_{i}", use_container_width=True):
-                st.session_state.song_index = i
-                st.rerun()
-
-
 
 def room_secure_chat():
     st.subheader("💬 SECURE CHAT")
@@ -258,10 +213,7 @@ def room_secure_chat():
 # ==========================================
 def main():
     init_system()
-    
-    # บรรทัดที่ 263 แก้เป็นแบบนี้ครับ
     loc = get_geolocation() 
-
     
     with st.sidebar:
         if os.path.exists("logo1.jpg"): st.image("logo1.jpg", use_container_width=True)
@@ -274,20 +226,16 @@ def main():
                 st.session_state.logged_in = False
                 st.rerun()
 
-    # ... โค้ดด้านบนเหมือนเดิม ...
-
     if not st.session_state.logged_in:
         room_login()
         return
 
-    # --- ต้องเยื้องเข้าไปให้อยู่ใน main() ทั้งหมดนะครับ ---
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
-    
     with tabs[0]: room_core(loc)
     with tabs[1]: room_radar(loc)
     with tabs[2]: room_secure_chat()
     with tabs[3]: room_call()
-    with tabs[4]: room_music() 
+    with tabs[4]: room_music()
     with tabs[5]: 
         st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
 
