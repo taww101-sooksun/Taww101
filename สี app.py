@@ -72,8 +72,8 @@ def room_login():
         with tab_r:
             with st.form("reg"):
                 new_id = st.text_input("NEW AGENT ID")
-                new_pw = st.text_input("SET PASSWORD รหัส", type="password ยืนยันรหัส")
-                if st.form_submit_button("CREATE ACCOUNT ลงชื่อเข้าใช่", use_container_width=True):
+                new_pw = st.text_input("SET PASSWORD", type="password")
+                if st.form_submit_button("CREATE ACCOUNT", use_container_width=True):
                     db.reference(f'users/{new_id}').set({'pw': new_pw, 'ts': time.time()})
                     st.success("ลงทะเบียนสำเร็จ!")
 
@@ -89,7 +89,7 @@ def room_core(loc):
     
     current_time = get_local_time(lat, lon)
     st.markdown(f"""
-        <div style="text-align:center; padding:30px; border:2px solid {st.session_state.theme_color}; border-radius:15px; background:rgba(0,0,0,0.3); box-shadow: 0 0 20px {st.session_state.theme_color}44;">
+        <div style="text-align:center; padding:30px; border:4px solid {st.session_state.theme_color}; border-radius:15px; background:rgba(0,0,0,0.3); box-shadow: 0 0 20px {st.session_state.theme_color}44;">
             <h1 style="font-size:5em; color:{st.session_state.theme_color}; margin:0; font-family: monospace;">{current_time.strftime('%H:%M:%S')}</h1>
             <p style="color:#888; letter-spacing: 2px;">📍 LAT: {lat:.4f} | LON: {lon:.4f}</p>
             <p style="color:{st.session_state.theme_color}; font-weight:bold;">AGENT {st.session_state.user} ONLINE</p>
@@ -131,7 +131,7 @@ def room_call():
     if target:
         st.info(f"พร้อมเชื่อมต่อกับ {target} ผ่านเครือข่าย P2P")
         call_html = f"""
-        <div style="background:#111; padding:20px; border-radius:15px; border:1px solid {st.session_state.theme_color}; text-align:center;">
+        <div style="background:#111; padding:20px; border-radius:15px; border:4px solid {st.session_state.theme_color}; text-align:center;">
             <video id="remoteVideo" autoplay playsinline style="width:100%; height:300px; background:#000; border-radius:10px;"></video>
             <video id="localVideo" autoplay playsinline muted style="width:100px; position:absolute; bottom:30px; right:30px; border:2px solid {st.session_state.theme_color};"></video>
             <div style="margin-top:10px;">
@@ -264,7 +264,7 @@ def main():
         if st.session_state.logged_in:
             st.write(f"👤 AGENT: **{st.session_state.user}**")
             st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
-            if st.button("🚪 LOGOUT", use_container_width=True):
+            if st.button("🚪 LOGOUT ออกจากระบบ", use_container_width=True):
                 st.session_state.logged_in = False
                 st.rerun()
 
