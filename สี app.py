@@ -166,7 +166,7 @@ def room_core(loc):
         </div>
     """, unsafe_allow_html=True)
 def room_radar(loc):
-    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัดเครือข่าย AGENT")
+    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัดเครือข่าย AGENT อยู่นิ้งๆไม่เจ็บตัว📡")
     
     # 1. พิกัดตัวเรา
     my_lat, my_lon = 13.7367, 100.5231 
@@ -189,13 +189,13 @@ def room_radar(loc):
     folium.Marker(
         [my_lat, my_lon], 
         icon=folium.Icon(color='red', icon='star'), 
-        tooltip="YOU (จุดยุทธศาสตร์)"
+        tooltip="YOU (ฉันเอง)"
     ).add_to(m)
 
     # ลูกเล่น: วงรัศมีเรดาร์รอบตัวเรา
     folium.Circle(
         location=[my_lat, my_lon],
-        radius=500,
+        radius=250,
         color=st.session_state.theme_color,
         fill=True,
         fill_color=st.session_state.theme_color,
