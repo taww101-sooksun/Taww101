@@ -1,5 +1,3 @@
-suno-api
-streamlit
 streamlit>=1.35.0
 google-generativeai>=0.8.3
 pandas
@@ -10,16 +8,14 @@ pydub
 requests
 streamlit-player
 streamlit-js-eval
-torch
 gTTS
 pytz
 geopy
 folium
 streamlit-folium
-firebase-admin
+firebase_admin
 timezonefinder
 streamlit-webrtc
-streamlit
 streamlit-autorefresh
 streamlit-google-auth
 Authlib
