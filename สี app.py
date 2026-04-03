@@ -1,224 +1,194 @@
 import streamlit as st
 import os 
-import random
 import time
+import base64
 from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
 import folium
+from folium.features import DivIcon
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
-import hashlib
 from math import radians, cos, sin, asin, sqrt
 
 # ==========================================
-# 0. ฟังก์ชันสนับสนุน (Helper Functions)
+# 0. CONFIG & INITIALIZATION
 # ==========================================
+st.set_page_config(page_title="SYNAPSE OS", layout="wide", initial_sidebar_state="collapsed")
 
 def haversine(lat1, lon1, lat2, lon2):
-    """
-    คำนวณระยะห่างระหว่าง 2 พิกัดบนผิวโลก (หน่วย: กิโลเมตร)
-    """
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-    dlon = lon2 - lon1 
-    dlat = lat2 - lat1 
+    dlon, dlat = lon2 - lon1, lat2 - lat1 
     a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    c = 2 * asin(sqrt(a)) 
-    r = 6371 
-    return c * r
-
-# ==========================================
-# 1. กลไกกลาง (Core Engine)
-# ==========================================
+    return 2 * asin(sqrt(a)) * 6371
 
 def init_system():
-    # ตั้งค่า Session State เริ่มต้น
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
-    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
-    if 'text_color' not in st.session_state: st.session_state.text_color = "#FFFFFF"
+    if 'logged_in' not in st.session_state: st.session_state.logged_in = False
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
-    if 'user' not in st.session_state: st.session_state.user = "Ta101"
-        
-    # เชื่อมต่อ Firebase
+    
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
             cred = credentials.Certificate(fb_creds)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': st.secrets["firebase_db_url"]
-            })
+            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
         except Exception as e:
-            st.error(f"🛰️ Firebase Connection Error: {e}")
+            st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
 
 # ==========================================
-# 2. พื้นที่เก็บห้อง (The Rooms / Modules)
+# 1. AUTHENTICATION (LOGIN/REGISTER)
 # ==========================================
-
-def room_core():
-    """
-    ห้องแกนกลาง: แสดงเวลาและสถานะระบบ
-    """
-    st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
-    now = datetime.utcnow() + timedelta(hours=7) 
-    seconds_since_midnight = (now.hour * 3600) + (now.minute * 60) + now.second
-    day_percent = seconds_since_midnight / 84600
-    
-    st.markdown(f"""
-        <div style="border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; background: rgba(0,0,0,0.5);">
-            <h1 style="margin: 0; color: {st.session_state.theme_color}; font-family: 'Courier New', Courier, monospace; font-size: 3em;">{now.strftime('%H:%M:%S')}</h1>
-            <p style="color: {st.session_state.theme_color}; opacity: 0.8; letter-spacing: 2px;">SYNAPSE STANDBY</p>
-        </div>
-    """, unsafe_allow_html=True)
+def room_login():
+    col1, col2, col3 = st.columns([1, 1.5, 1])
+    with col2:
+        if os.path.exists("logo1.jpg"):
+            st.image("logo1.jpg", use_container_width=True)
+        else:
+            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE</h1>", unsafe_allow_html=True)
         
-    st.write(f"⏳ Day Progress: {day_percent*100:.2f}%")
-    st.progress(min(day_percent, 1.0))
-    st.markdown("---")
-    st.info("สถานะระบบ: ONLINE (CONNECTED TO SATELLITE)")
-    st.write(f"รหัสผู้ใช้งาน: **{st.session_state.user}**")
-    st.write(f"สโลแกน: **'อยู่นิ่งๆ ไม่เจ็บตัว'**")
+        tab_l, tab_r = st.tabs(["🔑 UNLOCK SYSTEM", "📝 REGISTER AGENT"])
+        
+        with tab_l:
+            with st.form("login"):
+                uid = st.text_input("AGENT ID")
+                pw = st.text_input("PASSWORD", type="password")
+                if st.form_submit_button("ACCESS GRANTED", use_container_width=True):
+                    user_data = db.reference(f'users/{uid}').get()
+                    if user_data and user_data.get('pw') == pw:
+                        st.session_state.user = uid
+                        st.session_state.logged_in = True
+                        st.rerun()
+                    else: st.error("รหัสผ่านไม่ถูกต้อง")
+        
+        with tab_r:
+            with st.form("reg"):
+                new_id = st.text_input("NEW AGENT ID")
+                new_pw = st.text_input("SET PASSWORD", type="password")
+                if st.form_submit_button("CREATE ACCOUNT", use_container_width=True):
+                    db.reference(f'users/{new_id}').set({'pw': new_pw, 'ts': time.time()})
+                    st.success("ลงทะเบียนสำเร็จ!")
 
-
+# ==========================================
+# 2. CORE MODULES (RADAR, COMMS, MUSIC)
+# ==========================================
 def room_radar():
-    """
-    ห้องเรดาร์: ตรวจจับพิกัดและระยะห่างเพื่อนในทีม
-    """
-    st.subheader("🛰️ เรดาร์ตรวจจับพิกัดและระยะห่าง")
-    
-    map_mode = st.radio("🗺️ โหมดแผนที่:", ["ดาวเทียม", "ถนนปกติ", "Dark Mode"], horizontal=True)
-    tile_url = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" 
-    if map_mode == "ถนนปกติ":
-        tile_url = "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
-    elif map_mode == "Dark Mode":
-        tile_url = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-
+    st.subheader("🛰️ STRATEGIC RADAR (HYBRID SATELLITE)")
     loc = get_geolocation()
-    all_users = db.reference('users').get()
+    my_lat, my_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.7367, 100.5231)
     
-    my_lat, my_lon = 13.7367, 100.5231 # พิกัด Default (กทม.)
-    if loc:
-        my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
+    # Google Satellite Hybrid Map
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google')
+    
+    # My Marker with Text
+    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star')).add_to(m)
+    folium.Marker([my_lat-0.0001, my_lon], icon=DivIcon(html=f'<div style="font-size:10pt; color:red; font-weight:bold; background:white; padding:2px; border-radius:3px;">📍 {st.session_state.user} (YOU)</div>')).add_to(m)
 
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=16, tiles=tile_url, attr="SYNAPSE Strategic Map")
-
-    folium.Circle(
-        location=[my_lat, my_lon],
-        radius=500,
-        color=st.session_state.theme_color,
-        fill=True,
-        fill_opacity=0.1,
-        tooltip="เขตรัศมี 500 เมตร"
-    ).add_to(m)
-
-    folium.Marker(
-        [my_lat, my_lon], 
-        tooltip="ตำแหน่งของคุณ", 
-        icon=folium.Icon(color='red', icon='star')
-    ).add_to(m)
-
-    if all_users:
-        st.write("### 👥 รายงานสถานะพิกัดเป้าหมาย")
-        col1, col2 = st.columns(2)
-        
-        for index, (uid, data) in enumerate(all_users.items()):
-            if uid == st.session_state.user: continue
-            
-            u_lat, u_lon = data.get('lat'), data.get('lon')
-            if u_lat and u_lon:
+    # Team Radar
+    users_ref = db.reference('users').get()
+    if users_ref:
+        for uid, data in users_ref.items():
+            if uid != st.session_state.user and 'lat' in data:
+                u_lat, u_lon = data['lat'], data['lon']
                 dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                avg_speed = 40 
-                eta_mins = (dist / avg_speed) * 60
-                is_active = (time.time() - data.get('ts', 0)) < 600
-                
-                with (col1 if index % 2 == 0 else col2):
-                    color_status = "🟢" if is_active else "⚪"
-                    st.write(f"{color_status} **{uid}**: `{dist:.2f} กม.` | ⏳ `{int(eta_mins)} นาที`")
-                
-                folium.Marker(
-                    [u_lat, u_lon], 
-                    tooltip=f"{uid} (ห่าง {dist:.2f} km)", 
-                    icon=folium.Icon(color='green' if is_active else 'gray', icon='user', prefix='fa')
-                ).add_to(m)
-
-                folium.PolyLine(
-                    [[my_lat, my_lon], [u_lat, u_lon]], 
-                    color=st.session_state.theme_color, 
-                    weight=1, 
-                    opacity=0.4, 
-                    dash_array='5'
-                ).add_to(m)
+                folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green')).add_to(m)
+                folium.Marker([u_lat-0.0001, u_lon], icon=DivIcon(html=f'<div style="font-size:8pt; color:green; font-weight:bold; background:white; padding:2px;">👤 {uid} ({dist:.2f}km)</div>')).add_to(m)
+                folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
 
     st_folium(m, width="100%", height=500)
-    
-    if st.button("📡 กระจายพิกัดเข้าศูนย์บัญชาการ", use_container_width=True):
+    if st.button("📡 BROADCAST MY LOCATION", use_container_width=True):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-        st.success("ส่งพิกัดเข้าดาวเทียมเรียบร้อย!")
+        st.toast("พิกัดถูกส่งเข้าศูนย์บัญชาการแล้ว")
+
+def room_music():
+    st.subheader("🎧 NON-STOP STATION")
+    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+    if not music_files: return st.warning("ไม่พบไฟล์เพลง")
+    
+    current = music_files[st.session_state.song_index]
+    with open(current, "rb") as f:
+        audio_b64 = base64.b64encode(f.read()).decode()
+    
+    st.info(f"🎵 NOW PLAYING: {current}")
+    
+    # JS สำหรับ Auto-Next
+    audio_html = f"""
+        <audio id="player" controls autoplay style="width:100%;">
+            <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3">
+        </audio>
+        <script>
+            document.getElementById('player').onended = function() {{
+                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*');
+            }};
+        </script>
+    """
+    res = components.html(audio_html, height=100)
+    
+    col1, col2, col3 = st.columns(3)
+    if col1.button("⏮️ PREV") or res == 'prev':
+        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
+        st.rerun()
+    if col3.button("⏭️ NEXT") or res == 'next':
+        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
 
-
-def room_comms():
-    """
-    ห้องสื่อสาร: แชทโลกและวิดีโอคอลแบบ Peer-to-Peer
-    """
-    st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
-    chat_tabs = st.tabs(["🌐 Lobby (แชท)", "📹 Video Call"])
+def room_secure_chat():
+    st.subheader("🔐 SECURE MEDIA CHAT")
+    users = db.reference('users').get()
+    target = st.selectbox("🎯 TARGET AGENT:", [u for u in users.keys() if u != st.session_state.user])
     
-    with chat_tabs[0]:
-        chat_ref = db.reference('public_chat')
-        with st.form("public_form", clear_on_submit=True):
-            msg = st.text_input("พิมพ์ข้อความ...")
+    if target:
+        rid = "_".join(sorted([st.session_state.user, target]))
+        with st.form("chat_form", clear_on_submit=True):
+            msg = st.text_input("MESSAGE")
+            up = st.file_uploader("UPLOAD MEDIA", type=['jpg', 'png', 'mp4'])
             if st.form_submit_button("SEND"):
-                if msg: 
-                    chat_ref.push({'user': st.session_state.user, 'msg': msg, 'ts': time.time()})
-                    st.rerun()
+                f_data, f_type = (base64.b64encode(up.read()).decode(), up.type) if up else (None, None)
+                db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'f': f_data, 'ft': f_type, 'ts': time.time()})
+                st.rerun()
+
+        chats = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(10).get()
+        if chats:
+            for c in reversed(list(chats.values())):
+                align = "right" if c['u'] == st.session_state.user else "left"
+                color = st.session_state.theme_color if c['u'] == st.session_state.user else "#333"
+                st.markdown(f'<div style="text-align:{align};"><div style="display:inline-block; background:{color}; padding:10px; border-radius:10px;"><b>{c["u"]}</b>: {c["m"]}</div></div>', unsafe_allow_html=True)
+                if c.get('f'):
+                    dec = base64.b64decode(c['f'])
+                    if "image" in c['ft']: st.image(dec)
+                    else: st.video(dec)
+
+# ==========================================
+# 3. MAIN INTERFACE
+# ==========================================
+def main():
+    init_system()
+    if not st.session_state.logged_in:
+        room_login()
+        return
+
+    # Sidebar Header
+    st.sidebar.title("SYNAPSE OS")
+    st.sidebar.markdown(f"AGENT: **{st.session_state.user}**")
+    st.sidebar.write("'อยู่นิ่งๆ ไม่เจ็บตัว'")
+    
+    if st.sidebar.button("🚪 LOGOUT", use_container_width=True):
+        st.session_state.logged_in = False
+        st.rerun()
+
+    # Dashboard Tabs
+    tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 SECURE CHAT", "🎧 MUSIC", "⚙️ SETTINGS"])
+    
+    with tabs[0]:
+        now = datetime.now()
+        st.markdown(f"<h1 style='text-align:center; font-size:4em; color:{st.session_state.theme_color};'>{now.strftime('%H:%M:%S')}</h1>", unsafe_allow_html=True)
+        st.info(f"WELCOME BACK, AGENT {st.session_state.user}. ALL SYSTEMS NOMINAL.")
         
-        msgs = chat_ref.order_by_key().limit_to_last(15).get()
-        if msgs:
-            for m in reversed(list(msgs.values())):
-                st.write(f"🟢 **{m.get('user')}:** {m.get('msg')}")
+    with tabs[1]: room_radar()
+    with tabs[2]: room_secure_chat()
+    with tabs[3]: room_music()
+    with tabs[4]:
+        st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
 
-    with chat_tabs[1]:
-        all_u = db.reference('users').get()
-        friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
-        target = st.selectbox("เลือกเป้าหมายที่จะคอล:", [""] + friends)
-        
-        if target:
-            call_html = """
-            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-            <div style="background:#000; padding:15px; border-radius:15px; border:2px solid %s; text-align:center;">
-                <div style="position:relative; width:100%%; height:300px; background:#111; border-radius:10px; overflow:hidden; margin-bottom:10px;">
-                    <video id="remoteVideo" autoplay playsinline style="width:100%%; height:100%%; object-fit:cover;"></video>
-                    <video id="localVideo" autoplay playsinline muted style="position:absolute; bottom:10px; right:10px; width:100px; border:2px solid %s; border-radius:5px;"></video>
-                </div>
-                <p style="color:white; font-size:0.8em;">ID: <b>%s</b> | กำลังเชื่อมต่อ: <b>%s</b></p>
-                <div style="display:flex; gap:10px;">
-                    <button id="callBtn" style="flex:1; padding:12px; background:%s; color:black; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">📹 CALL</button>
-                    <button id="hangupBtn" onclick="location.reload()" style="flex:0.5; padding:12px; background:#ff4444; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer;">❌ วางสาย</button>
-                </div>
-            </div>
-            <script>
-                const peer = new Peer('%s');
-                const localVideo = document.getElementById('localVideo');
-                const remoteVideo = document.getElementById('remoteVideo');
-
-                peer.on('call', call => {
-                    if(confirm("มีสายเรียกเข้า... รับหรือไม่?")) {
-                        navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
-                            localVideo.srcObject = stream;
-                            call.answer(stream);
-                            call.on('stream', remStream => { remoteVideo.srcObject = remStream; });
-                        });
-                    }
-                });
-
-                document.getElementById('callBtn').onclick = () => {
-                    navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(stream => {
-                        localVideo.srcObject = stream;
-                        const call = peer.call('%s', stream);
-                        call.on('stream', remStream => { remoteVideo.srcObject = remStream; });
-                    });
-                };
-            </script>
-            """ % (st.session_state.theme_color, st.session_state.theme_color, st.session_state.user, target, st.session_state.theme_color, st.session_state.user, target)
-            components.html(call_html, height=450)
-
+if __name__ == "__main__":
+    main()
