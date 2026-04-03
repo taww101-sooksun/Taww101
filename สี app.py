@@ -286,23 +286,15 @@ def room_secure_chat():
 # 3. MAIN
 # ==========================================
 def main():
-    init_system()
-    apply_custom_background() # <--- เพิ่มบรรทัดนี้เข้าไป
-    loc = get_geolocation() 
-    
-    # ... code ส่วนที่เหลือเหมือนเดิม ...
+    # ... (ส่วนเช็ค Login เหมือนเดิม) ...
 
-    
-    with st.sidebar:
-        if os.path.exists("logo1.jpg"): st.image("logo1.jpg", use_container_width=True)
-        else: st.markdown(f"<h2 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h2>", unsafe_allow_html=True)
-        st.markdown("---")
-        if st.session_state.logged_in:
-            st.write(f"👤 AGENT: **{st.session_state.user}**")
-            st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
-            if st.button("🚪 LOGOUT ออกจากระบบ", use_container_width=True):
-                st.session_state.logged_in = False
-                st.rerun()
+    # วางไว้ตรงนี้ จะโชว์อยู่เหนือ Tabs ทุกห้อง
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col2:
+        try:
+            st.image("logo1.jpg", width=250) # ปรับขนาดตามเหมาะสม
+        except: pass
+
 
     if not st.session_state.logged_in:
         room_login()
