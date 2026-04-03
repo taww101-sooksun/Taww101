@@ -197,23 +197,33 @@ def room_secure_chat():
 # ==========================================
 def main():
     init_system()
+    
+    # 1. แสดงโลโก้ที่ Sidebar (เพื่อให้เห็นทุกห้อง)
+    with st.sidebar:
+        if os.path.exists("logo1.jpg"):
+            st.image("logo1.jpg", use_container_width=True)
+        else:
+            st.markdown(f"<h2 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h2>", unsafe_allow_html=True)
+        
+        st.markdown("---") # เส้นคั่นเท่ๆ
+        
+        if st.session_state.logged_in:
+            st.write(f"👤 AGENT: **{st.session_state.user}**")
+            st.caption(f"'{st.session_state.user}' - อยู่นิ่งๆ ไม่เจ็บตัว")
+            if st.button("🚪 LOGOUT", use_container_width=True):
+                st.session_state.logged_in = False
+                st.rerun()
+
+    # 2. ตรวจสอบการ Login
     if not st.session_state.logged_in:
         room_login()
         return
 
-    # Sidebar Header
-    st.sidebar.title("SYNAPSE OS")
-    st.sidebar.markdown(f"AGENT: **{st.session_state.user}**")
-    st.sidebar.write("'อยู่นิ่งๆ ไม่เจ็บตัว'")
-    
-    if st.sidebar.button("🚪 LOGOUT", use_container_width=True):
-        st.session_state.logged_in = False
-        st.rerun()
-
-    # Dashboard Tabs
+    # 3. ถ้า Login แล้ว ให้แสดง Tabs ปกติ
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 SECURE CHAT", "🎧 MUSIC", "⚙️ SETTINGS"])
     
     with tabs[0]:
+        # ในห้อง Core อาจจะใส่โลโก้ใหญ่ๆ อีกทีก็ได้ถ้าชอบ
         now = datetime.now()
         st.markdown(f"<h1 style='text-align:center; font-size:4em; color:{st.session_state.theme_color};'>{now.strftime('%H:%M:%S')}</h1>", unsafe_allow_html=True)
         st.info(f"WELCOME BACK, AGENT {st.session_state.user}. ALL SYSTEMS NOMINAL.")
@@ -221,8 +231,5 @@ def main():
     with tabs[1]: room_radar()
     with tabs[2]: room_secure_chat()
     with tabs[3]: room_music()
-    with tabs[4]:
-        st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
-
-if __name__ == "__main__":
-    main()
+    with tabs[4]: 
+        st.session_state.theme_color = st.color_picker("ปรับสีธีมระบบ", st.session_state.theme_color)
