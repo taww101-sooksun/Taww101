@@ -213,7 +213,7 @@ def room_secure_chat():
 # ==========================================
 def main():
     init_system()
-    loc = get_geolocation(key='synapse_global_gps') 
+    loc = get_geolocation() 
     
     with st.sidebar:
         if os.path.exists("logo1.jpg"): st.image("logo1.jpg", use_container_width=True)
