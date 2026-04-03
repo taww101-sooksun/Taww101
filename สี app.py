@@ -197,6 +197,10 @@ def room_call():
         components.html(call_html, height=450)
 
 
+# ==========================================
+# 2. CORE MODULES (ปรับปรุงส่วน Music)
+# ==========================================
+
 def room_music():
     st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)")
     
@@ -206,36 +210,47 @@ def room_music():
         return
 
     # ตรวจสอบ index เพลง
+    if 'song_index' not in st.session_state:
+        st.session_state.song_index = 0
     if st.session_state.song_index >= len(music_files):
         st.session_state.song_index = 0
 
     current_song = music_files[st.session_state.song_index]
     
-    # แสดงข้อมูลเพลงปัจจุบัน
-    st.info(f"🎵 กำลังเล่น: {current_song}")
+    st.info(f"🎵 กำลังเตรียมเล่น: {current_song}")
 
-    # เล่นเพลงด้วย Streamlit Native Player (เสถียรกว่า Base64 ในตัวแปร)
-    with open(current_song, "rb") as audio_file:
-        audio_bytes = audio_file.read()
-        st.audio(audio_bytes, format="audio/mp3", autoplay=True)
+    # ดึงไฟล์เพลง
+    with open(current_song, "rb") as f:
+        audio_bytes = f.read()
+    
+    # 1. ใช้ Native Player ของ Streamlit
+    # หมายเหตุ: autoplay จะทำงานก็ต่อเมื่อ User เคยคลิกหน้าเว็บนี้แล้วอย่างน้อย 1 ครั้ง
+    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
 
-    # --- หัวใจสำคัญ: JS ตัวนี้จะแอบดักฟัง Audio Player ของ Streamlit ---
-    # ถ้าเพลงจบ มันจะไปคลิกปุ่ม Next ให้เราเอง
+    # 2. JS สำหรับตรวจจับเพลงจบแล้วกด Next อัตโนมัติ
     components.html(
         """
         <script>
-        window.parent.document.querySelectorAll('audio').forEach(audio => {
-            audio.onended = function() {
-                // หาปุ่ม "⏭️ Next" ในหน้าจอแล้วสั่งคลิก
-                const buttons = window.parent.document.querySelectorAll('button');
-                for (let btn of buttons) {
-                    if (btn.innerText.includes('⏭️ Next')) {
-                        btn.click();
-                        break;
-                    }
+        // ฟังก์ชันตรวจหา Audio Element ใน Parent Window
+        const autoNext = () => {
+            const audios = window.parent.document.querySelectorAll('audio');
+            audios.forEach(audio => {
+                if (!audio.dataset.listener) {
+                    audio.dataset.listener = "true";
+                    audio.onended = () => {
+                        const buttons = window.parent.document.querySelectorAll('button');
+                        for (let btn of buttons) {
+                            if (btn.innerText.includes('⏭️ Next')) {
+                                btn.click();
+                                break;
+                            }
+                        }
+                    };
                 }
-            };
-        });
+            });
+        };
+        // รันทุกๆ 2 วินาทีเพื่อความชัวร์
+        setInterval(autoNext, 2000);
         </script>
         """,
         height=0,
@@ -246,12 +261,14 @@ def room_music():
         st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
         st.rerun()
     
-    if col2.button("🔄 Reload", use_container_width=True):
+    if col2.button("🔄 Reload / Unlock Audio", use_container_width=True):
         st.rerun()
 
     if col3.button("⏭️ Next", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
+
+    st.caption("💡 หากเพลงไม่เล่นอัตโนมัติ ให้กดปุ่ม 'Reload / Unlock Audio' เพื่ออนุญาตระบบเสียง")
 
 
 def room_secure_chat():
@@ -283,24 +300,39 @@ def room_secure_chat():
                     except: pass
 
 # ==========================================
-# 3. MAIN
+# 3. MAIN (ปรับปรุงตำแหน่งโลโก้และลำดับการรัน)
 # ==========================================
 def main():
-    # ... (ส่วนเช็ค Login เหมือนเดิม) ...
+    init_system()
+    apply_custom_background()
+    
+    # ดึงพิกัด (ต้องดึงก่อนเริ่มเงื่อนไขอื่นเพื่อให้ loc พร้อมใช้งาน)
+    loc = get_geolocation() 
 
-    # วางไว้ตรงนี้ จะโชว์อยู่เหนือ Tabs ทุกห้อง
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        try:
-            st.image("logo1.jpg", width=250) # ปรับขนาดตามเหมาะสม
-        except: pass
-
-
-    if not st.session_state.logged_in:
+    # 1. ตรวจสอบการ Login
+    if not st.session_state.get('logged_in', False):
         room_login()
         return
 
+    # 2. ส่วนที่แสดงเมื่อ Login แล้ว (โชว์โลโก้ทุกห้อง)
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 1, 1])
+    with c2:
+        if os.path.exists("logo1.jpg"):
+            st.image("logo1.jpg", use_container_width=True)
+        else:
+            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
+
+    # 3. Sidebar และเนื้อหาหลัก
+    with st.sidebar:
+        st.write(f"👤 AGENT: **{st.session_state.user}**")
+        st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
+        if st.button("🚪 LOGOUT", use_container_width=True):
+            st.session_state.logged_in = False
+            st.rerun()
+
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
+    
     with tabs[0]: room_core(loc)
     with tabs[1]: room_radar(loc)
     with tabs[2]: room_secure_chat()
