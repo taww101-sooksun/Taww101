@@ -199,60 +199,74 @@ def room_call():
 def room_music():
     st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)")
     
-    # 1. ตรวจสอบไฟล์เพลงในโฟลเดอร์
+    # 1. ค้นหาไฟล์เพลง
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     
     if not music_files:
         st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในระบบ")
         return
 
-    # 2. เลือกเพลงปัจจุบัน
-    current_song = music_files[st.session_state.song_index]
-    st.info(f"🎵 กำลังเล่น: {current_song} (ลำดับที่ {st.session_state.song_index + 1}/{len(music_files)})")
+    # 2. เตรียมข้อมูลเพลงทั้งหมดเป็น List ของ Base64 (เพื่อให้ JS เข้าถึงได้)
+    # หมายเหตุ: ถ้าไฟล์เยอะมาก (>20 เพลง) วิธีนี้อาจจะทำให้หน้าเว็บโหลดช้าหน่อยนะครับ
+    playlist_data = []
+    for f_name in music_files:
+        with open(f_name, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+            playlist_data.append({"name": f_name, "src": f"data:audio/mp3;base64,{b64}"})
 
-    # 3. ใช้ HTML5 Audio + JS เพื่อให้เล่นต่อเนื่อง (Auto-next)
-    # เราจะแปลงไฟล์เป็น Base64 เพื่อให้ส่งเข้า Player ได้ชัวร์ๆ
-    with open(current_song, "rb") as f:
-        data = f.read()
-        b64 = base64.b64encode(data).decode()
-        mime = "audio/mp3"
-        audio_url = f"data:{mime};base64,{b64}"
+    # 3. สร้าง HTML/JS Player ที่ฉลาดขึ้น
+    import json
+    playlist_json = json.dumps(playlist_data)
+    
+    player_html = f"""
+    <div style="background: rgba(0,0,0,0.5); padding: 20px; border-radius: 15px; border: 2px solid {st.session_state.theme_color};">
+        <h4 id="song-title" style="color: white; text-align: center; margin-bottom: 10px;">กำลังโหลดรายการเพลง...</h4>
+        <audio id="main-player" controls autoplay style="width: 100%;"></audio>
+        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
+            <button onclick="prevSong()" style="padding: 10px; cursor: pointer;">⏮️ Back</button>
+            <button onclick="nextSong()" style="padding: 10px; cursor: pointer;">⏭️ Next</button>
+        </div>
+    </div>
 
-    # เทคนิค: ใส่ Event Listener 'ended' เมื่อเพลงจบให้กดปุ่ม 'ถัดไป' อัตโนมัติ
-    audio_html = f"""
-        <audio id="audio-player" controls autoplay style="width: 100%;">
-            <source src="{audio_url}" type="{mime}">
-        </audio>
-        <script>
-            var audio = document.getElementById('audio-player');
-            audio.onended = function() {{
-                // เมื่อเพลงจบ ให้ส่งสัญญาณไปที่ Streamlit เพื่อเปลี่ยนเพลง
-                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*');
-            }};
-        </script>
+    <script>
+        const playlist = {playlist_json};
+        let currentIndex = {st.session_state.song_index};
+        const audio = document.getElementById('main-player');
+        const title = document.getElementById('song-title');
+
+        function loadSong(index) {{
+            const song = playlist[index];
+            audio.src = song.src;
+            title.innerText = "🎵 " + song.name;
+            audio.play();
+        }}
+
+        function nextSong() {{
+            currentIndex = (currentIndex + 1) % playlist.length;
+            loadSong(currentIndex);
+        }}
+
+        function prevSong() {{
+            currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+            loadSong(currentIndex);
+        }}
+
+        // หัวใจสำคัญ: เมื่อเพลงจบ ให้เรียกฟังก์ชันถัดไปทันที
+        audio.onended = () => {{
+            nextSong();
+        }};
+
+        // เริ่มเล่นเพลงแรก
+        loadSong(currentIndex);
+    </script>
     """
     
-    # ใช้ components เพื่อรัน HTML/JS
-    result = components.html(audio_html, height=100)
+    components.html(player_html, height=250)
 
-    # 4. ส่วนควบคุมการเปลี่ยนเพลง
-    col1, col2, col3 = st.columns(3)
-    if col1.button("⏮️ ก่อนหน้า"):
-        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
-        st.rerun()
-    
-    if col2.button("🔄 เริ่มใหม่"):
-        st.rerun()
-
-    if col3.button("⏭️ ถัดไป") or result == 'next':
-        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
-        st.rerun()
-
-    # 5. รายชื่อเพลงทั้งหมด (คลิกเลือกได้)
-    st.write("---")
+    # 4. รายชื่อเพลง (สำหรับดูเฉยๆ หรือจะกดเปลี่ยน index ก็ได้)
     with st.expander("📂 รายชื่อเพลงในคลัง"):
         for i, f in enumerate(music_files):
-            if st.button(f"🎼 {f}", key=f"song_{i}", use_container_width=True):
+            if st.button(f"🎼 {f}", key=f"list_{i}", use_container_width=True):
                 st.session_state.song_index = i
                 st.rerun()
 
