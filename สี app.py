@@ -281,11 +281,12 @@ def main():
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
     with tabs[0]: room_core(loc)
     with tabs[1]: room_radar(loc)
-    with tabs[2]: room_secure_chat()
-    with tabs[3]: room_call()
-    with tabs[4]: room_music()
-    with tabs[5]: 
-        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
+    # บรรทัดที่ 284 - 288
+with tabs[0]: room_core(loc)
+with tabs[1]: room_radar(loc)
+with tabs[2]: room_secure_chat()
+with tabs[3]: room_call()
+with tabs[4]: room_music() # ตรวจสอบให้แน่ใจว่าไม่มีตัวแปรค้างในวงเล็บ
 
 if __name__ == "__main__":
     main()
