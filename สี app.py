@@ -257,7 +257,7 @@ def room_call():
 # ==========================================
 
 def room_music():
-    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)")
+    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station) อยู่นิ้งๆไม่เจ็บตัว🎙")
     
     # 1. ค้นหาไฟล์เพลง
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
