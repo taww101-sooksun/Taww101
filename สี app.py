@@ -60,8 +60,8 @@ def room_login():
         tab_l, tab_r = st.tabs(["🔑 UNLOCK SYSTEM", "📝 REGISTER AGENT"])
         with tab_l:
             with st.form("login"):
-                uid = st.text_input("AGENT ID")
-                pw = st.text_input("PASSWORD", type="password")
+                uid = st.text_input("AGENT ID ใสชื่อผู้ใช่")
+                pw = st.text_input("PASSWORD รหัส", type="password ยืนยันรหัส")
                 if st.form_submit_button("ACCESS GRANTED", use_container_width=True):
                     user_data = db.reference(f'users/{uid}').get()
                     if user_data and user_data.get('pw') == pw:
