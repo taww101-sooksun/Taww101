@@ -165,16 +165,18 @@ def room_core(loc):
             <p style="color:{st.session_state.theme_color}; font-weight:bold;">AGENT {st.session_state.user} ONLINE</p>
         </div>
     """, unsafe_allow_html=True)
-
 def room_radar(loc):
-    st.("🛰️ STRATEGIC GPS - ระบบติดตามพิกัดเครือข่าย AGENT")
+    # แก้บรรทัดที่มีปัญหาตรงนี้ครับ
+    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัดเครือข่าย AGENT")
     
-    # 1. พิกัดตัวเรา
+    # พิกัดตัวเรา
     my_lat, my_lon = 13.7367, 100.5231 
     if loc and 'coords' in loc:
         my_lat = loc['coords'].get('latitude', my_lat)
         my_lon = loc['coords'].get('longitude', my_lon)
     
+    # ... (Code ส่วนที่เหลือที่คุณก๊อปไปวาง) ...
+
     # สร้าง Container แผนที่ให้นูนมีไฟ
     st.markdown(f'<div style="border: 2px solid {st.session_state.theme_color}; border-radius: 15px; overflow: hidden; box-shadow: 0 0 20px {st.session_state.theme_color}88;">', unsafe_allow_html=True)
     
