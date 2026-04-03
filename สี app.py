@@ -81,7 +81,7 @@ def room_login():
 # 2. CORE MODULES
 # ==========================================
 def room_core(loc):
-    st.subheader("🏠 CORE CONTROL")
+    st.subheader("🏠 CORE CONTROL อยู่นิ้งๆไม่เจ็บตัว 🇹🇭")
     lat, lon = 13.7367, 100.5231
     if loc and 'coords' in loc:
         lat = loc['coords'].get('latitude', lat)
