@@ -131,7 +131,7 @@ def room_core(loc):
     """, unsafe_allow_html=True)
 
 def room_radar(loc):
-    st.subheader("🛰️ STRATEGIC RADAR")
+    st.subheader("🛰️ STRATEGIC GPS อยู่นิ้งๆไม่เจ็บตัว")
     my_lat, my_lon = 13.7367, 100.5231 
     if loc and 'coords' in loc:
         my_lat = loc['coords'].get('latitude', my_lat)
@@ -158,7 +158,7 @@ def room_radar(loc):
         st.toast("พิกัดถูกส่งเข้าศูนย์บัญชาการแล้ว")
 
 def room_call():
-    st.subheader("📞 SYNAPSE P2P CALL")
+    st.subheader("📞 SYNAPSE P2P CALL อยู่นิ้งๆไม่เจ็บตัว")
     users = db.reference('users').get()
     friends = [u for u in users.keys() if u != st.session_state.user] if users else []
     target = st.selectbox("เลือก AGENT ที่จะโทรหา:", friends)
@@ -202,7 +202,7 @@ def room_call():
 # ==========================================
 
 def room_music():
-    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)")
+    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)อยู่นิ้งๆไม่เจ็บตัว")
     
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     if not music_files:
@@ -272,7 +272,7 @@ def room_music():
 
 
 def room_secure_chat():
-    st.subheader("💬 SECURE CHAT")
+    st.subheader("💬 SECURE CHAT📝อยู่นิ้งๆไม่เจ็บตัว")
     users = db.reference('users').get()
     friends = [u for u in users.keys() if u != st.session_state.user] if users else []
     target = st.selectbox("🎯 เลือกผู้รับข้อความ:", friends)
