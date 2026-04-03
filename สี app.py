@@ -96,32 +96,73 @@ def room_core(loc):
         </div>
     """, unsafe_allow_html=True)
 
-def room_radar(loc):
-    st.subheader("🛰️ STRATEGIC RADAR")
-    my_lat, my_lon = 13.7367, 100.5231 
-    if loc and 'coords' in loc:
-        my_lat = loc['coords'].get('latitude', my_lat)
-        my_lon = loc['coords'].get('longitude', my_lon)
+def room_radar():
+    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม (Satellite View)")
     
-    # --- เติมส่วนแผนที่ที่หายไป ---
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google Satellite')
-    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star'), tooltip="YOU").add_to(m)
+    # ดึงพิกัดปัจจุบัน
+    loc = get_geolocation()
+    if loc:
+        my_lat = loc['coords']['latitude']
+        my_lon = loc['coords']['longitude']
+    else:
+        my_lat, my_lon = 13.7367, 100.5231 # พิกัดสำรอง
+        st.info("📡 กำลังซิงค์สัญญาณดาวเทียม...")
+
+    # --- ส่วนสำคัญ: เปลี่ยนเป็นภาพถ่ายดาวเทียมแบบมีชื่อถนน (Hybrid) ---
+    # ใช้ Google Maps Satellite Hybrid (เห็นทั้งภาพจริงและชื่อซอย)
+    google_satellite_hybrid = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
     
+    m = folium.Map(
+        location=[my_lat, my_lon], 
+        zoom_start=18, # ซูมให้เห็นหลังคาบ้านแบบในรูป
+        tiles=google_satellite_hybrid,
+        attr='Google Maps Satellite'
+    )
+    
+    # 🔴 ปักหมุดตัวเรา (สีแดง)
+    folium.Marker(
+        [my_lat, my_lon],
+        popup="ตำแหน่งของคุณ",
+        icon=folium.Icon(color='red', icon='user', prefix='fa')
+    ).add_to(m)
+
+    # 🟢 ดึงพิกัดเพื่อนและคำนวณระยะห่าง
     try:
         users_ref = db.reference('users').get()
         if users_ref:
             for uid, data in users_ref.items():
-                if uid != st.session_state.user and 'lat' in data:
-                    u_lat, u_lon = data['lat'], data['lon']
-                    dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green', icon='info-sign'), tooltip=f"AGENT: {uid}").add_to(m)
-                    folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5', opacity=0.5).add_to(m)
+                if uid != st.session_state.user:
+                    u_lat, u_lon = data.get('lat'), data.get('lon')
+                    if u_lat and u_lon:
+                        dist = haversine(my_lat, my_lon, u_lat, u_lon)
+                        
+                        # ปักหมุดเพื่อน (สีเขียว หรือ ตามรูปอาจจะเป็นหมุดสีเทา/ขาว)
+                        folium.Marker(
+                            [u_lat, u_lon],
+                            tooltip=f"{uid}: {dist:.2f} km",
+                            icon=folium.Icon(color='lightgray', icon='info-sign')
+                        ).add_to(m)
+                        
+                        # ลากเส้นเรดาร์เชื่อมโยง
+                        folium.PolyLine(
+                            [[my_lat, my_lon], [u_lat, u_lon]],
+                            color=st.session_state.theme_color,
+                            weight=2,
+                            opacity=0.7,
+                            dash_array='5, 10'
+                        ).add_to(m)
     except: pass
+
+    # แสดงผลแผนที่
+    st_folium(m, width="100%", height=500)
     
-    st_folium(m, width="100%", height=300)
-    if st.button("📡 BROADCAST LOCATION", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-        st.toast("พิกัดถูกส่งเข้าศูนย์บัญชาการแล้ว")
+    # ปุ่มส่งพิกัด
+    if st.button("📡 แชร์ตำแหน่งปัจจุบันลงกลุ่ม", use_container_width=True):
+        db.reference(f'users/{st.session_state.user}').update({
+            'lat': my_lat, 'lon': my_lon, 'ts': time.time()
+        })
+        st.success("ส่งพิกัดเข้าสู่ระบบรวมกลุ่มแล้ว!")
+
 
 def room_call():
     st.subheader("📞 SYNAPSE P2P CALL")
