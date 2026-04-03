@@ -16,7 +16,6 @@ from datetime import datetime
 # --- จุดสำคัญ: ต้อง Import แบบนี้เท่านั้น ---
 from streamlit_js_eval import get_geolocation 
 
-
 # ==========================================
 # 0. CONFIG & INITIALIZATION
 # ==========================================
@@ -48,8 +47,7 @@ def get_local_time(lat, lon):
         if timezone_str:
             local_tz = pytz.timezone(timezone_str)
             return datetime.now(local_tz)
-    except:
-        pass
+    except: pass
     return datetime.now(pytz.timezone('Asia/Bangkok'))
 
 # ==========================================
@@ -60,7 +58,6 @@ def room_login():
     with col2:
         st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; letter-spacing: 5px;'>SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
         tab_l, tab_r = st.tabs(["🔑 UNLOCK SYSTEM", "📝 REGISTER AGENT"])
-        
         with tab_l:
             with st.form("login"):
                 uid = st.text_input("AGENT ID")
@@ -72,7 +69,6 @@ def room_login():
                         st.session_state.logged_in = True
                         st.rerun()
                     else: st.error("รหัสผ่านไม่ถูกต้อง")
-        
         with tab_r:
             with st.form("reg"):
                 new_id = st.text_input("NEW AGENT ID")
@@ -84,7 +80,7 @@ def room_login():
 # ==========================================
 # 2. CORE MODULES
 # ==========================================
-def room_core(loc): # เพิ่มตัวรับค่า loc
+def room_core(loc):
     st.subheader("🏠 CORE CONTROL")
     lat, lon = 13.7367, 100.5231
     if loc and 'coords' in loc:
@@ -93,21 +89,23 @@ def room_core(loc): # เพิ่มตัวรับค่า loc
     
     current_time = get_local_time(lat, lon)
     st.markdown(f"""
-        <div style="text-align:center; padding:20px; border:2px solid {st.session_state.theme_color}; border-radius:15px; background:rgba(0,0,0,0.3);">
-            <h1 style="font-size:5em; color:{st.session_state.theme_color}; margin:0;">{current_time.strftime('%H:%M:%S')}</h1>
-            <p style="color:#888;">📍 LAT: {lat:.4f} | LON: {lon:.4f}</p>
+        <div style="text-align:center; padding:30px; border:2px solid {st.session_state.theme_color}; border-radius:15px; background:rgba(0,0,0,0.3); box-shadow: 0 0 20px {st.session_state.theme_color}44;">
+            <h1 style="font-size:5em; color:{st.session_state.theme_color}; margin:0; font-family: monospace;">{current_time.strftime('%H:%M:%S')}</h1>
+            <p style="color:#888; letter-spacing: 2px;">📍 LAT: {lat:.4f} | LON: {lon:.4f}</p>
+            <p style="color:{st.session_state.theme_color}; font-weight:bold;">AGENT {st.session_state.user} ONLINE</p>
         </div>
     """, unsafe_allow_html=True)
 
-def room_radar(loc): # เพิ่มตัวรับค่า loc
+def room_radar(loc):
     st.subheader("🛰️ STRATEGIC RADAR")
     my_lat, my_lon = 13.7367, 100.5231 
     if loc and 'coords' in loc:
         my_lat = loc['coords'].get('latitude', my_lat)
         my_lon = loc['coords'].get('longitude', my_lon)
     
-    # ... (โค้ดวาดแผนที่เดิม) ...
-
+    # --- เติมส่วนแผนที่ที่หายไป ---
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google Satellite')
+    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star'), tooltip="YOU").add_to(m)
     
     try:
         users_ref = db.reference('users').get()
@@ -116,9 +114,10 @@ def room_radar(loc): # เพิ่มตัวรับค่า loc
                 if uid != st.session_state.user and 'lat' in data:
                     u_lat, u_lon = data['lat'], data['lon']
                     dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green'), tooltip=f"AGENT: {uid}").add_to(m)
-                    folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
+                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green', icon='info-sign'), tooltip=f"AGENT: {uid}").add_to(m)
+                    folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5', opacity=0.5).add_to(m)
     except: pass
+    
     st_folium(m, width="100%", height=500)
     if st.button("📡 BROADCAST LOCATION", use_container_width=True):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
@@ -196,14 +195,12 @@ def room_secure_chat():
                 db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'f': f_data, 'ft': f_type, 'ts': time.time()})
                 st.rerun()
         
-        # แสดงผลแชทและไฟล์สื่อ
         chats = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(15).get()
         if chats:
             for c in reversed(list(chats.values())):
                 align = "right" if c['u'] == st.session_state.user else "left"
                 color = st.session_state.theme_color if c['u'] == st.session_state.user else "#333"
                 st.markdown(f'<div style="text-align:{align}; margin-bottom:10px;"><div style="display:inline-block; background:{color}; padding:10px; border-radius:10px; color:white;"><b>{c["u"]}</b>: {c["m"]}</div></div>', unsafe_allow_html=True)
-                # เพิ่ม: แสดงรูปหรือวิดีโอถ้ามีไฟล์
                 if c.get('f'):
                     try:
                         dec = base64.b64decode(c['f'])
@@ -216,23 +213,24 @@ def room_secure_chat():
 # ==========================================
 def main():
     init_system()
-    
-    # --- ดึงพิกัดที่นี่ที่เดียว (Global) ---
     loc = get_geolocation(key='synapse_global_gps') 
     
     with st.sidebar:
-        # ... (โค้ด Sidebar เดิม) ...
-        if st.button("🚪 LOGOUT", use_container_width=True):
-            st.session_state.logged_in = False
-            st.rerun()
+        if os.path.exists("logo1.jpg"): st.image("logo1.jpg", use_container_width=True)
+        else: st.markdown(f"<h2 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h2>", unsafe_allow_html=True)
+        st.markdown("---")
+        if st.session_state.logged_in:
+            st.write(f"👤 AGENT: **{st.session_state.user}**")
+            st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
+            if st.button("🚪 LOGOUT", use_container_width=True):
+                st.session_state.logged_in = False
+                st.rerun()
 
     if not st.session_state.logged_in:
         room_login()
         return
 
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
-    
-    # ส่งค่า loc เข้าไปในฟังก์ชันด้วย
     with tabs[0]: room_core(loc)
     with tabs[1]: room_radar(loc)
     with tabs[2]: room_secure_chat()
@@ -240,3 +238,6 @@ def main():
     with tabs[4]: room_music()
     with tabs[5]: 
         st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
+
+if __name__ == "__main__":
+    main()
