@@ -274,17 +274,22 @@ def main():
                 st.session_state.logged_in = False
                 st.rerun()
 
+    # ... โค้ดด้านบนเหมือนเดิม ...
+
     if not st.session_state.logged_in:
         room_login()
         return
 
+    # --- ต้องเยื้องเข้าไปให้อยู่ใน main() ทั้งหมดนะครับ ---
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
     
-with tabs[0]: room_core(loc)
-with tabs[1]: room_radar(loc)
-with tabs[2]: room_secure_chat()
-with tabs[3]: room_call()
-with tabs[4]: room_music() # ตรวจสอบให้แน่ใจว่าไม่มีตัวแปรค้างในวงเล็บ
+    with tabs[0]: room_core(loc)
+    with tabs[1]: room_radar(loc)
+    with tabs[2]: room_secure_chat()
+    with tabs[3]: room_call()
+    with tabs[4]: room_music() 
+    with tabs[5]: 
+        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
 
 if __name__ == "__main__":
     main()
