@@ -165,63 +165,75 @@ def room_call():
 def room_music():
     st.subheader("🎧 NON-STOP STATION")
     
-    # 1. ดึงรายชื่อเพลงทั้งหมดในโฟลเดอร์
+    # 1. ดึงและจัดลำดับรายชื่อเพลง
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    
     if not music_files:
-        return st.warning("⚠️ ไม่พบไฟล์เพลง (.mp3) ในระบบ")
+        return st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ")
 
-    # ป้องกัน index เกินจำนวนเพลงที่มี
-    if st.session_state.song_index >= len(music_files):
+    # ตรวจสอบลำดับเพลงปัจจุบัน
+    if 'song_index' not in st.session_state:
         st.session_state.song_index = 0
-
+    
+    # ป้องกัน Index หลุดขอบ
+    st.session_state.song_index %= len(music_files)
     current_song = music_files[st.session_state.song_index]
 
-    # 2. ส่วนเครื่องเล่นเพลง (HTML5 Audio + JS Auto-next)
+    # 2. เตรียมไฟล์เสียง
     with open(current_song, "rb") as f:
         audio_bytes = f.read()
         audio_b64 = base64.b64encode(audio_bytes).decode()
 
-    st.markdown(f"**กำลังเล่น:** 🎵 {current_song}")
-    
-    # Script สำหรับตรวจจับเมื่อเพลงจบ แล้วสั่งให้เปลี่ยนเพลงทันที
-    audio_html = f"""
-        <audio id="player" controls autoplay style="width:100%;">
+    st.success(f"กำลังเล่น: 🎵 {current_song}")
+
+    # 3. ตัวเล่นเพลงพร้อมระบบ Auto-Next (ใช้ HTML/JS)
+    # เราเพิ่มการสุ่มตัวเลขใน key เพื่อให้คอมโพเนนต์รีเฟรชตัวเองเวลาเปลี่ยนเพลง
+    playback_html = f"""
+        <audio id="audio-player" controls autoplay style="width:100%;">
             <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3">
         </audio>
         <script>
-            var player = document.getElementById('player');
-            player.onended = function() {{
-                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next_song'}}, '*');
+            var audio = document.getElementById('audio-player');
+            audio.onended = function() {{
+                // ส่งข้อความไปบอก Streamlit ว่าเพลงจบแล้ว
+                window.parent.postMessage({{
+                    type: 'streamlit:setComponentValue',
+                    value: Math.random() // ส่งค่าสุ่มเพื่อให้เกิดการเปลี่ยนแปลง
+                }}, '*');
             }};
         </script>
     """
     
-    # รับค่าจาก JavaScript เมื่อเพลงจบ
-    res = components.html(audio_html, height=100)
+    # ใช้ component เพื่อรับสัญญาณจาก JS
+    auto_next_trigger = components.html(playback_html, height=100)
 
-    # 3. ปุ่มควบคุม Manual
-    col1, col2, col3 = st.columns([1, 2, 1])
+    # ตรวจสอบว่ามีการเปลี่ยนเพลงอัตโนมัติหรือไม่
+    if auto_next_trigger:
+        # ถ้ามีค่าส่งมาจาก JS (แสดงว่าเพลงจบ) ให้เพิ่มลำดับเพลงแล้วรีรัน
+        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+        st.rerun()
+
+    # 4. ปุ่มควบคุมแบบ Manual
+    col1, col2 = st.columns(2)
     if col1.button("⏮️ ก่อนหน้า", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
         st.rerun()
-        
-    if col3.button("⏭️ ถัดไป", use_container_width=True) or res == 'next_song':
+    if col2.button("⏭️ ถัดไป", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
 
     st.markdown("---")
 
-    # 4. แสดงรายชื่อเพลงทั้งหมดในระบบ (Playlist)
-    st.markdown("### 📋 รายชื่อเพลงในศูนย์บัญชาการ")
-    for i, song in enumerate(music_files):
-        # ไฮไลท์เพลงที่กำลังเล่นอยู่
+    # 5. แสดง Playlist รายชื่อเพลงทั้งหมด
+    st.markdown("### 📋 รายชื่อเพลงทั้งหมด")
+    for i, file in enumerate(music_files):
+        # เน้นสีเพลงที่กำลังเล่น
         if i == st.session_state.song_index:
-            st.success(f"▶️ {i+1}. {song} (กำลังเล่น)")
+            st.info(f"▶️ {i+1}. {file}")
         else:
-            if st.button(f"📁 {i+1}. {song}", key=f"song_{i}", use_container_width=True):
+            if st.button(f"🎵 {i+1}. {file}", key=f"list_song_{i}", use_container_width=True):
                 st.session_state.song_index = i
                 st.rerun()
+
 
 
 def room_secure_chat():
