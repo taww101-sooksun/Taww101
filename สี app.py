@@ -167,7 +167,7 @@ def room_core(loc):
     """, unsafe_allow_html=True)
 
 def room_radar(loc):
-    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัดเครือข่าย AGENT")
+    st.("🛰️ STRATEGIC GPS - ระบบติดตามพิกัดเครือข่าย AGENT")
     
     # 1. พิกัดตัวเรา
     my_lat, my_lon = 13.7367, 100.5231 
@@ -236,21 +236,6 @@ def room_radar(loc):
         tooltip="Radar Range"
     ).add_to(m)
 
-    # ลูกเล่น: วงรัศมีรอบตัวเพื่อน (Pulse Effect)
-    # ใส่ไว้ใน Loop ของเพื่อน
-    folium.CircleMarker(
-        location=[u_lat, u_lon],
-        radius=10,
-        color='green',
-        fill=True,
-        fill_color='lime',
-        fill_opacity=0.6,
-        popup=f"Agent {uid} Active"
-    ).add_to(m)
-
-           
-
- 
 def room_call():
     st.subheader("📞 SYNAPSE P2P CALL อยู่นิ้งๆไม่เจ็บตัว")
     users = db.reference('users').get()
