@@ -61,7 +61,7 @@ def room_login():
         with tab_l:
             with st.form("login"):
                 uid = st.text_input("AGENT ID ใสชื่อผู้ใช่")
-                pw = st.text_input("PASSWORD รหัส", type="password ยืนยันรหัส")
+                pw = st.text_input("PASSWORD", type="password")
                 if st.form_submit_button("ACCESS GRANTED", use_container_width=True):
                     user_data = db.reference(f'users/{uid}').get()
                     if user_data and user_data.get('pw') == pw:
@@ -72,8 +72,8 @@ def room_login():
         with tab_r:
             with st.form("reg"):
                 new_id = st.text_input("NEW AGENT ID")
-                new_pw = st.text_input("SET PASSWORD", type="password")
-                if st.form_submit_button("CREATE ACCOUNT", use_container_width=True):
+                new_pw = st.text_input("SET PASSWORD รหัส", type="password ยืนยันรหัส")
+                if st.form_submit_button("CREATE ACCOUNT ลงชื่อเข้าใช่", use_container_width=True):
                     db.reference(f'users/{new_id}').set({'pw': new_pw, 'ts': time.time()})
                     st.success("ลงทะเบียนสำเร็จ!")
 
