@@ -118,7 +118,7 @@ def room_radar(loc):
                     folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5', opacity=0.5).add_to(m)
     except: pass
     
-    st_folium(m, width="100%", height=500)
+    st_folium(m, width="100%", height=300)
     if st.button("📡 BROADCAST LOCATION", use_container_width=True):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
         st.toast("พิกัดถูกส่งเข้าศูนย์บัญชาการแล้ว")
