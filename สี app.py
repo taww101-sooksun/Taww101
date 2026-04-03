@@ -165,51 +165,90 @@ def room_core(loc):
             <p style="color:{st.session_state.theme_color}; font-weight:bold;">AGENT {st.session_state.user} ONLINE</p>
         </div>
     """, unsafe_allow_html=True)
+
 def room_radar(loc):
-    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัด AGENT อยู่นิ้งๆไม่เจ็บตัว")
+    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัดเครือข่าย AGENT")
     
-    # พิกัดเริ่มต้น (กรุงเทพฯ) ถ้าหา GPS ไม่เจอ
+    # 1. พิกัดตัวเรา
     my_lat, my_lon = 13.7367, 100.5231 
     if loc and 'coords' in loc:
         my_lat = loc['coords'].get('latitude', my_lat)
         my_lon = loc['coords'].get('longitude', my_lon)
     
-    # สร้าง Container ให้แผนที่ดูนูนและมีไฟเหมือนปุ่มเมนู
-    st.markdown(f"""
-        <div style="border: 2px solid {st.session_state.theme_color}; 
-                    border-radius: 15px; 
-                    overflow: hidden; 
-                    box-shadow: 0 0 20px {st.session_state.theme_color};">
-    """, unsafe_allow_html=True)
+    # สร้าง Container แผนที่ให้นูนมีไฟ
+    st.markdown(f'<div style="border: 2px solid {st.session_state.theme_color}; border-radius: 15px; overflow: hidden; box-shadow: 0 0 20px {st.session_state.theme_color}88;">', unsafe_allow_html=True)
     
-    # ปรับแผนที่ให้ซูมในระดับที่เห็นตึกชัดเจน (Zoom 16-18)
+    # 2. สร้างแผนที่ดาวเทียม
     m = folium.Map(
         location=[my_lat, my_lon], 
-        zoom_start=17, 
+        zoom_start=15, 
         tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
         attr='Google Satellite'
     )
     
-    # เพิ่ม Marker ตัวเรา (สีแดงมีไฟ)
+    # Marker ของตัวเรา (สีแดง)
     folium.Marker(
         [my_lat, my_lon], 
-        icon=folium.Icon(color='red', icon='screenshot', prefix='fa'), 
-        tooltip="ตำแหน่งปัจจุบันของคุณ"
+        icon=folium.Icon(color='red', icon='star'), 
+        tooltip="YOU (จุดยุทธศาสตร์)"
     ).add_to(m)
     
-    # แสดงแผนที่
-    st_folium(m, width="100%", height=250, returned_objects=[])
+    # 3. ดึงข้อมูล AGENT คนอื่นๆ จาก Firebase
+    try:
+        users_ref = db.reference('users').get()
+        if users_ref:
+            for uid, data in users_ref.items():
+                # ตรวจสอบว่าไม่ใช่ตัวเรา และมีพิกัดบันทึกไว้
+                if uid != st.session_state.user and 'lat' in data and 'lon' in data:
+                    u_lat, u_lon = data['lat'], data['lon']
+                    
+                    # คำนวณระยะห่าง (ใช้ฟังก์ชัน haversine ที่มีอยู่แล้ว)
+                    dist = haversine(my_lat, my_lon, u_lat, u_lon)
+                    
+                    # วาง Marker ของเพื่อน (สีเขียว)
+                    folium.Marker(
+                        [u_lat, u_lon], 
+                        icon=folium.Icon(color='green', icon='info-sign'), 
+                        tooltip=f"AGENT: {uid} | ห่างจากคุณ: {dist:.2f} กม."
+                    ).add_to(m)
+                    
+                    # ลากเส้นเชื่อมโยงทางยุทธศาสตร์ (เส้นประสีตาม Theme)
+                    folium.PolyLine(
+                        [[my_lat, my_lon], [u_lat, u_lon]], 
+                        color=st.session_state.theme_color, 
+                        weight=2, 
+                        dash_array='10', 
+                        opacity=0.6,
+                        tooltip=f"Link to {uid}"
+                    ).add_to(m)
+    except Exception as e:
+        st.error(f"🛰️ ไม่สามารถดึงพิกัดเพื่อนได้: {e}")
     
-    st.markdown("</div>", unsafe_allow_html=True) # ปิด Container
-    
-    # ปุ่มกดส่งพิกัดแบบนูนมีไฟ
-    if st.button("📡 ยืนยันพิกัดเข้าศูนย์บัญชาการ", use_container_width=True, key="broadcast_gps"):
-        db.reference(f'users/{st.session_state.user}').update({
-            'lat': my_lat, 
-            'lon': my_lon, 
-            'last_seen': time.time()
-        })
-        st.success(f"พิกัด {my_lat:.4f}, {my_lon:.4f} ถูกบันทึกแล้ว")
+    # ลูกเล่น: วงรัศมีเรดาร์รอบตัวเรา (มีไฟนีออน)
+    folium.Circle(
+        location=[my_lat, my_lon],
+        radius=500, # รัศมี 500 เมตร
+        color=st.session_state.theme_color,
+        fill=True,
+        fill_color=st.session_state.theme_color,
+        fill_opacity=0.1,
+        weight=2,
+        tooltip="Radar Range"
+    ).add_to(m)
+
+    # ลูกเล่น: วงรัศมีรอบตัวเพื่อน (Pulse Effect)
+    # ใส่ไว้ใน Loop ของเพื่อน
+    folium.CircleMarker(
+        location=[u_lat, u_lon],
+        radius=10,
+        color='green',
+        fill=True,
+        fill_color='lime',
+        fill_opacity=0.6,
+        popup=f"Agent {uid} Active"
+    ).add_to(m)
+
+           
 
  
 def room_call():
