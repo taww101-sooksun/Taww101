@@ -267,6 +267,57 @@ def room_music():
     if col3.button("⏭️ Next", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
+    # --- ส่วนรายชื่อเพลง (Playlist) ---
+    st.write("---")
+    st.subheader("📂 คลังเพลง AGENT")
+    
+    # สร้าง Container เพื่อให้ดูเป็นระเบียบ
+    with st.container():
+        for i, f_name in enumerate(music_files):
+            # ตรวจสอบว่าเพลงนี้คือเพลงที่กำลังเล่นอยู่หรือไม่
+            is_playing = (i == st.session_state.song_index)
+            
+            # ใช้ Columns เพื่อจัดวางปุ่มและชื่อเพลง
+            c_icon, c_name = st.columns([0.1, 0.9])
+            
+            with c_icon:
+                if is_playing:
+                    st.markdown("▶️") # สัญลักษณ์ว่ากำลังเล่น
+                else:
+                    st.markdown("🎵")
+            
+            with c_name:
+                # ถ้ากดปุ่มชื่อเพลง จะเป็นการเปลี่ยนไปเล่นเพลงนั้นทันที
+                if st.button(f"{f_name}", key=f"play_{i}", use_container_width=True):
+                    st.session_state.song_index = i
+                    st.rerun()
+    # --- ส่วนรายชื่อเพลง (Playlist) ---
+    st.write("---")
+    st.subheader("📂 คลังเพลง AGENT")
+    
+    # สร้าง Container เพื่อให้ดูเป็นระเบียบ
+    with st.container():
+        for i, f_name in enumerate(music_files):
+            # ตรวจสอบว่าเพลงนี้คือเพลงที่กำลังเล่นอยู่หรือไม่
+            is_playing = (i == st.session_state.song_index)
+            
+            # ใช้ Columns เพื่อจัดวางปุ่มและชื่อเพลง
+            c_icon, c_name = st.columns([0.1, 0.9])
+            
+            with c_icon:
+                if is_playing:
+                    st.markdown("▶️") # สัญลักษณ์ว่ากำลังเล่น
+                else:
+                    st.markdown("🎵")
+            
+            with c_name:
+                # ถ้ากดปุ่มชื่อเพลง จะเป็นการเปลี่ยนไปเล่นเพลงนั้นทันที
+                if st.button(f"{f_name}", key=f"play_{i}", use_container_width=True):
+                    st.session_state.song_index = i
+                    st.rerun()
+
+    # แถม: ส่วนสรุปสถานะ
+    st.caption(f"📊 ทั้งหมด {len(music_files)} รายการ | ระบบ SYNAPSE OS พร้อมทำงาน")
 
     st.caption("💡 หากเพลงไม่เล่นอัตโนมัติ ให้กดปุ่ม 'Reload / Unlock Audio' เพื่ออนุญาตระบบเสียง")
 
