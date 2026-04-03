@@ -202,8 +202,9 @@ def room_call():
 # ==========================================
 
 def room_music():
-    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)อยู่นิ้งๆไม่เจ็บตัว")
+    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)")
     
+    # 1. ค้นหาไฟล์เพลง
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     if not music_files:
         st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในระบบ")
@@ -216,22 +217,17 @@ def room_music():
         st.session_state.song_index = 0
 
     current_song = music_files[st.session_state.song_index]
-    
-    st.info(f"🎵 กำลังเตรียมเล่น: {current_song}")
+    st.info(f"🎵 กำลังเล่น: {current_song}")
 
-    # ดึงไฟล์เพลง
+    # 2. เล่นเพลง (Native Player)
     with open(current_song, "rb") as f:
         audio_bytes = f.read()
-    
-    # 1. ใช้ Native Player ของ Streamlit
-    # หมายเหตุ: autoplay จะทำงานก็ต่อเมื่อ User เคยคลิกหน้าเว็บนี้แล้วอย่างน้อย 1 ครั้ง
     st.audio(audio_bytes, format="audio/mp3", autoplay=True)
 
-    # 2. JS สำหรับตรวจจับเพลงจบแล้วกด Next อัตโนมัติ
+    # 3. JS สำหรับ Auto-Next (แอบกดปุ่ม Next ให้เมื่อเพลงจบ)
     components.html(
         """
         <script>
-        // ฟังก์ชันตรวจหา Audio Element ใน Parent Window
         const autoNext = () => {
             const audios = window.parent.document.querySelectorAll('audio');
             audios.forEach(audio => {
@@ -249,78 +245,37 @@ def room_music():
                 }
             });
         };
-        // รันทุกๆ 2 วินาทีเพื่อความชัวร์
         setInterval(autoNext, 2000);
         </script>
         """,
         height=0,
     )
 
+    # 4. ปุ่มควบคุมหลัก (ใช้ Key ที่ชัดเจน)
     col1, col2, col3 = st.columns(3)
-    if col1.button("⏮️ Back", use_container_width=True):
+    if col1.button("⏮️ Back", key="main_prev", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
         st.rerun()
     
-    if col2.button("🔄 Reload / Unlock Audio", use_container_width=True):
+    if col2.button("🔄 Reload", key="main_reload", use_container_width=True):
         st.rerun()
 
-    if col3.button("⏭️ Next", use_container_width=True):
+    if col3.button("⏭️ Next", key="main_next", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
-    # --- ส่วนรายชื่อเพลง (Playlist) ---
+
+    # 5. รายชื่อเพลง (จุดที่เกิด Error - แก้ไขโดยใช้ key เฉพาะทาง)
     st.write("---")
-    st.subheader("📂 คลังเพลง AGENT")
-    
-    # สร้าง Container เพื่อให้ดูเป็นระเบียบ
-    with st.container():
-        for i, f_name in enumerate(music_files):
-            # ตรวจสอบว่าเพลงนี้คือเพลงที่กำลังเล่นอยู่หรือไม่
-            is_playing = (i == st.session_state.song_index)
-            
-            # ใช้ Columns เพื่อจัดวางปุ่มและชื่อเพลง
-            c_icon, c_name = st.columns([0.1, 0.9])
-            
-            with c_icon:
-                if is_playing:
-                    st.markdown("▶️") # สัญลักษณ์ว่ากำลังเล่น
-                else:
-                    st.markdown("🎵")
-            
-            with c_name:
-                # ถ้ากดปุ่มชื่อเพลง จะเป็นการเปลี่ยนไปเล่นเพลงนั้นทันที
-                if st.button(f"{f_name}", key=f"play_{i}", use_container_width=True):
-                    st.session_state.song_index = i
-                    st.rerun()
-    # --- ส่วนรายชื่อเพลง (Playlist) ---
-    st.write("---")
-    st.subheader("📂 คลังเพลง AGENT")
-    
-    # สร้าง Container เพื่อให้ดูเป็นระเบียบ
-    with st.container():
-        for i, f_name in enumerate(music_files):
-            # ตรวจสอบว่าเพลงนี้คือเพลงที่กำลังเล่นอยู่หรือไม่
-            is_playing = (i == st.session_state.song_index)
-            
-            # ใช้ Columns เพื่อจัดวางปุ่มและชื่อเพลง
-            c_icon, c_name = st.columns([0.1, 0.9])
-            
-            with c_icon:
-                if is_playing:
-                    st.markdown("▶️") # สัญลักษณ์ว่ากำลังเล่น
-                else:
-                    st.markdown("🎵")
-            
-            with c_name:
-                # ถ้ากดปุ่มชื่อเพลง จะเป็นการเปลี่ยนไปเล่นเพลงนั้นทันที
-                if st.button(f"{f_name}", key=f"play_{i}", use_container_width=True):
-                    st.session_state.song_index = i
-                    st.rerun()
-
-    # แถม: ส่วนสรุปสถานะ
-    st.caption(f"📊 ทั้งหมด {len(music_files)} รายการ | ระบบ SYNAPSE OS พร้อมทำงาน")
-
-    st.caption("💡 หากเพลงไม่เล่นอัตโนมัติ ให้กดปุ่ม 'Reload / Unlock Audio' เพื่ออนุญาตระบบเสียง")
-
+    st.subheader("📂 รายชื่อเพลงทั้งหมด")
+    for i, f_name in enumerate(music_files):
+        is_playing = (i == st.session_state.song_index)
+        label = f"▶️ {f_name}" if is_playing else f"🎵 {f_name}"
+        
+        # แก้ไขจุดนี้: ใช้ key="list_btn_{i}" เพื่อไม่ให้ซ้ำกับปุ่มอื่นแน่นอน
+        if st.button(label, key=f"list_btn_{i}", use_container_width=True):
+            st.session_state.song_index = i
+            st.rerun()
+        
 
 def room_secure_chat():
     st.subheader("💬 SECURE CHAT📝อยู่นิ้งๆไม่เจ็บตัว")
