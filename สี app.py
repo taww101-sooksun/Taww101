@@ -164,21 +164,65 @@ def room_call():
 
 def room_music():
     st.subheader("🎧 NON-STOP STATION")
+    
+    # 1. ดึงรายชื่อเพลงทั้งหมดในโฟลเดอร์
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    if not music_files: return st.warning("ไม่พบไฟล์เพลงใน Directory")
-    current = music_files[st.session_state.song_index]
-    with open(current, "rb") as f:
-        audio_b64 = base64.b64encode(f.read()).decode()
-    audio_html = f"""<audio id="player" controls autoplay style="width:100%;"><source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3"></audio>
-        <script>document.getElementById('player').onended = function() {{ window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*'); }};</script>"""
+    
+    if not music_files:
+        return st.warning("⚠️ ไม่พบไฟล์เพลง (.mp3) ในระบบ")
+
+    # ป้องกัน index เกินจำนวนเพลงที่มี
+    if st.session_state.song_index >= len(music_files):
+        st.session_state.song_index = 0
+
+    current_song = music_files[st.session_state.song_index]
+
+    # 2. ส่วนเครื่องเล่นเพลง (HTML5 Audio + JS Auto-next)
+    with open(current_song, "rb") as f:
+        audio_bytes = f.read()
+        audio_b64 = base64.b64encode(audio_bytes).decode()
+
+    st.markdown(f"**กำลังเล่น:** 🎵 {current_song}")
+    
+    # Script สำหรับตรวจจับเมื่อเพลงจบ แล้วสั่งให้เปลี่ยนเพลงทันที
+    audio_html = f"""
+        <audio id="player" controls autoplay style="width:100%;">
+            <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3">
+        </audio>
+        <script>
+            var player = document.getElementById('player');
+            player.onended = function() {{
+                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next_song'}}, '*');
+            }};
+        </script>
+    """
+    
+    # รับค่าจาก JavaScript เมื่อเพลงจบ
     res = components.html(audio_html, height=100)
-    col1, col2, col3 = st.columns(3)
-    if col1.button("⏮️ PREV"):
+
+    # 3. ปุ่มควบคุม Manual
+    col1, col2, col3 = st.columns([1, 2, 1])
+    if col1.button("⏮️ ก่อนหน้า", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
         st.rerun()
-    if col3.button("⏭️ NEXT") or res == 'next':
+        
+    if col3.button("⏭️ ถัดไป", use_container_width=True) or res == 'next_song':
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
+
+    st.markdown("---")
+
+    # 4. แสดงรายชื่อเพลงทั้งหมดในระบบ (Playlist)
+    st.markdown("### 📋 รายชื่อเพลงในศูนย์บัญชาการ")
+    for i, song in enumerate(music_files):
+        # ไฮไลท์เพลงที่กำลังเล่นอยู่
+        if i == st.session_state.song_index:
+            st.success(f"▶️ {i+1}. {song} (กำลังเล่น)")
+        else:
+            if st.button(f"📁 {i+1}. {song}", key=f"song_{i}", use_container_width=True):
+                st.session_state.song_index = i
+                st.rerun()
+
 
 def room_secure_chat():
     st.subheader("💬 SECURE CHAT")
