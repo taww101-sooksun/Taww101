@@ -28,7 +28,7 @@ def haversine(lat1, lon1, lat2, lon2):
     return 2 * asin(sqrt(a)) * 6371
 
 def init_system():
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#1408BF"
     if 'logged_in' not in st.session_state: st.session_state.logged_in = False
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
     
