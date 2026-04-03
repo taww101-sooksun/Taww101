@@ -8,11 +8,14 @@ import streamlit.components.v1 as components
 import folium
 from folium.features import DivIcon
 from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
 from math import radians, cos, sin, asin, sqrt
 import pytz
 from timezonefinder import TimezoneFinder
 from datetime import datetime
+
+# --- จุดสำคัญ: ต้อง Import แบบนี้เท่านั้น ---
+from streamlit_js_eval import get_geolocation 
+
 
 # ==========================================
 # 0. CONFIG & INITIALIZATION
