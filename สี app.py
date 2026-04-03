@@ -19,36 +19,73 @@ def apply_custom_background():
     st.markdown(
         f"""
         <style>
-        /* จัดการพื้นหลังหลักของแอป */
+        /* 1. พื้นหลังหลัก */
         .stApp {{
             background: linear-gradient(270deg, #AFEEEE, #FF7F50, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
             background-size: 1600% 1600%;
             animation: RainbowFlow 60s ease infinite;
         }}
 
-        /* ตัวคุมการวิ่งของสี */
         @keyframes RainbowFlow {{
             0%{{background-position:0% 50%}}
             50%{{background-position:100% 50%}}
             100%{{background-position:0% 50%}}
         }}
 
-        /* ปรับสีพื้นหลังของ Sidebar ให้โปร่งแสงเพื่อให้เห็นพื้นหลังวิ่งๆ */
-        [data-testid="stSidebar"] {{
-            background-color: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
+        /* 2. ปรับแต่งปุ่มให้นูนและมีไฟ (Neon 3D Button) */
+        div.stButton > button {{
+            background-color: rgba(0, 0, 0, 0.6) !important;
+            color: #ffffff !important;
+            border: 2px solid {st.session_state.theme_color} !important;
+            border-radius: 12px !important;
+            padding: 10px 20px !important;
+            font-weight: bold !important;
+            text-transform: uppercase !important;
+            letter-spacing: 1px !important;
+            
+            /* ความนูน (Shadow) */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3), 
+                        inset 0 0 10px {st.session_state.theme_color}55 !important;
+            
+            /* แสงไฟ Neon รอบปุ่ม */
+            filter: drop-shadow(0 0 5px {st.session_state.theme_color});
+            transition: all 0.3s ease-in-out !important;
         }}
 
-        /* ปรับพื้นหลังของ Tabs ให้ดูอ่านง่ายขึ้น */
+        /* 3. เอฟเฟกต์ตอนเอาเมาส์วาง (Hover) */
+        div.stButton > button:hover {{
+            transform: translateY(-3px) scale(1.02); /* นูนขึ้นมาหาเรา */
+            background-color: {st.session_state.theme_color} !important;
+            color: white !important;
+            box-shadow: 0 0 20px {st.session_state.theme_color}, 
+                        0 0 40px {st.session_state.theme_color}88 !important;
+            filter: drop-shadow(0 0 15px {st.session_state.theme_color});
+        }}
+
+        /* 4. ปรับแต่ง Tabs ให้มองเห็นชัด */
         .stTabs [data-baseweb="tab-list"] {{
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }}
+
+        .stTabs [data-baseweb="tab"] {{
+            color: white !important;
+            font-weight: bold !important;
+        }}
+        
+        /* 5. ปรับ Sidebar ให้เข้มขึ้นเพื่อความชัดเจน */
+        [data-testid="stSidebar"] {{
+            background-color: rgba(0, 0, 0, 0.7) !important;
+            backdrop-filter: blur(15px);
+            border-right: 1px solid {st.session_state.theme_color};
         }}
         </style>
         """,
         unsafe_allow_html=True
     )
+
 
 # ==========================================
 # 0. CONFIG & INITIALIZATION
