@@ -165,28 +165,22 @@ def room_call():
 def room_music():
     st.subheader("🎧 NON-STOP STATION")
     
-    # 1. ดึงและจัดลำดับรายชื่อเพลง
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     if not music_files:
         return st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ")
 
-    # ตรวจสอบลำดับเพลงปัจจุบัน
     if 'song_index' not in st.session_state:
         st.session_state.song_index = 0
     
-    # ป้องกัน Index หลุดขอบ
     st.session_state.song_index %= len(music_files)
     current_song = music_files[st.session_state.song_index]
 
-    # 2. เตรียมไฟล์เสียง
     with open(current_song, "rb") as f:
-        audio_bytes = f.read()
-        audio_b64 = base64.b64encode(audio_bytes).decode()
+        audio_b64 = base64.b64encode(f.read()).decode()
 
     st.success(f"กำลังเล่น: 🎵 {current_song}")
 
-    # 3. ตัวเล่นเพลงพร้อมระบบ Auto-Next (ใช้ HTML/JS)
-    # เราเพิ่มการสุ่มตัวเลขใน key เพื่อให้คอมโพเนนต์รีเฟรชตัวเองเวลาเปลี่ยนเพลง
+    # แก้ไขจุดนี้: ใช้ไอเดีย "Query Parameter" หรือ "Key" ที่เปลี่ยนตามเพลง
     playback_html = f"""
         <audio id="audio-player" controls autoplay style="width:100%;">
             <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3">
@@ -194,25 +188,23 @@ def room_music():
         <script>
             var audio = document.getElementById('audio-player');
             audio.onended = function() {{
-                // ส่งข้อความไปบอก Streamlit ว่าเพลงจบแล้ว
+                // แจ้งเตือน Streamlit ผ่านการคลิกปุ่มล่องหน หรือเปลี่ยนค่า Value
                 window.parent.postMessage({{
                     type: 'streamlit:setComponentValue',
-                    value: Math.random() // ส่งค่าสุ่มเพื่อให้เกิดการเปลี่ยนแปลง
+                    value: '{current_song}_ended' 
                 }}, '*');
             }};
         </script>
     """
     
-    # ใช้ component เพื่อรับสัญญาณจาก JS
-    auto_next_trigger = components.html(playback_html, height=100)
+    # ดักจับสัญญาณเพลงจบ
+    auto_next_signal = components.html(playback_html, height=100, key=f"player_{st.session_state.song_index}")
 
-    # ตรวจสอบว่ามีการเปลี่ยนเพลงอัตโนมัติหรือไม่
-    if auto_next_trigger:
-        # ถ้ามีค่าส่งมาจาก JS (แสดงว่าเพลงจบ) ให้เพิ่มลำดับเพลงแล้วรีรัน
+    # ตรวจสอบสัญญาณเพลงจบ (ถ้าค่าที่ส่งมาไม่ใช่ None และมีคำว่า _ended)
+    if auto_next_signal and "_ended" in str(auto_next_signal):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
 
-    # 4. ปุ่มควบคุมแบบ Manual
     col1, col2 = st.columns(2)
     if col1.button("⏮️ ก่อนหน้า", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
@@ -222,11 +214,8 @@ def room_music():
         st.rerun()
 
     st.markdown("---")
-
-    # 5. แสดง Playlist รายชื่อเพลงทั้งหมด
     st.markdown("### 📋 รายชื่อเพลงทั้งหมด")
     for i, file in enumerate(music_files):
-        # เน้นสีเพลงที่กำลังเล่น
         if i == st.session_state.song_index:
             st.info(f"▶️ {i+1}. {file}")
         else:
@@ -269,7 +258,12 @@ def room_secure_chat():
 # ==========================================
 def main():
     init_system()
-    loc = get_geolocation() 
+    
+    # เพิ่ม timeout เผื่อ GPS โหลดช้า ระบบจะได้ไม่ค้าง
+    loc = get_geolocation(timeout=5000) 
+    
+    # ... โค้ดที่เหลือเหมือนเดิม ...
+
     
     with st.sidebar:
         if os.path.exists("logo1.jpg"): st.image("logo1.jpg", use_container_width=True)
