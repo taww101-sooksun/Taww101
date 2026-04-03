@@ -259,10 +259,8 @@ def room_secure_chat():
 def main():
     init_system()
     
-    # เพิ่ม timeout เผื่อ GPS โหลดช้า ระบบจะได้ไม่ค้าง
-    loc = get_geolocation(timeout=5000) 
-    
-    # ... โค้ดที่เหลือเหมือนเดิม ...
+    # บรรทัดที่ 263 แก้เป็นแบบนี้ครับ
+    loc = get_geolocation() 
 
     
     with st.sidebar:
