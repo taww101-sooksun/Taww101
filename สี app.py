@@ -38,7 +38,6 @@ def init_system():
         except Exception as e:
             st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
 
-# --- ฟังก์ชันดึงเวลาตามพิกัดจริง ---
 def get_local_time(lat, lon):
     try:
         tf = TimezoneFinder()
@@ -51,43 +50,95 @@ def get_local_time(lat, lon):
     return datetime.now(pytz.timezone('Asia/Bangkok'))
 
 # ==========================================
-# 1. CORE MODULES
+# 1. AUTHENTICATION
 # ==========================================
+def room_login():
+    col1, col2, col3 = st.columns([1, 1.5, 1])
+    with col2:
+        st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; letter-spacing: 5px;'>SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
+        tab_l, tab_r = st.tabs(["🔑 UNLOCK SYSTEM", "📝 REGISTER AGENT"])
+        
+        with tab_l:
+            with st.form("login"):
+                uid = st.text_input("AGENT ID")
+                pw = st.text_input("PASSWORD", type="password")
+                if st.form_submit_button("ACCESS GRANTED", use_container_width=True):
+                    user_data = db.reference(f'users/{uid}').get()
+                    if user_data and user_data.get('pw') == pw:
+                        st.session_state.user = uid
+                        st.session_state.logged_in = True
+                        st.rerun()
+                    else: st.error("รหัสผ่านไม่ถูกต้อง")
+        
+        with tab_r:
+            with st.form("reg"):
+                new_id = st.text_input("NEW AGENT ID")
+                new_pw = st.text_input("SET PASSWORD", type="password")
+                if st.form_submit_button("CREATE ACCOUNT", use_container_width=True):
+                    db.reference(f'users/{new_id}').set({'pw': new_pw, 'ts': time.time()})
+                    st.success("ลงทะเบียนสำเร็จ!")
 
+# ==========================================
+# 2. CORE MODULES
+# ==========================================
 def room_core():
     st.subheader("🏠 CORE CONTROL")
     loc = get_geolocation()
-    lat, lon = 13.7367, 100.5231 # Default กทม.
+    lat, lon = 13.7367, 100.5231
     if loc and 'coords' in loc:
         lat = loc['coords'].get('latitude', lat)
         lon = loc['coords'].get('longitude', lon)
     
     current_time = get_local_time(lat, lon)
-    
     st.markdown(f"""
         <div style="text-align:center; padding:20px; border:2px solid {st.session_state.theme_color}; border-radius:15px; background:rgba(0,0,0,0.3);">
-            <h1 style="font-size:5em; color:{st.session_state.theme_color}; margin:0;">
-                {current_time.strftime('%H:%M:%S')}
-            </h1>
-            <p style="color:#888; font-family:monospace;">📍 LAT: {lat:.4f} | LON: {lon:.4f}</p>
-            <p style="color:{st.session_state.theme_color};">SYSTEM ONLINE: Welcome AGENT {st.session_state.user}</p>
+            <h1 style="font-size:5em; color:{st.session_state.theme_color}; margin:0;">{current_time.strftime('%H:%M:%S')}</h1>
+            <p style="color:#888;">📍 {lat:.4f}, {lon:.4f}</p>
+            <p style="color:{st.session_state.theme_color};">WELCOME AGENT {st.session_state.user}</p>
         </div>
     """, unsafe_allow_html=True)
 
+def room_radar():
+    st.subheader("🛰️ STRATEGIC RADAR")
+    loc = get_geolocation()
+    my_lat, my_lon = 13.7367, 100.5231 
+    if loc and 'coords' in loc:
+        try:
+            my_lat = loc['coords'].get('latitude', 13.7367)
+            my_lon = loc['coords'].get('longitude', 100.5231)
+        except: pass
+    
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google')
+    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star')).add_to(m)
+    
+    try:
+        users_ref = db.reference('users').get()
+        if users_ref:
+            for uid, data in users_ref.items():
+                if uid != st.session_state.user and 'lat' in data:
+                    u_lat, u_lon = data['lat'], data['lon']
+                    dist = haversine(my_lat, my_lon, u_lat, u_lon)
+                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green')).add_to(m)
+                    folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
+    except: pass
+    st_folium(m, width="100%", height=500)
+    if st.button("📡 BROADCAST LOCATION", use_container_width=True):
+        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
+        st.toast("พิกัดถูกส่งเข้าศูนย์บัญชาการแล้ว")
+
 def room_call():
-    st.subheader("📞 SYNAPSE P2P CALL (Voice & Video)")
+    st.subheader("📞 SYNAPSE P2P CALL")
     users = db.reference('users').get()
     friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    target = st.selectbox("เลือก AGENT ที่ต้องการโทรหา:", friends)
-    
+    target = st.selectbox("เลือก AGENT:", friends)
     if target:
         call_html = f"""
         <div style="background:#111; padding:20px; border-radius:15px; border:1px solid {st.session_state.theme_color}; text-align:center;">
             <video id="remoteVideo" autoplay playsinline style="width:100%; height:300px; background:#000; border-radius:10px;"></video>
             <video id="localVideo" autoplay playsinline muted style="width:100px; position:absolute; bottom:30px; right:30px; border:2px solid {st.session_state.theme_color};"></video>
             <div style="margin-top:10px;">
-                <button id="startCall" style="background:{st.session_state.theme_color}; color:black; padding:10px 20px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">📞 เริ่มการโทร</button>
-                <button onclick="location.reload()" style="background:#ff4444; color:white; padding:10px 20px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">❌ วางสาย</button>
+                <button id="startCall" style="background:{st.session_state.theme_color}; color:black; padding:10px 20px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">📞 START CALL</button>
+                <button onclick="location.reload()" style="background:#ff4444; color:white; padding:10px 20px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">❌ DISCONNECT</button>
             </div>
         </div>
         <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
@@ -113,19 +164,52 @@ def room_call():
         """
         components.html(call_html, height=450)
 
-# (ฟังก์ชัน room_radar, room_music, room_secure_chat, room_login ใช้ตัวเดิมที่ต๊ะมีได้เลย)
+def room_music():
+    st.subheader("🎧 NON-STOP STATION")
+    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+    if not music_files: return st.warning("ไม่พบไฟล์เพลง")
+    current = music_files[st.session_state.song_index]
+    with open(current, "rb") as f:
+        audio_b64 = base64.b64encode(f.read()).decode()
+    audio_html = f"""<audio id="player" controls autoplay style="width:100%;"><source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3"></audio>
+        <script>document.getElementById('player').onended = function() {{ window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*'); }};</script>"""
+    res = components.html(audio_html, height=100)
+    col1, col2, col3 = st.columns(3)
+    if col1.button("⏮️ PREV"):
+        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
+        st.rerun()
+    if col3.button("⏭️ NEXT") or res == 'next':
+        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+        st.rerun()
+
+def room_secure_chat():
+    st.subheader("💬 SECURE CHAT")
+    users = db.reference('users').get()
+    friends = [u for u in users.keys() if u != st.session_state.user] if users else []
+    target = st.selectbox("🎯 TARGET:", friends)
+    if target:
+        rid = "_".join(sorted([st.session_state.user, target]))
+        with st.form("chat_form", clear_on_submit=True):
+            msg = st.text_input("MESSAGE")
+            up = st.file_uploader("UPLOAD", type=['jpg', 'png', 'mp4'])
+            if st.form_submit_button("SEND"):
+                f_data, f_type = (base64.b64encode(up.read()).decode(), up.type) if up else (None, None)
+                db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'f': f_data, 'ft': f_type, 'ts': time.time()})
+                st.rerun()
+        chats = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(10).get()
+        if chats:
+            for c in reversed(list(chats.values())):
+                align = "right" if c['u'] == st.session_state.user else "left"
+                st.markdown(f'<div style="text-align:{align}; margin-bottom:10px;"><div style="display:inline-block; background:{st.session_state.theme_color if c["u"] == st.session_state.user else "#333"}; padding:10px; border-radius:10px; color:white;"><b>{c["u"]}</b>: {c["m"]}</div></div>', unsafe_allow_html=True)
 
 # ==========================================
-# 3. MAIN INTERFACE
+# 3. MAIN
 # ==========================================
 def main():
     init_system()
-    
     with st.sidebar:
-        if os.path.exists("logo1.jpg"):
-            st.image("logo1.jpg", use_container_width=True)
-        else:
-            st.markdown(f"<h2 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h2>", unsafe_allow_html=True)
+        if os.path.exists("logo1.jpg"): st.image("logo1.jpg", use_container_width=True)
+        else: st.markdown(f"<h2 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h2>", unsafe_allow_html=True)
         st.markdown("---")
         if st.session_state.logged_in:
             st.write(f"👤 AGENT: **{st.session_state.user}**")
@@ -138,16 +222,13 @@ def main():
         room_login()
         return
 
-    # เพิ่ม Tab "📞 CALL" เข้าไปตรงนี้ครับ
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
-    
-    with tabs[0]: room_core() # เรียกใช้ฟังก์ชันที่แก้เวลาแล้ว
+    with tabs[0]: room_core()
     with tabs[1]: room_radar()
     with tabs[2]: room_secure_chat()
-    with tabs[3]: room_call()   # ห้องโทรใหม่
+    with tabs[3]: room_call()
     with tabs[4]: room_music()
-    with tabs[5]: 
-        st.session_state.theme_color = st.color_picker("ปรับสีธีมระบบ (Neon)", st.session_state.theme_color)
+    with tabs[5]: st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
 
 if __name__ == "__main__":
     main()
