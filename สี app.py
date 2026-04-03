@@ -166,18 +166,15 @@ def room_core(loc):
         </div>
     """, unsafe_allow_html=True)
 def room_radar(loc):
-    # แก้บรรทัดที่มีปัญหาตรงนี้ครับ
     st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัดเครือข่าย AGENT")
     
-    # พิกัดตัวเรา
+    # 1. พิกัดตัวเรา
     my_lat, my_lon = 13.7367, 100.5231 
     if loc and 'coords' in loc:
         my_lat = loc['coords'].get('latitude', my_lat)
         my_lon = loc['coords'].get('longitude', my_lon)
     
-    # ... (Code ส่วนที่เหลือที่คุณก๊อปไปวาง) ...
-
-    # สร้าง Container แผนที่ให้นูนมีไฟ
+    # สร้าง Container แผนที่ให้นูนมีไฟ (เปิด div)
     st.markdown(f'<div style="border: 2px solid {st.session_state.theme_color}; border-radius: 15px; overflow: hidden; box-shadow: 0 0 20px {st.session_state.theme_color}88;">', unsafe_allow_html=True)
     
     # 2. สร้างแผนที่ดาวเทียม
@@ -194,49 +191,60 @@ def room_radar(loc):
         icon=folium.Icon(color='red', icon='star'), 
         tooltip="YOU (จุดยุทธศาสตร์)"
     ).add_to(m)
+
+    # ลูกเล่น: วงรัศมีเรดาร์รอบตัวเรา
+    folium.Circle(
+        location=[my_lat, my_lon],
+        radius=500,
+        color=st.session_state.theme_color,
+        fill=True,
+        fill_color=st.session_state.theme_color,
+        fill_opacity=0.1,
+        weight=2
+    ).add_to(m)
     
-    # 3. ดึงข้อมูล AGENT คนอื่นๆ จาก Firebase
+    # 3. ดึงข้อมูล AGENT คนอื่นๆ และลากเส้น
     try:
         users_ref = db.reference('users').get()
         if users_ref:
             for uid, data in users_ref.items():
-                # ตรวจสอบว่าไม่ใช่ตัวเรา และมีพิกัดบันทึกไว้
                 if uid != st.session_state.user and 'lat' in data and 'lon' in data:
                     u_lat, u_lon = data['lat'], data['lon']
-                    
-                    # คำนวณระยะห่าง (ใช้ฟังก์ชัน haversine ที่มีอยู่แล้ว)
                     dist = haversine(my_lat, my_lon, u_lat, u_lon)
                     
-                    # วาง Marker ของเพื่อน (สีเขียว)
+                    # วาง Marker เพื่อน
                     folium.Marker(
                         [u_lat, u_lon], 
                         icon=folium.Icon(color='green', icon='info-sign'), 
-                        tooltip=f"AGENT: {uid} | ห่างจากคุณ: {dist:.2f} กม."
+                        tooltip=f"AGENT: {uid} | ห่าง: {dist:.2f} กม."
                     ).add_to(m)
                     
-                    # ลากเส้นเชื่อมโยงทางยุทธศาสตร์ (เส้นประสีตาม Theme)
+                    # ลากเส้นเชื่อมโยง
                     folium.PolyLine(
                         [[my_lat, my_lon], [u_lat, u_lon]], 
                         color=st.session_state.theme_color, 
                         weight=2, 
                         dash_array='10', 
-                        opacity=0.6,
-                        tooltip=f"Link to {uid}"
+                        opacity=0.6
                     ).add_to(m)
-    except Exception as e:
-        st.error(f"🛰️ ไม่สามารถดึงพิกัดเพื่อนได้: {e}")
+    except: pass
     
-    # ลูกเล่น: วงรัศมีเรดาร์รอบตัวเรา (มีไฟนีออน)
-    folium.Circle(
-        location=[my_lat, my_lon],
-        radius=500, # รัศมี 500 เมตร
-        color=st.session_state.theme_color,
-        fill=True,
-        fill_color=st.session_state.theme_color,
-        fill_opacity=0.1,
-        weight=2,
-        tooltip="Radar Range"
-    ).add_to(m)
+    # แสดงแผนที่
+    st_folium(m, width="100%", height=450, returned_objects=[])
+    
+    # ปิด Container (สำคัญมาก!)
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # 4. ปุ่มส่งพิกัด (เพื่อให้เพื่อนเห็นเรา)
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("📡 BROADCAST MY LOCATION", key="btn_broadcast", use_container_width=True):
+        db.reference(f'users/{st.session_state.user}').update({
+            'lat': my_lat, 
+            'lon': my_lon, 
+            'ts': time.time()
+        })
+        st.toast("ส่งพิกัดสำเร็จ! เพื่อนๆ จะเห็นคุณบนเรดาร์")
+
 
 def room_call():
     st.subheader("📞 SYNAPSE P2P CALL อยู่นิ้งๆไม่เจ็บตัว")
