@@ -19,7 +19,7 @@ def apply_custom_background():
     st.markdown(
         f"""
         <style>
-        /* 1. พื้นหลังหลัก */
+        /* 1. พื้นหลังหลัก (เหมือนเดิม) */
         .stApp {{
             background: linear-gradient(270deg, #AFEEEE, #FF7F50, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
             background-size: 1600% 1600%;
@@ -32,54 +32,53 @@ def apply_custom_background():
             100%{{background-position:0% 50%}}
         }}
 
-        /* 2. ปรับแต่งปุ่มให้นูนและมีไฟ (Neon 3D Button) */
-        div.stButton > button {{
-            background-color: rgba(0, 0, 0, 0.6) !important;
-            color: #ffffff !important;
-            border: 2px solid {st.session_state.theme_color} !important;
-            border-radius: 12px !important;
-            padding: 10px 20px !important;
-            font-weight: bold !important;
-            text-transform: uppercase !important;
-            letter-spacing: 1px !important;
-            
-            /* ความนูน (Shadow) */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3), 
-                        inset 0 0 10px {st.session_state.theme_color}55 !important;
-            
-            /* แสงไฟ Neon รอบปุ่ม */
-            filter: drop-shadow(0 0 5px {st.session_state.theme_color});
-            transition: all 0.3s ease-in-out !important;
-        }}
-
-        /* 3. เอฟเฟกต์ตอนเอาเมาส์วาง (Hover) */
-        div.stButton > button:hover {{
-            transform: translateY(-3px) scale(1.02); /* นูนขึ้นมาหาเรา */
-            background-color: {st.session_state.theme_color} !important;
-            color: white !important;
-            box-shadow: 0 0 20px {st.session_state.theme_color}, 
-                        0 0 40px {st.session_state.theme_color}88 !important;
-            filter: drop-shadow(0 0 15px {st.session_state.theme_color});
-        }}
-
-        /* 4. ปรับแต่ง Tabs ให้มองเห็นชัด */
+        /* 2. แก้ไขเมนูห้อง (Tabs) ให้มีไฟและนูน */
         .stTabs [data-baseweb="tab-list"] {{
-            background-color: rgba(0, 0, 0, 0.4);
-            border-radius: 15px;
-            padding: 10px;
-            border: 1px solid rgba(255,255,255,0.1);
+            background-color: rgba(0, 0, 0, 0.7) !important; /* พื้นหลังแถบเมนูเข้มขึ้นเพื่อให้ไฟชัด */
+            border-radius: 20px !important;
+            padding: 10px !important;
+            gap: 10px !important;
+            border: 2px solid {st.session_state.theme_color} !important;
+            box-shadow: 0 0 15px {st.session_state.theme_color}88, inset 0 0 10px rgba(0,0,0,0.5) !important;
+            margin: 10px 0px !important;
         }}
 
+        /* ตัวอักษรในเมนู */
         .stTabs [data-baseweb="tab"] {{
-            color: white !important;
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border-radius: 12px !important;
+            padding: 8px 16px !important;
+            height: 50px !important;
+            color: #BBBBBB !important; /* สีเทาอ่อนตอนยังไม่เลือก */
             font-weight: bold !important;
+            transition: all 0.3s ease !important;
+            border: 1px solid transparent !important;
         }}
-        
-        /* 5. ปรับ Sidebar ให้เข้มขึ้นเพื่อความชัดเจน */
-        [data-testid="stSidebar"] {{
-            background-color: rgba(0, 0, 0, 0.7) !important;
-            backdrop-filter: blur(15px);
-            border-right: 1px solid {st.session_state.theme_color};
+
+        /* เมนูห้องตอนที่ถูกเลือก (Selected Tab) */
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+            color: #FFFFFF !important; /* ตัวหนังสือขาวชัดเจน */
+            background-color: {st.session_state.theme_color}44 !important;
+            border: 1px solid {st.session_state.theme_color} !important;
+            box-shadow: 0 0 15px {st.session_state.theme_color} !important; /* ไฟนีออนรอบเมนูที่เลือก */
+            transform: scale(1.05); /* นูนออกมานิดนึง */
+        }}
+
+        /* เส้นใต้เมนูที่เลือก (ไฟวิ่งด้านล่าง) */
+        .stTabs [data-baseweb="tab-highlight"] {{
+            background-color: #FFFFFF !important;
+            height: 4px !important;
+            box-shadow: 0 0 10px #FFFFFF !important;
+        }}
+
+        /* 3. ปรับแต่งปุ่มทั่วไป (นูนมีไฟเหมือนเดิม) */
+        div.stButton > button {{
+            background-color: rgba(0, 0, 0, 0.8) !important;
+            color: white !important;
+            border: 2px solid {st.session_state.theme_color} !important;
+            border-radius: 15px !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+            filter: drop-shadow(0 0 5px {st.session_state.theme_color});
         }}
         </style>
         """,
