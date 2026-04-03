@@ -165,34 +165,53 @@ def room_core(loc):
             <p style="color:{st.session_state.theme_color}; font-weight:bold;">AGENT {st.session_state.user} ONLINE</p>
         </div>
     """, unsafe_allow_html=True)
-
 def room_radar(loc):
-    st.subheader("🛰️ STRATEGIC GPS อยู่นิ้งๆไม่เจ็บตัว")
+    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัด AGENT")
+    
+    # พิกัดเริ่มต้น (กรุงเทพฯ) ถ้าหา GPS ไม่เจอ
     my_lat, my_lon = 13.7367, 100.5231 
     if loc and 'coords' in loc:
         my_lat = loc['coords'].get('latitude', my_lat)
         my_lon = loc['coords'].get('longitude', my_lon)
     
-    # --- เติมส่วนแผนที่ที่หายไป ---
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google Satellite')
-    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star'), tooltip="YOU").add_to(m)
+    # สร้าง Container ให้แผนที่ดูนูนและมีไฟเหมือนปุ่มเมนู
+    st.markdown(f"""
+        <div style="border: 2px solid {st.session_state.theme_color}; 
+                    border-radius: 15px; 
+                    overflow: hidden; 
+                    box-shadow: 0 0 20px {st.session_state.theme_color};">
+    """, unsafe_allow_html=True)
     
-    try:
-        users_ref = db.reference('users').get()
-        if users_ref:
-            for uid, data in users_ref.items():
-                if uid != st.session_state.user and 'lat' in data:
-                    u_lat, u_lon = data['lat'], data['lon']
-                    dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green', icon='info-sign'), tooltip=f"AGENT: {uid}").add_to(m)
-                    folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5', opacity=0.5).add_to(m)
-    except: pass
+    # ปรับแผนที่ให้ซูมในระดับที่เห็นตึกชัดเจน (Zoom 16-18)
+    m = folium.Map(
+        location=[my_lat, my_lon], 
+        zoom_start=17, 
+        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+        attr='Google Satellite'
+    )
     
-    st_folium(m, width="100%", height=300)
-    if st.button("📡 BROADCAST LOCATION", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-        st.toast("พิกัดถูกส่งเข้าศูนย์บัญชาการแล้ว")
+    # เพิ่ม Marker ตัวเรา (สีแดงมีไฟ)
+    folium.Marker(
+        [my_lat, my_lon], 
+        icon=folium.Icon(color='red', icon='screenshot', prefix='fa'), 
+        tooltip="ตำแหน่งปัจจุบันของคุณ"
+    ).add_to(m)
+    
+    # แสดงแผนที่
+    st_folium(m, width="100%", height=400, returned_objects=[])
+    
+    st.markdown("</div>", unsafe_allow_html=True) # ปิด Container
+    
+    # ปุ่มกดส่งพิกัดแบบนูนมีไฟ
+    if st.button("📡 ยืนยันพิกัดเข้าศูนย์บัญชาการ", use_container_width=True, key="broadcast_gps"):
+        db.reference(f'users/{st.session_state.user}').update({
+            'lat': my_lat, 
+            'lon': my_lon, 
+            'last_seen': time.time()
+        })
+        st.success(f"พิกัด {my_lat:.4f}, {my_lon:.4f} ถูกบันทึกแล้ว")
 
+ 
 def room_call():
     st.subheader("📞 SYNAPSE P2P CALL อยู่นิ้งๆไม่เจ็บตัว")
     users = db.reference('users').get()
