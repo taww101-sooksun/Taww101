@@ -11,6 +11,94 @@ from folium.features import DivIcon
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from math import radians, cos, sin, asin, sqrt
+import pytz
+from timezonefinder import TimezoneFinder
+from datetime import datetime
+
+# --- ฟังก์ชันดึงเวลาตามพิกัดจริง ---
+def get_local_time(lat, lon):
+    tf = TimezoneFinder()
+    timezone_str = tf.timezone_at(lat=lat, lng=lon) # หาเขตเวลาจากพิกัด
+    if timezone_str:
+        local_tz = pytz.timezone(timezone_str)
+        return datetime.now(local_tz)
+    else:
+        # ถ้าหาพิกัดไม่ได้ ให้ใช้เวลาไทย (GMT+7) เป็นมาตรฐาน
+        return datetime.now(pytz.timezone('Asia/Bangkok'))
+
+# --- ปรับปรุงห้อง CORE ---
+def room_core():
+    st.subheader("🏠 CORE CONTROL")
+    
+    # ดึงพิกัดล่าสุด (ถ้ามี)
+    loc = get_geolocation()
+    lat, lon = 13.7367, 100.5231 # Default กทม.
+    if loc and 'coords' in loc:
+        lat = loc['coords'].get('latitude', lat)
+        lon = loc['coords'].get('longitude', lon)
+    
+    # ดึงเวลาที่ตรงกับพิกัดนั้นๆ
+    current_time = get_local_time(lat, lon)
+    
+    st.markdown(f"""
+        <div style="text-align:center; padding:20px; border:2px solid {st.session_state.theme_color}; border-radius:15px; background:rgba(0,0,0,0.3);">
+            <h1 style="font-size:5em; color:{st.session_state.theme_color}; margin:0;">
+                {current_time.strftime('%H:%M:%S')}
+            </h1>
+            <p style="color:#888;">📍 Location-based Time: {lat:.4f}, {lon:.4f}</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.success(f"SYSTEM ONLINE: Welcome AGENT {st.session_state.user}")
+
+# --- ปรับปรุงห้องโทร (VOICE/VIDEO CALL) ให้ใช้งานได้จริง ---
+def room_call():
+    st.subheader("📞 SYNAPSE P2P CALL (Voice & Video)")
+    
+    users = db.reference('users').get()
+    friends = [u for u in users.keys() if u != st.session_state.user] if users else []
+    target = st.selectbox("เลือก AGENT ที่ต้องการโทรหา:", friends)
+    
+    if target:
+        st.info(f"เชื่อมต่อสายตรงกับ: {target}")
+        
+        # ใช้ PeerJS สำหรับ WebRTC (ไม่ต้องผ่าน Server)
+        call_html = f"""
+        <div style="background:#111; padding:20px; border-radius:15px; border:1px solid {st.session_state.theme_color}; text-align:center;">
+            <video id="remoteVideo" autoplay playsinline style="width:100%; height:300px; background:#000; border-radius:10px;"></video>
+            <video id="localVideo" autoplay playsinline muted style="width:100px; position:absolute; bottom:30px; right:30px; border:2px solid {st.session_state.theme_color};"></video>
+            <div style="margin-top:10px;">
+                <button id="startCall" style="background:{st.session_state.theme_color}; color:black; padding:10px 20px; border:none; border-radius:5px; font-weight:bold;">📞 เริ่มการโทร</button>
+                <button onclick="location.reload()" style="background:#ff4444; color:white; padding:10px 20px; border:none; border-radius:5px; font-weight:bold;">❌ วางสาย</button>
+            </div>
+        </div>
+
+        <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+        <script>
+            const peer = new Peer('{st.session_state.user}');
+            const localVideo = document.getElementById('localVideo');
+            const remoteVideo = document.getElementById('remoteVideo');
+
+            // เมื่อมีสายโทรเข้า
+            peer.on('call', call => {{
+                navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
+                    localVideo.srcObject = stream;
+                    call.answer(stream);
+                    call.on('stream', remoteStream => {{ remoteVideo.srcObject = remoteStream; }});
+                }});
+            }});
+
+            // เมื่อกดปุ่มโทรออก
+            document.getElementById('startCall').onclick = () => {{
+                navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
+                    localVideo.srcObject = stream;
+                    const call = peer.call('{target}', stream);
+                    call.on('stream', remoteStream => {{ remoteVideo.srcObject = remoteStream; }});
+                }});
+            }};
+        </script>
+        """
+        components.html(call_html, height=450)
 
 # ==========================================
 # 0. CONFIG & INITIALIZATION
