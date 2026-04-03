@@ -42,10 +42,8 @@ def init_system():
 def room_login():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
-        if os.path.exists("logo1.jpg"):
-            st.image("logo1.jpg", use_container_width=True)
-        else:
-            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE</h1>", unsafe_allow_html=True)
+        # หน้า Login แสดงชื่อระบบใหญ่ๆ (เพราะโลโก้อยู่ที่ Sidebar แล้ว)
+        st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; letter-spacing: 5px;'>SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
         
         tab_l, tab_r = st.tabs(["🔑 UNLOCK SYSTEM", "📝 REGISTER AGENT"])
         
@@ -70,82 +68,56 @@ def room_login():
                     st.success("ลงทะเบียนสำเร็จ!")
 
 # ==========================================
-# 2. CORE MODULES (RADAR, COMMS, MUSIC)
+# 2. CORE MODULES
 # ==========================================
 def room_radar():
     st.subheader("🛰️ STRATEGIC RADAR (HYBRID SATELLITE)")
-    
-    # --- แก้ไขจุดนี้: ตรวจสอบโครงสร้างข้อมูล loc อย่างละเอียด ---
     loc = get_geolocation()
     
-    # ตั้งค่าพิกัดเริ่มต้น (กรุงเทพฯ)
+    # Safety Check: ป้องกันตัวแดง (KeyError)
     my_lat, my_lon = 13.7367, 100.5231 
-    
-    # เช็คว่า loc มีข้อมูลจริง และมี Key 'coords' อยู่ข้างในไหม
     if loc and 'coords' in loc:
         try:
             my_lat = loc['coords'].get('latitude', 13.7367)
             my_lon = loc['coords'].get('longitude', 100.5231)
-        except (KeyError, TypeError):
-            st.warning("⚠️ สัญญาณ GPS อ่อน กำลังใช้พิกัดสำรอง...")
+        except: pass
     else:
-        st.caption("📡 กำลังรอสัญญาณจากดาวเทียม (กรุณากด 'Allow' ในเบราว์เซอร์)...")
+        st.caption("📡 กำลังรอพิกัดจากดาวเทียม... กรุณาเปิด GPS")
 
-    # --- ส่วนที่เหลือของแผนที่เหมือนเดิม ---
-    m = folium.Map(
-        location=[my_lat, my_lon], 
-        zoom_start=18, 
-        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
-        attr='Google'
-    )
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google')
     
-    # Marker ตัวเรา
+    # ปักหมุดเรา
     folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star')).add_to(m)
-    folium.Marker(
-        [my_lat-0.0001, my_lon], 
-        icon=DivIcon(html=f'<div style="font-size:10pt; color:red; font-weight:bold; background:white; padding:2px; border-radius:3px;">📍 {st.session_state.user} (YOU)</div>')
-    ).add_to(m)
+    folium.Marker([my_lat-0.0001, my_lon], icon=DivIcon(html=f'<div style="font-size:10pt; color:red; font-weight:bold; background:rgba(255,255,255,0.8); padding:2px; border-radius:3px;">📍 {st.session_state.user}</div>')).add_to(m)
 
-    # ดึงข้อมูลเพื่อน (Team Radar)
+    # ดึงพิกัดเพื่อน
     try:
         users_ref = db.reference('users').get()
         if users_ref:
             for uid, data in users_ref.items():
-                if uid != st.session_state.user and 'lat' in data and 'lon' in data:
+                if uid != st.session_state.user and 'lat' in data:
                     u_lat, u_lon = data['lat'], data['lon']
                     dist = haversine(my_lat, my_lon, u_lat, u_lon)
                     folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green')).add_to(m)
-                    folium.Marker(
-                        [u_lat-0.0001, u_lon], 
-                        icon=DivIcon(html=f'<div style="font-size:8pt; color:green; font-weight:bold; background:white; padding:2px;">👤 {uid} ({dist:.2f}km)</div>')
-                    ).add_to(m)
+                    folium.Marker([u_lat-0.0001, u_lon], icon=DivIcon(html=f'<div style="font-size:8pt; color:green; font-weight:bold; background:white; padding:2px;">👤 {uid} ({dist:.2f}km)</div>')).add_to(m)
                     folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
-    except:
-        pass
+    except: pass
 
     st_folium(m, width="100%", height=500)
-    
-    if st.button("📡 BROADCAST MY LOCATION", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({
-            'lat': my_lat, 
-            'lon': my_lon, 
-            'ts': time.time()
-        })
+    if st.button("📡 BROADCAST LIVE LOCATION", use_container_width=True):
+        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
         st.toast("พิกัดถูกส่งเข้าศูนย์บัญชาการแล้ว")
-
 
 def room_music():
     st.subheader("🎧 NON-STOP STATION")
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    if not music_files: return st.warning("ไม่พบไฟล์เพลง")
+    if not music_files: return st.warning("ไม่พบไฟล์เพลง .mp3 ในเครื่อง")
     
     current = music_files[st.session_state.song_index]
     with open(current, "rb") as f:
         audio_b64 = base64.b64encode(f.read()).decode()
     
     st.info(f"🎵 NOW PLAYING: {current}")
-    
-    # JS สำหรับ Auto-Next
     audio_html = f"""
         <audio id="player" controls autoplay style="width:100%;">
             <source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3">
@@ -159,7 +131,7 @@ def room_music():
     res = components.html(audio_html, height=100)
     
     col1, col2, col3 = st.columns(3)
-    if col1.button("⏮️ PREV") or res == 'prev':
+    if col1.button("⏮️ PREV"):
         st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
         st.rerun()
     if col3.button("⏭️ NEXT") or res == 'next':
@@ -169,12 +141,13 @@ def room_music():
 def room_secure_chat():
     st.subheader("🔐 SECURE MEDIA CHAT")
     users = db.reference('users').get()
-    target = st.selectbox("🎯 TARGET AGENT:", [u for u in users.keys() if u != st.session_state.user])
+    friends = [u for u in users.keys() if u != st.session_state.user] if users else []
+    target = st.selectbox("🎯 TARGET AGENT:", friends)
     
     if target:
         rid = "_".join(sorted([st.session_state.user, target]))
         with st.form("chat_form", clear_on_submit=True):
-            msg = st.text_input("MESSAGE")
+            msg = st.text_input("🔒 MESSAGE")
             up = st.file_uploader("UPLOAD MEDIA", type=['jpg', 'png', 'mp4'])
             if st.form_submit_button("SEND"):
                 f_data, f_type = (base64.b64encode(up.read()).decode(), up.type) if up else (None, None)
@@ -186,10 +159,10 @@ def room_secure_chat():
             for c in reversed(list(chats.values())):
                 align = "right" if c['u'] == st.session_state.user else "left"
                 color = st.session_state.theme_color if c['u'] == st.session_state.user else "#333"
-                st.markdown(f'<div style="text-align:{align};"><div style="display:inline-block; background:{color}; padding:10px; border-radius:10px;"><b>{c["u"]}</b>: {c["m"]}</div></div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="text-align:{align}; margin-bottom:10px;"><div style="display:inline-block; background:{color}; padding:10px; border-radius:10px; color:white;"><b>{c["u"]}</b>: {c["m"]}</div></div>', unsafe_allow_html=True)
                 if c.get('f'):
                     dec = base64.b64decode(c['f'])
-                    if "image" in c['ft']: st.image(dec)
+                    if "image" in c['ft']: st.image(dec, width=300)
                     else: st.video(dec)
 
 # ==========================================
@@ -198,38 +171,39 @@ def room_secure_chat():
 def main():
     init_system()
     
-    # 1. แสดงโลโก้ที่ Sidebar (เพื่อให้เห็นทุกห้อง)
+    # --- LOGO & SIDEBAR (แสดงทุกหน้า) ---
     with st.sidebar:
         if os.path.exists("logo1.jpg"):
             st.image("logo1.jpg", use_container_width=True)
         else:
             st.markdown(f"<h2 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h2>", unsafe_allow_html=True)
         
-        st.markdown("---") # เส้นคั่นเท่ๆ
+        st.markdown("---")
         
         if st.session_state.logged_in:
             st.write(f"👤 AGENT: **{st.session_state.user}**")
-            st.caption(f"'{st.session_state.user}' - อยู่นิ่งๆ ไม่เจ็บตัว")
+            st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
             if st.button("🚪 LOGOUT", use_container_width=True):
                 st.session_state.logged_in = False
                 st.rerun()
 
-    # 2. ตรวจสอบการ Login
     if not st.session_state.logged_in:
         room_login()
         return
 
-    # 3. ถ้า Login แล้ว ให้แสดง Tabs ปกติ
+    # --- MAIN CONTENT ---
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 SECURE CHAT", "🎧 MUSIC", "⚙️ SETTINGS"])
     
     with tabs[0]:
-        # ในห้อง Core อาจจะใส่โลโก้ใหญ่ๆ อีกทีก็ได้ถ้าชอบ
         now = datetime.now()
         st.markdown(f"<h1 style='text-align:center; font-size:4em; color:{st.session_state.theme_color};'>{now.strftime('%H:%M:%S')}</h1>", unsafe_allow_html=True)
-        st.info(f"WELCOME BACK, AGENT {st.session_state.user}. ALL SYSTEMS NOMINAL.")
+        st.success(f"SYSTEM ONLINE: Welcome AGENT {st.session_state.user}")
         
     with tabs[1]: room_radar()
     with tabs[2]: room_secure_chat()
     with tabs[3]: room_music()
     with tabs[4]: 
-        st.session_state.theme_color = st.color_picker("ปรับสีธีมระบบ", st.session_state.theme_color)
+        st.session_state.theme_color = st.color_picker("ปรับสีธีมระบบ (Neon)", st.session_state.theme_color)
+
+if __name__ == "__main__":
+    main()
