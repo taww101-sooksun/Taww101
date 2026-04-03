@@ -74,31 +74,65 @@ def room_login():
 # ==========================================
 def room_radar():
     st.subheader("🛰️ STRATEGIC RADAR (HYBRID SATELLITE)")
+    
+    # --- แก้ไขจุดนี้: ตรวจสอบโครงสร้างข้อมูล loc อย่างละเอียด ---
     loc = get_geolocation()
-    my_lat, my_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.7367, 100.5231)
     
-    # Google Satellite Hybrid Map
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google')
+    # ตั้งค่าพิกัดเริ่มต้น (กรุงเทพฯ)
+    my_lat, my_lon = 13.7367, 100.5231 
     
-    # My Marker with Text
-    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star')).add_to(m)
-    folium.Marker([my_lat-0.0001, my_lon], icon=DivIcon(html=f'<div style="font-size:10pt; color:red; font-weight:bold; background:white; padding:2px; border-radius:3px;">📍 {st.session_state.user} (YOU)</div>')).add_to(m)
+    # เช็คว่า loc มีข้อมูลจริง และมี Key 'coords' อยู่ข้างในไหม
+    if loc and 'coords' in loc:
+        try:
+            my_lat = loc['coords'].get('latitude', 13.7367)
+            my_lon = loc['coords'].get('longitude', 100.5231)
+        except (KeyError, TypeError):
+            st.warning("⚠️ สัญญาณ GPS อ่อน กำลังใช้พิกัดสำรอง...")
+    else:
+        st.caption("📡 กำลังรอสัญญาณจากดาวเทียม (กรุณากด 'Allow' ในเบราว์เซอร์)...")
 
-    # Team Radar
-    users_ref = db.reference('users').get()
-    if users_ref:
-        for uid, data in users_ref.items():
-            if uid != st.session_state.user and 'lat' in data:
-                u_lat, u_lon = data['lat'], data['lon']
-                dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green')).add_to(m)
-                folium.Marker([u_lat-0.0001, u_lon], icon=DivIcon(html=f'<div style="font-size:8pt; color:green; font-weight:bold; background:white; padding:2px;">👤 {uid} ({dist:.2f}km)</div>')).add_to(m)
-                folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
+    # --- ส่วนที่เหลือของแผนที่เหมือนเดิม ---
+    m = folium.Map(
+        location=[my_lat, my_lon], 
+        zoom_start=18, 
+        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+        attr='Google'
+    )
+    
+    # Marker ตัวเรา
+    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star')).add_to(m)
+    folium.Marker(
+        [my_lat-0.0001, my_lon], 
+        icon=DivIcon(html=f'<div style="font-size:10pt; color:red; font-weight:bold; background:white; padding:2px; border-radius:3px;">📍 {st.session_state.user} (YOU)</div>')
+    ).add_to(m)
+
+    # ดึงข้อมูลเพื่อน (Team Radar)
+    try:
+        users_ref = db.reference('users').get()
+        if users_ref:
+            for uid, data in users_ref.items():
+                if uid != st.session_state.user and 'lat' in data and 'lon' in data:
+                    u_lat, u_lon = data['lat'], data['lon']
+                    dist = haversine(my_lat, my_lon, u_lat, u_lon)
+                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green')).add_to(m)
+                    folium.Marker(
+                        [u_lat-0.0001, u_lon], 
+                        icon=DivIcon(html=f'<div style="font-size:8pt; color:green; font-weight:bold; background:white; padding:2px;">👤 {uid} ({dist:.2f}km)</div>')
+                    ).add_to(m)
+                    folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
+    except:
+        pass
 
     st_folium(m, width="100%", height=500)
+    
     if st.button("📡 BROADCAST MY LOCATION", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
+        db.reference(f'users/{st.session_state.user}').update({
+            'lat': my_lat, 
+            'lon': my_lon, 
+            'ts': time.time()
+        })
         st.toast("พิกัดถูกส่งเข้าศูนย์บัญชาการแล้ว")
+
 
 def room_music():
     st.subheader("🎧 NON-STOP STATION")
