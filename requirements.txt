@@ -24,3 +24,4 @@ streamlit-autorefresh
 streamlit-google-auth
 Authlib
 psutil
+timezonefinder pytz
