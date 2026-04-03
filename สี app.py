@@ -195,9 +195,8 @@ def room_call():
         </script>
         """
         components.html(call_html, height=450)
+// หัวใจสำคัญ: เมื่อเพลงจบ ให้เรียกฟังก์ชันถัดไปทันที
 
-
-        // หัวใจสำคัญ: เมื่อเพลงจบ ให้เรียกฟังก์ชันถัดไปทันที
 def room_music():
     st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)")
     
