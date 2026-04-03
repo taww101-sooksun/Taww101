@@ -195,7 +195,7 @@ def room_radar(loc):
     # ลูกเล่น: วงรัศมีเรดาร์รอบตัวเรา
     folium.Circle(
         location=[my_lat, my_lon],
-        radius=250,
+        radius=1000,
         color=st.session_state.theme_color,
         fill=True,
         fill_color=st.session_state.theme_color,
@@ -230,7 +230,7 @@ def room_radar(loc):
     except: pass
     
     # แสดงแผนที่
-    st_folium(m, width="100%", height=450, returned_objects=[])
+    st_folium(m, width="100%", height=250, returned_objects=[])
     
     # ปิด Container (สำคัญมาก!)
     st.markdown("</div>", unsafe_allow_html=True)
