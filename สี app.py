@@ -84,10 +84,8 @@ def room_login():
 # ==========================================
 # 2. CORE MODULES
 # ==========================================
-def room_core():
+def room_core(loc): # เพิ่มตัวรับค่า loc
     st.subheader("🏠 CORE CONTROL")
-    # แก้ไข: ใส่ key เพื่อไม่ให้ซ้ำกับหน้า Radar
-    loc = get_geolocation(key='core_location')
     lat, lon = 13.7367, 100.5231
     if loc and 'coords' in loc:
         lat = loc['coords'].get('latitude', lat)
@@ -97,24 +95,19 @@ def room_core():
     st.markdown(f"""
         <div style="text-align:center; padding:20px; border:2px solid {st.session_state.theme_color}; border-radius:15px; background:rgba(0,0,0,0.3);">
             <h1 style="font-size:5em; color:{st.session_state.theme_color}; margin:0;">{current_time.strftime('%H:%M:%S')}</h1>
-            <p style="color:#888;">📍 {lat:.4f}, {lon:.4f}</p>
-            <p style="color:{st.session_state.theme_color};">WELCOME AGENT {st.session_state.user}</p>
+            <p style="color:#888;">📍 LAT: {lat:.4f} | LON: {lon:.4f}</p>
         </div>
     """, unsafe_allow_html=True)
 
-def room_radar():
+def room_radar(loc): # เพิ่มตัวรับค่า loc
     st.subheader("🛰️ STRATEGIC RADAR")
-    # แก้ไข: ใส่ key เพื่อไม่ให้ซ้ำกับหน้า Core
-    loc = get_geolocation(key='radar_location')
     my_lat, my_lon = 13.7367, 100.5231 
     if loc and 'coords' in loc:
-        try:
-            my_lat = loc['coords'].get('latitude', 13.7367)
-            my_lon = loc['coords'].get('longitude', 100.5231)
-        except: pass
+        my_lat = loc['coords'].get('latitude', my_lat)
+        my_lon = loc['coords'].get('longitude', my_lon)
     
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google')
-    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star'), tooltip="YOUR POSITION").add_to(m)
+    # ... (โค้ดวาดแผนที่เดิม) ...
+
     
     try:
         users_ref = db.reference('users').get()
@@ -223,30 +216,27 @@ def room_secure_chat():
 # ==========================================
 def main():
     init_system()
+    
+    # --- ดึงพิกัดที่นี่ที่เดียว (Global) ---
+    loc = get_geolocation(key='synapse_global_gps') 
+    
     with st.sidebar:
-        if os.path.exists("logo1.jpg"): st.image("logo1.jpg", use_container_width=True)
-        else: st.markdown(f"<h2 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h2>", unsafe_allow_html=True)
-        st.markdown("---")
-        if st.session_state.logged_in:
-            st.write(f"👤 AGENT: **{st.session_state.user}**")
-            st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
-            if st.button("🚪 LOGOUT", use_container_width=True):
-                st.session_state.logged_in = False
-                st.rerun()
+        # ... (โค้ด Sidebar เดิม) ...
+        if st.button("🚪 LOGOUT", use_container_width=True):
+            st.session_state.logged_in = False
+            st.rerun()
 
     if not st.session_state.logged_in:
         room_login()
         return
 
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
-    with tabs[0]: room_core()
-    with tabs[1]: room_radar()
+    
+    # ส่งค่า loc เข้าไปในฟังก์ชันด้วย
+    with tabs[0]: room_core(loc)
+    with tabs[1]: room_radar(loc)
     with tabs[2]: room_secure_chat()
     with tabs[3]: room_call()
     with tabs[4]: room_music()
     with tabs[5]: 
-        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ (Theme Color)", st.session_state.theme_color)
-        st.info("สีนี้จะถูกนำไปใช้กับปุ่ม แถบสถานะ และข้อความแชทของคุณ")
-
-if __name__ == "__main__":
-    main()
+        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
