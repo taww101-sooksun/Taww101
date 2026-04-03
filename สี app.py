@@ -166,7 +166,7 @@ def room_core(loc):
         </div>
     """, unsafe_allow_html=True)
 def room_radar(loc):
-    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัด AGENT")
+    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัด AGENT อยู่นิ้งๆไม่เจ็บตัว")
     
     # พิกัดเริ่มต้น (กรุงเทพฯ) ถ้าหา GPS ไม่เจอ
     my_lat, my_lon = 13.7367, 100.5231 
@@ -198,7 +198,7 @@ def room_radar(loc):
     ).add_to(m)
     
     # แสดงแผนที่
-    st_folium(m, width="100%", height=400, returned_objects=[])
+    st_folium(m, width="100%", height=250, returned_objects=[])
     
     st.markdown("</div>", unsafe_allow_html=True) # ปิด Container
     
