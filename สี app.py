@@ -83,7 +83,8 @@ def room_login():
 # ==========================================
 def room_core():
     st.subheader("🏠 CORE CONTROL")
-    loc = get_geolocation()
+    # แก้ไข: ใส่ key เพื่อไม่ให้ซ้ำกับหน้า Radar
+    loc = get_geolocation(key='core_location')
     lat, lon = 13.7367, 100.5231
     if loc and 'coords' in loc:
         lat = loc['coords'].get('latitude', lat)
@@ -100,7 +101,8 @@ def room_core():
 
 def room_radar():
     st.subheader("🛰️ STRATEGIC RADAR")
-    loc = get_geolocation()
+    # แก้ไข: ใส่ key เพื่อไม่ให้ซ้ำกับหน้า Core
+    loc = get_geolocation(key='radar_location')
     my_lat, my_lon = 13.7367, 100.5231 
     if loc and 'coords' in loc:
         try:
@@ -109,7 +111,7 @@ def room_radar():
         except: pass
     
     m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google')
-    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star')).add_to(m)
+    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star'), tooltip="YOUR POSITION").add_to(m)
     
     try:
         users_ref = db.reference('users').get()
@@ -118,7 +120,7 @@ def room_radar():
                 if uid != st.session_state.user and 'lat' in data:
                     u_lat, u_lon = data['lat'], data['lon']
                     dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green')).add_to(m)
+                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green'), tooltip=f"AGENT: {uid}").add_to(m)
                     folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
     except: pass
     st_folium(m, width="100%", height=500)
@@ -130,8 +132,9 @@ def room_call():
     st.subheader("📞 SYNAPSE P2P CALL")
     users = db.reference('users').get()
     friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    target = st.selectbox("เลือก AGENT:", friends)
+    target = st.selectbox("เลือก AGENT ที่จะโทรหา:", friends)
     if target:
+        st.info(f"พร้อมเชื่อมต่อกับ {target} ผ่านเครือข่าย P2P")
         call_html = f"""
         <div style="background:#111; padding:20px; border-radius:15px; border:1px solid {st.session_state.theme_color}; text-align:center;">
             <video id="remoteVideo" autoplay playsinline style="width:100%; height:300px; background:#000; border-radius:10px;"></video>
@@ -167,7 +170,7 @@ def room_call():
 def room_music():
     st.subheader("🎧 NON-STOP STATION")
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    if not music_files: return st.warning("ไม่พบไฟล์เพลง")
+    if not music_files: return st.warning("ไม่พบไฟล์เพลงใน Directory")
     current = music_files[st.session_state.song_index]
     with open(current, "rb") as f:
         audio_b64 = base64.b64encode(f.read()).decode()
@@ -186,21 +189,31 @@ def room_secure_chat():
     st.subheader("💬 SECURE CHAT")
     users = db.reference('users').get()
     friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    target = st.selectbox("🎯 TARGET:", friends)
+    target = st.selectbox("🎯 เลือกผู้รับข้อความ:", friends)
     if target:
         rid = "_".join(sorted([st.session_state.user, target]))
         with st.form("chat_form", clear_on_submit=True):
-            msg = st.text_input("MESSAGE")
-            up = st.file_uploader("UPLOAD", type=['jpg', 'png', 'mp4'])
-            if st.form_submit_button("SEND"):
+            msg = st.text_input("พิมพ์ข้อความที่นี่...")
+            up = st.file_uploader("ส่งรูปภาพ/วิดีโอ", type=['jpg', 'png', 'mp4'])
+            if st.form_submit_button("SEND MESSAGE"):
                 f_data, f_type = (base64.b64encode(up.read()).decode(), up.type) if up else (None, None)
                 db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'f': f_data, 'ft': f_type, 'ts': time.time()})
                 st.rerun()
-        chats = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(10).get()
+        
+        # แสดงผลแชทและไฟล์สื่อ
+        chats = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(15).get()
         if chats:
             for c in reversed(list(chats.values())):
                 align = "right" if c['u'] == st.session_state.user else "left"
-                st.markdown(f'<div style="text-align:{align}; margin-bottom:10px;"><div style="display:inline-block; background:{st.session_state.theme_color if c["u"] == st.session_state.user else "#333"}; padding:10px; border-radius:10px; color:white;"><b>{c["u"]}</b>: {c["m"]}</div></div>', unsafe_allow_html=True)
+                color = st.session_state.theme_color if c['u'] == st.session_state.user else "#333"
+                st.markdown(f'<div style="text-align:{align}; margin-bottom:10px;"><div style="display:inline-block; background:{color}; padding:10px; border-radius:10px; color:white;"><b>{c["u"]}</b>: {c["m"]}</div></div>', unsafe_allow_html=True)
+                # เพิ่ม: แสดงรูปหรือวิดีโอถ้ามีไฟล์
+                if c.get('f'):
+                    try:
+                        dec = base64.b64decode(c['f'])
+                        if "image" in c['ft']: st.image(dec, width=250)
+                        elif "video" in c['ft']: st.video(dec)
+                    except: pass
 
 # ==========================================
 # 3. MAIN
@@ -228,7 +241,9 @@ def main():
     with tabs[2]: room_secure_chat()
     with tabs[3]: room_call()
     with tabs[4]: room_music()
-    with tabs[5]: st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
+    with tabs[5]: 
+        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ (Theme Color)", st.session_state.theme_color)
+        st.info("สีนี้จะถูกนำไปใช้กับปุ่ม แถบสถานะ และข้อความแชทของคุณ")
 
 if __name__ == "__main__":
     main()
