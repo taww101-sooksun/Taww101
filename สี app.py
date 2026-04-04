@@ -244,54 +244,51 @@ def room_radar(loc):
             'ts': time.time()
         })
         st.toast("ส่งพิกัดสำเร็จ! เพื่อนๆ จะเห็นคุณบนเรดาร์")
-def room_camera():
+# --- แก้บรรทัดนี้ ---
+def room_camera(loc): 
     st.subheader("📷 AGENT SCANNER - ระบบบันทึกภาพสนาม")
     
-    # ใช้ camera_input ซึ่งเป็น Widget มาตรฐานของ Streamlit ที่ใช้งานได้จริงทั้งคอมและมือถือ
+    # ดึงค่าพิกัดมาเตรียมไว้ (กันเหนียวถ้า loc เป็น None)
+    lat = loc['coords'].get('latitude', 0) if loc else 0
+    lon = loc['coords'].get('longitude', 0) if loc else 0
+
     img_file = st.camera_input("TAKE A SNAPSHOT")
 
     if img_file:
-        # --- เริ่มลูกเล่น HUD ---
-        # 1. เตรียมข้อมูลที่จะแปะบนภาพ
+        # --- ลูกเล่น HUD แบบที่ 2 (แสดงผลบนหน้าจอ) ---
         st.markdown(f"""
             <div style="position: relative; text-align: center; color: {st.session_state.theme_color};">
-                <div style="position: absolute; top: 10px; left: 20px; text-shadow: 2px 2px #000; font-family: monospace; text-align: left;">
+                <div style="position: absolute; top: 10px; left: 20px; text-shadow: 2px 2px #000; font-family: monospace; text-align: left; font-size: 12px;">
                     🔴 RECORDING...<br>
                     AGENT: {st.session_state.user}<br>
                     {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
                 </div>
-                <div style="position: absolute; bottom: 10px; right: 20px; text-shadow: 2px 2px #000; font-family: monospace; text-align: right;">
-                    LOC: {loc['coords']['latitude']:.4f}, {loc['coords']['longitude']:.4f}<br>
+                <div style="position: absolute; bottom: 10px; right: 20px; text-shadow: 2px 2px #000; font-family: monospace; text-align: right; font-size: 12px;">
+                    LOC: {lat:.4f}, {lon:.4f}<br>
                     STATUS: SYNAPSE_OS_ONLINE
                 </div>
             </div>
         """, unsafe_allow_html=True)
         
-        # แสดงรูปพร้อมกรอบนีออน
-        st.markdown(f'<div style="border: 3px solid {st.session_state.theme_color}; box-shadow: 0 0 20px {st.session_state.theme_color}; border-radius: 10px; overflow: hidden;">', unsafe_allow_html=True)
         st.image(img_file, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
         # --- จบลูกเล่น HUD ---
 
-        
         col1, col2 = st.columns(2)
         with col1:
             if st.button("📤 UPLOAD TO CLOUD", use_container_width=True):
-                try:
-                    # แปลงไฟล์ภาพเป็น Base64 เพื่อเก็บใน Realtime Database (ตามโครงสร้างเดิมของคุณ)
-                    bytes_data = img_file.getvalue()
-                    base64_image = base64.b64encode(bytes_data).decode()
-                    
-                    # ส่งข้อมูลเข้า Firebase
-                    db.reference(f'gallery/{st.session_state.user}').push({
-                        'u': st.session_state.user,
-                        'img': base64_image,
-                        'ts': time.time(),
-                        'type': 'image/jpeg'
-                    })
-                    st.success("บันทึกภาพลงฐานข้อมูล SYNAPSE สำเร็จ!")
-                except Exception as e:
-                    st.error(f"การอัปโหลดขัดข้อง: {e}")
+                # โค้ดส่วนอัปโหลด (เหมือนเดิมที่คุณมี)
+                bytes_data = img_file.getvalue()
+                base64_image = base64.b64encode(bytes_data).decode()
+                db.reference(f'gallery/{st.session_state.user}').push({
+                    'u': st.session_state.user,
+                    'img': base64_image,
+                    'ts': time.time(),
+                    'lat': lat,
+                    'lon': lon
+                })
+                st.success("บันทึกภาพสำเร็จ!")
+        # ... (ส่วนที่เหลือของฟังก์ชันเดิม) ...
+
         
         with col2:
             st.download_button("💾 SAVE TO DEVICE", data=img_file, file_name=f"SYNAPSE_{int(time.time())}.jpg", mime="image/jpeg", use_container_width=True)
@@ -511,7 +508,7 @@ def main():
     with tabs[5]:
         st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
     with tabs[6]:
-        room_camera()
+        room_camera(loc)
 
 if __name__ == "__main__":
     main()
