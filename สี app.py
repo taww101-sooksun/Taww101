@@ -481,20 +481,10 @@ def main():
     with st.sidebar:
         st.write(f"👤 AGENT: **{st.session_state.user}**")
         st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
-    with tabs[5]: 
-        st.subheader("🎨 SYSTEM THEME CUSTOMIZATION")
-        
+    
         # 1. ส่วนของปุ่ม Preset (2 อันใหม่ที่ขอมา)
         col_p1, col_p2 = st.columns(2)
-        with col_p1:
-            if st.button("🔴 STEALTH RED", use_container_width=True):
-                st.session_state.theme_color = "#FF0000"
-                st.rerun()
-        with col_p2:
-            if st.button("🟢 CYBER NEON", use_container_width=True):
-                st.session_state.theme_color = "#00FF41"
-                st.rerun()
-        
+    
         st.write("---")
         
         # 2. ส่วนของ Color Picker เดิม (เผื่ออยากปรับละเอียด)
