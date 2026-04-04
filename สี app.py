@@ -250,7 +250,7 @@ def room_camera():
     # ใช้ camera_input ซึ่งเป็น Widget มาตรฐานของ Streamlit ที่ใช้งานได้จริงทั้งคอมและมือถือ
     img_file = st.camera_input("TAKE A SNAPSHOT")
 
-        if img_file:
+    if img_file:
         # --- เริ่มลูกเล่น HUD ---
         # 1. เตรียมข้อมูลที่จะแปะบนภาพ
         st.markdown(f"""
