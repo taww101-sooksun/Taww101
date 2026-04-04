@@ -468,7 +468,7 @@ def main():
             st.session_state.logged_in = False
             st.rerun()
 
-        # --- ส่วนของ Tabs ในฟังก์ชัน main ---
+    # --- ส่วนของ Tabs ในฟังก์ชัน main ---
     # บรรทัด 472 (ย่อหน้าปกติ)
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS", "📷 SCANNER"])
     
