@@ -482,6 +482,23 @@ def main():
         if st.button("🚪 LOGOUT", use_container_width=True):
             st.session_state.logged_in = False
             st.rerun()
+    # --- ส่วนแสดงโลโก้ (ใช้ชื่อไฟล์ตัวพิมพ์เล็กทั้งหมดตามที่แจ้ง) ---
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 1.2, 1]) 
+    with c2:
+        # แก้เป็น logo1.png (ตัวเล็กทั้งหมด)
+        if os.path.exists("logo1.png"):
+            st.image("logo1.png", use_container_width=True)
+        else:
+            # ถ้ายังไม่ขึ้น ให้ลองเรียกตรงๆ หรือโชว์ชื่อระบบสำรองไว้
+            try:
+                st.image("logo1.png", use_container_width=True)
+            except:
+                st.markdown(f"""
+                    <h1 style='text-align:center; color:{st.session_state.theme_color}; 
+                    text-shadow: 0 0 15px {st.session_state.theme_color}; font-family: monospace;'>
+                    SYNAPSE OS</h1>
+                """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1, 1])
