@@ -152,187 +152,215 @@ def room_radar(loc):
     if st.button("📡 BROADCAST LOCATION", use_container_width=True):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
 
-def room_music():
-    st.subheader("🎧 SYNAPSE PRO AUDIO ENGINE - อยู่นิ่งๆไม่เจ็บตัว")
+ def room_music():
+    st.subheader("🎧 SYNAPSE HYBRID AUDIO - อยู่นิ่งๆไม่เจ็บตัว")
     
-    # ส่วนแสดงไฟล์ในเครื่อง (แสดงชื่อเฉยๆ)
-    music_files = sorted([f for f in os.listdir('.') if f.endswith((".mp3", ".wav"))])
-    if music_files:
-        with st.expander("📂 รายชื่อเพลงใน Server (Local Files)"):
-            for f in music_files:
-                st.write(f"🎵 {f}")
+    # 1. ดึงรายชื่อเพลงจาก Folder ในเครื่อง (ถ้าไม่มีให้สร้าง)
+    music_dir = "music"
+    if not os.path.exists(music_dir):
+        os.makedirs(music_dir)
     
-    player_html = """
+    local_files = [f for f in os.listdir(music_dir) if f.endswith((".mp3", ".wav"))]
+    local_files_json = json.dumps(local_files)
+
+    # 2. HTML + JS + CSS (Hybrid Version)
+    hybrid_html = f"""
     <!DOCTYPE html>
     <html lang="th">
     <head>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
-            body { background-color: transparent; color: white; font-family: sans-serif; }
-            .player-card { background: rgba(13, 17, 23, 0.95); border: 2px solid #00ffc8; box-shadow: 0 0 25px #00ffc833; }
-            #visualizer-canvas { background: #000; border-radius: 8px; height: 100px; width: 100%; border: 1px solid #333; }
-            input[type="range"] { accent-color: #00ffc8; cursor: pointer; }
-            label { font-size: 10px; color: #00ffc8; text-transform: uppercase; letter-spacing: 1px; }
+            body {{ font-family: 'Inter', sans-serif; background: transparent; color: white; }}
+            
+            /* Rainbow Flow Container */
+            .main-card {{
+                background: linear-gradient(270deg, #ff0000, #00ff00, #0000ff, #ff00ff);
+                background-size: 800% 800%;
+                animation: RainbowFlow 12s ease infinite;
+                padding: 20px; border-radius: 24px; border: 4px solid #00ffc8;
+                box-shadow: 0 0 30px rgba(0, 255, 200, 0.3);
+            }}
+            @keyframes RainbowFlow {{
+                0%{{background-position:0% 50%}} 50%{{background-position:100% 50%}} 100%{{background-position:0% 50%}}
+            }}
+
+            /* Neon Elements */
+            .neon-border {{ border: 2px solid #00ffc8; box-shadow: 0 0 10px #00ffc8; }}
+            .btn-action {{ 
+                background: #FF7F50; color: white; font-weight: bold; 
+                transition: 0.3s; border-radius: 12px; cursor: pointer;
+            }}
+            .btn-action:hover {{ transform: scale(1.05); filter: brightness(1.2); box-shadow: 0 0 15px #FF7F50; }}
+            
+            #visualizer-canvas {{ background: rgba(0,0,0,0.8); border-radius: 12px; border: 1px solid #00ffc8; height: 80px; width: 100%; }}
+            .playlist-box {{ background: rgba(0,0,0,0.6); height: 150px; overflow-y: auto; border-radius: 12px; padding: 10px; border: 1px solid #444; }}
+            .track-item {{ padding: 8px; border-bottom: 1px solid #333; cursor: pointer; font-size: 13px; }}
+            .track-item:hover {{ background: rgba(0, 255, 200, 0.2); }}
+            .track-item.active {{ border-left: 4px solid #00ffc8; background: rgba(0, 255, 200, 0.1); font-weight: bold; }}
+            
+            input[type="range"] {{ accent-color: #00ffc8; }}
         </style>
     </head>
     <body>
-        <div class="player-card p-5 rounded-2xl w-full">
-            <h2 class="text-center text-[#00ffc8] font-bold mb-4 tracking-widest">FX MASTER ENGINE</h2>
-            
-            <input type="file" id="file-input" multiple accept="audio/*" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#00ffc8] file:text-black hover:file:bg-cyan-400 mb-6">
+        <div class="main-card">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-black tracking-tighter text-white">SYNAPSE PRO AUDIO</h2>
+                <span class="text-[10px] bg-black px-2 py-1 rounded-full border border-[#00ffc8]">V.ULTIMATE</span>
+            </div>
 
             <canvas id="visualizer-canvas" class="mb-4"></canvas>
 
-            <div class="text-center mb-6">
-                <p id="song-title" class="text-sm font-semibold truncate text-gray-300">WAITING FOR TRACK...</p>
-                <div class="flex justify-center gap-4 mt-3">
-                    <button id="play-pause-btn" class="bg-[#00ffc8] text-black px-8 py-2 rounded-full font-black hover:scale-105 transition-transform">PLAY / PAUSE</button>
+            <div class="text-center mb-4">
+                <p id="song-title" class="text-sm font-bold truncate">READY TO PLAY</p>
+                <div class="flex justify-center gap-4 text-[10px] text-cyan-300 mt-1">
+                    <span id="current-time">0:00</span> / <span id="duration">0:00</span>
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-4 mb-6 border-b border-gray-700 pb-4">
-                <div><label>Bass</label><input type="range" id="low-gain" min="-15" max="15" value="0" class="w-full"></div>
-                <div><label>Mid</label><input type="range" id="mid-gain" min="-15" max="15" value="0" class="w-full"></div>
-                <div><label>High</label><input type="range" id="high-gain" min="-15" max="15" value="0" class="w-full"></div>
+            <div class="grid grid-cols-3 gap-2 mb-6">
+                <button onclick="prevTrack()" class="btn-action py-2">PREV</button>
+                <button id="play-btn" onclick="togglePlay()" class="btn-action py-2 bg-white !text-black">PLAY</button>
+                <button onclick="nextTrack()" class="btn-action py-2">NEXT</button>
             </div>
 
-            <div class="grid grid-cols-3 gap-4">
-                <div><label>Distortion</label><input type="range" id="dist-gain" min="0" max="100" value="0" class="w-full"></div>
-                <div><label>Echo/Delay</label><input type="range" id="echo-gain" min="0" max="0.8" step="0.1" value="0" class="w-full"></div>
-                <div><label>Pan L/R</label><input type="range" id="pan-val" min="-1" max="1" step="0.1" value="0" class="w-full"></div>
+            <div class="bg-black/40 p-4 rounded-xl mb-4 border border-white/10">
+                <div class="grid grid-cols-3 gap-2 text-[9px] text-center mb-2">
+                    <div>BASS<input type="range" id="low-gain" min="-15" max="15" value="0" class="w-full"></div>
+                    <div>MID<input type="range" id="mid-gain" min="-15" max="15" value="0" class="w-full"></div>
+                    <div>TREBLE<input type="range" id="high-gain" min="-15" max="15" value="0" class="w-full"></div>
+                </div>
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="text-[9px]">VOL</span>
+                    <input type="range" id="master-vol" min="0" max="1" step="0.01" value="1" class="w-full">
+                </div>
             </div>
 
-            <audio id="audio-element" class="hidden"></audio>
+            <div class="mb-2 flex gap-2">
+                <label class="btn-action flex-1 py-1 text-center text-[10px] bg-cyan-600 cursor-pointer">
+                    UPLOAD FILE <input type="file" id="file-input" multiple accept="audio/*" class="hidden" onchange="handleUpload(this.files)">
+                </label>
+                <button onclick="loadLocalLibrary()" class="btn-action flex-1 py-1 text-[10px] bg-purple-600">SYNC SERVER</button>
+            </div>
+            
+            <div id="playlist" class="playlist-box">
+                <p id="empty-msg" class="text-center text-gray-500 text-xs pt-12">No tracks loaded...</p>
+            </div>
         </div>
 
+        <audio id="main-audio" class="hidden"></audio>
+
         <script>
-            const audio = document.getElementById('audio-element');
-            const fileInput = document.getElementById('file-input');
-            const playPauseBtn = document.getElementById('play-pause-btn');
-            const canvas = document.getElementById('visualizer-canvas');
-            const ctx = canvas.getContext('2d');
-            
-            let audioCtx, source, analyzer;
-            let lowFilter, midFilter, highFilter;
-            let distortNode, delayNode, feedbackGain, panNode;
+            const audio = document.getElementById('main-audio');
+            const localTracks = {local_files_json};
+            let tracks = [];
+            let currentIndex = 0;
+            let audioCtx, source, analyzer, lowFilter, midFilter, highFilter, gainNode;
 
-            fileInput.onchange = (e) => {
-                const file = e.target.files[0];
-                if(file) {
-                    audio.src = URL.createObjectURL(file);
-                    document.getElementById('song-title').innerText = file.name;
-                    setupAudio();
-                }
-            };
+            // --- Core Functions ---
+            function initAudio() {{
+                if (audioCtx) return;
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                source = audioCtx.createMediaElementSource(audio);
+                analyzer = audioCtx.createAnalyser();
+                gainNode = audioCtx.createGain();
 
-            function makeDistortionCurve(amount) {
-                let k = typeof amount === 'number' ? amount : 50,
-                    n_samples = 44100,
-                    curve = new Float32Array(n_samples),
-                    deg = Math.PI / 180, i = 0, x;
-                for ( ; i < n_samples; ++i ) {
-                    x = i * 2 / n_samples - 1;
-                    curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
-                }
-                return curve;
-            }
+                lowFilter = audioCtx.createBiquadFilter(); lowFilter.type = 'lowshelf'; lowFilter.frequency.value = 320;
+                midFilter = audioCtx.createBiquadFilter(); midFilter.type = 'peaking'; midFilter.frequency.value = 1000;
+                highFilter = audioCtx.createBiquadFilter(); highFilter.type = 'highshelf'; highFilter.frequency.value = 3200;
 
-            function setupAudio() {
-                if(!audioCtx) {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    source = audioCtx.createMediaElementSource(audio);
-                    analyzer = audioCtx.createAnalyser();
-                    
-                    // EQ Nodes
-                    lowFilter = audioCtx.createBiquadFilter(); lowFilter.type = 'lowshelf'; lowFilter.frequency.value = 320;
-                    midFilter = audioCtx.createBiquadFilter(); midFilter.type = 'peaking'; midFilter.frequency.value = 1000;
-                    highFilter = audioCtx.createBiquadFilter(); highFilter.type = 'highshelf'; highFilter.frequency.value = 3200;
-
-                    // FX Nodes
-                    distortNode = audioCtx.createWaveShaper();
-                    distortNode.oversample = '4x';
-                    
-                    delayNode = audioCtx.createDelay();
-                    delayNode.delayTime.value = 0.3; 
-                    feedbackGain = audioCtx.createGain();
-                    feedbackGain.gain.value = 0; // Echo intensity
-
-                    panNode = audioCtx.createStereoPanner();
-
-                    // Routing: Source -> EQ -> Distortion -> Pan -> Analyzer -> Destination
-                    // Echo Loop: Distortion -> Delay -> FeedbackGain -> Delay (Loop)
-                    source.connect(lowFilter);
-                    lowFilter.connect(midFilter);
-                    midFilter.connect(highFilter);
-                    highFilter.connect(distortNode);
-                    
-                    // Echo Path
-                    distortNode.connect(delayNode);
-                    delayNode.connect(feedbackGain);
-                    feedbackGain.connect(delayNode);
-                    feedbackGain.connect(panNode); // Echo output
-                    
-                    distortNode.connect(panNode); // Direct sound output
-                    panNode.connect(analyzer);
-                    analyzer.connect(audioCtx.destination);
-                    
-                    visualize();
-                }
-            }
-
-            playPauseBtn.onclick = () => {
-                if(audioCtx?.state === 'suspended') audioCtx.resume();
-                audio.paused ? audio.play() : audio.pause();
-            };
-
-            function visualize() {
-                analyzer.fftSize = 128;
-                const bufferLength = analyzer.frequencyBinCount;
-                const dataArray = new Uint8Array(bufferLength);
-
-                function draw() {
+                source.connect(lowFilter).connect(midFilter).connect(highFilter).connect(gainNode).connect(analyzer).connect(audioCtx.destination);
+                
+                // Visualizer Loop
+                const canvas = document.getElementById('visualizer-canvas');
+                const ctx = canvas.getContext('2d');
+                function draw() {{
                     requestAnimationFrame(draw);
-                    analyzer.getByteFrequencyData(dataArray);
-                    ctx.fillStyle = 'black';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    
-                    let barWidth = (canvas.width / bufferLength) * 2;
-                    let x = 0;
-                    for(let i = 0; i < bufferLength; i++) {
-                        let barHeight = dataArray[i] / 2;
-                        ctx.fillStyle = `rgb(0, ${dataArray[i]+100}, 200)`;
-                        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-                        x += barWidth + 1;
-                    }
-                }
+                    const data = new Uint8Array(analyzer.frequencyBinCount);
+                    analyzer.getByteFrequencyData(data);
+                    ctx.clearRect(0,0,canvas.width, canvas.height);
+                    const bw = (canvas.width / 64);
+                    for(let i=0; i<64; i++) {{
+                        const bh = data[i] / 2;
+                        ctx.fillStyle = `rgb(0, ${{data[i]+100}}, 200)`;
+                        ctx.fillRect(i * (bw+1), canvas.height - bh, bw, bh);
+                    }}
+                }}
                 draw();
-            }
 
-            // Listeners
-            document.getElementById('low-gain').oninput = (e) => lowFilter.gain.value = e.target.value;
-            document.getElementById('mid-gain').oninput = (e) => midFilter.gain.value = e.target.value;
-            document.getElementById('high-gain').oninput = (e) => highFilter.gain.value = e.target.value;
-            
-            document.getElementById('dist-gain').oninput = (e) => {
-                distortNode.curve = e.target.value > 0 ? makeDistortionCurve(parseInt(e.target.value)) : null;
-            };
-            document.getElementById('echo-gain').oninput = (e) => feedbackGain.gain.value = e.target.value;
-            document.getElementById('pan-val').oninput = (e) => panNode.pan.value = e.target.value;
+                // EQ Listeners
+                document.getElementById('low-gain').oninput = e => lowFilter.gain.value = e.target.value;
+                document.getElementById('mid-gain').oninput = e => midFilter.gain.value = e.target.value;
+                document.getElementById('high-gain').oninput = e => highFilter.gain.value = e.target.value;
+                document.getElementById('master-vol').oninput = e => gainNode.gain.value = e.target.value;
+            }}
 
+            function handleUpload(files) {{
+                Array.from(files).forEach(f => addTrack(f, URL.createObjectURL(f)));
+            }}
+
+            async function loadLocalLibrary() {{
+                for (const name of localTracks) {{
+                    const response = await fetch('music/' + name);
+                    const blob = await response.blob();
+                    addTrack({{ name: name }}, URL.createObjectURL(blob));
+                }}
+            }}
+
+            function addTrack(file, url) {{
+                tracks.push({{ name: file.name, url: url }});
+                renderPlaylist();
+                if (tracks.length === 1) loadTrack(0);
+            }}
+
+            function renderPlaylist() {{
+                const container = document.getElementById('playlist');
+                container.innerHTML = '';
+                document.getElementById('empty-msg').style.display = 'none';
+                tracks.forEach((t, i) => {{
+                    const div = document.createElement('div');
+                    div.className = `track-item ${{i === currentIndex ? 'active' : ''}}`;
+                    div.innerText = `${{i+1}}. ${{t.name}}`;
+                    div.onclick = () => loadTrack(i);
+                    container.appendChild(div);
+                }});
+            }}
+
+            function loadTrack(index) {{
+                initAudio();
+                currentIndex = index;
+                audio.src = tracks[index].url;
+                document.getElementById('song-title').innerText = tracks[index].name;
+                audio.play();
+                document.getElementById('play-btn').innerText = "PAUSE";
+                renderPlaylist();
+            }}
+
+            function togglePlay() {{
+                initAudio();
+                if (audio.paused) {{ audio.play(); document.getElementById('play-btn').innerText = "PAUSE"; }}
+                else {{ audio.pause(); document.getElementById('play-btn').innerText = "PLAY"; }}
+            }}
+
+            function nextTrack() {{ if (currentIndex < tracks.length - 1) loadTrack(currentIndex + 1); }}
+            function prevTrack() {{ if (currentIndex > 0) loadTrack(currentIndex - 1); }}
+
+            // Time Updates
+            audio.ontimeupdate = () => {{
+                document.getElementById('current-time').innerText = formatTime(audio.currentTime);
+                document.getElementById('duration').innerText = formatTime(audio.duration);
+            }};
+            function formatTime(s) {{
+                const m = Math.floor(s/60); const sec = Math.floor(s%60);
+                return m + ":" + (sec < 10 ? '0' : '') + sec;
+            }}
         </script>
     </body>
     </html>
     """
-    
-    components.html(player_html, height=550, scrolling=False)
+    components.html(hybrid_html, height=700)
+                       
 
-
-def room_camera(loc):
-    st.subheader("📷 AGENT SCANNER")
-    img = st.camera_input("SNAPSHOT")
-    if img:
-        st.image(img)
-        if st.button("📤 UPLOAD TO CLOUD"):
+            
             st.success("บันทึกสำเร็จ!")
 
 def room_secure_chat():
