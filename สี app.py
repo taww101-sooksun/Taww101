@@ -153,23 +153,179 @@ def room_radar(loc):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
 
 def room_music():
-    st.subheader("🎧 PRO AUDIO ENGINE")
+    st.subheader("🎧 SYNAPSE PRO AUDIO ENGINE - อยู่นิ่งๆไม่เจ็บตัว")
+    
+    # ส่วนแสดงไฟล์ในเครื่อง (แสดงชื่อเฉยๆ)
+    music_files = sorted([f for f in os.listdir('.') if f.endswith((".mp3", ".wav"))])
+    if music_files:
+        with st.expander("📂 รายชื่อเพลงใน Server (Local Files)"):
+            for f in music_files:
+                st.write(f"🎵 {f}")
+    
     player_html = """
-    <div style="background:#111; padding:20px; border:2px solid #00ffc8; border-radius:15px; color:white;">
-        <input type="file" id="audio_file" accept="audio/*" style="margin-bottom:10px;">
-        <canvas id="viz" style="width:100%; height:100px; background:#000;"></canvas>
-        <audio id="player" controls style="width:100%; margin-top:10px;"></audio>
-    </div>
-    <script>
-        const audio = document.getElementById('player');
-        const file = document.getElementById('audio_file');
-        file.onchange = function() {
-            audio.src = URL.createObjectURL(this.files[0]);
-            audio.play();
-        }
-    </script>
+    <!DOCTYPE html>
+    <html lang="th">
+    <head>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            body { background-color: transparent; color: white; font-family: sans-serif; }
+            .player-card { background: rgba(13, 17, 23, 0.95); border: 2px solid #00ffc8; box-shadow: 0 0 25px #00ffc833; }
+            #visualizer-canvas { background: #000; border-radius: 8px; height: 100px; width: 100%; border: 1px solid #333; }
+            input[type="range"] { accent-color: #00ffc8; cursor: pointer; }
+            label { font-size: 10px; color: #00ffc8; text-transform: uppercase; letter-spacing: 1px; }
+        </style>
+    </head>
+    <body>
+        <div class="player-card p-5 rounded-2xl w-full">
+            <h2 class="text-center text-[#00ffc8] font-bold mb-4 tracking-widest">FX MASTER ENGINE</h2>
+            
+            <input type="file" id="file-input" multiple accept="audio/*" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#00ffc8] file:text-black hover:file:bg-cyan-400 mb-6">
+
+            <canvas id="visualizer-canvas" class="mb-4"></canvas>
+
+            <div class="text-center mb-6">
+                <p id="song-title" class="text-sm font-semibold truncate text-gray-300">WAITING FOR TRACK...</p>
+                <div class="flex justify-center gap-4 mt-3">
+                    <button id="play-pause-btn" class="bg-[#00ffc8] text-black px-8 py-2 rounded-full font-black hover:scale-105 transition-transform">PLAY / PAUSE</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 mb-6 border-b border-gray-700 pb-4">
+                <div><label>Bass</label><input type="range" id="low-gain" min="-15" max="15" value="0" class="w-full"></div>
+                <div><label>Mid</label><input type="range" id="mid-gain" min="-15" max="15" value="0" class="w-full"></div>
+                <div><label>High</label><input type="range" id="high-gain" min="-15" max="15" value="0" class="w-full"></div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4">
+                <div><label>Distortion</label><input type="range" id="dist-gain" min="0" max="100" value="0" class="w-full"></div>
+                <div><label>Echo/Delay</label><input type="range" id="echo-gain" min="0" max="0.8" step="0.1" value="0" class="w-full"></div>
+                <div><label>Pan L/R</label><input type="range" id="pan-val" min="-1" max="1" step="0.1" value="0" class="w-full"></div>
+            </div>
+
+            <audio id="audio-element" class="hidden"></audio>
+        </div>
+
+        <script>
+            const audio = document.getElementById('audio-element');
+            const fileInput = document.getElementById('file-input');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const canvas = document.getElementById('visualizer-canvas');
+            const ctx = canvas.getContext('2d');
+            
+            let audioCtx, source, analyzer;
+            let lowFilter, midFilter, highFilter;
+            let distortNode, delayNode, feedbackGain, panNode;
+
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if(file) {
+                    audio.src = URL.createObjectURL(file);
+                    document.getElementById('song-title').innerText = file.name;
+                    setupAudio();
+                }
+            };
+
+            function makeDistortionCurve(amount) {
+                let k = typeof amount === 'number' ? amount : 50,
+                    n_samples = 44100,
+                    curve = new Float32Array(n_samples),
+                    deg = Math.PI / 180, i = 0, x;
+                for ( ; i < n_samples; ++i ) {
+                    x = i * 2 / n_samples - 1;
+                    curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
+                }
+                return curve;
+            }
+
+            function setupAudio() {
+                if(!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    source = audioCtx.createMediaElementSource(audio);
+                    analyzer = audioCtx.createAnalyser();
+                    
+                    // EQ Nodes
+                    lowFilter = audioCtx.createBiquadFilter(); lowFilter.type = 'lowshelf'; lowFilter.frequency.value = 320;
+                    midFilter = audioCtx.createBiquadFilter(); midFilter.type = 'peaking'; midFilter.frequency.value = 1000;
+                    highFilter = audioCtx.createBiquadFilter(); highFilter.type = 'highshelf'; highFilter.frequency.value = 3200;
+
+                    // FX Nodes
+                    distortNode = audioCtx.createWaveShaper();
+                    distortNode.oversample = '4x';
+                    
+                    delayNode = audioCtx.createDelay();
+                    delayNode.delayTime.value = 0.3; 
+                    feedbackGain = audioCtx.createGain();
+                    feedbackGain.gain.value = 0; // Echo intensity
+
+                    panNode = audioCtx.createStereoPanner();
+
+                    // Routing: Source -> EQ -> Distortion -> Pan -> Analyzer -> Destination
+                    // Echo Loop: Distortion -> Delay -> FeedbackGain -> Delay (Loop)
+                    source.connect(lowFilter);
+                    lowFilter.connect(midFilter);
+                    midFilter.connect(highFilter);
+                    highFilter.connect(distortNode);
+                    
+                    // Echo Path
+                    distortNode.connect(delayNode);
+                    delayNode.connect(feedbackGain);
+                    feedbackGain.connect(delayNode);
+                    feedbackGain.connect(panNode); // Echo output
+                    
+                    distortNode.connect(panNode); // Direct sound output
+                    panNode.connect(analyzer);
+                    analyzer.connect(audioCtx.destination);
+                    
+                    visualize();
+                }
+            }
+
+            playPauseBtn.onclick = () => {
+                if(audioCtx?.state === 'suspended') audioCtx.resume();
+                audio.paused ? audio.play() : audio.pause();
+            };
+
+            function visualize() {
+                analyzer.fftSize = 128;
+                const bufferLength = analyzer.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+
+                function draw() {
+                    requestAnimationFrame(draw);
+                    analyzer.getByteFrequencyData(dataArray);
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    let barWidth = (canvas.width / bufferLength) * 2;
+                    let x = 0;
+                    for(let i = 0; i < bufferLength; i++) {
+                        let barHeight = dataArray[i] / 2;
+                        ctx.fillStyle = `rgb(0, ${dataArray[i]+100}, 200)`;
+                        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                        x += barWidth + 1;
+                    }
+                }
+                draw();
+            }
+
+            // Listeners
+            document.getElementById('low-gain').oninput = (e) => lowFilter.gain.value = e.target.value;
+            document.getElementById('mid-gain').oninput = (e) => midFilter.gain.value = e.target.value;
+            document.getElementById('high-gain').oninput = (e) => highFilter.gain.value = e.target.value;
+            
+            document.getElementById('dist-gain').oninput = (e) => {
+                distortNode.curve = e.target.value > 0 ? makeDistortionCurve(parseInt(e.target.value)) : null;
+            };
+            document.getElementById('echo-gain').oninput = (e) => feedbackGain.gain.value = e.target.value;
+            document.getElementById('pan-val').oninput = (e) => panNode.pan.value = e.target.value;
+
+        </script>
+    </body>
+    </html>
     """
-    components.html(player_html, height=300)
+    
+    components.html(player_html, height=550, scrolling=False)
+
 
 def room_camera(loc):
     st.subheader("📷 AGENT SCANNER")
