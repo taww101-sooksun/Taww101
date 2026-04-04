@@ -418,12 +418,126 @@ def room_music():
     for i, f_name in enumerate(music_files):
         is_playing = (i == st.session_state.song_index)
         label = f"▶️ {f_name}" if is_playing else f"🎵 {f_name}"
-        
-        # แก้ไขจุดนี้: ใช้ key="list_btn_{i}" เพื่อไม่ให้ซ้ำกับปุ่มอื่นแน่นอน
-        if st.button(label, key=f"list_btn_{i}", use_container_width=True):
-            st.session_state.song_index = i
-            st.rerun()
-        
+def room_music():
+    st.subheader("🎧 SYNAPSE PRO AUDIO ENGINE - อยู่นิ่งๆไม่เจ็บตัว")
+    
+    # ดึงรายชื่อเพลงในเครื่องมาโชว์เป็นแนวทาง
+    music_files = sorted([f for f in os.listdir('.') if f.endswith((".mp3", ".wav"))])
+    
+    if music_files:
+        with st.expander("📂 รายชื่อเพลงใน Server (Local Files)"):
+            for f in music_files:
+                st.write(f"🎵 {f}")
+    
+    # --- นำโค้ด HTML/JS ที่คุณส่งมา "รวมร่าง" เข้าไปตรงนี้ ---
+    player_html = """
+    <!DOCTYPE html>
+    <html lang="th">
+    <head>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            body { background-color: transparent; color: white; font-family: sans-serif; }
+            .player-card { background: rgba(22, 27, 34, 0.95); border: 2px solid #00ffc8; box-shadow: 0 0 20px #00ffc844; }
+            #visualizer-canvas { background: #000; border-radius: 8px; height: 100px; width: 100%; border: 1px solid #333; }
+            input[type="range"] { accent-color: #00ffc8; }
+        </style>
+    </head>
+    <body>
+        <div class="player-card p-4 rounded-2xl w-full">
+            <h2 class="text-center text-[#00ffc8] font-bold mb-2">PRO VISUALIZER MODE</h2>
+            
+            <input type="file" id="file-input" multiple accept="audio/*" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-[#00ffc8] file:text-black hover:file:bg-cyan-400 mb-4">
+
+            <canvas id="visualizer-canvas" class="mb-4"></canvas>
+
+            <div class="text-center mb-4">
+                <p id="song-title" class="text-sm font-semibold truncate">ยังไม่ได้โหลดเพลง...</p>
+                <div class="flex justify-center gap-4 mt-2">
+                    <button id="play-pause-btn" class="bg-[#00ffc8] text-black px-6 py-2 rounded-full font-bold">PLAY / PAUSE</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 text-[10px] text-center">
+                <div><label>BASS</label><input type="range" id="low-gain" min="-15" max="15" value="0" class="w-full"></div>
+                <div><label>MID</label><input type="range" id="mid-gain" min="-15" max="15" value="0" class="w-full"></div>
+                <div><label>TREBLE</label><input type="range" id="high-gain" min="-15" max="15" value="0" class="w-full"></div>
+            </div>
+            <audio id="audio-element" class="hidden"></audio>
+        </div>
+
+        <script>
+            const audio = document.getElementById('audio-element');
+            const fileInput = document.getElementById('file-input');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const canvas = document.getElementById('visualizer-canvas');
+            const ctx = canvas.getContext('2d');
+            let audioCtx, source, analyzer, lowFilter, midFilter, highFilter;
+
+            fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if(file) {
+                    audio.src = URL.createObjectURL(file);
+                    document.getElementById('song-title').innerText = file.name;
+                    setupAudio();
+                }
+            };
+
+            function setupAudio() {
+                if(!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    source = audioCtx.createMediaElementSource(audio);
+                    analyzer = audioCtx.createAnalyser();
+                    
+                    lowFilter = audioCtx.createBiquadFilter(); lowFilter.type = 'lowshelf'; lowFilter.frequency.value = 320;
+                    midFilter = audioCtx.createBiquadFilter(); midFilter.type = 'peaking'; midFilter.frequency.value = 1000;
+                    highFilter = audioCtx.createBiquadFilter(); highFilter.type = 'highshelf'; highFilter.frequency.value = 3200;
+
+                    source.connect(lowFilter); lowFilter.connect(midFilter); midFilter.connect(highFilter);
+                    highFilter.connect(analyzer); analyzer.connect(audioCtx.destination);
+                    
+                    visualize();
+                }
+            }
+
+            playPauseBtn.onclick = () => {
+                if(audioCtx?.state === 'suspended') audioCtx.resume();
+                audio.paused ? audio.play() : audio.pause();
+            };
+
+            // ระบบ Visualizer
+            function visualize() {
+                analyzer.fftSize = 64;
+                const bufferLength = analyzer.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+
+                function draw() {
+                    requestAnimationFrame(draw);
+                    analyzer.getByteFrequencyData(dataArray);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    let barWidth = (canvas.width / bufferLength) * 2.5;
+                    let x = 0;
+                    for(let i = 0; i < bufferLength; i++) {
+                        let barHeight = dataArray[i] / 2;
+                        ctx.fillStyle = `rgb(0, 255, 200)`;
+                        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                        x += barWidth + 1;
+                    }
+                }
+                draw();
+            }
+
+            // เชื่อมปุ่ม EQ
+            document.getElementById('low-gain').oninput = (e) => lowFilter.gain.value = e.target.value;
+            document.getElementById('mid-gain').oninput = (e) => midFilter.gain.value = e.target.value;
+            document.getElementById('high-gain').oninput = (e) => highFilter.gain.value = e.target.value;
+        </script>
+    </body>
+    </html>
+    """
+    
+    # ฝังคอมโพเนนต์ HTML ลงใน Streamlit
+    components.html(player_html, height=500, scrolling=False)
+
 def room_secure_chat():
     st.subheader("💬 SECURE CHAT📝อยู่นิ่งๆไม่เจ็บตัว")
     users = db.reference('users').get()
