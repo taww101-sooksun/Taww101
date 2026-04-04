@@ -135,20 +135,31 @@ def room_radar(loc):
     m = folium.Map(location=[my_lat, my_lon], zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google')
     folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star')).add_to(m)
     st_folium(m, width="100%", height=400)
-
-def room_music():
+ def room_music():
     st.subheader("🎧 SYNAPSE HYBRID AUDIO - อยู่นิ่งๆไม่เจ็บตัว")
-    music_dir = "music"
-    if not os.path.exists(music_dir):
-        os.makedirs(music_dir)
     
-    local_files = [f for f in os.listdir(music_dir) if f.endswith((".mp3", ".wav"))]
+    # 1. กำหนด Path ให้ชัดเจน (ใช้ Relative Path)
+    music_dir = os.path.join(os.getcwd(), "music")
+    
+    # 2. เช็คและสร้างโฟลเดอร์ (ถ้าไม่มี)
+    if not os.path.exists(music_dir):
+        try:
+            os.makedirs(music_dir)
+        except Exception as e:
+            st.error(f"ไม่สามารถสร้างโฟลเดอร์เพลงได้: {e}")
+            return # หยุดทำงานถ้าสร้างไม่ได้ จะได้ไม่เจ็บตัว (Error) ต่อ
+
+    # 3. ดึงรายชื่อไฟล์ (ดักจับ Error กรณีโฟลเดอร์ยังว่างหรือเข้าถึงไม่ได้)
+    try:
+        local_files = [f for f in os.listdir(music_dir) if f.endswith((".mp3", ".wav"))]
+    except Exception:
+        local_files = [] # ถ้าพลาดให้เป็นรายการว่างไว้ก่อน แอปจะได้ไม่ล่ม
+    
     local_files_json = json.dumps(local_files)
 
-    hybrid_html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
+    # ... (ส่วน HTML ด้านล่างใช้ตัวเดิมได้เลย) ...
+
+
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
             body {{ background: transparent; color: white; }}
