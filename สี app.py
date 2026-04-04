@@ -31,6 +31,7 @@ def apply_custom_background():
         """,
         unsafe_allow_html=True
     )
+        }}
 
         /* ตัวอักษรในเมนู */
         .stTabs [data-baseweb="tab"] {{
