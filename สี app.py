@@ -75,7 +75,7 @@ def apply_custom_background():
         div.stButton > button {{
             background-color: rgba(0, 0, 0, 0.8) !important;
             color: white !important;
-            border: 2px solid {st.session_state.theme_color} !important;
+            border: 4px solid {st.session_state.theme_color} !important;
             border-radius: 15px !important;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
             filter: drop-shadow(0 0 5px {st.session_state.theme_color});
@@ -89,7 +89,7 @@ def apply_custom_background():
 # ==========================================
 # 0. CONFIG & INITIALIZATION
 # ==========================================
-st.set_page_config(page_title="SYNAPSE OS", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="SYNAPSE OS อยู่นิ้งๆไม่้จ็บตัว", layout="wide", initial_sidebar_state="collapsed")
 
 def haversine(lat1, lon1, lat2, lon2):
     lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
@@ -246,7 +246,7 @@ def room_radar(loc):
         st.toast("ส่งพิกัดสำเร็จ! เพื่อนๆ จะเห็นคุณบนเรดาร์")
 # --- แก้บรรทัดนี้ ---
 def room_camera(loc): 
-    st.subheader("📷 AGENT SCANNER - ระบบบันทึกภาพสนาม")
+    st.subheader("📷 AGENT SCANNER - อยู่นื้งๆไม่เจ็บตัว🎬")
     
     # ดึงค่าพิกัดมาเตรียมไว้ (กันเหนียวถ้า loc เป็น None)
     lat = loc['coords'].get('latitude', 0) if loc else 0
