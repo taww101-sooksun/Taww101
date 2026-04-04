@@ -83,9 +83,13 @@ def get_local_time(lat, lon):
     except: pass
     return datetime.now(pytz.timezone('Asia/Bangkok'))
 
+    local_files_json = json.dumps(local_files)
+
+    # ... (ส่วน HTML ด้านล่างใช้ตัวเดิมได้เลย) ...
 # ==========================================
 # 2. ROOM MODULES
 # ==========================================
+
 def room_login():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
@@ -135,31 +139,20 @@ def room_radar(loc):
     m = folium.Map(location=[my_lat, my_lon], zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google')
     folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star')).add_to(m)
     st_folium(m, width="100%", height=400)
- def room_music():
-    st.subheader("🎧 SYNAPSE HYBRID AUDIO - อยู่นิ่งๆไม่เจ็บตัว")
-    
-    # 1. กำหนด Path ให้ชัดเจน (ใช้ Relative Path)
-    music_dir = os.path.join(os.getcwd(), "music")
-    
-    # 2. เช็คและสร้างโฟลเดอร์ (ถ้าไม่มี)
-    if not os.path.exists(music_dir):
-        try:
-            os.makedirs(music_dir)
-        except Exception as e:
-            st.error(f"ไม่สามารถสร้างโฟลเดอร์เพลงได้: {e}")
-            return # หยุดทำงานถ้าสร้างไม่ได้ จะได้ไม่เจ็บตัว (Error) ต่อ
 
-    # 3. ดึงรายชื่อไฟล์ (ดักจับ Error กรณีโฟลเดอร์ยังว่างหรือเข้าถึงไม่ได้)
-    try:
-        local_files = [f for f in os.listdir(music_dir) if f.endswith((".mp3", ".wav"))]
-    except Exception:
-        local_files = [] # ถ้าพลาดให้เป็นรายการว่างไว้ก่อน แอปจะได้ไม่ล่ม
+def room_music():
+    st.subheader("🎧 SYNAPSE HYBRID AUDIO - อยู่นิ่งๆไม่เจ็บตัว")
+    music_dir = "music"
+    if not os.path.exists(music_dir):
+        os.makedirs(music_dir)
     
+    local_files = [f for f in os.listdir(music_dir) if f.endswith((".mp3", ".wav"))]
     local_files_json = json.dumps(local_files)
 
-    # ... (ส่วน HTML ด้านล่างใช้ตัวเดิมได้เลย) ...
-
-
+    hybrid_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
             body {{ background: transparent; color: white; }}
@@ -249,7 +242,7 @@ def room_radar(loc):
                 if(audio.paused) {{ audio.play(); }} else {{ audio.pause(); }}
             }}
             function nextTrack() {{ if(currentIndex < tracks.length-1) loadTrack(currentIndex+1); }}
-            function prevTrack() {{ if(currentIndex > 0) loadTrack(currentIndex-1); }}
+            function prevTrack() {{ if(currentIndex > 0) loadTrack(currentIndex - 1); }}
         </script>
     </body>
     </html>
@@ -258,11 +251,8 @@ def room_radar(loc):
 
 def room_dj_crossfade():
     st.subheader("🎚️ DJ CROSSFADE SYSTEM")
-    # (ใส่โค้ด DJ ของเพื่อนตรงนี้ โดยให้ย่อหน้าเข้ามา 4 ช่องเสมอ)
-    st.info("ระบบ DJ พร้อมใช้งาน")
-# ==========================================
-# 3. MAIN SYSTEM
-# ==========================================
+    st.info("โมดูลดีเจกำลังทำงาน...")
+
 def main():
     init_system()
     apply_custom_background()
@@ -280,3 +270,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+        
+            
