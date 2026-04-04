@@ -285,7 +285,7 @@ def room_camera():
         for agent_id, photos in gallery.items():
             for p_id, p_data in list(photos.items())[-1:]: # ดึงรูปปัจจุบันรูปเดียวของแต่ละคนมาโชว์
                 st.write(f"👤 จาก AGENT: {agent_id}")
-                st.image(base64.b64decode(p_data['img']), width=300)
+                st.image(base64.b64decode(p_data['img']), width=500)
 
 
 def room_call():
