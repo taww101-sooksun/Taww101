@@ -15,12 +15,6 @@ from datetime import datetime
 
 # --- จุดสำคัญ: ต้อง Import แบบนี้เท่านั้น ---
 from streamlit_js_eval import get_geolocation 
-def apply_custom_background():
-    # 1. เช็กค่าสีใน session_state (ถ้าไม่มีให้ใช้สีดำสนิทไว้ก่อน)
-    if 'bg_color' not in st.session_state:
-        st.session_state.bg_color = "#000000"
-
-    # 2. ใช้ f-string ครอบ CSS ทั้งหมด (ระวังเครื่องหมายคำพูด 3 คู่)
     st.markdown(
         f"""
         <style>
@@ -28,13 +22,24 @@ def apply_custom_background():
             background-color: {st.session_state.bg_color}44 !important;
             color: white !important;
         }}
-        
-        /* ใส่ CSS เพิ่มเติมตรงนี้ได้ แต่อยู่ภายในเครื่องหมายคำพูด */
+
         section[data-testid="stSidebar"] {{
             background-color: rgba(0,0,0,0.5);
         }}
+
+        /* ปรับแต่งปุ่มแท็บเมนู */
+        .stTabs [data-baseweb="tab"] {{
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 12px !important;
+            padding: 8px 16px !important;
+            height: 50px !important;
+            color: #BBBBBB !important;
+            font-weight: bold !important;
+            transition: all 0.3s;
+            border: 4px solid transparent !important;
+        }}
         </style>
-        """, 
+        """,
         unsafe_allow_html=True
     )
 
