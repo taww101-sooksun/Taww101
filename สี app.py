@@ -15,6 +15,13 @@ from datetime import datetime
 
 # --- จุดสำคัญ: ต้อง Import แบบนี้เท่านั้น ---
 from streamlit_js_eval import get_geolocation 
+def apply_custom_background():
+    # ตรวจสอบว่ามีตัวแปรสีหรือยัง ถ้าไม่มีให้ตั้งค่าเริ่มต้น
+    if 'theme_color' not in st.session_state:
+        st.session_state.theme_color = "#1408BF"
+    if 'bg_color' not in st.session_state:
+        st.session_state.bg_color = "#000000"
+
     st.markdown(
         f"""
         <style>
@@ -29,20 +36,46 @@ from streamlit_js_eval import get_geolocation
 
         /* ปรับแต่งปุ่มแท็บเมนู */
         .stTabs [data-baseweb="tab"] {{
-            background-color: rgba(255, 255, 255, 0.05);
+            background-color: rgba(255, 255, 255, 0.05) !important;
             border-radius: 12px !important;
             padding: 8px 16px !important;
             height: 50px !important;
             color: #BBBBBB !important;
             font-weight: bold !important;
-            transition: all 0.3s;
+            transition: all 0.3s ease !important;
             border: 4px solid transparent !important;
+        }}
+
+        /* เมนูห้องตอนที่ถูกเลือก (Selected Tab) */
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+            color: #FFFFFF !important;
+            background-color: {st.session_state.theme_color}44 !important;
+            border: 4px solid {st.session_state.theme_color} !important;
+            box-shadow: 0 0 15px {st.session_state.theme_color} !important;
+            transform: scale(1.05);
+        }}
+
+        /* เส้นใต้เมนูที่เลือก */
+        .stTabs [data-baseweb="tab-highlight"] {{
+            background-color: #FFFFFF !important;
+            height: 4px !important;
+            box-shadow: 0 0 10px #FFFFFF !important;
+        }}
+
+        /* ปรับแต่งปุ่มทั่วไป */
+        div.stButton > button {{
+            background-color: rgba(0, 0, 0, 0.8) !important;
+            color: white !important;
+            border: 4px solid {st.session_state.theme_color} !important;
+            border-radius: 15px !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+            filter: drop-shadow(0 0 5px {st.session_state.theme_color});
         }}
         </style>
         """,
         unsafe_allow_html=True
     )
-
+    
         /* ตัวอักษรในเมนู */
         .stTabs [data-baseweb="tab"] {{
             background-color: rgba(255, 255, 255, 0.05) !important;
