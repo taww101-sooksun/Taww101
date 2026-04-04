@@ -469,19 +469,21 @@ def main():
             st.rerun()
 
         # --- ส่วนของ Tabs ในฟังก์ชัน main ---
-tabs = st.tabs(["🏠 CORE", "🛰️ RADาร", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS", "📷 SCANNER"])
+    # บรรทัด 472 (ย่อหน้าปกติ)
+    tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS", "📷 SCANNER"])
     
-    with tabs[0]: 
-        room_core(loc)
-    with tabs[1]: 
+    # บรรทัด 474 (แก้ให้ตรงกับคำว่า tabs ข้างบน)
+    with tabs[0]:
+        room_core(loc) # บรรทัดนี้ต้องย่อหน้าเข้าไป 1 ระดับจาก with
+    with tabs[1]:
         room_radar(loc)
-    with tabs[2]: 
+    with tabs[2]:
         room_secure_chat()
-    with tabs[3]: 
+    with tabs[3]:
         room_call()
-    with tabs[4]: 
+    with tabs[4]:
         room_music()
-    with tabs[5]: 
+    with tabs[5]:
         st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
-    with tabs[6]:  # <--- ตรวจสอบให้แน่ใจว่า 'with' ตรงกับบรรทัดบน และ 'room_camera' ย่อหน้าเข้าไป
-        room_camera() 
+    with tabs[6]:
+        room_camera()
