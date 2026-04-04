@@ -244,6 +244,48 @@ def room_radar(loc):
             'ts': time.time()
         })
         st.toast("ส่งพิกัดสำเร็จ! เพื่อนๆ จะเห็นคุณบนเรดาร์")
+def room_camera():
+    st.subheader("📷 AGENT SCANNER - ระบบบันทึกภาพสนาม")
+    
+    # ใช้ camera_input ซึ่งเป็น Widget มาตรฐานของ Streamlit ที่ใช้งานได้จริงทั้งคอมและมือถือ
+    img_file = st.camera_input("TAKE A SNAPSHOT")
+
+    if img_file:
+        # แสดงรูปที่ถ่ายได้
+        st.image(img_file, caption="PREVIEW", use_container_width=True)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("📤 UPLOAD TO CLOUD", use_container_width=True):
+                try:
+                    # แปลงไฟล์ภาพเป็น Base64 เพื่อเก็บใน Realtime Database (ตามโครงสร้างเดิมของคุณ)
+                    bytes_data = img_file.getvalue()
+                    base64_image = base64.b64encode(bytes_data).decode()
+                    
+                    # ส่งข้อมูลเข้า Firebase
+                    db.reference(f'gallery/{st.session_state.user}').push({
+                        'u': st.session_state.user,
+                        'img': base64_image,
+                        'ts': time.time(),
+                        'type': 'image/jpeg'
+                    })
+                    st.success("บันทึกภาพลงฐานข้อมูล SYNAPSE สำเร็จ!")
+                except Exception as e:
+                    st.error(f"การอัปโหลดขัดข้อง: {e}")
+        
+        with col2:
+            st.download_button("💾 SAVE TO DEVICE", data=img_file, file_name=f"SYNAPSE_{int(time.time())}.jpg", mime="image/jpeg", use_container_width=True)
+
+    # แสดงคลังภาพล่าสุดจาก AGENT คนอื่นๆ
+    st.write("---")
+    st.caption("🖼️ RECENT FIELD PHOTOS (GALLERY)")
+    gallery = db.reference('gallery').get()
+    if gallery:
+        # รวมภาพจากทุก Agent มาแสดง
+        for agent_id, photos in gallery.items():
+            for p_id, p_data in list(photos.items())[-1:]: # ดึงรูปปัจจุบันรูปเดียวของแต่ละคนมาโชว์
+                st.write(f"👤 จาก AGENT: {agent_id}")
+                st.image(base64.b64decode(p_data['img']), width=300)
 
 
 def room_call():
@@ -426,7 +468,7 @@ def main():
             st.session_state.logged_in = False
             st.rerun()
 
-    tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
+    tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📷 SCANNER","📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
     
     with tabs[0]: room_core(loc)
     with tabs[1]: room_radar(loc)
@@ -434,6 +476,7 @@ def main():
     with tabs[3]: room_call()
     with tabs[4]: room_music()
     with tabs[5]: 
+    with tabs[6]: room_camera()  
         st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
 
 if __name__ == "__main__":
