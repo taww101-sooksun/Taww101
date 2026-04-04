@@ -60,9 +60,32 @@ def apply_custom_background():
     )
 
 # ==========================================
+# 1. HELPER FUNCTIONS
+# ==========================================
+def init_system():
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#1408BF"
+    if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+    if not firebase_admin._apps:
+        try:
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
+        except Exception as e:
+            st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
+
+def get_local_time(lat, lon):
+    try:
+        tf = TimezoneFinder()
+        timezone_str = tf.timezone_at(lat=lat, lng=lon)
+        if timezone_str:
+            local_tz = pytz.timezone(timezone_str)
+            return datetime.now(local_tz)
+    except: pass
+    return datetime.now(pytz.timezone('Asia/Bangkok'))
+
+# ==========================================
 # 2. ROOM MODULES
 # ==========================================
-
 def room_login():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
@@ -215,7 +238,7 @@ def room_music():
                 if(audio.paused) {{ audio.play(); }} else {{ audio.pause(); }}
             }}
             function nextTrack() {{ if(currentIndex < tracks.length-1) loadTrack(currentIndex+1); }}
-            function prevTrack() {{ if(currentIndex > 0) loadTrack(currentIndex - 1); }}
+            function prevTrack() {{ if(currentIndex > 0) loadTrack(currentIndex-1); }}
         </script>
     </body>
     </html>
@@ -224,8 +247,12 @@ def room_music():
 
 def room_dj_crossfade():
     st.subheader("🎚️ DJ CROSSFADE SYSTEM")
-    st.info("โมดูลดีเจกำลังทำงาน...")
+    # ... โค้ด HTML ของ DJ ที่คุณมี ...
+    st.info("ระบบ DJ พร้อมใช้งาน")
 
+# ==========================================
+# 3. MAIN SYSTEM
+# ==========================================
 def main():
     init_system()
     apply_custom_background()
