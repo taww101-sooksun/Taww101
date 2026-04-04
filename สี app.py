@@ -23,7 +23,7 @@ def apply_custom_background():
         .stApp {{
             background: linear-gradient(270deg, #AFEEEE, #FF7F50, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
             background-size: 1600% 1600%;
-            animation: RainbowFlow 60s ease infinite;
+            animation: RainbowFlow 30s ease infinite;
         }}
 
         @keyframes RainbowFlow {{
@@ -52,14 +52,14 @@ def apply_custom_background():
             color: #BBBBBB !important; /* สีเทาอ่อนตอนยังไม่เลือก */
             font-weight: bold !important;
             transition: all 0.3s ease !important;
-            border: 1px solid transparent !important;
+            border: 4px solid transparent !important;
         }}
 
         /* เมนูห้องตอนที่ถูกเลือก (Selected Tab) */
         .stTabs [data-baseweb="tab"][aria-selected="true"] {{
             color: #FFFFFF !important; /* ตัวหนังสือขาวชัดเจน */
             background-color: {st.session_state.theme_color}44 !important;
-            border: 1px solid {st.session_state.theme_color} !important;
+            border: 4px solid {st.session_state.theme_color} !important;
             box-shadow: 0 0 15px {st.session_state.theme_color} !important; /* ไฟนีออนรอบเมนูที่เลือก */
             transform: scale(1.05); /* นูนออกมานิดนึง */
         }}
@@ -67,7 +67,7 @@ def apply_custom_background():
         /* เส้นใต้เมนูที่เลือก (ไฟวิ่งด้านล่าง) */
         .stTabs [data-baseweb="tab-highlight"] {{
             background-color: #FFFFFF !important;
-            height: 4px !important;
+            height: 10px !important;
             box-shadow: 0 0 10px #FFFFFF !important;
         }}
 
