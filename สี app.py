@@ -21,18 +21,49 @@ def apply_custom_background():
         st.session_state.theme_color = "#1408BF"
     if 'bg_color' not in st.session_state:
         st.session_state.bg_color = "#000000"
-
     st.markdown(
         f"""
         <style>
+        /* 1. พื้นหลังหลัก */
         .stApp {{
             background-color: {st.session_state.bg_color}44 !important;
             color: white !important;
         }}
 
-        section[data-testid="stSidebar"] {{
-            background-color: rgba(0,0,0,0.5);
+        /* 2. ปรับแต่งแท็บเมนู */
+        .stTabs [data-baseweb="tab"] {{
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border-radius: 12px !important;
+            padding: 8px 16px !important;
+            height: 50px !important;
+            color: #BBBBBB !important;
+            font-weight: bold !important;
+            transition: all 0.3s ease !important;
+            border: 4px solid transparent !important;
         }}
+
+        /* แท็บที่ถูกเลือก */
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+            color: #FFFFFF !important;
+            background-color: {st.session_state.theme_color}44 !important;
+            border: 4px solid {st.session_state.theme_color} !important;
+            box-shadow: 0 0 15px {st.session_state.theme_color} !important;
+        }}
+
+        /* 3. ปรับแต่งปุ่มทั่วไป */
+        div.stButton > button {{
+            background-color: rgba(0, 0, 0, 0.8) !important;
+            color: white !important;
+            border: 4px solid {st.session_state.theme_color} !important;
+            border-radius: 15px !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+            filter: drop-shadow(0 0 5px {st.session_state.theme_color});
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
 
         /* ปรับแต่งปุ่มแท็บเมนู */
         .stTabs [data-baseweb="tab"] {{
