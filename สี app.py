@@ -453,74 +453,6 @@ def room_secure_chat():
                         elif "video" in c['ft']: st.video(dec)
                     except: pass
 
-# ==========================================
-# 3. MAIN (ปรับปรุงตำแหน่งโลโก้และลำดับการรัน)
-# ==========================================
-def main():
-    init_system()
-    apply_custom_background()
-    
-    # ดึงพิกัด (ต้องดึงก่อนเริ่มเงื่อนไขอื่นเพื่อให้ loc พร้อมใช้งาน)
-    loc = get_geolocation() 
-
-    # 1. ตรวจสอบการ Login
-    if not st.session_state.get('logged_in', False):
-        room_login()
-        return
-
-    # 2. ส่วนที่แสดงเมื่อ Login แล้ว (โชว์โลโก้ทุกห้อง)
-    st.markdown("<br>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 1, 1])
-    with c2:
-        if os.path.exists("logo1.jpg"):
-            st.image("logo1.jpg", use_container_width=True)
-        else:
-            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
-
-    # 3. Sidebar และเนื้อหาหลัก
-    with st.sidebar:
-        st.write(f"👤 AGENT: **{st.session_state.user}**")
-        st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
-    
-        # 1. ส่วนของปุ่ม Preset (2 อันใหม่ที่ขอมา)
-        col_p1, col_p2 = st.columns(2)
-    
-        st.write("---")
-        
-        # 2. ส่วนของ Color Picker เดิม (เผื่ออยากปรับละเอียด)
-        st.session_state.theme_color = st.color_picker("🎯 ปรับแต่งสีอิสระ", st.session_state.theme_color)
-        
-        st.caption("เลือกสีที่ต้องการเพื่อให้ระบบสะท้อนตัวตนของ AGENT")
-
-
-    # --- ส่วนของ Tabs ในฟังก์ชัน main ---
-    # บรรทัด 472 (ย่อหน้าปกติ)
-        # บรรทัด 464 เดิม (เป็นตัวอย่างระดับย่อหน้าที่ถูก)
-    with st.sidebar:
-        st.write(f"👤 AGENT: **{st.session_state.user}**")
-        # ... โค้ดอื่นๆ ...
-
-    # --- 1. ตรวจสอบบรรทัดนี้: ต้องมี 7 รายการใน List ---
-    tabs = st.tabs([
-        "🏠 CORE", 
-        "🛰️ RADAR", 
-        "💬 CHAT", 
-        "📞 CALL", 
-        "🎧 MUSIC", 
-        "⚙️ SETTINGS",  # นี่คือ index 5
-        "📷 SCANNER"    # นี่คือ index 6
-    ])
-
-    # --- 2. การเรียกใช้ (ตรวจสอบย่อหน้าให้ตรงกับตัวแปร tabs ข้างบน) ---
-    with tabs[0]:
-        room_core(loc)
-    with tabs[1]:
-        room_radar(loc)
-    with tabs[2]:
-        room_secure_chat()
-    with tabs[3]:
-        room_call()
-    with tabs[4]:
         room_music()
         
     # --- จุดที่ Error (บรรทัด 484 ของคุณ) ---
@@ -536,7 +468,82 @@ def main():
             st.rerun()
         st.session_state.theme_color = st.color_picker("ปรับแต่งสีอิสระ", st.session_state.theme_color)
         
+    
+# ==========================================
+# 3. MAIN SYSTEM
+# ==========================================
+def main():
+    init_system()
+    apply_custom_background()
+    
+    # ดึงพิกัด
+    loc = get_geolocation() 
+
+    # 1. ตรวจสอบการ Login
+    if not st.session_state.get('logged_in', False):
+        room_login()
+        return
+
+    # 2. ส่วนแสดงผล Sidebar
+    with st.sidebar:
+        st.write(f"👤 AGENT: **{st.session_state.user}**")
+        st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
+        st.write("---")
+        if st.button("🚪 LOGOUT", use_container_width=True):
+            st.session_state.logged_in = False
+            st.rerun()
+
+    # 3. โลโก้หน้าหลัก
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 1, 1])
+    with c2:
+        if os.path.exists("logo1.jpg"):
+            st.image("logo1.jpg", use_container_width=True)
+        else:
+            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
+
+    # 4. ระบบ Tabs (7 ห้อง)
+    tabs = st.tabs([
+        "🏠 CORE", 
+        "🛰️ RADAR", 
+        "💬 CHAT", 
+        "📞 CALL", 
+        "🎧 MUSIC", 
+        "⚙️ SETTINGS", 
+        "📷 SCANNER"
+    ])
+
+    with tabs[0]:
+        room_core(loc)
+    with tabs[1]:
+        room_radar(loc)
+    with tabs[2]:
+        room_secure_chat()
+    with tabs[3]:
+        room_call()
+    with tabs[4]:
+        room_music()
+        
+    with tabs[5]: 
+        st.subheader("🎨 SYSTEM THEME CUSTOMIZATION")
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            if st.button("🔴 STEALTH RED", use_container_width=True):
+                st.session_state.theme_color = "#FF0000"
+                st.rerun()
+        with col_p2:
+            if st.button("🟢 CYBER NEON", use_container_width=True):
+                st.session_state.theme_color = "#00FF41"
+                st.rerun()
+        
+        st.write("---")
+        st.session_state.theme_color = st.color_picker("🎯 ปรับแต่งสีอิสระ", st.session_state.theme_color)
+
     with tabs[6]:
-        room_camera(loc) # อย่าลืมใส่ (loc) ตามที่แก้คราวที่แล้วนะครับ
+        room_camera(loc)
+
+# --- บรรทัดสุดท้ายของไฟล์ ---
+if __name__ == "__main__":
+    main()
 
 
