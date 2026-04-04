@@ -153,21 +153,21 @@ def room_radar(loc):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
 
  def room_music():
-    st.subheader("🎧 SYNAPSE HYBRID AUDIO - อยู่นิ่งๆไม่เจ็บตัว")
+     st.subheader("🎧 SYNAPSE HYBRID AUDIO - อยู่นิ่งๆไม่เจ็บตัว")
     
-    # 1. ดึงรายชื่อเพลงจาก Folder ในเครื่อง (ถ้าไม่มีให้สร้าง)
-    music_dir = "music"
-    if not os.path.exists(music_dir):
+     # 1. ดึงรายชื่อเพลงจาก Folder ในเครื่อง (ถ้าไม่มีให้สร้าง)
+     music_dir = "music"
+     if not os.path.exists(music_dir):
         os.makedirs(music_dir)
     
-    local_files = [f for f in os.listdir(music_dir) if f.endswith((".mp3", ".wav"))]
-    local_files_json = json.dumps(local_files)
+     local_files = [f for f in os.listdir(music_dir) if f.endswith((".mp3", ".wav"))]
+     local_files_json = json.dumps(local_files)
 
-    # 2. HTML + JS + CSS (Hybrid Version)
-    hybrid_html = f"""
-    <!DOCTYPE html>
-    <html lang="th">
-    <head>
+     # 2. HTML + JS + CSS (Hybrid Version)
+     hybrid_html = f"""
+     <!DOCTYPE html>
+     <html lang="th">
+     <head>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
             body {{ font-family: 'Inter', sans-serif; background: transparent; color: white; }}
