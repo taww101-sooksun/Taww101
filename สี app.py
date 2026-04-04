@@ -919,11 +919,17 @@ def main():
     with tabs[1]: room_radar(loc)
     with tabs[2]: room_secure_chat()
     with tabs[3]: room_call()
-    with tabs[4]: 
-    with tabs[5]:room_music()
-        # โค้ดตั้งค่าสีเดิมของคุณ...
-    with tabs[6]: 
-        room_dj_crossfade() # <-- ใส่ต่อท้ายตรงนี้ (ห้ามเยื้องออกจากแนว with เดิม)
+        # --- ช่วงรัน Tabs ในฟังก์ชัน main() ---
+    with tabs[4]:
+        room_music()  # บรรทัดนี้ต้องเคาะ Tab เข้าไป 1 ครั้ง
+
+    with tabs[5]:
+        # ถ้ายังไม่มีโค้ดในนี้ ให้ใส่ pass ไว้ก่อนกัน Error
+        st.subheader("🎨 SYSTEM SETTINGS")
+        # หรือโค้ดเลือกสีของคุณ...
+
+    with tabs[6]:
+        room_dj_crossfade() # บรทัดนี้ต้องขยับเข้าไปให้ตรงกับ room_music()
+
     with tabs[7]:
         room_camera(loc)
-        
