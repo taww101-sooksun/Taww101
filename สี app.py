@@ -921,9 +921,6 @@ def main():
     with tabs[3]: room_call()
     with tabs[4]: 
     with tabs[5]: room_music()
-    with tabs[6]: room_dj_crossfade() 
-    with tabs[7]: room_dj_crossfade()    
-    w
-    room_dj_crossfade() # <-- ใส่ต่อท้ายตรงนี้ (ห้ามเยื้องออกจากแนว with เดิม)
-    with tabs[7]:
-        room_camera(loc)
+    with tabs[6]: room_dj_crossfade()
+    with tabs[6]: room_camera(loc)
+        
