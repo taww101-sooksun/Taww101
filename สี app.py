@@ -469,7 +469,7 @@ def main():
             st.rerun()
 
         # --- ส่วนของ Tabs ในฟังก์ชัน main ---
-    tabs = st.tabs(["🏠 CORE", "🛰️ RADาร", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS", "📷 SCANNER"])
+tabs = st.tabs(["🏠 CORE", "🛰️ RADาร", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS", "📷 SCANNER"])
     
     with tabs[0]: 
         room_core(loc)
