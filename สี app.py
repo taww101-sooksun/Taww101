@@ -357,7 +357,7 @@ def room_call():
 def room_dj_crossfade():
     st.subheader("🎚️ SYNAPSE CROSSFADE ENGINE - อยู่นิ่งๆไม่เจ็บตัว")
     
-    dj_html = """
+     dj_html = """
     <!DOCTYPE html>
     <html lang="th">
     <head>
@@ -368,7 +368,7 @@ def room_dj_crossfade():
                 background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
                 background-size: 1200% 1200%;
                 animation: RainbowFlow 15s ease infinite;
-                padding: 24px; border-radius: 20px; border: 4px solid #AFEEEE;
+                padding: 20px; border-radius: 20px; border: 4px solid #AFEEEE;
                 box-shadow: 0 0 25px rgba(175, 238, 238, 0.4);
             }
             @keyframes RainbowFlow {
@@ -377,102 +377,128 @@ def room_dj_crossfade():
             .btn-coral {
                 background-color: #FF7F50 !important; color: white !important; font-weight: bold;
                 border: 2px solid #AFEEEE !important; transition: 0.3s; width: 100%;
-                padding: 12px; border-radius: 10px; margin-bottom: 10px; cursor: pointer;
+                padding: 10px; border-radius: 10px; cursor: pointer;
             }
-            .btn-coral:hover { filter: brightness(1.2); box-shadow: 0 0 15px #FF7F50; }
-            .btn-coral:disabled { background-color: #555 !important; border-color: #333 !important; cursor: not-allowed; }
-            #status-box { background: rgba(0, 0, 0, 0.7); border-radius: 15px; padding: 15px; margin-top: 20px; border: 1px solid #AFEEEE; }
+            .progress-bg { background: rgba(0,0,0,0.5); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 5px; }
+            .progress-fill { background: #AFEEEE; height: 100%; width: 0%; transition: width 0.1s linear; }
+            .track-box { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; margin-bottom: 10px; border: 1px solid rgba(175,238,238,0.2); }
         </style>
     </head>
     <body>
         <div class="player-container">
-            <h2 class="text-2xl font-bold mb-4 text-white text-center">CROSSFADE SYSTEM</h2>
-            <div class="space-y-4 mb-6">
-                <input type="file" id="fileA" accept="audio/*" class="text-xs text-white" onchange="loadAudio(this.files[0], 'A')">
-                <input type="file" id="fileB" accept="audio/*" class="text-xs text-white" onchange="loadAudio(this.files[0], 'B')">
+            <h2 class="text-xl font-bold mb-4 text-white text-center">DJ MONITOR SYSTEM</h2>
+            
+            <div class="track-box">
+                <div class="flex justify-between text-xs mb-1">
+                    <span>TRACK A: <span id="nameA">No File</span></span>
+                    <span id="timeA">0:00 / 0:00</span>
+                </div>
+                <input type="file" id="fileA" accept="audio/*" class="text-[10px] mb-2" onchange="loadAudio(this.files[0], 'A')">
+                <div class="progress-bg"><div id="fillA" class="progress-fill"></div></div>
             </div>
-            <button id="start-btn" class="btn-coral" onclick="startPlayingA()" disabled>START TRACK A</button>
-            <button id="crossfade-btn" class="btn-coral" onclick="startCrossfade()" disabled>CROSSFADE TO B</button>
-            <button id="vocal-btn" class="btn-coral" onclick="toggleVocalRemoval()" disabled>VOCAL REMOVER</button>
-            <div id="status-box">
-                <p class="text-sm">STATUS: <span id="current-status" class="text-yellow-400">WAITING...</span></p>
-                <p class="text-sm">PLAYING: <span id="current-song" class="text-white">-</span></p>
+
+            <div class="track-box">
+                <div class="flex justify-between text-xs mb-1">
+                    <span>TRACK B: <span id="nameB">No File</span></span>
+                    <span id="timeB">0:00 / 0:00</span>
+                </div>
+                <input type="file" id="fileB" accept="audio/*" class="text-[10px] mb-2" onchange="loadAudio(this.files[0], 'B')">
+                <div class="progress-bg"><div id="fillB" class="progress-fill"></div></div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 mt-4">
+                <button id="start-btn" class="btn-coral" onclick="startPlayingA()" disabled>START PLAY</button>
+                <button id="crossfade-btn" class="btn-coral" onclick="startCrossfade()" disabled>CROSSFADE</button>
+            </div>
+            
+            <div class="mt-4 text-center text-xs bg-black/50 p-2 rounded-lg">
+                STATUS: <span id="current-status">WAITING FILES</span> | 
+                ACTIVE: <span id="current-song" class="text-[#FF7F50]">-</span>
             </div>
         </div>
+
         <script>
             let audioContext, songABuffer, songBBuffer, songASource, songBSource, songAGain, songBGain;
-            let isPlaying = false, currentPlaying = 'None', isVocalEffectActive = false;
+            let startTimeA, startTimeB, isPlaying = false, currentPlaying = 'None';
 
-            function initAudioContext() {
-                if (!audioContext) {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            function formatTime(seconds) {
+                const min = Math.floor(seconds / 60);
+                const sec = Math.floor(seconds % 60);
+                return min + ":" + (sec < 10 ? '0' : '') + sec;
+            }
+
+            function updateUI() {
+                if (!isPlaying || !audioContext) return;
+                
+                const now = audioContext.currentTime;
+                
+                if (songABuffer && songASource) {
+                    const elapsedA = (now - startTimeA) % songABuffer.duration;
+                    document.getElementById('fillA').style.width = (elapsedA / songABuffer.duration * 100) + "%";
+                    document.getElementById('timeA').textContent = formatTime(elapsedA) + " / " + formatTime(songABuffer.duration);
                 }
+                
+                if (songBBuffer && songBSource) {
+                    const elapsedB = (now - startTimeB) % songBBuffer.duration;
+                    document.getElementById('fillB').style.width = (elapsedB / songBBuffer.duration * 100) + "%";
+                    document.getElementById('timeB').textContent = formatTime(elapsedB) + " / " + formatTime(songBBuffer.duration);
+                }
+                requestAnimationFrame(updateUI);
             }
 
-            function updateStatus(status, song, colorClass = 'text-yellow-400') {
-                document.getElementById('current-status').textContent = status;
-                document.getElementById('current-song').textContent = song;
-                currentPlaying = song;
-                document.getElementById('start-btn').disabled = !(songABuffer && songBBuffer) || isPlaying;
-                document.getElementById('crossfade-btn').disabled = !isPlaying;
-                document.getElementById('vocal-btn').disabled = !isPlaying;
+            async function loadAudio(file, key) {
+                if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const buffer = await audioContext.decodeAudioData(await file.arrayBuffer());
+                if (key === 'A') { songABuffer = buffer; document.getElementById('nameA').textContent = file.name; }
+                else { songBBuffer = buffer; document.getElementById('nameB').textContent = file.name; }
+                if (songABuffer && songBBuffer) document.getElementById('start-btn').disabled = false;
             }
 
-            async function loadAudio(file, songKey) {
-                if (!file) return;
-                initAudioContext();
-                const arrayBuffer = await file.arrayBuffer();
-                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                if (songKey === 'A') songABuffer = audioBuffer; else songBBuffer = audioBuffer;
-                updateStatus('READY', currentPlaying, 'text-green-400');
-            }
-
-            function playSong(buffer, startGain) {
+            function playTrack(buffer, gainVal) {
                 const source = audioContext.createBufferSource();
                 source.buffer = buffer; source.loop = true;
-                const gainNode = audioContext.createGain();
-                gainNode.gain.setValueAtTime(startGain, audioContext.currentTime);
-                source.connect(gainNode); gainNode.connect(audioContext.destination);
-                source.start();
-                return { source, gain: gainNode };
+                const gain = audioContext.createGain();
+                gain.gain.setValueAtTime(gainVal, audioContext.currentTime);
+                source.connect(gain); gain.connect(audioContext.destination);
+                source.start(0);
+                return { source, gain };
             }
 
             function startPlayingA() {
-                initAudioContext();
-                if (songASource) songASource.stop(); if (songBSource) songBSource.stop();
-                const trackA = playSong(songABuffer, 1.0);
-                songASource = trackA.source; songAGain = trackA.gain;
-                const trackB = playSong(songBBuffer, 0.0);
-                songBSource = trackB.source; songBGain = trackB.gain;
-                isPlaying = true; updateStatus('PLAYING', 'A');
+                const now = audioContext.currentTime;
+                const trackA = playTrack(songABuffer, 1.0);
+                songASource = trackA.source; songAGain = trackA.gain; startTimeA = now;
+                const trackB = playTrack(songBBuffer, 0.0);
+                songBSource = trackB.source; songBGain = trackB.gain; startTimeB = now;
+                isPlaying = true; currentPlaying = 'A';
+                document.getElementById('current-song').textContent = 'A';
+                document.getElementById('crossfade-btn').disabled = false;
+                updateUI();
             }
 
             function startCrossfade() {
                 const duration = 5; const now = audioContext.currentTime;
                 if (currentPlaying === 'A') {
-                    songAGain.gain.linearRampToValueAtTime(1.0, now);
-                    songAGain.gain.linearRampToValueAtTime(0.0, now + duration);
-                    songBGain.gain.linearRampToValueAtTime(0.0, now);
-                    songBGain.gain.linearRampToValueAtTime(1.0, now + duration);
-                    setTimeout(() => updateStatus('PLAYING', 'B'), duration * 1000);
+                    songAGain.gain.linearRampToValueAtTime(1, now);
+                    songAGain.gain.linearRampToValueAtTime(0, now + duration);
+                    songBGain.gain.linearRampToValueAtTime(0, now);
+                    songBGain.gain.linearRampToValueAtTime(1, now + duration);
+                    currentPlaying = 'B';
                 } else {
-                    songBGain.gain.linearRampToValueAtTime(1.0, now);
-                    songBGain.gain.linearRampToValueAtTime(0.0, now + duration);
-                    songAGain.gain.linearRampToValueAtTime(0.0, now);
-                    songAGain.gain.linearRampToValueAtTime(1.0, now + duration);
-                    setTimeout(() => updateStatus('PLAYING', 'A'), duration * 1000);
+                    songBGain.gain.linearRampToValueAtTime(1, now);
+                    songBGain.gain.linearRampToValueAtTime(0, now + duration);
+                    songAGain.gain.linearRampToValueAtTime(0, now);
+                    songAGain.gain.linearRampToValueAtTime(1, now + duration);
+                    currentPlaying = 'A';
                 }
-            }
-
-            function toggleVocalRemoval() {
-                // Simplified Toggle for UI feedback
-                isVocalEffectActive = !isVocalEffectActive;
-                document.getElementById('vocal-btn').textContent = isVocalEffectActive ? "VOCAL OFF" : "VOCAL REMOVER";
+                document.getElementById('current-song').textContent = currentPlaying;
             }
         </script>
     </body>
     </html>
     """
+               
+    
     components.html(dj_html, height=650)
 
 # ==========================================
