@@ -510,9 +510,18 @@ def main():
         st.write(f"👤 AGENT: **{st.session_state.user}**")
         # ... โค้ดอื่นๆ ...
 
-    # --- ส่วนของ Tabs ในฟังก์ชัน main (เลื่อนขวาให้ตรงกับ with st.sidebar) ---
-    tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS", "📷 SCANNER"])
-    
+    # --- 1. ตรวจสอบบรรทัดนี้: ต้องมี 7 รายการใน List ---
+    tabs = st.tabs([
+        "🏠 CORE", 
+        "🛰️ RADAR", 
+        "💬 CHAT", 
+        "📞 CALL", 
+        "🎧 MUSIC", 
+        "⚙️ SETTINGS",  # นี่คือ index 5
+        "📷 SCANNER"    # นี่คือ index 6
+    ])
+
+    # --- 2. การเรียกใช้ (ตรวจสอบย่อหน้าให้ตรงกับตัวแปร tabs ข้างบน) ---
     with tabs[0]:
         room_core(loc)
     with tabs[1]:
@@ -523,11 +532,21 @@ def main():
         room_call()
     with tabs[4]:
         room_music()
-    with tabs[5]:
-        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
+        
+    # --- จุดที่ Error (บรรทัด 484 ของคุณ) ---
+    with tabs[5]: 
+        st.subheader("🎨 SYSTEM THEME")
+        # เพิ่มปุ่ม 2 สีที่ขอมาครับ
+        c1, c2 = st.columns(2)
+        if c1.button("🔴 STEALTH RED", use_container_width=True):
+            st.session_state.theme_color = "#FF0000"
+            st.rerun()
+        if c2.button("🟢 CYBER NEON", use_container_width=True):
+            st.session_state.theme_color = "#00FF41"
+            st.rerun()
+        st.session_state.theme_color = st.color_picker("ปรับแต่งสีอิสระ", st.session_state.theme_color)
+        
     with tabs[6]:
-        room_camera(loc)
+        room_camera(loc) # อย่าลืมใส่ (loc) ตามที่แก้คราวที่แล้วนะครับ
 
-if __name__ == "__main__":
-    main()
 
