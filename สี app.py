@@ -16,31 +16,22 @@ from datetime import datetime
 # --- จุดสำคัญ: ต้อง Import แบบนี้เท่านั้น ---
 from streamlit_js_eval import get_geolocation 
 def apply_custom_background():
+    # 1. เช็กก่อนว่ามีตัวแปรสีในระบบหรือยัง ถ้าไม่มีให้ตั้งค่าเริ่มต้นไว้ (กันเจ็บตัว!)
+    if 'bg_color' not in st.session_state:
+        st.session_state.bg_color = "#0e1117"  # ใส่สีพื้นฐานที่คุณชอบไว้ตรงนี้
+
+    # 2. แก้ไข f-string ให้ถูกต้อง (ใส่ชื่อตัวแปร และใช้ปีกกา 2 ชั้นสำหรับ CSS)
     st.markdown(
         f"""
         <style>
-        /* 1. พื้นหลังหลัก (เหมือนเดิม) */
         .stApp {{
-            background: linear-gradient(270deg, #AFEEEE, #FF7F50, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-            background-size: 1600% 1600%;
-            animation: RainbowFlow 30s ease infinite;
+            background-color: {st.session_state.bg_color}44 !important;
         }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-        @keyframes RainbowFlow {{
-            0%{{background-position:0% 50%}}
-            50%{{background-position:100% 50%}}
-            100%{{background-position:0% 50%}}
-        }}
-
-        /* 2. แก้ไขเมนูห้อง (Tabs) ให้มีไฟและนูน */
-        .stTabs [data-baseweb="tab-list"] {{
-            background-color: rgba(0, 0, 0, 0.7) !important; /* พื้นหลังแถบเมนูเข้มขึ้นเพื่อให้ไฟชัด */
-            border-radius: 20px !important;
-            padding: 10px !important;
-            gap: 10px !important;
-            border: 2px solid {st.session_state.theme_color} !important;
-            box-shadow: 0 0 15px {st.session_state.theme_color}88, inset 0 0 10px rgba(0,0,0,0.5) !important;
-            margin: 10px 0px !important;
         }}
 
         /* ตัวอักษรในเมนู */
