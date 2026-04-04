@@ -502,30 +502,22 @@ def main():
         else:
             st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
 
-    # 4. ระบบ Tabs (7 ห้อง)
-    tabs = st.tabs([
-        "🏠 CORE", 
-        "🛰️ RADAR", 
-        "💬 CHAT", 
-        "📞 CALL", 
-        "🎧 MUSIC", 
-        "⚙️ SETTINGS", 
-        "📷 SCANNER"
-    ])
+    # ส่วนนี้อยู่ในฟังก์ชัน main() นะครับ
+    tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS", "📷 SCANNER"])
 
     with tabs[0]:
         room_core(loc)
     with tabs[1]:
         room_radar(loc)
     with tabs[2]:
-        room_secure_chat()
+        room_secure_chat() # เรียกใช้แค่ชื่อฟังก์ชันพอครับ ไม่ต้องมี with tabs ข้างในฟังก์ชันนี้แล้ว
     with tabs[3]:
         room_call()
     with tabs[4]:
         room_music()
-        
-    with tabs[5]: 
-        st.subheader("🎨 SYSTEM THEME CUSTOMIZATION")
+    with tabs[5]:
+        # โค้ดปรับแต่งสี (Settings) อยู่ที่นี่ที่เดียวพอครับ
+        st.subheader("🎨 SYSTEM THEME")
         col_p1, col_p2 = st.columns(2)
         with col_p1:
             if st.button("🔴 STEALTH RED", use_container_width=True):
@@ -535,15 +527,9 @@ def main():
             if st.button("🟢 CYBER NEON", use_container_width=True):
                 st.session_state.theme_color = "#00FF41"
                 st.rerun()
-        
-        st.write("---")
         st.session_state.theme_color = st.color_picker("🎯 ปรับแต่งสีอิสระ", st.session_state.theme_color)
-
     with tabs[6]:
         room_camera(loc)
 
-# --- บรรทัดสุดท้ายของไฟล์ ---
-if __name__ == "__main__":
-    main()
 
 
