@@ -475,7 +475,7 @@ def main():
         st.write(f"👤 AGENT: **{st.session_state.user}**")
         # ... โค้ดอื่นๆ ...
 
-    # --- ส่วนที่ต้องแก้ (เลื่อนขวาให้ตรงกับ with st.sidebar) ---
+    # --- ส่วนของ Tabs ในฟังก์ชัน main (เลื่อนขวาให้ตรงกับ with st.sidebar) ---
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS", "📷 SCANNER"])
     
     with tabs[0]:
@@ -493,14 +493,6 @@ def main():
     with tabs[6]:
         room_camera()
 
-        room_radar(loc)
-    with tabs[2]:
-        room_secure_chat()
-    with tabs[3]:
-        room_call()
-    with tabs[4]:
-        room_music()
-    with tabs[5]:
-        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
-    with tabs[6]:
-        room_camera()
+if __name__ == "__main__":
+    main()
+
