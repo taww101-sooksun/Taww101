@@ -16,20 +16,25 @@ from datetime import datetime
 # --- จุดสำคัญ: ต้อง Import แบบนี้เท่านั้น ---
 from streamlit_js_eval import get_geolocation 
 def apply_custom_background():
-    # ป้องกัน Error ถ้ายังไม่ได้กำหนดค่าสี
+    # ตรวจสอบค่าสีเริ่มต้น
     if 'bg_color' not in st.session_state:
         st.session_state.bg_color = "#0e1117"
 
+    # ส่วนนี้คือ Python Code ต้องย่อหน้าให้ตรงกัน
     st.markdown(
         f"""
         <style>
-        .stApp {{  /* ใช้ปีกกา 2 ชั้นตรงนี้ */
-            background-color: {st.session_state.bg_color}44 !important; 
-        }}         /* และ 2 ชั้นตรงนี้ */
+        .stApp {{
+            background-color: {st.session_state.bg_color}44 !important;
+            
+            /* ตัวอักษรในเมนู (บรรทัดนี้ต้องอยู่ข้างในเครื่องหมายคำพูด) */
+            color: white; 
+        }}
         </style>
-        """,
+        """, 
         unsafe_allow_html=True
     )
+
 
         /* ตัวอักษรในเมนู */
         .stTabs [data-baseweb="tab"] {{
