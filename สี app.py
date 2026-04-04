@@ -352,36 +352,101 @@ def room_call():
     st.info("ระบบกำลังพัฒนาช่องทางการสื่อสาร")
 
 # ==========================================
-# 3. MAIN SYSTEM
+# 2. CORE MODULES (เพิ่มห้อง DJ CROSSFADE)
+# ==========================================
+
+def room_dj_crossfade():
+    st.subheader("🎚️ SYNAPSE CROSSFADE ENGINE - อยู่นิ่งๆไม่เจ็บตัว")
+    
+    # โค้ด HTML ที่รวมชุดสีรุ้งวิ่งและ UI ที่คุณต้องการ
+    dj_html = """
+    <!DOCTYPE html>
+    <html lang="th">
+    <head>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            body { font-family: 'Inter', sans-serif; background-color: transparent; color: #AFEEEE; }
+            
+            /* ตัวเครื่องเล่นแบบ Rainbow Flow */
+            .player-container {
+                background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
+                background-size: 1200% 1200%;
+                animation: RainbowFlow 15s ease infinite;
+                padding: 24px;
+                border-radius: 20px;
+                border: 4px solid #AFEEEE;
+                box-shadow: 0 0 25px rgba(175, 238, 238, 0.4);
+            }
+
+            @keyframes RainbowFlow {
+                0%{background-position:0% 50%}
+                50%{background-position:100% 50%}
+                100%{background-position:0% 50%}
+            }
+
+            /* ปุ่มสี Coral */
+            .btn-coral {
+                background-color: #FF7F50 !important;
+                color: white !important;
+                font-weight: bold;
+                border: 2px solid #AFEEEE !important;
+                transition: 0.3s;
+                width: 100%;
+                padding: 12px;
+                border-radius: 10px;
+                margin-bottom: 10px;
+            }
+            .btn-coral:hover { filter: brightness(1.2); box-shadow: 0 0 15px #FF7F50; }
+            .btn-coral:disabled { background-color: #555 !important; border-color: #333 !important; }
+
+            #lyrics-container { background: rgba(0, 0, 0, 0.7); border-radius: 15px; padding: 15px; margin-top: 20px; border: 1px solid #AFEEEE; }
+        </style>
+    </head>
+    <body>
+        <div class="player-container">
+            <h2 class="text-2xl font-bold mb-4 text-white text-center">CROSSFADE SYSTEM</h2>
+            
+            <div class="space-y-4 mb-6">
+                <input type="file" id="fileA" accept="audio/*" class="text-xs text-white mb-2" onchange="loadAudio(this.files[0], 'A')">
+                <input type="file" id="fileB" accept="audio/*" class="text-xs text-white" onchange="loadAudio(this.files[0], 'B')">
+            </div>
+
+            <button id="start-btn" class="btn-coral" onclick="startPlayingA()" disabled>START TRACK A</button>
+            <button id="crossfade-btn" class="btn-coral" onclick="startCrossfade()" disabled>CROSSFADE TO B</button>
+            <button id="vocal-btn" class="btn-coral" onclick="toggleVocalRemoval()" disabled>VOCAL REMOVER</button>
+
+            <div id="lyrics-container">
+                <p class="text-sm">STATUS: <span id="current-status" class="text-white">WAITING...</span></p>
+                <p class="text-sm">PLAYING: <span id="current-song" class="text-white">-</span></p>
+            </div>
+        </div>
+
+        <script>
+            // (ใส่ JavaScript ของคุณที่นี่ - เหมือนในไฟล์ HTML เดิมเป๊ะๆ)
+            // ... (โค้ด AudioContext, loadAudio, startCrossfade ที่คุณส่งมา) ...
+        </script>
+    </body>
+    </html>
+    """
+    components.html(dj_html, height=700)
+
+# ==========================================
+# 3. MAIN SYSTEM (ปรับการแสดงผล Tab)
 # ==========================================
 def main():
-    init_system()
-    apply_custom_background()
-    loc = get_geolocation() 
-
-    if not st.session_state.get('logged_in', False):
-        room_login()
-        return
-
-    with st.sidebar:
-        st.write(f"👤 AGENT: **{st.session_state.user}**")
-        if st.button("🚪 LOGOUT", use_container_width=True):
-            st.session_state.logged_in = False
-            st.rerun()
-
-    st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
+    # ... (โค้ด init_system, apply_custom_background เดิม) ...
     
-    tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS", "📷 SCANNER"])
-    
+    tabs = st.tabs([
+        "🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", 
+        "🎧 MUSIC", "⚙️ SETTINGS", "🎚️ DJ TOOLS", "📷 SCANNER"
+    ])
+
     with tabs[0]: room_core(loc)
     with tabs[1]: room_radar(loc)
     with tabs[2]: room_secure_chat()
     with tabs[3]: room_call()
-    with tabs[4]: room_music()
-    with tabs[5]:
-        st.subheader("🎨 SETTINGS")
-        st.color_picker("THEME COLOR", key="theme_color_picker")
-    with tabs[6]: room_camera(loc)
+    with tabs[4]: room_music() # เครื่องเล่นเดิม (FX Master)
+    with tabs[5]: room_settings()
+    with tabs[6]: room_dj_crossfade() # เครื่องเล่นรุ้งวิ่ง (ตัวใหม่)
+    with tabs[7]: room_camera(loc) # ย้าย Scanner มาไว้ท้ายสุด
 
-if __name__ == "__main__":
-    main()
