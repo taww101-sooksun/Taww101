@@ -424,11 +424,11 @@ def room_music():
             st.session_state.song_index = i
             st.rerun()
         
-
 def room_secure_chat():
-    st.subheader("💬 SECURE CHAT📝อยู่นิ้งๆไม่เจ็บตัว")
+    st.subheader("💬 SECURE CHAT📝อยู่นิ่งๆไม่เจ็บตัว")
     users = db.reference('users').get()
     friends = [u for u in users.keys() if u != st.session_state.user] if users else []
+    
     target = st.selectbox("🎯 เลือกผู้รับข้อความ:", friends)
     if target:
         rid = "_".join(sorted([st.session_state.user, target]))
@@ -437,7 +437,13 @@ def room_secure_chat():
             up = st.file_uploader("ส่งรูปภาพ/วิดีโอ", type=['jpg', 'png', 'mp4'])
             if st.form_submit_button("SEND MESSAGE"):
                 f_data, f_type = (base64.b64encode(up.read()).decode(), up.type) if up else (None, None)
-                db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'f': f_data, 'ft': f_type, 'ts': time.time()})
+                db.reference(f'private_rooms/{rid}').push({
+                    'u': st.session_state.user, 
+                    'm': msg, 
+                    'f': f_data, 
+                    'ft': f_type, 
+                    'ts': time.time()
+                })
                 st.rerun()
         
         chats = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(15).get()
@@ -452,22 +458,10 @@ def room_secure_chat():
                         if "image" in c['ft']: st.image(dec, width=250)
                         elif "video" in c['ft']: st.video(dec)
                     except: pass
+    
+    # ลบส่วน with tabs[5] และ room_music() ออกจากตรงนี้ 
+    # เพราะเราไปเรียกใช้ใน main() แยก Tab กันชัดเจนอยู่แล้วครับ
 
-        room_music()
-        
-    # --- จุดที่ Error (บรรทัด 484 ของคุณ) ---
-    with tabs[5]: 
-        st.subheader("🎨 SYSTEM THEME")
-        # เพิ่มปุ่ม 2 สีที่ขอมาครับ
-        c1, c2 = st.columns(2)
-        if c1.button("🔴 STEALTH RED", use_container_width=True):
-            st.session_state.theme_color = "#FF0000"
-            st.rerun()
-        if c2.button("🟢 CYBER NEON", use_container_width=True):
-            st.session_state.theme_color = "#00FF41"
-            st.rerun()
-        st.session_state.theme_color = st.color_picker("ปรับแต่งสีอิสระ", st.session_state.theme_color)
-        
 # ==========================================
 # 3. MAIN SYSTEM
 # ==========================================
@@ -475,15 +469,12 @@ def main():
     init_system()
     apply_custom_background()
     
-    # ดึงพิกัด
     loc = get_geolocation() 
 
-    # 1. ตรวจสอบการ Login
     if not st.session_state.get('logged_in', False):
         room_login()
         return
 
-    # 2. ส่วนแสดงผล Sidebar
     with st.sidebar:
         st.write(f"👤 AGENT: **{st.session_state.user}**")
         st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
@@ -492,16 +483,13 @@ def main():
             st.session_state.logged_in = False
             st.rerun()
 
-    # 3. โลโก้หน้าหลัก
     st.markdown("<br>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1, 1])
     with c2:
-        if os.path.exists("logo1.jpg"):
-            st.image("logo1.jpg", use_container_width=True)
-        else:
-            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
+        # เช็คไฟล์โลโก้
+        st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
 
-    # 4. ระบบ Tabs (7 ห้อง)
+    # ประกาศ Tabs ครั้งเดียวที่นี่
     tabs = st.tabs([
         "🏠 CORE", 
         "🛰️ RADAR", 
@@ -517,35 +505,32 @@ def main():
     with tabs[1]:
         room_radar(loc)
     with tabs[2]:
-        room_secure_chat()
+        room_secure_chat() # ฟังก์ชันนี้จะทำงานแค่ใน Tab ตัวเอง
     with tabs[3]:
         room_call()
     with tabs[4]:
         room_music()
-        
     with tabs[5]: 
         st.subheader("🎨 SYSTEM THEME CUSTOMIZATION")
         col_p1, col_p2 = st.columns(2)
         with col_p1:
-            if st.button("🔴 STEALTH RED", use_container_width=True):
+            if st.button("🔴 STEALTH RED", key="red_theme", use_container_width=True):
                 st.session_state.theme_color = "#FF0000"
                 st.rerun()
         with col_p2:
-            if st.button("🟢 CYBER NEON", use_container_width=True):
+            if st.button("🟢 CYBER NEON", key="green_theme", use_container_width=True):
                 st.session_state.theme_color = "#00FF41"
                 st.rerun()
         
         st.write("---")
-        st.session_state.theme_color = st.color_picker("🎯 ปรับแต่งสีอิสระ", st.session_state.theme_color)
+        new_color = st.color_picker("🎯 ปรับแต่งสีอิสระ", st.session_state.theme_color)
+        if new_color != st.session_state.theme_color:
+            st.session_state.theme_color = new_color
+            st.rerun()
 
     with tabs[6]:
         room_camera(loc)
 
-# --- บรรทัดสุดท้ายของไฟล์ ---
 if __name__ == "__main__":
     main()
-    
-
-        
-
 
