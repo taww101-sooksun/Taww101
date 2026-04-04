@@ -470,12 +470,29 @@ def main():
 
     # --- ส่วนของ Tabs ในฟังก์ชัน main ---
     # บรรทัด 472 (ย่อหน้าปกติ)
+        # บรรทัด 464 เดิม (เป็นตัวอย่างระดับย่อหน้าที่ถูก)
+    with st.sidebar:
+        st.write(f"👤 AGENT: **{st.session_state.user}**")
+        # ... โค้ดอื่นๆ ...
+
+    # --- ส่วนที่ต้องแก้ (เลื่อนขวาให้ตรงกับ with st.sidebar) ---
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS", "📷 SCANNER"])
     
-    # บรรทัด 474 (แก้ให้ตรงกับคำว่า tabs ข้างบน)
     with tabs[0]:
-        room_core(loc) # บรรทัดนี้ต้องย่อหน้าเข้าไป 1 ระดับจาก with
+        room_core(loc)
     with tabs[1]:
+        room_radar(loc)
+    with tabs[2]:
+        room_secure_chat()
+    with tabs[3]:
+        room_call()
+    with tabs[4]:
+        room_music()
+    with tabs[5]:
+        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
+    with tabs[6]:
+        room_camera()
+
         room_radar(loc)
     with tabs[2]:
         room_secure_chat()
