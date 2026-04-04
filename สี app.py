@@ -33,7 +33,7 @@ def apply_custom_background():
     )
         }}
 
-        /* ตัวอักษรในเมนู */
+        /* ตัวอักษรในเมนู 
         .stTabs [data-baseweb="tab"] {{
             background-color: rgba(255, 255, 255, 0.05) !important;
             border-radius: 12px !important;
