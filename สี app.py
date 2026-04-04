@@ -30,9 +30,9 @@ def apply_custom_background():
         </style>
         """,
         unsafe_allow_html=True
-    )
-        }}
 
+        }}
+        
         /* ตัวอักษรในเมนู 
         .stTabs [data-baseweb="tab"] {{
             background-color: rgba(255, 255, 255, 0.05) !important;
