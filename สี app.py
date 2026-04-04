@@ -250,9 +250,29 @@ def room_camera():
     # ใช้ camera_input ซึ่งเป็น Widget มาตรฐานของ Streamlit ที่ใช้งานได้จริงทั้งคอมและมือถือ
     img_file = st.camera_input("TAKE A SNAPSHOT")
 
-    if img_file:
-        # แสดงรูปที่ถ่ายได้
-        st.image(img_file, caption="PREVIEW", use_container_width=True)
+        if img_file:
+        # --- เริ่มลูกเล่น HUD ---
+        # 1. เตรียมข้อมูลที่จะแปะบนภาพ
+        st.markdown(f"""
+            <div style="position: relative; text-align: center; color: {st.session_state.theme_color};">
+                <div style="position: absolute; top: 10px; left: 20px; text-shadow: 2px 2px #000; font-family: monospace; text-align: left;">
+                    🔴 RECORDING...<br>
+                    AGENT: {st.session_state.user}<br>
+                    {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+                </div>
+                <div style="position: absolute; bottom: 10px; right: 20px; text-shadow: 2px 2px #000; font-family: monospace; text-align: right;">
+                    LOC: {loc['coords']['latitude']:.4f}, {loc['coords']['longitude']:.4f}<br>
+                    STATUS: SYNAPSE_OS_ONLINE
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # แสดงรูปพร้อมกรอบนีออน
+        st.markdown(f'<div style="border: 3px solid {st.session_state.theme_color}; box-shadow: 0 0 20px {st.session_state.theme_color}; border-radius: 10px; overflow: hidden;">', unsafe_allow_html=True)
+        st.image(img_file, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        # --- จบลูกเล่น HUD ---
+
         
         col1, col2 = st.columns(2)
         with col1:
