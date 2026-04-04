@@ -15,30 +15,28 @@ from datetime import datetime
 
 # --- จุดสำคัญ: ต้อง Import แบบนี้เท่านั้น ---
 from streamlit_js_eval import get_geolocation 
+ # --- ฟังก์ชันจัดการพื้นหลังและ CSS (รวมไว้ที่เดียวให้จบ) ---
 def apply_custom_background():
-    # ตรวจสอบว่ามีตัวแปรสีหรือยัง ถ้าไม่มีให้ตั้งค่าเริ่มต้น
-    if 'theme_color' not in st.session_state:
+    # ป้องกันการหาตัวแปรไม่เจอ (กันเจ็บตัว)
+    if 'theme_color' not in st.session_state: 
         st.session_state.theme_color = "#1408BF"
-    if 'bg_color' not in st.session_state:
+    if 'bg_color' not in st.session_state: 
         st.session_state.bg_color = "#000000"
+
     st.markdown(
         f"""
         <style>
-        /* 1. พื้นหลังหลัก */
         .stApp {{
             background-color: {st.session_state.bg_color}44 !important;
             color: white !important;
         }}
 
-        /* 2. ปรับแต่งแท็บเมนู */
+        /* ปรับแต่งแท็บเมนู */
         .stTabs [data-baseweb="tab"] {{
             background-color: rgba(255, 255, 255, 0.05) !important;
             border-radius: 12px !important;
-            padding: 8px 16px !important;
-            height: 50px !important;
             color: #BBBBBB !important;
             font-weight: bold !important;
-            transition: all 0.3s ease !important;
             border: 4px solid transparent !important;
         }}
 
@@ -50,109 +48,23 @@ def apply_custom_background():
             box-shadow: 0 0 15px {st.session_state.theme_color} !important;
         }}
 
-        /* 3. ปรับแต่งปุ่มทั่วไป */
+        /* ปรับแต่งปุ่ม */
         div.stButton > button {{
             background-color: rgba(0, 0, 0, 0.8) !important;
             color: white !important;
             border: 4px solid {st.session_state.theme_color} !important;
             border-radius: 15px !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
-            filter: drop-shadow(0 0 5px {st.session_state.theme_color});
         }}
         </style>
         """,
         unsafe_allow_html=True
     )
-
-
-        /* ปรับแต่งปุ่มแท็บเมนู */
-        .stTabs [data-baseweb="tab"] {{
-            background-color: rgba(255, 255, 255, 0.05) !important;
-            border-radius: 12px !important;
-            padding: 8px 16px !important;
-            height: 50px !important;
-            color: #BBBBBB !important;
-            font-weight: bold !important;
-            transition: all 0.3s ease !important;
-            border: 4px solid transparent !important;
-        }}
-
-        /* เมนูห้องตอนที่ถูกเลือก (Selected Tab) */
-        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
-            color: #FFFFFF !important;
-            background-color: {st.session_state.theme_color}44 !important;
-            border: 4px solid {st.session_state.theme_color} !important;
-            box-shadow: 0 0 15px {st.session_state.theme_color} !important;
-            transform: scale(1.05);
-        }}
-
-        /* เส้นใต้เมนูที่เลือก */
-        .stTabs [data-baseweb="tab-highlight"] {{
-            background-color: #FFFFFF !important;
-            height: 4px !important;
-            box-shadow: 0 0 10px #FFFFFF !important;
-        }}
-
-        /* ปรับแต่งปุ่มทั่วไป */
-        div.stButton > button {{
-            background-color: rgba(0, 0, 0, 0.8) !important;
-            color: white !important;
-            border: 4px solid {st.session_state.theme_color} !important;
-            border-radius: 15px !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
-            filter: drop-shadow(0 0 5px {st.session_state.theme_color});
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-    
-        /* ตัวอักษรในเมนู */
-        .stTabs [data-baseweb="tab"] {{
-            background-color: rgba(255, 255, 255, 0.05) !important;
-            border-radius: 12px !important;
-            padding: 8px 16px !important;
-            height: 50px !important;
-            color: #BBBBBB !important; /* สีเทาอ่อนตอนยังไม่เลือก */
-            font-weight: bold !important;
-            transition: all 0.3s ease !important;
-            border: 4px solid transparent !important;
-        }}
-
-        /* เมนูห้องตอนที่ถูกเลือก (Selected Tab) */
-        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
-            color: #FFFFFF !important; /* ตัวหนังสือขาวชัดเจน */
-            background-color: {st.session_state.}44 !important;
-            border: 4px solid {st.session_state.theme_color} !important;
-            box-shadow: 0 0 15px {st.session_state.theme_color} !important; /* ไฟนีออนรอบเมนูที่เลือก */
-            transform: scale(1.05); /* นูนออกมานิดนึง */
-        }}
-
-        /* เส้นใต้เมนูที่เลือก (ไฟวิ่งด้านล่าง) */
-        .stTabs [data-baseweb="tab-highlight"] {{
-            background-color: #FFFFFF !important;
-            height: 10px !important;
-            box-shadow: 0 0 10px #FFFFFF !important;
-        }}
-
-        /* 3. ปรับแต่งปุ่มทั่วไป (นูนมีไฟเหมือนเดิม) */
-        div.stButton > button {{
-            background-color: rgba(0, 0, 0, 0.8) !important;
-            color: white !important;
-            border: 4px solid {st.session_state.theme_color} !important;
-            border-radius: 15px !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
-            filter: drop-shadow(0 0 5px {st.session_state.theme_color});
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
 
 # ==========================================
 # 0. CONFIG & INITIALIZATION
 # ==========================================
+# (โค้ดส่วน st.set_page_config และฟังก์ชันอื่นๆ ของคุณต่อตรงนี้ได้เลย)
+           
 st.set_page_config(page_title="SYNAPSE OS อยู่นิ้งๆไม่้จ็บตัว", layout="wide", initial_sidebar_state="collapsed")
 
 def haversine(lat1, lon1, lat2, lon2):
