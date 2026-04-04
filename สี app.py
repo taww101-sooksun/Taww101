@@ -60,33 +60,6 @@ def apply_custom_background():
     )
 
 # ==========================================
-# 1. HELPER FUNCTIONS
-# ==========================================
-def init_system():
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#1408BF"
-    if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-    if not firebase_admin._apps:
-        try:
-            fb_creds = dict(st.secrets["firebase_credentials"])
-            cred = credentials.Certificate(fb_creds)
-            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
-        except Exception as e:
-            st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
-
-def get_local_time(lat, lon):
-    try:
-        tf = TimezoneFinder()
-        timezone_str = tf.timezone_at(lat=lat, lng=lon)
-        if timezone_str:
-            local_tz = pytz.timezone(timezone_str)
-            return datetime.now(local_tz)
-    except: pass
-    return datetime.now(pytz.timezone('Asia/Bangkok'))
-
-    local_files_json = json.dumps(local_files)
-
-    # ... (ส่วน HTML ด้านล่างใช้ตัวเดิมได้เลย) ...
-# ==========================================
 # 2. ROOM MODULES
 # ==========================================
 
@@ -271,6 +244,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-        
-            
