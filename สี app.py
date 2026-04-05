@@ -612,13 +612,13 @@ def room_secure_chat():
                     except: pass
 
 # ==========================================
-# 3. MAIN (ปรับปรุงตำแหน่งโลโก้และลำดับการรัน)
+# 3. MAIN (ฉบับจัดระเบียบใหม่ ไม่ให้ตีกัน)
 # ==========================================
 def main():
     init_system()
     apply_custom_background()
     
-    # ดึงพิกัด (ต้องดึงก่อนเริ่มเงื่อนไขอื่นเพื่อให้ loc พร้อมใช้งาน)
+    # ดึงพิกัด
     loc = get_geolocation() 
 
     # 1. ตรวจสอบการ Login
@@ -626,7 +626,7 @@ def main():
         room_login()
         return
 
-    # 2. ส่วนที่แสดงเมื่อ Login แล้ว (โชว์โลโก้ทุกห้อง)
+    # 2. ส่วนหัวของแอป (Logo / ยินดีต้อนรับ)
     st.markdown("<br>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns([1, 1, 1])
     with c2:
@@ -635,7 +635,7 @@ def main():
         else:
             st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
 
-    # 3. Sidebar และเนื้อหาหลัก
+    # 3. Sidebar (ข้อมูล Agent และ ปุ่ม Logout)
     with st.sidebar:
         st.write(f"👤 AGENT: **{st.session_state.user}**")
         st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
@@ -643,28 +643,39 @@ def main():
             st.session_state.logged_in = False
             st.rerun()
 
+    # 4. แบ่งหน้าจอด้วย Tabs (6 ห้องหลัก)
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
-    # สมมติว่าคุณใช้ sidebar ในการเลือกเมนู
-menu = st.sidebar.radio("เลือกฟังก์ชัน", ["หน้าแรก", "เครื่องเล่นเพลง", "ตั้งค่า"])
 
-if menu == "เครื่องเล่นเพลง":
-    # สร้าง Tabs ย่อยข้างในห้องเครื่องเล่นเพลง
-    tab1, tab2, tab3 = st.tabs(["🌈 Visualizer", "🔀 Crossfade", "🎤 Karaoke"])
+    with tabs[0]: 
+        room_core(loc)
     
-    with tab1:
-        room_music_visualizer()
-    with tab2:
-        room_music_crossfade()
-    with tab3:
-        room_music_karaoke()
+    with tabs[1]: 
+        room_radar(loc)
+    
+    with tabs[2]: 
+        room_secure_chat()
+    
+    with tabs[3]: 
+        room_call()
 
-    with tabs[0]: room_core(loc)
-    with tabs[1]: room_radar(loc)
-    with tabs[2]: room_secure_chat()
-    with tabs[3]: room_call()
-    with tabs[4]: room_music()
+    with tabs[4]: 
+        # --- จุดที่รวม 3 ห้องเพลงไว้ด้วยกัน ---
+        st.markdown("### 🎧 MUSIC COMMAND CENTER")
+        # สร้างเมนูย่อยข้างใน Tab MUSIC อีกที
+        music_sub_tab = st.radio("เลือกโหมดเครื่องเล่น:", ["🌈 Visualizer", "🔀 Crossfade", "🎤 Karaoke"], horizontal=True)
+        
+        if music_sub_tab == "🌈 Visualizer":
+            room_music_visualizer() # ตัวที่คุณส่งมาล่าสุด
+        elif music_sub_tab == "🔀 Crossfade":
+            room_music_crossfade()
+        elif music_sub_tab == "🎤 Karaoke":
+            room_music_karaoke()
+
     with tabs[5]: 
-        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
+        st.subheader("⚙️ SYSTEM SETTINGS")
+        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ (Theme Color)", st.session_state.theme_color)
+        if st.button("🔄 บันทึกและรีโหลดระบบ"):
+            st.rerun()
 
 if __name__ == "__main__":
     main()
