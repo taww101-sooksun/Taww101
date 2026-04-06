@@ -86,13 +86,28 @@ with tabs[1]:
         st.subheader("🎙️ MIMIC")
         user_file = st.file_uploader("ไฟล์เสียงคุณ", type=["mp3", "wav"], key="user_up")
         
-        if user_file:
-            y_u, sr_u = librosa.load(user_file)
+        # --- ในส่วน if user_file: ---
+with col2:
+    # ... (โค้ดเดิม) ...
+    
+    if st.button("✨ AI AUTO CALIBRATE (ปรับอัตโนมัติ)"):
+        if 'ref_data' in st.session_state:
+            # สั่งคำนวณค่าที่ควรจะเป็น
+            suggested_pitch = auto_calibrate(st.session_state['ref_data'], y_u, sr_u)
             
-            # ตัวปรับแต่ง
-            p_adj = st.slider("Pitch Adjust", -5.0, 5.0, 0.0)
-            s_adj = st.slider("Speed Adjust", 0.5, 2.0, 1.0)
-            
+            # เก็บค่าลง session_state เพื่อให้ Slider เลื่อนตาม
+            st.session_state['p_adj'] = suggested_pitch
+            st.success(f"ระบบปรับ Pitch ให้คุณแล้ว: {suggested_pitch} semitones")
+            st.rerun() # สั่งให้แอปโหลดใหม่เพื่ออัปเดตค่าใน Slider
+        else:
+            st.warning("กรุณาอัปโหลด Target ก่อนครับ")
+
+    # ปรับ Slider ให้ดึงค่าจาก session_state (ถ้ามี)
+    p_val = st.session_state.get('p_adj', 0.0)
+    p_adj = st.slider("Pitch Adjust", -12.0, 12.0, p_val, key="pitch_slider")
+    
+    # ... (ส่วนประมวลผลเสียง y_p เหมือนเดิม) ...
+
             # ประมวลผล
             y_p = librosa.effects.pitch_shift(y_u, sr=sr_u, n_steps=p_adj)
             y_p = librosa.effects.time_stretch(y=y_p, rate=s_adj)
@@ -130,6 +145,21 @@ with tabs[1]:
                             "timestamp": time.time()
                         })
                     except:
+def auto_calibrate(target_stats, user_y, user_sr):
+    """คำนวณหาค่า Pitch และ Speed ที่ควรจะเป็นโดยอัตโนมัติ"""
+    # วิเคราะห์เสียงผู้ใช้ก่อนปรับ
+    u_pitches, _ = librosa.piptrack(y=user_y, sr=user_sr)
+    u_pitch_mean = np.mean(u_pitches[u_pitches > 0]) if np.any(u_pitches > 0) else 432.0
+    
+    # 1. คำนวณ Pitch Shift (หาความต่างเป็น Semitones)
+    # สูตร: n_steps = 12 * log2(f2 / f1)
+    pitch_diff = 12 * np.log2(target_stats['X'] / u_pitch_mean)
+    
+    # 2. คำนวณ Speed (เทียบความยาวคลื่นเสียง - ถ้าสั้นไปให้ยืด ถ้ายาวไปให้หด)
+    # ในที่นี้สมมติว่าเราต้องการให้ Energy (Y) ใกล้เคียงกัน หรือเทียบ Duration ง่ายๆ
+    # (เวอร์ชันนี้เน้น Pitch เป็นหลักก่อนเพื่อความเนียน)
+    
+    return round(pitch_diff, 2)
                         st.warning("Firebase sync skipped.")
 
 with tabs[2]:
