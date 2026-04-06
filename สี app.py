@@ -110,7 +110,7 @@ sensor_html = """
     };
     </script>
     """
-    components.html(sensor_html, height=400)
+components.html(sensor_html, height=400)
 
 def render_analyzer_room():
     st.subheader("📊 ROOM 2.1: AUDIO DNA ANALYZER")
