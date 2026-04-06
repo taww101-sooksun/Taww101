@@ -1,11 +1,24 @@
 import streamlit as st
-import streamlit.components.v1 as components
 
-# ตั้งค่าหน้า Streamlit ให้กว้างขึ้นเพื่อความสวยงาม
-st.set_page_config(layout="wide")
-
-# 1. รวมโค้ด HTML ทั้งหมดไว้ในตัวแปร html_code
+# ใช้ตัวแปรเก็บโค้ด HTML ทั้งหมดที่คุณเขียนไว้
 html_code = """
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: #000; }
+        /* ใส่ CSS ของคุณต่อที่นี่ */
+    </style>
+</head>
+<body>
+    <h1 style="color: #0f0;">MATH-ELASTIC ENGINE READY</h1>
+</body>
+</html>
+"""
+
+# สั่งให้ Streamlit แสดงผล HTML
+st.components.v1.html(html_code, height=800, scrolling=True)
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -105,6 +118,7 @@ html_code = """
     let isRunning = false;
     let lastNoteTime = 0;
 
+    // 1. สร้างตาราง 144 (12 Octaves)
     const grid = document.getElementById('noteGrid');
     for(let i=0; i<144; i++) {
         const div = document.createElement('div');
@@ -115,26 +129,28 @@ html_code = """
         grid.appendChild(div);
     }
 
+    // 2. ระบบอัดเสียง
     async function toggleRecording() {
         if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const btn = document.getElementById('btnRec');
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-            const recorder = new MediaRecorder(stream);
-            const chunks = [];
-            recorder.ondataavailable = e => chunks.push(e.data);
-            recorder.onstop = async () => {
-                const blob = new Blob(chunks);
-                userBuffer = await audioCtx.decodeAudioData(await blob.arrayBuffer());
-                document.getElementById('status-bar').innerText = "✅ บันทึกตัวอย่างเสียงแล้ว | พร้อมคำนวณ";
-            };
-            recorder.start();
-            btn.classList.add('active');
-            btn.innerText = "กำลังรับคลื่นเสียง...";
-            setTimeout(() => { recorder.stop(); btn.classList.remove('active'); btn.innerText = "อัดเสียงใหม่"; }, 3000);
-        } catch(e) { alert("Mic Error: กรุณาอนุญาตการใช้ไมโครโฟน"); }
+        const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+        const recorder = new MediaRecorder(stream);
+        const chunks = [];
+        
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = async () => {
+            const blob = new Blob(chunks);
+            userBuffer = await audioCtx.decodeAudioData(await blob.arrayBuffer());
+            document.getElementById('status-bar').innerText = "✅ บันทึกตัวอย่างเสียงแล้ว | พร้อมคำนวณ";
+        };
+        
+        recorder.start();
+        btn.classList.add('active');
+        btn.innerText = "กำลังรับคลื่นเสียง...";
+        setTimeout(() => { recorder.stop(); btn.classList.remove('active'); btn.innerText = "อัดเสียงใหม่"; }, 3000);
     }
 
+    // 3. โหลดเพลง
     document.getElementById('audioFile').onchange = async (e) => {
         if(!audioCtx) audioCtx = new AudioContext();
         const file = e.target.files[0];
@@ -142,48 +158,84 @@ html_code = """
         document.getElementById('status-bar').innerText = `🎵 โหลดเพลง: ${file.name} สำเร็จ`;
     };
 
+    // 4. เริ่มระบบคำนวณ
     function powerOn() {
         if(!userBuffer || !mp3Buffer || isRunning) return;
         isRunning = true;
+        
+        // Setup Nodes
         mp3Source = audioCtx.createBufferSource();
         mp3Source.buffer = mp3Buffer;
+        
         analyser = audioCtx.createAnalyser();
         analyser.fftSize = 2048;
+        
+        masterGain = audioCtx.createGain();
+        
         mp3Source.connect(analyser);
         mp3Source.connect(audioCtx.destination);
         mp3Source.start();
-        document.getElementById('status-bar').innerText = "🚀 ENGINE RUNNING...";
+        
+        document.getElementById('status-bar').innerText = "🚀 ENGINE RUNNING: ANALYZING FREQUENCIES...";
         process();
     }
 
+    // 5. THE ENGINE LOGIC
     function process() {
         if(!isRunning) return;
+        
         const data = new Uint8Array(analyser.frequencyBinCount);
         analyser.getByteFrequencyData(data);
+        
+        // วาด Scope
         drawVisualizer(data);
-        let maxVal = 0, maxIdx = 0;
-        for(let i=0; i<data.length; i++) { if(data[i] > maxVal) { maxVal = data[i]; maxIdx = i; } }
+
+        // หาความถี่สูงสุด (Pitch Detection)
+        let maxVal = 0;
+        let maxIdx = 0;
+        for(let i=0; i<data.length; i++) {
+            if(data[i] > maxVal) { maxVal = data[i]; maxIdx = i; }
+        }
+
         const now = audioCtx.currentTime;
+        // ปรับ Threshold ความดังที่ 200 เพื่อให้จับเฉพาะโน้ตชัดๆ
         if(maxVal > 200 && now - lastNoteTime > 0.1) {
             const freq = maxIdx * (audioCtx.sampleRate / analyser.fftSize);
+            // กรองช่วงเสียงมนุษย์ 100Hz - 1200Hz
             if(freq > 100 && freq < 1200) {
                 const midi = Math.round(12 * Math.log2(freq / 440) + 69) + 12;
-                if(midi >= 0 && midi < 144) { playElasticNote(midi, maxVal / 255); lastNoteTime = now; }
+                if(midi >= 0 && midi < 144) {
+                    playElasticNote(midi, maxVal / 255);
+                    lastNoteTime = now;
+                }
             }
         }
+        
         requestAnimationFrame(process);
     }
 
     function playElasticNote(midi, velocity) {
+        // UI Effect
         const cell = document.getElementById(`n-${midi}`);
-        if(cell) { cell.classList.add('active'); setTimeout(() => cell.classList.remove('active'), 150); }
+        if(cell) {
+            cell.classList.add('active');
+            setTimeout(() => cell.classList.remove('active'), 150);
+        }
+
+        // Sound Engine
         const voice = audioCtx.createBufferSource();
         const vGain = audioCtx.createGain();
         voice.buffer = userBuffer;
-        voice.playbackRate.value = Math.pow(2, (midi - 60) / 12);
+        
+        // MATH: n = 60 (C4)
+        const playbackRate = Math.pow(2, (midi - 60) / 12);
+        voice.playbackRate.value = playbackRate;
+
+        // ADSR Envelope
         vGain.gain.setValueAtTime(0, audioCtx.currentTime);
         vGain.gain.linearRampToValueAtTime(velocity * 0.8, audioCtx.currentTime + 0.03);
         vGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
         voice.connect(vGain);
         vGain.connect(audioCtx.destination);
         voice.start();
@@ -193,19 +245,18 @@ html_code = """
         const canvas = document.getElementById('scope');
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
         const barWidth = canvas.width / data.length;
         for(let i=0; i<data.length; i++) {
             const h = (data[i] / 255) * canvas.height;
             ctx.fillStyle = `hsl(${120 + data[i]/2}, 100%, 50%)`;
             ctx.fillRect(i * barWidth, canvas.height - h, barWidth, h);
         }
+        
+        // Update DB Meter
         const avg = data.reduce((a, b) => a + b) / data.length;
         document.getElementById('db-meter').innerText = `${Math.round(avg)} UNIT`;
     }
 </script>
 </body>
 </html>
-"""
-
-# 2. เรียกใช้งาน Streamlit Component เพื่อรัน HTML
-components.html(html_code, height=900, scrolling=True)
