@@ -126,7 +126,7 @@ if st.button("🚀 เริ่มการสแกน DEEP SCAN", key="btn_dee
     # เพิ่มบรรทัดนี้เข้าไปครับ เพื่อส่งค่า 432.0 (หรือค่าที่คุณต้องการ) ไปที่หน้า Matrix
     st.session_state.target_hz = 441.27 # หรือใช้เลขที่คุณต้องการเทียบ
 
-            with st.status("กำลังวิเคราะห์...", expanded=True) as status:
+with st.status("กำลังวิเคราะห์...", expanded=True) as status:
                 st.write("🔍 แยกเลเยอร์เครื่องดนตรี...")
                 time.sleep(1)
                 st.write("📐 คำนวณค่าแม่นยำ...")
