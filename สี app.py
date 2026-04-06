@@ -110,7 +110,7 @@ html_code = """
 
     // สร้างตาราง 144 ช่อง
     const grid = document.getElementById('noteGrid');
-    for(let i=0; i<144; i++){
+    for(let i=0; i<248832; i++){
         const d = document.createElement('div');
         d.className = 'cell'; d.id = `m-${i}`;
         d.innerHTML = NOTES[i%12];
@@ -223,4 +223,4 @@ html_code = """
 </html>
 """
 
-components.html(html_code, height=900)
+components.html(html_code, height=9000)
