@@ -269,15 +269,15 @@ def render_sensor_room():
 render_sensor_room()
 
 with tabs[2]:
-def render_analyzer_room():
+    # เขียนต่อจาก with ได้เลย แค่ต้องเยื้อง (Indent) เข้ามา
     st.subheader("📊 ROOM 2.1: AUDIO DNA ANALYZER")
-    st.write("อัปโหลดไฟล์ MP3 เพื่อสแกนหา '7 ค่าแม่นยำ' (Acoustic Fingerprint)")
+    uploaded_file = st.file_uploader("เลือกไฟล์", type=["mp3"], key="scan_v1")
+    
+    if uploaded_file:
+        st.audio(uploaded_file)
+        if st.button("สแกน", key="btn_scan"):
+            st.write("กำลังประมวลผล...")
 
-    # 1. ตัวอัปโหลดไฟล์
-    uploaded_file = st.file_uploader("เลือกไฟล์เพลง (MP3/WAV)", type=["mp3", "wav"])
-
-    if uploaded_file is not None:
-        st.audio(uploaded_file, format='audio/mp3')
         
         if st.button("🚀 เริ่มการสแกน DEEP SCAN"):
             with st.status("กำลังวิเคราะห์โครงสร้างคณิตศาสตร์ของเสียง...", expanded=True) as status:
