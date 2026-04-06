@@ -269,10 +269,6 @@ def render_sensor_room():
 render_sensor_room()
 
 with tabs[2]:
-import streamlit as st
-import numpy as np
-import time
-
 def render_analyzer_room():
     st.subheader("📊 ROOM 2.1: AUDIO DNA ANALYZER")
     st.write("อัปโหลดไฟล์ MP3 เพื่อสแกนหา '7 ค่าแม่นยำ' (Acoustic Fingerprint)")
