@@ -1,3 +1,56 @@
+import streamlit as st
+import streamlit.components.v1 as components
+
+# --- ส่วนของ Python (Streamlit) ---
+st.set_page_config(layout="wide")
+st.title("🥷 SYNAPSE: MATH-ELASTIC ENGINE")
+
+# --- ส่วนของ HTML/JS (ที่เราคุยกัน) ---
+# เราจะใช้ตัวแปร String เก็บโค้ด HTML ทั้งหมด
+html_code = """
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background: #050505; color: #0f0; font-family: 'Courier New', monospace; margin: 0; }
+        .top-section { height: 180px; border-bottom: 2px solid #0f0; position: relative; background: #000; }
+        canvas { width: 100%; height: 100%; }
+        .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; padding: 10px; }
+        .cell { height: 40px; background: #111; border: 1px solid #222; font-size: 10px; display: flex; align-items: center; justify-content: center; }
+        .cell.active { background: #0f0 !important; color: #000; box-shadow: 0 0 15px #0f0; }
+    </style>
+</head>
+<body>
+    <div class="top-section">
+        <canvas id="viz"></canvas>
+    </div>
+    <div class="grid" id="grid"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-database.js";
+
+        // ใส่ Config ของคุณต๊ะตรงนี้
+        const firebaseConfig = { databaseURL: "https://sooksun1-default-rtdb.firebaseio.com/" };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        
+        // ... (โค้ด JS ส่วนที่เหลือที่คุณต๊ะมี) ...
+        // สร้าง Grid 144
+        const grid = document.getElementById('grid');
+        for(let i=0; i<144; i++) {
+            const div = document.createElement('div');
+            div.className = 'cell'; div.id = 'c-'+i; div.innerText = i;
+            grid.appendChild(div);
+        }
+    </script>
+</body>
+</html>
+"""
+
+# --- สั่งให้ Streamlit แสดงผล HTML ---
+components.html(html_code, height=800, scrolling=True)
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
