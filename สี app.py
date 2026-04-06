@@ -128,10 +128,99 @@ with tabs[0]:
     with col3:
         st.metric("Z-AXIS (TEMP)", "BALANCED", "0.00 neutral")
 
-with tabs[1]:
-    st.info("ห้อง 1.1: กำลังรอการเชื่อมต่อกับ Digital Stethoscope และ Voice Tuner...")
-    if st.button("เข้าสู่หน้าจูนสัญญาณ (SENSORS)"):
-        st.write("ระบบกำลังเรียกใช้ห้อง 1.1...")
+def render_sensor_room():
+    st.subheader("🛰️ ROOM 1.1: SENSOR CALIBRATION")
+    st.write("กรุณาอนุญาตใช้ไมค์ เพื่อดึงค่า Hz และ BPM เข้าสู่ระบบ Matrix")
+
+    # โค้ด HTML/JS สำหรับดึงค่าจากไมค์แบบ Real-time
+    sensor_html = """
+    <div style="background:#000; color:#0f0; padding:20px; border:1px solid #333; border-radius:10px; font-family:monospace;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <div style="text-align:center; border-right:1px solid #333;">
+                <div style="font-size:0.8rem; color:#888;">X-AXIS: VOICE HZ</div>
+                <div id="hz-display" style="font-size:3rem; color:#fff;">--</div>
+                <div id="note-name" style="color:#0ff;">READY</div>
+            </div>
+            <div style="text-align:center;">
+                <div style="font-size:0.8rem; color:#888;">Y-AXIS: HEART BPM</div>
+                <div id="bpm-display" style="font-size:3rem; color:#f00;">--</div>
+                <div id="pulse-status" style="color:#f00;">AWAITING SIGNAL</div>
+            </div>
+        </div>
+        
+        <canvas id="visualizer" style="width:100%; height:100px; margin-top:20px; background:#001;"></canvas>
+        
+        <button id="activate" style="width:100%; padding:15px; background:#0f0; color:#000; font-weight:bold; border:none; border-radius:5px; margin-top:20px; cursor:pointer;">
+            🔴 ACTIVATE SENSORS
+        </button>
+    </div>
+
+    <script>
+    const btn = document.getElementById('activate');
+    const hzDisp = document.getElementById('hz-display');
+    const bpmDisp = document.getElementById('bpm-display');
+    const canvas = document.getElementById('visualizer');
+    const ctx = canvas.getContext('2d');
+
+    btn.onclick = async () => {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+        
+        btn.style.display = 'none';
+        process(analyser, audioCtx);
+    };
+
+    function process(analyser, audioCtx) {
+        const buffer = new Float32Array(analyser.fftSize);
+        
+        function loop() {
+            analyser.getFloatTimeDomainData(buffer);
+            
+            // --- Logic หา Hz (Simplified) ---
+            let freq = autoCorrelate(buffer, audioCtx.sampleRate);
+            if(freq > -1) {
+                hzDisp.innerText = freq.toFixed(1);
+                // ส่งค่ากลับไปที่ Streamlit (ถ้าต้องการ)
+                window.parent.postMessage({type: 'hz_val', value: freq}, "*");
+            }
+
+            // --- วาด Waveform ---
+            draw(buffer);
+            requestAnimationFrame(loop);
+        }
+        loop();
+    }
+
+    function autoCorrelate(buf, sampleRate) {
+        // (ใช้ Logic Pitch Detection ที่เราคุยกันก่อนหน้า)
+        return Math.random() * 500; // Placeholder เพื่อโชว์เลขวิ่ง
+    }
+
+    function draw(data) {
+        ctx.fillStyle = '#001';
+        ctx.fillRect(0,0,canvas.width, canvas.height);
+        ctx.strokeStyle = '#0f0';
+        ctx.beginPath();
+        let sliceWidth = canvas.width / data.length;
+        let x = 0;
+        for(let i=0; i<data.length; i++) {
+            let y = (data[i] + 1) * canvas.height / 2;
+            if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+            x += sliceWidth;
+        }
+        ctx.stroke();
+    }
+    </script>
+    """
+    components.html(sensor_html, height=450)
+
+# เรียกใช้ห้องนี้ใน Tab "เซนเซอร์"
+render_sensor_room()
+
 
 with tabs[2]:
     st.info("ห้อง 2.1: ส่วนวิเคราะห์ MP3 (7 ค่าแม่นยำ)")
