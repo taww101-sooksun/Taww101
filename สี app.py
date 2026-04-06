@@ -1,226 +1,143 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import time
 
-st.set_page_config(layout="wide", page_title="SYNAPSE: X-CHORDS VOWEL-COLOR")
+st.set_page_config(layout="wide", page_title="SYNAPSE: ASSASSIN 144 CORE")
 
-# --- โค้ด HTML/JS แบบ Color Coding เต็มสูบ ---
-html_code = """
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
+# --- CSS สายลับ Neon Style ---
+st.markdown("""
     <style>
-        :root { --dim: #111; --bg: #000; }
-        body { 
-            background: var(--bg); color: #fff; font-family: 'Courier New', monospace;
-            margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-        }
-        
-        /* สถาปัตยกรรมหน้าจอ */
-        header { padding: 15px; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center;}
-        .main-engine { display: flex; flex: 1; overflow: hidden; gap: 10px; padding: 10px; }
-        
-        /* ฝั่งซ้าย: กระดาน 248832 (Melody Zone) */
-        .melody-zone { flex: 2; overflow-y: auto; background: #000; border: 1px solid #222; padding: 10px; }
-        .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; }
-        .cell { 
-            aspect-ratio: 1; border: 1px solid #111; font-size: 0.6rem; 
-            display: flex; align-items: center; justify-content: center; color: #222;
-            transition: background-color 0.1s, box-shadow 0.1s; border-radius: 3px;
-        }
-
-        /* สีไฟกระพริบตามสระ */
-        .cell.a-active { background-color: #0f0; color: #000; box-shadow: 0 0 15px #0f0; transform: scale(1.1); }
-        .cell.i-active { background-color: #0ff; color: #000; box-shadow: 0 0 15px #0ff; transform: scale(1.1); }
-        .cell.u-active { background-color: #80f; color: #fff; box-shadow: 0 0 15px #80f; transform: scale(1.1); }
-        .cell.e-active { background-color: #ff0; color: #000; box-shadow: 0 0 15px #ff0; transform: scale(1.1); }
-        .cell.o-active { background-color: #f80; color: #000; box-shadow: 0 0 15px #f80; transform: scale(1.1); }
-
-        /* ฝั่งขวา: แผงควบคุมสระและคอร์ด (Control Panel) */
-        .control-panel { flex: 1; background: #050505; border-left: 1px solid #333; padding: 15px; }
-        .vowel-btn { 
-            width: 100%; padding: 15px; margin-bottom: 10px; border: 1px solid #222; 
-            background: #000; text-align: left; cursor: pointer; color: #fff; font-weight: bold;
-        }
-        .vowel-btn:hover { border-color: #555; }
-        .vowel-btn.active { border-color: #fff; box-shadow: inset 0 0 10px rgba(255,255,255,0.2); }
-        
-        /* สีปุ่มสระ */
-        #btn-a.active { background-color: #040; color: #0f0; border-color: #0f0; }
-        #btn-i.active { background-color: #044; color: #0ff; border-color: #0ff; }
-        #btn-u.active { background-color: #304; color: #80f; border-color: #80f; }
-        #btn-e.active { background-color: #440; color: #ff0; border-color: #ff0; }
-        #btn-o.active { background-color: #420; color: #f80; border-color: #f80; }
-
-        /* ระบบบันทึก (LOG) */
-        #status-bar { height: 30px; background: #111; font-size: 0.7rem; padding: 5px 20px; border-top: 1px solid #222; color: #888; }
-        
-        /* ปุ่มควบคุมหลัก */
-        .controls { padding: 15px; background: #000; border-top: 1px solid #333; display: flex; gap: 10px; }
-        button.main-btn { background: none; border: 1px solid #555; color: #fff; padding: 10px 20px; cursor: pointer; font-weight: bold; text-transform: uppercase;}
-        button.main-btn:hover { background: #111; border-color: #fff; }
-        button.main-btn.rec { border-color: #f00; color: #f00; }
-        button.main-btn.rec.active { background: #f00; color: #fff; animation: blink 1s infinite; }
-
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    .stApp { background: #000; color: #0f0; }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    .stTabs [data-baseweb="tab"] {
+        background-color: #111; border: 1px solid #333;
+        padding: 10px 20px; color: #0f0; border-radius: 5px;
+    }
+    .stTabs [aria-selected="true"] { border-color: #0ff; box-shadow: 0 0 10px #0ff; }
     </style>
-</head>
-<body>
+""", unsafe_allow_html=True)
 
-<header>
-    <div><strong>SYNAPSE X-ENGINE</strong> | "อยู่นิ่งๆ ไม่เจ็บตัว" Vowel Color Edition</div>
-    <div id="freq-val" style="color: #444;">DETECTING...</div>
-</header>
-
-<div class="main-engine">
-    <div class="melody-zone">
-        <div style="font-size: 0.7rem; color: #444; margin-bottom: 10px;">MELODY MATRIX (144 SLOTS)</div>
-        <div class="grid" id="noteGrid"></div>
-    </div>
+# --- 6D CORE ENGINE (HTML/JS/CSS) ---
+# นี่คือส่วนที่จะคำนวณเลข 6 ทิศทางสวนกันกลางจอ
+core_6d_html = """
+<div id="canvas-container" style="background:#000; height:600px; display:flex; justify-content:center; align-items:center; font-family:monospace; position:relative; overflow:hidden; border:2px solid #111;">
     
-    <div class="control-panel">
-        <div style="font-size: 0.7rem; color: #444; margin-bottom: 15px;">VOWEL SELECTOR</div>
-        <div id="vowel-controls">
-            <button class="vowel-btn a-btn active" id="btn-a" onclick="setVowel('a')">A - อา (Neon Green)</button>
-            <button class="vowel-btn i-btn" id="btn-i" onclick="setVowel('i')">I - อี (Ice Blue)</button>
-            <button class="vowel-btn u-btn" id="btn-u" onclick="setVowel('u')">U - อู (Deep Purple)</button>
-            <button class="vowel-btn e-btn" id="btn-e" onclick="setVowel('e')">E - เอ (Golden Yellow)</button>
-            <button class="vowel-btn o-btn" id="btn-o" onclick="setVowel('o')">O - โอ (Orange Blazing)</button>
+    <div id="matrix-cube" style="width:300px; height:300px; border:4px double #0ff; box-shadow: 0 0 30px #0ff; display:flex; flex-direction:column; justify-content:center; align-items:center; position:relative; z-index:10; background:rgba(0,10,10,0.8);">
+        <div style="font-size:0.7rem; color:#0ff; position:absolute; top:10px;">CENTRAL 6D PROCESSOR</div>
+        
+        <div id="unified-val" style="font-size:3.5rem; font-weight:bold; color:#fff; text-shadow:0 0 20px #0ff;">0.00</div>
+        <div style="font-size:0.8rem; color:#888;">MATRIX IMPACT POINT</div>
+        
+        <div id="status-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:20px; width:80%; font-size:0.7rem;">
+            <div style="color:#0f0;">L-SOUND: <span id="val-l">0</span></div>
+            <div style="color:#0f0;">R-VIB: <span id="val-r">0</span></div>
+            <div style="color:#ff0;">U-SPEED: <span id="val-u">0</span></div>
+            <div style="color:#ff0;">D-TIME: <span id="val-d">0</span></div>
+            <div style="color:#f00;">F-HEAT: <span id="val-f">0</span></div>
+            <div style="color:#0ff;">B-COLD: <span id="val-b">0</span></div>
         </div>
-        <canvas id="wave-scope" style="width:100%; height:80px; margin-top:20px; border:1px solid #111;"></canvas>
     </div>
-</div>
 
-<div class="controls">
-    <button id="btnRec" class="main-btn rec" onclick="startSampling()">1. SAMPLING (ร้อง: อา-อี-อู-เอ-โอ 3วิ)</button>
-    <input type="file" id="audioIn" accept="audio/*" style="display:none">
-    <button class="main-btn" onclick="document.getElementById('audioIn').click()">2. LOAD MP3</button>
-    <button class="main-btn" onclick="runEngine()">3. START ENGINE</button>
-</div>
+    <div style="position:absolute; width:100%; height:1px; background:rgba(0,255,255,0.2); top:50%;"></div>
+    <div style="position:absolute; width:1px; height:100%; background:rgba(0,255,255,0.2); left:50%;"></div>
 
-<div id="status-bar">WAITING FOR COMMAND...</div>
+    <canvas id="bg-numbers" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; opacity:0.3;"></canvas>
+</div>
 
 <script>
-    const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    // สัดส่วนพิกัดของสระในไฟล์เสียง 3 วิ (Sampling Time)
-    const VOWEL_MAP = { a: 0.0, i: 0.6, u: 1.2, e: 1.8, o: 2.4 };
-    let currentVowel = 'a';
-    let audioCtx, userBuf, mp3Buf, analyser, isRunning = false;
-    let lastMidi = -1;
-
-    // สร้างตาราง 144 ช่อง
-    const grid = document.getElementById('noteGrid');
-    for(let i=0; i<248832; i++){
-        const d = document.createElement('div');
-        d.className = 'cell'; d.id = `m-${i}`;
-        d.innerHTML = NOTES[i%12];
-        grid.appendChild(d);
-    }
-
-    // ฟังก์ชันเลือกสระ (เปลี่ยนสีปุ่มและกำหนดพิกัดเสียง)
-    function setVowel(vowel) {
-        currentVowel = vowel;
-        document.querySelectorAll('.vowel-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`btn-${vowel}`).classList.add('active');
-        document.getElementById('status-bar').innerText = `✅ เปลี่ยนเสียงเป็นสระ: ${vowel.toUpperCase()}`;
-    }
-
-    async function startSampling() {
-        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-        const rec = new MediaRecorder(stream);
-        const chunks = [];
-        const btnRec = document.getElementById('btnRec');
-
-        rec.ondataavailable = e => chunks.push(e.data);
-        rec.onstop = async () => {
-            userBuf = await audioCtx.decodeAudioData(await new Blob(chunks).arrayBuffer());
-            document.getElementById('status-bar').innerText = "✅ หัวเชื้อสระ 5 ตัวพร้อมแล้ว!";
-            btnRec.innerText = "SAMPLING จบแล้ว";
-            btnRec.classList.remove('active');
-        };
-        rec.start();
-        btnRec.classList.add('active');
-        btnRec.innerText = "🔴 ร้อง อา-อี-อู-เอ-โอ ยาวๆ...";
-        // ให้ร้องตัวละ 0.6 วินาที (รวม 3 วินาทีพอดี)
-        setTimeout(() => { rec.stop(); }, 3000); 
-    }
-
-    document.getElementById('audioIn').onchange = async (e) => {
-        if(!audioCtx) audioCtx = new AudioContext();
-        mp3Buf = await audioCtx.decodeAudioData(await e.target.files[0].arrayBuffer());
-        document.getElementById('status-bar').innerText = "🎵 โหลดดนตรีเรียบร้อย";
+    const unified = document.getElementById('unified-val');
+    const labels = {
+        l: document.getElementById('val-l'), r: document.getElementById('val-r'),
+        u: document.getElementById('val-u'), d: document.getElementById('val-d'),
+        f: document.getElementById('val-f'), b: document.getElementById('val-b')
     };
 
-    function runEngine() {
-        if(!userBuf || !mp3Buf) return alert("อัดเสียง (อา-อี-อู-เอ-โอ) และโหลดเพลงก่อนครับ!");
-        isRunning = true;
-        const source = audioCtx.createBufferSource();
-        source.buffer = mp3Buf;
-        analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 2048;
-        source.connect(analyser);
-        source.connect(audioCtx.destination);
-        source.start();
-        process();
-        document.getElementById('status-bar').innerText = "🚀 เดินเครื่อง X-ENGINE: ร้องตามสระที่เลือก...";
+    function updateMatrix() {
+        // จำลองการดึงค่าจากแกน X, Y, Z (ในระบบจริงจะดึงจาก Mic/Pulse/Analyze)
+        let x_l = 432 + (Math.random() * 10); // Sound Hz
+        let x_r = 5 + (Math.random() * 2);   // Vibrato
+        let y_u = 60 + (Math.random() * 40);  // BPM
+        let y_d = 14.4 + (Math.random() * 2); // Duration
+        let z_f = 40 + (Math.random() * 15);  // Heat
+        let z_b = -10 - (Math.random() * 5);  // Cold
+
+        // อัปเดตตัวเลข 6 ทิศทาง
+        labels.l.innerText = x_l.toFixed(2) + "Hz";
+        labels.r.innerText = x_r.toFixed(2) + "Hz";
+        labels.u.innerText = y_u.toFixed(0) + "BPM";
+        labels.d.innerText = y_d.toFixed(1) + "s";
+        labels.f.innerText = "+" + z_f.toFixed(1) + "°H";
+        labels.b.innerText = z_b.toFixed(1) + "°C";
+
+        // สูตรคณิตศาสตร์ Assassin 144: SQRT(X^2 + Y^2 + Z^2)
+        // (คำนวณจากค่าเฉลี่ยแต่ละแกน)
+        let x = (x_l + x_r) / 2;
+        let y = (y_u + y_d) / 2;
+        let z = Math.abs(z_f - z_b);
+        let result = Math.sqrt(Math.pow(x,2) + Math.pow(y,2) + Math.pow(z,2)) / 10;
+        
+        unified.innerText = result.toFixed(2);
+        
+        // ขยับกรอบตามจังหวะสั่น (Vibrato)
+        const cube = document.getElementById('matrix-cube');
+        cube.style.transform = `translate(${(Math.random()-0.5)*2}px, ${(Math.random()-0.5)*2}px)`;
+
+        requestAnimationFrame(updateMatrix);
     }
 
-    function process() {
-        if(!isRunning) return;
-        const data = new Uint8Array(analyser.frequencyBinCount);
-        analyser.getByteFrequencyData(data);
-        
-        let maxV = 0, maxI = 0;
-        for(let i=0; i<data.length; i++) { if(data[i] > maxV) { maxV = data[i]; maxI = i; } }
+    // ทำ Background Digital Rain
+    const canvas = document.getElementById('bg-numbers');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 1000; canvas.height = 600;
+    const chars = "0123456789ABCDEF";
+    const drops = new Array(100).fill(0);
 
-        if(maxV > 210) { // ปรับ Threshold ความดังให้สูงขึ้นเพื่อให้จับตัวโน้ตชัดๆ
-            const freq = maxI * (audioCtx.sampleRate / 2048);
-            const midi = Math.round(12 * Math.log2(freq / 440) + 69) + 12;
-            
-            if(midi != lastMidi && midi >= 0 && midi < 144) {
-                // ยิงเสียงสระปัจจุบัน
-                triggerVowelVoice(midi, maxV/255);
-                lastMidi = midi;
-            }
+    function drawBG() {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#033";
+        ctx.font = "10px monospace";
+        for(let i=0; i<drops.length; i++) {
+            const text = chars[Math.floor(Math.random()*chars.length)];
+            ctx.fillText(text, i*10, drops[i]*10);
+            if(drops[i]*10 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+            drops[i]++;
         }
-        requestAnimationFrame(process);
     }
-
-    function triggerVowelVoice(m, v) {
-        // หาพิกัดเริ่มต้นของสระในไฟล์ 3 วิ
-        const startTime = VOWEL_MAP[currentVowel];
-        
-        // แสดงผลไฟกระพริบตามสีของสระ
-        const cell = document.getElementById(`m-${m}`);
-        if(cell) { 
-            const vowelClass = `${currentVowel}-active`;
-            cell.classList.add(vowelClass); 
-            // ให้สว่างค้างไว้ 150ms เพื่อให้เห็นสีชัดเจน
-            setTimeout(() => cell.classList.remove(vowelClass), 150); 
-        }
-
-        // ยิงเสียงสระจากพิกัดที่กำหนด
-        const source = audioCtx.createBufferSource();
-        const gainNode = audioCtx.createGain();
-        source.buffer = userBuf;
-        // บิดความเร็วเสียง
-        source.playbackRate.value = Math.pow(2, (m - 60) / 12); 
-        
-        // ADSR Envelope (นุ่มนวลขึ้น)
-        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(v * 0.8, audioCtx.currentTime + 0.04);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
-
-        source.connect(gainNode); 
-        gainNode.connect(audioCtx.destination);
-        
-        // เล่นเสียงสระจากพิกัด (startTime) เป็นเวลา 0.5 วินาที
-        source.start(0, startTime, 0.5); 
-    }
+    setInterval(drawBG, 50);
+    updateMatrix();
 </script>
-</body>
-</html>
 """
 
-components.html(html_code, height=900)
+# --- การวาง Layout แบบ Hierarchy ---
+st.title("🥷 ASSASSIN 144: 6D MATRIX CORE")
+st.write(f"USER: AGENT_X | SLOGAN: 'อยู่นิ่งๆ ไม่เจ็บตัว'")
+
+# ระบบ Tabs แยกห้อง (Hierarchy 1.0)
+tabs = st.tabs(["🚀 THE CORE", "🛰️ SENSORS", "📊 ANALYZER", "📺 MATRIX 144"])
+
+with tabs[0]:
+    st.markdown("### 6D UNIFIED TELEMETRY")
+    components.html(core_6d_html, height=650)
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("X-AXIS (SOUND)", "STABLE", "432 Hz")
+    with col2:
+        st.metric("Y-AXIS (PULSE)", "SYNCED", "BPM 1:1")
+    with col3:
+        st.metric("Z-AXIS (TEMP)", "BALANCED", "0.00 neutral")
+
+with tabs[1]:
+    st.info("ห้อง 1.1: กำลังรอการเชื่อมต่อกับ Digital Stethoscope และ Voice Tuner...")
+    if st.button("เข้าสู่หน้าจูนสัญญาณ (SENSORS)"):
+        st.write("ระบบกำลังเรียกใช้ห้อง 1.1...")
+
+with tabs[2]:
+    st.info("ห้อง 2.1: ส่วนวิเคราะห์ MP3 (7 ค่าแม่นยำ)")
+    st.write("ผลลัพธ์การสแกนกีตาร์/กลอง/เบส จะถูกส่งมาที่นี่")
+
+with tabs[3]:
+    st.info("ห้อง 3.1: ตาราง 144 ช่อง (Visualizer)")
+    st.write("ไฟกระพริบจะทำงานเมื่อ THE CORE คำนวณพิกัดสำเร็จ")
+
