@@ -269,8 +269,8 @@ def render_sensor_room():
 render_sensor_room()
 
 with tabs[2]:
-    # สร้างฟังก์ชันไว้ข้างในนี้เลยก็ได้ครับ แต่ต้องเรียกใช้แค่ครั้งเดียว
-    def render_analyzer_room_v2(): 
+# สร้างฟังก์ชันไว้ข้างในนี้เลยก็ได้ครับ แต่ต้องเรียกใช้แค่ครั้งเดียว
+def render_analyzer_room_v2(): 
         st.subheader("📊 ROOM 2.1: AUDIO DNA ANALYZER")
         
         # ใส่ key ป้องกันชื่อซ้ำ
@@ -285,18 +285,7 @@ with tabs[2]:
             if st.button("🚀 เริ่มการสแกน DEEP SCAN", key="btn_deep_scan"):
                 st.write("กำลังวิเคราะห์...")
                 # ... โค้ดส่วนที่เหลือ ...
-
-    # สั่งรันฟังก์ชันแค่ "ครั้งเดียว"
-    render_analyzer_room_v2() 
-
-                st.write("🔍 แยกเลเยอร์เครื่องดนตรี...")
-                time.sleep(1)
-                st.write("📐 คำนวณค่า Vibrato และ Timbre...")
-                time.sleep(1)
-                st.write("🌡️ วัดค่า Harmonic Warmth (Z-Axis)...")
-                time.sleep(1)
-                status.update(label="สแกนเสร็จสิ้น! คายข้อมูล 7 ค่าแม่นยำสำเร็จ", state="complete")
-
+                
             # 2. แสดงผล 7 ค่าแม่นยำ (Mockup ข้อมูลจริงจากการคำนวณ)
             st.markdown("### === รายงานผล 7 ค่าแม่นยำ (Acoustic Fingerprint) ===")
             
