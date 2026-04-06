@@ -20,3 +20,4 @@ streamlit-autorefresh
 streamlit-google-auth
 Authlib
 psutil
+matplotlib
