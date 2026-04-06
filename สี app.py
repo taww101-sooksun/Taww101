@@ -1,440 +1,234 @@
 import streamlit as st
-import os 
-import time
-import base64
-import firebase_admin
-from firebase_admin import credentials, db
 import streamlit.components.v1 as components
-import folium
-from folium.features import DivIcon
-from streamlit_folium import st_folium
-from math import radians, cos, sin, asin, sqrt
-import pytz
-from timezonefinder import TimezoneFinder
-from datetime import datetime
 
-# --- จุดสำคัญ: ต้อง Import แบบนี้เท่านั้น ---
-from streamlit_js_eval import get_geolocation 
-def apply_custom_background():
-    st.markdown(
-        f"""
+# ตั้งค่าหน้าจอ
+st.set_page_config(page_title="SYNAPSE AUDIO SYSTEM", layout="wide")
+
+def synapse_audio_player():
+    # ส่วนของ HTML/CSS/JS ที่รวมความสามารถทั้งหมด
+    player_html = """
+    <!DOCTYPE html>
+    <html lang="th">
+    <head>
+        <meta charset="UTF-8">
+        <script src="https://cdn.tailwindcss.com"></script>
         <style>
-        /* 1. พื้นหลังหลัก (เหมือนเดิม) */
-        .stApp {{
-            background: linear-gradient(270deg, #AFEEEE, #FF7F50, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-            background-size: 1600% 1600%;
-            animation: RainbowFlow 60s ease infinite;
-        }}
+            @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap');
+            
+            body {
+                margin: 0; padding: 0;
+                font-family: 'Kanit', sans-serif;
+                height: 100vh;
+                display: flex; align-items: center; justify-content: center;
+                /* Background แบบผสม: รูปภาพ + Rainbow Flow */
+                background: linear-gradient(270deg, rgba(255,0,0,0.5), rgba(0,255,200,0.5), rgba(0,0,255,0.5));
+                background-size: 600% 600%;
+                animation: RainbowFlow 15s ease infinite;
+                overflow: hidden;
+            }
 
-        @keyframes RainbowFlow {{
-            0%{{background-position:0% 50%}}
-            50%{{background-position:100% 50%}}
-            100%{{background-position:0% 50%}}
-        }}
+            @keyframes RainbowFlow {
+                0%{background-position:0% 50%}
+                50%{background-position:100% 50%}
+                100%{background-position:0% 50%}
+            }
 
-        /* 2. แก้ไขเมนูห้อง (Tabs) ให้มีไฟและนูน */
-        .stTabs [data-baseweb="tab-list"] {{
-            background-color: rgba(0, 0, 0, 0.7) !important; /* พื้นหลังแถบเมนูเข้มขึ้นเพื่อให้ไฟชัด */
-            border-radius: 20px !important;
-            padding: 10px !important;
-            gap: 10px !important;
-            border: 2px solid {st.session_state.theme_color} !important;
-            box-shadow: 0 0 15px {st.session_state.theme_color}88, inset 0 0 10px rgba(0,0,0,0.5) !important;
-            margin: 10px 0px !important;
-        }}
+            .player-card {
+                background: rgba(13, 17, 23, 0.85);
+                backdrop-filter: blur(10px);
+                border: 2px solid #00ffc8;
+                box-shadow: 0 0 30px rgba(0, 255, 200, 0.3);
+                width: 100%; max-width: 450px;
+                padding: 2rem; border-radius: 2rem;
+                color: white; z-index: 10;
+            }
 
-        /* ตัวอักษรในเมนู */
-        .stTabs [data-baseweb="tab"] {{
-            background-color: rgba(255, 255, 255, 0.05) !important;
-            border-radius: 12px !important;
-            padding: 8px 16px !important;
-            height: 50px !important;
-            color: #BBBBBB !important; /* สีเทาอ่อนตอนยังไม่เลือก */
-            font-weight: bold !important;
-            transition: all 0.3s ease !important;
-            border: 1px solid transparent !important;
-        }}
+            /* ปุ่มทรงหยดน้ำ Morphing */
+            .liquid-btn {
+                background: #00ffc8;
+                color: #0d1117;
+                font-weight: bold;
+                border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+                transition: 0.5s;
+                animation: liquidMorph 4s infinite alternate;
+                cursor: pointer;
+                padding: 12px 24px;
+                border: none;
+            }
+            @keyframes liquidMorph {
+                0% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; }
+                100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+            }
+            .liquid-btn:hover { transform: scale(1.05); background: #ffffff; }
 
-        /* เมนูห้องตอนที่ถูกเลือก (Selected Tab) */
-        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
-            color: #FFFFFF !important; /* ตัวหนังสือขาวชัดเจน */
-            background-color: {st.session_state.theme_color}44 !important;
-            border: 1px solid {st.session_state.theme_color} !important;
-            box-shadow: 0 0 15px {st.session_state.theme_color} !important; /* ไฟนีออนรอบเมนูที่เลือก */
-            transform: scale(1.05); /* นูนออกมานิดนึง */
-        }}
+            #visualizer-canvas {
+                background: rgba(0,0,0,0.3);
+                border-radius: 12px;
+                height: 80px; width: 100%;
+                border-bottom: 2px solid #00ffc8;
+            }
 
-        /* เส้นใต้เมนูที่เลือก (ไฟวิ่งด้านล่าง) */
-        .stTabs [data-baseweb="tab-highlight"] {{
-            background-color: #FFFFFF !important;
-            height: 4px !important;
-            box-shadow: 0 0 10px #FFFFFF !important;
-        }}
-
-        /* 3. ปรับแต่งปุ่มทั่วไป (นูนมีไฟเหมือนเดิม) */
-        div.stButton > button {{
-            background-color: rgba(0, 0, 0, 0.8) !important;
-            color: white !important;
-            border: 2px solid {st.session_state.theme_color} !important;
-            border-radius: 15px !important;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
-            filter: drop-shadow(0 0 5px {st.session_state.theme_color});
-        }}
+            .progress-container {
+                height: 6px; background: #30363d;
+                border-radius: 3px; cursor: pointer;
+            }
+            .progress-fill {
+                height: 100%; background: #00ffc8;
+                width: 0%; border-radius: 3px;
+                box-shadow: 0 0 10px #00ffc8;
+            }
+            
+            input[type="range"] {
+                accent-color: #00ffc8;
+                cursor: pointer;
+            }
         </style>
-        """,
-        unsafe_allow_html=True
-    )
+    </head>
+    <body>
+        <div class="player-card">
+            <div class="text-center mb-4">
+                <h1 class="text-xl font-bold text-[#00ffc8]">SYNAPSE HYBRID AUDIO</h1>
+                <p class="text-xs text-gray-400">"อยู่นิ่งๆ ไม่เจ็บตัว"</p>
+            </div>
 
+            <canvas id="visualizer-canvas" class="mb-4"></canvas>
 
-# ==========================================
-# 0. CONFIG & INITIALIZATION
-# ==========================================
-st.set_page_config(page_title="SYNAPSE OS", layout="wide", initial_sidebar_state="collapsed")
+            <div class="mb-4 text-center">
+                <h2 id="song-title" class="text-lg font-semibold truncate">เลือกเพลงเพื่อเริ่มระบบ</h2>
+                <p id="song-info" class="text-xs text-gray-400">READY TO SCAN DEVICES</p>
+            </div>
 
-def haversine(lat1, lon1, lat2, lon2):
-    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-    dlon, dlat = lon2 - lon1, lat2 - lat1 
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    return 2 * asin(sqrt(a)) * 6371
+            <div class="mb-4">
+                <div class="progress-container" id="prog-container">
+                    <div class="progress-fill" id="prog-fill"></div>
+                </div>
+                <div class="flex justify-between text-[10px] mt-1">
+                    <span id="cur-time">0:00</span>
+                    <span id="total-dur">0:00</span>
+                </div>
+            </div>
 
-def init_system():
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#1408BF"
-    if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-    if 'song_index' not in st.session_state: st.session_state.song_index = 0
-    
-    if not firebase_admin._apps:
-        try:
-            fb_creds = dict(st.secrets["firebase_credentials"])
-            cred = credentials.Certificate(fb_creds)
-            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
-        except Exception as e:
-            st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
+            <div class="flex justify-around items-center mb-6">
+                <button onclick="prevTrack()" class="text-[#00ffc8]">PREV</button>
+                <button id="play-pause-btn" onclick="togglePlay()" class="liquid-btn">PLAY</button>
+                <button onclick="nextTrack()" class="text-[#00ffc8]">NEXT</button>
+            </div>
 
-def get_local_time(lat, lon):
-    try:
-        tf = TimezoneFinder()
-        timezone_str = tf.timezone_at(lat=lat, lng=lon)
-        if timezone_str:
-            local_tz = pytz.timezone(timezone_str)
-            return datetime.now(local_tz)
-    except: pass
-    return datetime.now(pytz.timezone('Asia/Bangkok'))
+            <div class="grid grid-cols-2 gap-4 mt-4 border-t border-gray-700 pt-4">
+                <div>
+                    <label class="block text-[10px] mb-1">VOLUME</label>
+                    <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.8" class="w-full">
+                </div>
+                <div>
+                    <label class="block text-[10px] mb-1">BASS BOOST</label>
+                    <input type="range" id="low-slider" min="-10" max="15" step="1" value="0" class="w-full">
+                </div>
+            </div>
 
-# ==========================================
-# 1. AUTHENTICATION
-# ==========================================
-def room_login():
-    col1, col2, col3 = st.columns([1, 1.5, 1])
-    with col2:
-        st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; letter-spacing: 5px;'>SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
-        tab_l, tab_r = st.tabs(["🔑 UNLOCK SYSTEM", "📝 REGISTER AGENT"])
-        with tab_l:
-            with st.form("login"):
-                uid = st.text_input("AGENT ID ใสชื่อผู้ใช่")
-                pw = st.text_input("PASSWORD", type="password")
-                if st.form_submit_button("ACCESS GRANTED", use_container_width=True):
-                    user_data = db.reference(f'users/{uid}').get()
-                    if user_data and user_data.get('pw') == pw:
-                        st.session_state.user = uid
-                        st.session_state.logged_in = True
-                        st.rerun()
-                    else: st.error("รหัสผ่านไม่ถูกต้อง")
-        with tab_r:
-            with st.form("reg"):
-                new_id = st.text_input("NEW AGENT ID")
-                new_pw = st.text_input("SET PASSWORD", type="password")
-                if st.form_submit_button("CREATE ACCOUNT", use_container_width=True):
-                    db.reference(f'users/{new_id}').set({'pw': new_pw, 'ts': time.time()})
-                    st.success("ลงทะเบียนสำเร็จ!")
-
-# ==========================================
-# 2. CORE MODULES
-# ==========================================
-def room_core(loc):
-    st.subheader("🏠 CORE CONTROL อยู่นิ้งๆไม่เจ็บตัว 🇹🇭")
-    lat, lon = 13.7367, 100.5231
-    if loc and 'coords' in loc:
-        lat = loc['coords'].get('latitude', lat)
-        lon = loc['coords'].get('longitude', lon)
-    
-    current_time = get_local_time(lat, lon)
-    st.markdown(f"""
-        <div style="text-align:center; padding:30px; border:4px solid {st.session_state.theme_color}; border-radius:15px; background:rgba(0,0,0,0.3); box-shadow: 0 0 20px {st.session_state.theme_color}44;">
-            <h1 style="font-size:5em; color:{st.session_state.theme_color}; margin:0; font-family: monospace;">{current_time.strftime('%H:%M:%S')}</h1>
-            <p style="color:#888; letter-spacing: 2px;">📍 LAT: {lat:.4f} | LON: {lon:.4f}</p>
-            <p style="color:{st.session_state.theme_color}; font-weight:bold;">AGENT {st.session_state.user} ONLINE</p>
-        </div>
-    """, unsafe_allow_html=True)
-def room_radar(loc):
-    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัดเครือข่าย AGENT อยู่นิ้งๆไม่เจ็บตัว📡")
-    
-    # 1. พิกัดตัวเรา
-    my_lat, my_lon = 13.7367, 100.5231 
-    if loc and 'coords' in loc:
-        my_lat = loc['coords'].get('latitude', my_lat)
-        my_lon = loc['coords'].get('longitude', my_lon)
-    
-    # สร้าง Container แผนที่ให้นูนมีไฟ (เปิด div)
-    st.markdown(f'<div style="border: 2px solid {st.session_state.theme_color}; border-radius: 15px; overflow: hidden; box-shadow: 0 0 20px {st.session_state.theme_color}88;">', unsafe_allow_html=True)
-    
-    # 2. สร้างแผนที่ดาวเทียม
-    m = folium.Map(
-        location=[my_lat, my_lon], 
-        zoom_start=15, 
-        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
-        attr='Google Satellite'
-    )
-    
-    # Marker ของตัวเรา (สีแดง)
-    folium.Marker(
-        [my_lat, my_lon], 
-        icon=folium.Icon(color='red', icon='star'), 
-        tooltip="YOU (ฉันเอง)"
-    ).add_to(m)
-
-    # ลูกเล่น: วงรัศมีเรดาร์รอบตัวเรา
-    folium.Circle(
-        location=[my_lat, my_lon],
-        radius=1000,
-        color=st.session_state.theme_color,
-        fill=True,
-        fill_color=st.session_state.theme_color,
-        fill_opacity=0.1,
-        weight=2
-    ).add_to(m)
-    
-    # 3. ดึงข้อมูล AGENT คนอื่นๆ และลากเส้น
-    try:
-        users_ref = db.reference('users').get()
-        if users_ref:
-            for uid, data in users_ref.items():
-                if uid != st.session_state.user and 'lat' in data and 'lon' in data:
-                    u_lat, u_lon = data['lat'], data['lon']
-                    dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                    
-                    # วาง Marker เพื่อน
-                    folium.Marker(
-                        [u_lat, u_lon], 
-                        icon=folium.Icon(color='green', icon='info-sign'), 
-                        tooltip=f"AGENT: {uid} | ห่าง: {dist:.2f} กม."
-                    ).add_to(m)
-                    
-                    # ลากเส้นเชื่อมโยง
-                    folium.PolyLine(
-                        [[my_lat, my_lon], [u_lat, u_lon]], 
-                        color=st.session_state.theme_color, 
-                        weight=2, 
-                        dash_array='10', 
-                        opacity=0.6
-                    ).add_to(m)
-    except: pass
-    
-    # แสดงแผนที่
-    st_folium(m, width="100%", height=250, returned_objects=[])
-    
-    # ปิด Container (สำคัญมาก!)
-    st.markdown("</div>", unsafe_allow_html=True)
-    
-    # 4. ปุ่มส่งพิกัด (เพื่อให้เพื่อนเห็นเรา)
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("📡 BROADCAST MY LOCATION", key="btn_broadcast", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({
-            'lat': my_lat, 
-            'lon': my_lon, 
-            'ts': time.time()
-        })
-        st.toast("ส่งพิกัดสำเร็จ! เพื่อนๆ จะเห็นคุณบนเรดาร์")
-
-
-def room_call():
-    st.subheader("📞 SYNAPSE P2P CALL อยู่นิ้งๆไม่เจ็บตัว")
-    users = db.reference('users').get()
-    friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    target = st.selectbox("เลือก AGENT ที่จะโทรหา:", friends)
-    if target:
-        st.info(f"พร้อมเชื่อมต่อกับ {target} ผ่านเครือข่าย P2P")
-        call_html = f"""
-        <div style="background:#111; padding:20px; border-radius:15px; border:4px solid {st.session_state.theme_color}; text-align:center;">
-            <video id="remoteVideo" autoplay playsinline style="width:100%; height:300px; background:#000; border-radius:10px;"></video>
-            <video id="localVideo" autoplay playsinline muted style="width:100px; position:absolute; bottom:30px; right:30px; border:2px solid {st.session_state.theme_color};"></video>
-            <div style="margin-top:10px;">
-                <button id="startCall" style="background:{st.session_state.theme_color}; color:black; padding:10px 20px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">📞 START CALL</button>
-                <button onclick="location.reload()" style="background:#ff4444; color:white; padding:10px 20px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">❌ DISCONNECT</button>
+            <div class="mt-6">
+                <input type="file" id="file-input" multiple accept="audio/*" class="hidden" onchange="handleFiles(this.files)">
+                <button onclick="document.getElementById('file-input').click()" class="w-full py-2 bg-gray-800 border border-[#00ffc8] rounded-lg text-xs hover:bg-gray-700">
+                    + เพิ่มเพลงเข้าเพลย์ลิสต์
+                </button>
             </div>
         </div>
-        <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+        <audio id="main-audio"></audio>
+
         <script>
-            const peer = new Peer('{st.session_state.user}');
-            const localVideo = document.getElementById('localVideo');
-            const remoteVideo = document.getElementById('remoteVideo');
-            peer.on('call', call => {{
-                navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
-                    localVideo.srcObject = stream;
-                    call.answer(stream);
-                    call.on('stream', remoteStream => {{ remoteVideo.srcObject = remoteStream; }});
-                }});
-            }});
-            document.getElementById('startCall').onclick = () => {{
-                navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
-                    localVideo.srcObject = stream;
-                    const call = peer.call('{target}', stream);
-                    call.on('stream', remoteStream => {{ remoteVideo.srcObject = remoteStream; }});
-                }});
-            }};
-        </script>
-        """
-        components.html(call_html, height=450)
+            let audioCtx, source, analyzer, gainNode, lowFilter;
+            let tracks = [];
+            let currentIdx = 0;
+            const audio = document.getElementById('main-audio');
+            const playBtn = document.getElementById('play-pause-btn');
 
+            function initAudio() {
+                if (audioCtx) return;
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                source = audioCtx.createMediaElementSource(audio);
+                
+                analyzer = audioCtx.createAnalyser();
+                analyzer.fftSize = 256;
 
-# ==========================================
-# 2. CORE MODULES (ปรับปรุงส่วน Music)
-# ==========================================
+                gainNode = audioCtx.createGain();
+                
+                lowFilter = audioCtx.createBiquadFilter();
+                lowFilter.type = 'lowshelf';
+                lowFilter.frequency.value = 200;
 
-def room_music():
-    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station) อยู่นิ้งๆไม่เจ็บตัว🎙")
-    
-    # 1. ค้นหาไฟล์เพลง
-    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในระบบ")
-        return
+                source.connect(lowFilter);
+                lowFilter.connect(gainNode);
+                gainNode.connect(analyzer);
+                analyzer.connect(audioCtx.destination);
 
-    # ตรวจสอบ index เพลง
-    if 'song_index' not in st.session_state:
-        st.session_state.song_index = 0
-    if st.session_state.song_index >= len(music_files):
-        st.session_state.song_index = 0
+                drawVisualizer();
+            }
 
-    current_song = music_files[st.session_state.song_index]
-    st.info(f"🎵 กำลังเล่น: {current_song}")
+            function handleFiles(files) {
+                Array.from(files).forEach(f => {
+                    tracks.push({ name: f.name, url: URL.createObjectURL(f) });
+                });
+                if (tracks.length > 0 && audio.src === "") loadTrack(0);
+            }
 
-    # 2. เล่นเพลง (Native Player)
-    with open(current_song, "rb") as f:
-        audio_bytes = f.read()
-    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
+            function loadTrack(idx) {
+                initAudio();
+                currentIdx = idx;
+                audio.src = tracks[currentIdx].url;
+                document.getElementById('song-title').innerText = tracks[currentIdx].name;
+                audio.play();
+                playBtn.innerText = "PAUSE";
+            }
 
-    # 3. JS สำหรับ Auto-Next (แอบกดปุ่ม Next ให้เมื่อเพลงจบ)
-    components.html(
-        """
-        <script>
-        const autoNext = () => {
-            const audios = window.parent.document.querySelectorAll('audio');
-            audios.forEach(audio => {
-                if (!audio.dataset.listener) {
-                    audio.dataset.listener = "true";
-                    audio.onended = () => {
-                        const buttons = window.parent.document.querySelectorAll('button');
-                        for (let btn of buttons) {
-                            if (btn.innerText.includes('⏭️ Next')) {
-                                btn.click();
-                                break;
-                            }
-                        }
-                    };
+            function togglePlay() {
+                if (!audio.src) return;
+                initAudio();
+                if (audio.paused) { audio.play(); playBtn.innerText = "PAUSE"; }
+                else { audio.pause(); playBtn.innerText = "PLAY"; }
+            }
+
+            function nextTrack() { if(currentIdx < tracks.length-1) loadTrack(currentIdx+1); }
+            function prevTrack() { if(currentIdx > 0) loadTrack(currentIdx-1); }
+
+            // Visualizer
+            function drawVisualizer() {
+                const canvas = document.getElementById('visualizer-canvas');
+                const ctx = canvas.getContext('2d');
+                const bufferLength = analyzer.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+
+                function animate() {
+                    requestAnimationFrame(animate);
+                    analyzer.getByteFrequencyData(dataArray);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    let barWidth = (canvas.width / bufferLength) * 2.5;
+                    let x = 0;
+                    for(let i = 0; i < bufferLength; i++) {
+                        let barHeight = dataArray[i] / 2;
+                        ctx.fillStyle = `rgb(0, 255, ${dataArray[i]})`;
+                        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                        x += barWidth + 1;
+                    }
                 }
-            });
-        };
-        setInterval(autoNext, 2000);
+                animate();
+            }
+
+            // Listeners
+            document.getElementById('vol-slider').oninput = (e) => gainNode.gain.value = e.target.value;
+            document.getElementById('low-slider').oninput = (e) => lowFilter.gain.value = e.target.value;
+            
+            audio.ontimeupdate = () => {
+                const per = (audio.currentTime / audio.duration) * 100;
+                document.getElementById('prog-fill').style.width = per + "%";
+                document.getElementById('cur-time').innerText = Math.floor(audio.currentTime/60) + ":" + Math.floor(audio.currentTime%60).toString().padStart(2,'0');
+            };
         </script>
-        """,
-        height=0,
-    )
+    </body>
+    </html>
+    """
+    components.html(player_html, height=700)
 
-    # 4. ปุ่มควบคุมหลัก (ใช้ Key ที่ชัดเจน)
-    col1, col2, col3 = st.columns(3)
-    if col1.button("⏮️ Back", key="main_prev", use_container_width=True):
-        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
-        st.rerun()
-    
-    if col2.button("🔄 Reload", key="main_reload", use_container_width=True):
-        st.rerun()
-
-    if col3.button("⏭️ Next", key="main_next", use_container_width=True):
-        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
-        st.rerun()
-
-    # 5. รายชื่อเพลง (จุดที่เกิด Error - แก้ไขโดยใช้ key เฉพาะทาง)
-    st.write("---")
-    st.subheader("📂 รายชื่อเพลงทั้งหมด")
-    for i, f_name in enumerate(music_files):
-        is_playing = (i == st.session_state.song_index)
-        label = f"▶️ {f_name}" if is_playing else f"🎵 {f_name}"
-        
-        # แก้ไขจุดนี้: ใช้ key="list_btn_{i}" เพื่อไม่ให้ซ้ำกับปุ่มอื่นแน่นอน
-        if st.button(label, key=f"list_btn_{i}", use_container_width=True):
-            st.session_state.song_index = i
-            st.rerun()
-        
-
-def room_secure_chat():
-    st.subheader("💬 SECURE CHAT📝อยู่นิ้งๆไม่เจ็บตัว")
-    users = db.reference('users').get()
-    friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    target = st.selectbox("🎯 เลือกผู้รับข้อความ:", friends)
-    if target:
-        rid = "_".join(sorted([st.session_state.user, target]))
-        with st.form("chat_form", clear_on_submit=True):
-            msg = st.text_input("พิมพ์ข้อความที่นี่...")
-            up = st.file_uploader("ส่งรูปภาพ/วิดีโอ", type=['jpg', 'png', 'mp4'])
-            if st.form_submit_button("SEND MESSAGE"):
-                f_data, f_type = (base64.b64encode(up.read()).decode(), up.type) if up else (None, None)
-                db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'f': f_data, 'ft': f_type, 'ts': time.time()})
-                st.rerun()
-        
-        chats = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(15).get()
-        if chats:
-            for c in reversed(list(chats.values())):
-                align = "right" if c['u'] == st.session_state.user else "left"
-                color = st.session_state.theme_color if c['u'] == st.session_state.user else "#333"
-                st.markdown(f'<div style="text-align:{align}; margin-bottom:10px;"><div style="display:inline-block; background:{color}; padding:10px; border-radius:10px; color:white;"><b>{c["u"]}</b>: {c["m"]}</div></div>', unsafe_allow_html=True)
-                if c.get('f'):
-                    try:
-                        dec = base64.b64decode(c['f'])
-                        if "image" in c['ft']: st.image(dec, width=250)
-                        elif "video" in c['ft']: st.video(dec)
-                    except: pass
-
-# ==========================================
-# 3. MAIN (ปรับปรุงตำแหน่งโลโก้และลำดับการรัน)
-# ==========================================
-def main():
-    init_system()
-    apply_custom_background()
-    
-    # ดึงพิกัด (ต้องดึงก่อนเริ่มเงื่อนไขอื่นเพื่อให้ loc พร้อมใช้งาน)
-    loc = get_geolocation() 
-
-    # 1. ตรวจสอบการ Login
-    if not st.session_state.get('logged_in', False):
-        room_login()
-        return
-
-    # 2. ส่วนที่แสดงเมื่อ Login แล้ว (โชว์โลโก้ทุกห้อง)
-    st.markdown("<br>", unsafe_allow_html=True)
-    c1, c2, c3 = st.columns([1, 1, 1])
-    with c2:
-        if os.path.exists("logo1.jpg"):
-            st.image("logo1.jpg", use_container_width=True)
-        else:
-            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
-
-    # 3. Sidebar และเนื้อหาหลัก
-    with st.sidebar:
-        st.write(f"👤 AGENT: **{st.session_state.user}**")
-        st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
-        if st.button("🚪 LOGOUT", use_container_width=True):
-            st.session_state.logged_in = False
-            st.rerun()
-
-    tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
-    
-    with tabs[0]: room_core(loc)
-    with tabs[1]: room_radar(loc)
-    with tabs[2]: room_secure_chat()
-    with tabs[3]: room_call()
-    with tabs[4]: room_music()
-    with tabs[5]: 
-        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
-
-if __name__ == "__main__":
-    main()
+# รันฟังก์ชัน
+st.title("🛰️ SYNAPSE COMMAND CENTER")
+synapse_audio_player()
