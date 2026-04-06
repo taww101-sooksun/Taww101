@@ -82,7 +82,7 @@ def render_sensor_room():
 live_val = st.slider("จำลองค่าจากไมค์ (เพื่อเช็คระบบเปรียบเทียบ)", 0.0, 500.0, 432.0)
 st.session_state.live_hz = live_val 
 
-    sensor_html = """
+sensor_html = """
     <div style="background:#000; color:#0f0; padding:20px; border:1px solid #333; border-radius:10px; font-family:monospace;">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
             <div style="text-align:center; border-right:1px solid #333;"><div style="font-size:0.8rem; color:#888;">X-AXIS: Hz</div><div id="hz-display" style="font-size:3rem; color:#fff;">--</div></div>
