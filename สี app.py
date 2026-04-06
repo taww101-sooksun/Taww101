@@ -1,143 +1,157 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import librosa
+import numpy as np
+import pandas as pd
+import firebase_admin
+from firebase_admin import credentials, db
 import time
+import soundfile as sf
+import io
 
+# --- 1. INITIAL SETUP & FIREBASE ---
 st.set_page_config(layout="wide", page_title="SYNAPSE: ASSASSIN 144 CORE")
 
-# --- CSS สายลับ Neon Style ---
+# ตรวจสอบการเชื่อมต่อ Firebase จาก st.secrets
+if not firebase_admin._apps:
+    try:
+        firebase_creds = dict(st.secrets["firebase_credentials"])
+        cred = credentials.Certificate(firebase_creds)
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': "https://firebaseio.com"
+        })
+    except Exception as e:
+        st.error(f"⚠️ Firebase Setup Error: {e}")
+
+# --- 2. CSS NEON DESIGN (สายลับ) ---
 st.markdown("""
     <style>
-    .stApp { background: #000; color: #0f0; }
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #111; border: 1px solid #333;
-        padding: 10px 20px; color: #0f0; border-radius: 5px;
-    }
+    .stApp { background: #000; color: #0f0; font-family: 'Courier New', monospace; }
+    .stTabs [data-baseweb="tab"] { background-color: #111; color: #0f0; border: 1px solid #333; }
     .stTabs [aria-selected="true"] { border-color: #0ff; box-shadow: 0 0 10px #0ff; }
+    .metric-card { background: rgba(0,255,255,0.05); border: 1px solid #0ff; padding: 15px; border-radius: 10px; text-align: center; }
+    h1, h2, h3 { color: #0ff !important; text-shadow: 0 0 8px #0ff; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 6D CORE ENGINE (HTML/JS/CSS) ---
-# นี่คือส่วนที่จะคำนวณเลข 6 ทิศทางสวนกันกลางจอ
-core_6d_html = """
-<div id="canvas-container" style="background:#000; height:600px; display:flex; justify-content:center; align-items:center; font-family:monospace; position:relative; overflow:hidden; border:2px solid #111;">
-    
-    <div id="matrix-cube" style="width:300px; height:300px; border:4px double #0ff; box-shadow: 0 0 30px #0ff; display:flex; flex-direction:column; justify-content:center; align-items:center; position:relative; z-index:10; background:rgba(0,10,10,0.8);">
-        <div style="font-size:0.7rem; color:#0ff; position:absolute; top:10px;">CENTRAL 6D PROCESSOR</div>
-        
-        <div id="unified-val" style="font-size:3.5rem; font-weight:bold; color:#fff; text-shadow:0 0 20px #0ff;">0.00</div>
-        <div style="font-size:0.8rem; color:#888;">MATRIX IMPACT POINT</div>
-        
-        <div id="status-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:20px; width:80%; font-size:0.7rem;">
-            <div style="color:#0f0;">L-SOUND: <span id="val-l">0</span></div>
-            <div style="color:#0f0;">R-VIB: <span id="val-r">0</span></div>
-            <div style="color:#ff0;">U-SPEED: <span id="val-u">0</span></div>
-            <div style="color:#ff0;">D-TIME: <span id="val-d">0</span></div>
-            <div style="color:#f00;">F-HEAT: <span id="val-f">0</span></div>
-            <div style="color:#0ff;">B-COLD: <span id="val-b">0</span></div>
-        </div>
-    </div>
+# --- 3. CORE PROCESSING FUNCTIONS ---
+def analyze_audio_144(y, sr):
+    """สกัดค่า X, Y, Z จากคลื่นเสียง"""
+    # X: Pitch (ความถี่)
+    pitches, _ = librosa.piptrack(y=y, sr=sr)
+    x_val = np.mean(pitches[pitches > 0]) if np.any(pitches > 0) else 432.0
+    # Y: Energy (ความดัง)
+    y_val = np.mean(librosa.feature.rms(y=y)) * 1000
+    # Z: Brightness (ความแหลม/ใส)
+    z_val = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr)) / 100
+    # Formula: SQRT(X^2 + Y^2 + Z^2)
+    score = np.sqrt(x_val**2 + y_val**2 + z_val**2) / 10
+    return {"X": x_val, "Y": y_val, "Z": z_val, "Score": score}
 
-    <div style="position:absolute; width:100%; height:1px; background:rgba(0,255,255,0.2); top:50%;"></div>
-    <div style="position:absolute; width:1px; height:100%; background:rgba(0,255,255,0.2); left:50%;"></div>
+def add_human_touch(y, sr, variance=0.02):
+    """สุ่มความต่างเล็กน้อยเพื่อให้เสียงดูเป็นธรรมชาติ (ไม่เป็นหุ่นยนต์)"""
+    # สุ่ม Pitch เล็กน้อย (-0.1 ถึง 0.1 semitones)
+    random_pitch = np.random.uniform(-0.1, 0.1)
+    y_human = librosa.effects.pitch_shift(y, sr=sr, n_steps=random_pitch)
+    return y_human
 
-    <canvas id="bg-numbers" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; opacity:0.3;"></canvas>
-</div>
+# --- 4. MAIN UI LAYOUT ---
+st.title("🥷 ASSASSIN 144: UNIFIED MATRIX CORE")
+st.write("STATUS: `ENCRYPTED` | TARGET DATABASE: `sooksun1`")
 
-<script>
-    const unified = document.getElementById('unified-val');
-    const labels = {
-        l: document.getElementById('val-l'), r: document.getElementById('val-r'),
-        u: document.getElementById('val-u'), d: document.getElementById('val-d'),
-        f: document.getElementById('val-f'), b: document.getElementById('val-b')
-    };
+tabs = st.tabs(["🚀 THE CORE", "📊 ANALYZER (MIMIC)", "📺 MATRIX LOGS"])
 
-    function updateMatrix() {
-        // จำลองการดึงค่าจากแกน X, Y, Z (ในระบบจริงจะดึงจาก Mic/Pulse/Analyze)
-        let x_l = 432 + (Math.random() * 10); // Sound Hz
-        let x_r = 5 + (Math.random() * 2);   // Vibrato
-        let y_u = 60 + (Math.random() * 40);  // BPM
-        let y_d = 14.4 + (Math.random() * 2); // Duration
-        let z_f = 40 + (Math.random() * 15);  // Heat
-        let z_b = -10 - (Math.random() * 5);  // Cold
-
-        // อัปเดตตัวเลข 6 ทิศทาง
-        labels.l.innerText = x_l.toFixed(2) + "Hz";
-        labels.r.innerText = x_r.toFixed(2) + "Hz";
-        labels.u.innerText = y_u.toFixed(0) + "BPM";
-        labels.d.innerText = y_d.toFixed(1) + "s";
-        labels.f.innerText = "+" + z_f.toFixed(1) + "°H";
-        labels.b.innerText = z_b.toFixed(1) + "°C";
-
-        // สูตรคณิตศาสตร์ Assassin 144: SQRT(X^2 + Y^2 + Z^2)
-        // (คำนวณจากค่าเฉลี่ยแต่ละแกน)
-        let x = (x_l + x_r) / 2;
-        let y = (y_u + y_d) / 2;
-        let z = Math.abs(z_f - z_b);
-        let result = Math.sqrt(Math.pow(x,2) + Math.pow(y,2) + Math.pow(z,2)) / 10;
-        
-        unified.innerText = result.toFixed(2);
-        
-        // ขยับกรอบตามจังหวะสั่น (Vibrato)
-        const cube = document.getElementById('matrix-cube');
-        cube.style.transform = `translate(${(Math.random()-0.5)*2}px, ${(Math.random()-0.5)*2}px)`;
-
-        requestAnimationFrame(updateMatrix);
-    }
-
-    // ทำ Background Digital Rain
-    const canvas = document.getElementById('bg-numbers');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 1000; canvas.height = 600;
-    const chars = "0123456789ABCDEF";
-    const drops = new Array(100).fill(0);
-
-    function drawBG() {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#033";
-        ctx.font = "10px monospace";
-        for(let i=0; i<drops.length; i++) {
-            const text = chars[Math.floor(Math.random()*chars.length)];
-            ctx.fillText(text, i*10, drops[i]*10);
-            if(drops[i]*10 > canvas.height && Math.random() > 0.975) drops[i] = 0;
-            drops[i]++;
-        }
-    }
-    setInterval(drawBG, 50);
-    updateMatrix();
-</script>
-"""
-
-# --- การวาง Layout แบบ Hierarchy ---
-st.title("🥷 ASSASSIN 144: 6D MATRIX CORE")
-st.write(f"USER: AGENT_X | SLOGAN: 'อยู่นิ่งๆ ไม่เจ็บตัว'")
-
-# ระบบ Tabs แยกห้อง (Hierarchy 1.0)
-tabs = st.tabs(["🚀 THE CORE", "🛰️ SENSORS", "📊 ANALYZER", "📺 MATRIX 144"])
-
+# --- TAB 1: THE CORE (Visualizer) ---
 with tabs[0]:
-    st.markdown("### 6D UNIFIED TELEMETRY")
-    components.html(core_6d_html, height=650)
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("X-AXIS (SOUND)", "STABLE", "432 Hz")
-    with col2:
-        st.metric("Y-AXIS (PULSE)", "SYNCED", "BPM 1:1")
-    with col3:
-        st.metric("Z-AXIS (TEMP)", "BALANCED", "0.00 neutral")
+    st.subheader("SYSTEM VISUALIZER")
+    # ตัวเลข 6 ทิศทาง (จำลอง)
+    core_html = """
+    <div style="border:2px solid #0ff; padding:50px; text-align:center; background:#050505; border-radius:15px; box-shadow: 0 0 20px #0ff;">
+        <h1 style="font-size:4rem; margin:0; color:#fff;">144.00</h1>
+        <p style="color:#0ff;">OPTIMIZED HARMONIC RESONANCE</p>
+    </div>
+    """
+    components.html(core_html, height=250)
+    st.info("💡 ระบบจะอัปเดตค่า Unified Score อัตโนมัติเมื่อมีการวิเคราะห์ไฟล์เสียง")
 
+# --- TAB 2: ANALYZER (เรียนแบบเสียง & จูน) ---
 with tabs[1]:
-    st.info("ห้อง 1.1: กำลังรอการเชื่อมต่อกับ Digital Stethoscope และ Voice Tuner...")
-    if st.button("เข้าสู่หน้าจูนสัญญาณ (SENSORS)"):
-        st.write("ระบบกำลังเรียกใช้ห้อง 1.1...")
+    st.header("🎯 VOICE MIMICRY ENGINE")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 1. TARGET (ต้นฉบับ)")
+        ref_file = st.file_uploader("อัปโหลดเสียงที่ต้องการเรียนแบบ", type=["mp3", "wav"], key="ref")
+        if ref_file:
+            y_ref, sr_ref = librosa.load(ref_file)
+            ref_stats = analyze_audio_144(y_ref, sr_ref)
+            st.session_state['ref_stats'] = ref_stats
+            st.success(f"Target Score: {ref_stats['Score']:.2f}")
 
+    with col2:
+        st.markdown("### 2. YOUR VOICE (เสียงของคุณ)")
+        user_file = st.file_uploader("อัปโหลดเสียงเลียนแบบของคุณ", type=["mp3", "wav"], key="user")
+        
+        if user_file:
+            y_u, sr_u = librosa.load(user_file)
+            
+            st.write("---")
+            st.write("🛠️ **TUNING TOOLS** (ปรับให้เกือบตรง)")
+            t_pitch = st.slider("Pitch Adjust (คีย์)", -5.0, 5.0, 0.0)
+            t_speed = st.slider("Speed Adjust (ความเร็ว)", 0.5, 2.0, 1.0)
+            use_human = st.checkbox("เปิดโหมด Human Touch (สุ่มความต่างเล็กน้อย)", value=True)
+            
+            # ประมวลผลเสียง
+            y_proc = librosa.effects.pitch_shift(y_u, sr=sr_u, n_steps=t_pitch)
+            y_proc = librosa.effects.time_stretch(y=y_proc, rate=t_speed)
+            if use_human:
+                y_proc = add_human_touch(y_proc, sr_u)
+            
+            # ลองฟังเสียงที่จูน
+            buf = io.BytesIO()
+            sf.write(buf, y_proc, sr_u, format='WAV')
+            st.audio(buf.getvalue(), format="audio/wav")
+            
+            if st.button("📡 EXECUTE ANALYSIS (ส่งเข้า MATRIX)"):
+                u_stats = analyze_audio_144(y_proc, sr_u)
+                
+                # คำนวณความเหมือน (Similarity)
+                if 'ref_stats' in st.session_state:
+                    t = st.session_state['ref_stats']
+                    dist = np.sqrt((u_stats['X']-t['X'])**2 + (u_stats['Y']-t['Y'])**2 + (u_stats['Z']-t['Z'])**2)
+                    similarity = max(0, 100 - (dist/12)) # หารด้วย 12 เพื่อสเกลคะแนน
+                    
+                    st.write(f"## ความเหมือน: {similarity:.2f}%")
+                    
+                    # ตรวจสอบจุดสมดุล (Human vs Robot)
+                    if 92 <= similarity <= 97:
+                        st.balloons()
+                        st.success("💎 **PERFECT HUMAN MATCH**: เสียงเนียนและเป็นธรรมชาติที่สุด!")
+                    elif similarity > 98:
+                        st.warning("🤖 **ROBOTIC ALERT**: เสียงตรงเกินไปจนฟังดูปลอม (AI)")
+                    
+                    # ส่งเข้า Firebase
+                    db.reference('assassin_144/logs').push({
+                        "agent": "AGENT_X",
+                        "score": round(u_stats['Score'], 2),
+                        "similarity": round(similarity, 2),
+                        "x": round(u_stats['X'], 2),
+                        "y": round(u_stats['Y'], 2),
+                        "z": round(u_stats['Z'], 2),
+                        "timestamp": time.time()
+                    })
+                    st.info("บันทึกข้อมูลเข้าสู่ Cloud Firestore สำเร็จ")
+
+# --- TAB 3: MATRIX LOGS (ประวัติ) ---
 with tabs[2]:
-    st.info("ห้อง 2.1: ส่วนวิเคราะห์ MP3 (7 ค่าแม่นยำ)")
-    st.write("ผลลัพธ์การสแกนกีตาร์/กลอง/เบส จะถูกส่งมาที่นี่")
-
-with tabs[3]:
-    st.info("ห้อง 3.1: ตาราง 144 ช่อง (Visualizer)")
-    st.write("ไฟกระพริบจะทำงานเมื่อ THE CORE คำนวณพิกัดสำเร็จ")
-
+    st.header("📺 ANALYTICS HISTORY")
+    try:
+        logs = db.reference('assassin_144/logs').get()
+        if logs:
+            df = pd.DataFrame.from_dict(logs, orient='index')
+            st.dataframe(df.sort_values('timestamp', ascending=False), use_container_width=True)
+            st.line_chart(df['similarity'])
+        else:
+            st.write("NO DATA FOUND IN MATRIX CORE.")
+    except Exception as e:
+        st.error(f"Error fetching data: {e}")
