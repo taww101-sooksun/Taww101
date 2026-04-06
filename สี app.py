@@ -1,83 +1,66 @@
 import streamlit as st
+import streamlit.components.v1 as components
 
-# ใช้ตัวแปรเก็บโค้ด HTML ทั้งหมดที่คุณเขียนไว้
+st.set_page_config(layout="wide", page_title="SYNAPSE: X-CHORDS VOWEL-COLOR")
+
+# --- โค้ด HTML/JS แบบ Color Coding เต็มสูบ ---
 html_code = """
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body { margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: #000; }
-        /* ใส่ CSS ของคุณต่อที่นี่ */
-    </style>
-</head>
-<body>
-    <h1 style="color: #0f0;">MATH-ELASTIC ENGINE READY</h1>
-</body>
-</html>
-"""
-
-# สั่งให้ Streamlit แสดงผล HTML
-st.components.v1.html(html_code, height=800, scrolling=True)
-
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYNAPSE: Math-Elastic 144 Engine</title>
     <style>
-        :root { --neon: #0f0; --bg: #050505; --dark: #111; }
+        :root { --dim: #111; --bg: #000; }
         body { 
-            background: var(--bg); color: var(--neon); 
-            font-family: 'Segoe UI', 'Courier New', monospace; 
+            background: var(--bg); color: #fff; font-family: 'Courier New', monospace;
             margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
         
-        /* HEADER SECTION */
-        header { 
-            padding: 20px; border-bottom: 2px solid var(--neon); 
-            background: linear-gradient(to bottom, #000, var(--bg));
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .brand h1 { margin: 0; font-size: 1.5rem; letter-spacing: 3px; text-shadow: 0 0 10px var(--neon); }
-        .brand p { margin: 5px 0 0; font-size: 0.7rem; color: #666; }
-
-        /* VISUALIZER CANVAS */
-        .viz-container { position: relative; height: 180px; background: #000; overflow: hidden; }
-        canvas { width: 100%; height: 100%; }
-
-        /* CONTROL PANEL */
-        .panel { 
-            display: flex; gap: 15px; padding: 15px; background: var(--dark); 
-            border-bottom: 1px solid #222; justify-content: center; flex-wrap: wrap;
-        }
-        button, .file-label { 
-            background: transparent; border: 1px solid var(--neon); color: var(--neon);
-            padding: 10px 20px; cursor: pointer; font-size: 0.8rem; font-weight: bold;
-            transition: all 0.3s; text-transform: uppercase;
-        }
-        button:hover, .file-label:hover { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
-        button.active { background: #f00; border-color: #f00; color: #fff; animation: blink 1s infinite; }
-
-        /* GRID 144 */
-        .grid-scroll { flex: 1; overflow-y: auto; padding: 20px; background: radial-gradient(circle, #111 0%, #050505 100%); }
-        .grid { 
-            display: grid; grid-template-columns: repeat(12, 1fr); gap: 5px; 
-            max-width: 1200px; margin: 0 auto;
-        }
+        /* สถาปัตยกรรมหน้าจอ */
+        header { padding: 15px; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center;}
+        .main-engine { display: flex; flex: 1; overflow: hidden; gap: 10px; padding: 10px; }
+        
+        /* ฝั่งซ้าย: กระดาน 144 (Melody Zone) */
+        .melody-zone { flex: 2; overflow-y: auto; background: #000; border: 1px solid #222; padding: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; }
         .cell { 
-            aspect-ratio: 1; background: rgba(0, 255, 0, 0.02); border: 1px solid #1a1a1a;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 0.6rem; color: #333; transition: all 0.1s; border-radius: 2px;
+            aspect-ratio: 1; border: 1px solid #111; font-size: 0.6rem; 
+            display: flex; align-items: center; justify-content: center; color: #222;
+            transition: background-color 0.1s, box-shadow 0.1s; border-radius: 3px;
         }
-        .cell.active { 
-            background: var(--neon); color: #000; border-color: #fff;
-            box-shadow: 0 0 25px var(--neon); transform: scale(1.15); z-index: 5;
-        }
-        .cell.base { border-color: #fff; color: #fff; background: rgba(255,255,255,0.05); }
 
-        /* STATUS OVERLAY */
-        #status-bar { position: fixed; bottom: 0; width: 100%; background: #000; font-size: 0.7rem; padding: 5px 20px; border-top: 1px solid #222; color: #888; }
+        /* สีไฟกระพริบตามสระ */
+        .cell.a-active { background-color: #0f0; color: #000; box-shadow: 0 0 15px #0f0; transform: scale(1.1); }
+        .cell.i-active { background-color: #0ff; color: #000; box-shadow: 0 0 15px #0ff; transform: scale(1.1); }
+        .cell.u-active { background-color: #80f; color: #fff; box-shadow: 0 0 15px #80f; transform: scale(1.1); }
+        .cell.e-active { background-color: #ff0; color: #000; box-shadow: 0 0 15px #ff0; transform: scale(1.1); }
+        .cell.o-active { background-color: #f80; color: #000; box-shadow: 0 0 15px #f80; transform: scale(1.1); }
+
+        /* ฝั่งขวา: แผงควบคุมสระและคอร์ด (Control Panel) */
+        .control-panel { flex: 1; background: #050505; border-left: 1px solid #333; padding: 15px; }
+        .vowel-btn { 
+            width: 100%; padding: 15px; margin-bottom: 10px; border: 1px solid #222; 
+            background: #000; text-align: left; cursor: pointer; color: #fff; font-weight: bold;
+        }
+        .vowel-btn:hover { border-color: #555; }
+        .vowel-btn.active { border-color: #fff; box-shadow: inset 0 0 10px rgba(255,255,255,0.2); }
+        
+        /* สีปุ่มสระ */
+        #btn-a.active { background-color: #040; color: #0f0; border-color: #0f0; }
+        #btn-i.active { background-color: #044; color: #0ff; border-color: #0ff; }
+        #btn-u.active { background-color: #304; color: #80f; border-color: #80f; }
+        #btn-e.active { background-color: #440; color: #ff0; border-color: #ff0; }
+        #btn-o.active { background-color: #420; color: #f80; border-color: #f80; }
+
+        /* ระบบบันทึก (LOG) */
+        #status-bar { height: 30px; background: #111; font-size: 0.7rem; padding: 5px 20px; border-top: 1px solid #222; color: #888; }
+        
+        /* ปุ่มควบคุมหลัก */
+        .controls { padding: 15px; background: #000; border-top: 1px solid #333; display: flex; gap: 10px; }
+        button.main-btn { background: none; border: 1px solid #555; color: #fff; padding: 10px 20px; cursor: pointer; font-weight: bold; text-transform: uppercase;}
+        button.main-btn:hover { background: #111; border-color: #fff; }
+        button.main-btn.rec { border-color: #f00; color: #f00; }
+        button.main-btn.rec.active { background: #f00; color: #fff; animation: blink 1s infinite; }
 
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
@@ -85,178 +68,159 @@ st.components.v1.html(html_code, height=800, scrolling=True)
 <body>
 
 <header>
-    <div class="brand">
-        <h1>SYNAPSE MATH-ELASTIC</h1>
-        <p>SLOGAN: อยู่นิ่งๆ ไม่เจ็บตัว | MODE: PITCH-SHIFT 144-ENGINE</p>
-    </div>
-    <div id="db-meter" style="font-family: monospace; font-size: 1.2rem;">-∞ dB</div>
+    <div><strong>SYNAPSE X-ENGINE</strong> | "อยู่นิ่งๆ ไม่เจ็บตัว" Vowel Color Edition</div>
+    <div id="freq-val" style="color: #444;">DETECTING...</div>
 </header>
 
-<div class="viz-container">
-    <canvas id="scope"></canvas>
+<div class="main-engine">
+    <div class="melody-zone">
+        <div style="font-size: 0.7rem; color: #444; margin-bottom: 10px;">MELODY MATRIX (144 SLOTS)</div>
+        <div class="grid" id="noteGrid"></div>
+    </div>
+    
+    <div class="control-panel">
+        <div style="font-size: 0.7rem; color: #444; margin-bottom: 15px;">VOWEL SELECTOR</div>
+        <div id="vowel-controls">
+            <button class="vowel-btn a-btn active" id="btn-a" onclick="setVowel('a')">A - อา (Neon Green)</button>
+            <button class="vowel-btn i-btn" id="btn-i" onclick="setVowel('i')">I - อี (Ice Blue)</button>
+            <button class="vowel-btn u-btn" id="btn-u" onclick="setVowel('u')">U - อู (Deep Purple)</button>
+            <button class="vowel-btn e-btn" id="btn-e" onclick="setVowel('e')">E - เอ (Golden Yellow)</button>
+            <button class="vowel-btn o-btn" id="btn-o" onclick="setVowel('o')">O - โอ (Orange Blazing)</button>
+        </div>
+        <canvas id="wave-scope" style="width:100%; height:80px; margin-top:20px; border:1px solid #111;"></canvas>
+    </div>
 </div>
 
-<div class="panel">
-    <button id="btnRec" onclick="toggleRecording()">1. อัดเสียง C4 (3 วินาที)</button>
-    <label class="file-label">
-        2. เลือกเพลง MP3
-        <input type="file" id="audioFile" accept="audio/*" style="display:none">
-    </label>
-    <button onclick="powerOn()" style="background: rgba(0,255,0,0.1)">3. เดินเครื่องระบบ (START)</button>
-    <button onclick="location.reload()" style="border-color:#444; color:#444;">RESET</button>
+<div class="controls">
+    <button id="btnRec" class="main-btn rec" onclick="startSampling()">1. SAMPLING (ร้อง: อา-อี-อู-เอ-โอ 3วิ)</button>
+    <input type="file" id="audioIn" accept="audio/*" style="display:none">
+    <button class="main-btn" onclick="document.getElementById('audioIn').click()">2. LOAD MP3</button>
+    <button class="main-btn" onclick="runEngine()">3. START ENGINE</button>
 </div>
 
-<div class="grid-scroll">
-    <div class="grid" id="noteGrid"></div>
-</div>
-
-<div id="status-bar">SYSTEM READY // WAITING FOR INPUT...</div>
+<div id="status-bar">WAITING FOR COMMAND...</div>
 
 <script>
     const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    let audioCtx, masterGain, analyser, userBuffer, mp3Buffer, mp3Source;
-    let isRunning = false;
-    let lastNoteTime = 0;
+    // สัดส่วนพิกัดของสระในไฟล์เสียง 3 วิ (Sampling Time)
+    const VOWEL_MAP = { a: 0.0, i: 0.6, u: 1.2, e: 1.8, o: 2.4 };
+    let currentVowel = 'a';
+    let audioCtx, userBuf, mp3Buf, analyser, isRunning = false;
+    let lastMidi = -1;
 
-    // 1. สร้างตาราง 144 (12 Octaves)
+    // สร้างตาราง 144 ช่อง
     const grid = document.getElementById('noteGrid');
-    for(let i=0; i<144; i++) {
-        const div = document.createElement('div');
-        div.className = 'cell';
-        if(i === 60) div.classList.add('base');
-        div.id = `n-${i}`;
-        div.innerHTML = `<span>${NOTES[i%12]}</span><span style="opacity:0.5">${Math.floor(i/12)}</span>`;
-        grid.appendChild(div);
+    for(let i=0; i<144; i++){
+        const d = document.createElement('div');
+        d.className = 'cell'; d.id = `m-${i}`;
+        d.innerHTML = NOTES[i%12];
+        grid.appendChild(d);
     }
 
-    // 2. ระบบอัดเสียง
-    async function toggleRecording() {
+    // ฟังก์ชันเลือกสระ (เปลี่ยนสีปุ่มและกำหนดพิกัดเสียง)
+    function setVowel(vowel) {
+        currentVowel = vowel;
+        document.querySelectorAll('.vowel-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${vowel}`).classList.add('active');
+        document.getElementById('status-bar').innerText = `✅ เปลี่ยนเสียงเป็นสระ: ${vowel.toUpperCase()}`;
+    }
+
+    async function startSampling() {
         if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const btn = document.getElementById('btnRec');
         const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-        const recorder = new MediaRecorder(stream);
+        const rec = new MediaRecorder(stream);
         const chunks = [];
-        
-        recorder.ondataavailable = e => chunks.push(e.data);
-        recorder.onstop = async () => {
-            const blob = new Blob(chunks);
-            userBuffer = await audioCtx.decodeAudioData(await blob.arrayBuffer());
-            document.getElementById('status-bar').innerText = "✅ บันทึกตัวอย่างเสียงแล้ว | พร้อมคำนวณ";
+        const btnRec = document.getElementById('btnRec');
+
+        rec.ondataavailable = e => chunks.push(e.data);
+        rec.onstop = async () => {
+            userBuf = await audioCtx.decodeAudioData(await new Blob(chunks).arrayBuffer());
+            document.getElementById('status-bar').innerText = "✅ หัวเชื้อสระ 5 ตัวพร้อมแล้ว!";
+            btnRec.innerText = "SAMPLING จบแล้ว";
+            btnRec.classList.remove('active');
         };
-        
-        recorder.start();
-        btn.classList.add('active');
-        btn.innerText = "กำลังรับคลื่นเสียง...";
-        setTimeout(() => { recorder.stop(); btn.classList.remove('active'); btn.innerText = "อัดเสียงใหม่"; }, 3000);
+        rec.start();
+        btnRec.classList.add('active');
+        btnRec.innerText = "🔴 ร้อง อา-อี-อู-เอ-โอ ยาวๆ...";
+        // ให้ร้องตัวละ 0.6 วินาที (รวม 3 วินาทีพอดี)
+        setTimeout(() => { rec.stop(); }, 3000); 
     }
 
-    // 3. โหลดเพลง
-    document.getElementById('audioFile').onchange = async (e) => {
+    document.getElementById('audioIn').onchange = async (e) => {
         if(!audioCtx) audioCtx = new AudioContext();
-        const file = e.target.files[0];
-        mp3Buffer = await audioCtx.decodeAudioData(await file.arrayBuffer());
-        document.getElementById('status-bar').innerText = `🎵 โหลดเพลง: ${file.name} สำเร็จ`;
+        mp3Buf = await audioCtx.decodeAudioData(await e.target.files[0].arrayBuffer());
+        document.getElementById('status-bar').innerText = "🎵 โหลดดนตรีเรียบร้อย";
     };
 
-    // 4. เริ่มระบบคำนวณ
-    function powerOn() {
-        if(!userBuffer || !mp3Buffer || isRunning) return;
+    function runEngine() {
+        if(!userBuf || !mp3Buf) return alert("อัดเสียง (อา-อี-อู-เอ-โอ) และโหลดเพลงก่อนครับ!");
         isRunning = true;
-        
-        // Setup Nodes
-        mp3Source = audioCtx.createBufferSource();
-        mp3Source.buffer = mp3Buffer;
-        
+        const source = audioCtx.createBufferSource();
+        source.buffer = mp3Buf;
         analyser = audioCtx.createAnalyser();
         analyser.fftSize = 2048;
-        
-        masterGain = audioCtx.createGain();
-        
-        mp3Source.connect(analyser);
-        mp3Source.connect(audioCtx.destination);
-        mp3Source.start();
-        
-        document.getElementById('status-bar').innerText = "🚀 ENGINE RUNNING: ANALYZING FREQUENCIES...";
+        source.connect(analyser);
+        source.connect(audioCtx.destination);
+        source.start();
         process();
+        document.getElementById('status-bar').innerText = "🚀 เดินเครื่อง X-ENGINE: ร้องตามสระที่เลือก...";
     }
 
-    // 5. THE ENGINE LOGIC
     function process() {
         if(!isRunning) return;
-        
         const data = new Uint8Array(analyser.frequencyBinCount);
         analyser.getByteFrequencyData(data);
         
-        // วาด Scope
-        drawVisualizer(data);
+        let maxV = 0, maxI = 0;
+        for(let i=0; i<data.length; i++) { if(data[i] > maxV) { maxV = data[i]; maxI = i; } }
 
-        // หาความถี่สูงสุด (Pitch Detection)
-        let maxVal = 0;
-        let maxIdx = 0;
-        for(let i=0; i<data.length; i++) {
-            if(data[i] > maxVal) { maxVal = data[i]; maxIdx = i; }
-        }
-
-        const now = audioCtx.currentTime;
-        // ปรับ Threshold ความดังที่ 200 เพื่อให้จับเฉพาะโน้ตชัดๆ
-        if(maxVal > 200 && now - lastNoteTime > 0.1) {
-            const freq = maxIdx * (audioCtx.sampleRate / analyser.fftSize);
-            // กรองช่วงเสียงมนุษย์ 100Hz - 1200Hz
-            if(freq > 100 && freq < 1200) {
-                const midi = Math.round(12 * Math.log2(freq / 440) + 69) + 12;
-                if(midi >= 0 && midi < 144) {
-                    playElasticNote(midi, maxVal / 255);
-                    lastNoteTime = now;
-                }
+        if(maxV > 210) { // ปรับ Threshold ความดังให้สูงขึ้นเพื่อให้จับตัวโน้ตชัดๆ
+            const freq = maxI * (audioCtx.sampleRate / 2048);
+            const midi = Math.round(12 * Math.log2(freq / 440) + 69) + 12;
+            
+            if(midi != lastMidi && midi >= 0 && midi < 144) {
+                // ยิงเสียงสระปัจจุบัน
+                triggerVowelVoice(midi, maxV/255);
+                lastMidi = midi;
             }
         }
-        
         requestAnimationFrame(process);
     }
 
-    function playElasticNote(midi, velocity) {
-        // UI Effect
-        const cell = document.getElementById(`n-${midi}`);
-        if(cell) {
-            cell.classList.add('active');
-            setTimeout(() => cell.classList.remove('active'), 150);
+    function triggerVowelVoice(m, v) {
+        // หาพิกัดเริ่มต้นของสระในไฟล์ 3 วิ
+        const startTime = VOWEL_MAP[currentVowel];
+        
+        // แสดงผลไฟกระพริบตามสีของสระ
+        const cell = document.getElementById(`m-${m}`);
+        if(cell) { 
+            const vowelClass = `${currentVowel}-active`;
+            cell.classList.add(vowelClass); 
+            // ให้สว่างค้างไว้ 150ms เพื่อให้เห็นสีชัดเจน
+            setTimeout(() => cell.classList.remove(vowelClass), 150); 
         }
 
-        // Sound Engine
-        const voice = audioCtx.createBufferSource();
-        const vGain = audioCtx.createGain();
-        voice.buffer = userBuffer;
+        // ยิงเสียงสระจากพิกัดที่กำหนด
+        const source = audioCtx.createBufferSource();
+        const gainNode = audioCtx.createGain();
+        source.buffer = userBuf;
+        // บิดความเร็วเสียง
+        source.playbackRate.value = Math.pow(2, (m - 60) / 12); 
         
-        // MATH: n = 60 (C4)
-        const playbackRate = Math.pow(2, (midi - 60) / 12);
-        voice.playbackRate.value = playbackRate;
+        // ADSR Envelope (นุ่มนวลขึ้น)
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(v * 0.8, audioCtx.currentTime + 0.04);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
 
-        // ADSR Envelope
-        vGain.gain.setValueAtTime(0, audioCtx.currentTime);
-        vGain.gain.linearRampToValueAtTime(velocity * 0.8, audioCtx.currentTime + 0.03);
-        vGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-
-        voice.connect(vGain);
-        vGain.connect(audioCtx.destination);
-        voice.start();
-    }
-
-    function drawVisualizer(data) {
-        const canvas = document.getElementById('scope');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        source.connect(gainNode); 
+        gainNode.connect(audioCtx.destination);
         
-        const barWidth = canvas.width / data.length;
-        for(let i=0; i<data.length; i++) {
-            const h = (data[i] / 255) * canvas.height;
-            ctx.fillStyle = `hsl(${120 + data[i]/2}, 100%, 50%)`;
-            ctx.fillRect(i * barWidth, canvas.height - h, barWidth, h);
-        }
-        
-        // Update DB Meter
-        const avg = data.reduce((a, b) => a + b) / data.length;
-        document.getElementById('db-meter').innerText = `${Math.round(avg)} UNIT`;
+        // เล่นเสียงสระจากพิกัด (startTime) เป็นเวลา 0.5 วินาที
+        source.start(0, startTime, 0.5); 
     }
 </script>
 </body>
 </html>
+"""
+
+components.html(html_code, height=900)
