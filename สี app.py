@@ -1,234 +1,241 @@
-import streamlit as st
-import streamlit.components.v1 as components
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYNAPSE: Math-Elastic 144 Engine</title>
+    <style>
+        :root { --neon: #0f0; --bg: #050505; --dark: #111; }
+        body { 
+            background: var(--bg); color: var(--neon); 
+            font-family: 'Segoe UI', 'Courier New', monospace; 
+            margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+        }
+        
+        /* HEADER SECTION */
+        header { 
+            padding: 20px; border-bottom: 2px solid var(--neon); 
+            background: linear-gradient(to bottom, #000, var(--bg));
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .brand h1 { margin: 0; font-size: 1.5rem; letter-spacing: 3px; text-shadow: 0 0 10px var(--neon); }
+        .brand p { margin: 5px 0 0; font-size: 0.7rem; color: #666; }
 
-# ตั้งค่าหน้าจอ
-st.set_page_config(page_title="SYNAPSE AUDIO SYSTEM", layout="wide")
+        /* VISUALIZER CANVAS */
+        .viz-container { position: relative; height: 180px; background: #000; overflow: hidden; }
+        canvas { width: 100%; height: 100%; }
 
-def synapse_audio_player():
-    # ส่วนของ HTML/CSS/JS ที่รวมความสามารถทั้งหมด
-    player_html = """
-    <!DOCTYPE html>
-    <html lang="th">
-    <head>
-        <meta charset="UTF-8">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;500&display=swap');
-            
-            body {
-                margin: 0; padding: 0;
-                font-family: 'Kanit', sans-serif;
-                height: 100vh;
-                display: flex; align-items: center; justify-content: center;
-                /* Background แบบผสม: รูปภาพ + Rainbow Flow */
-                background: linear-gradient(270deg, rgba(255,0,0,0.5), rgba(0,255,200,0.5), rgba(0,0,255,0.5));
-                background-size: 600% 600%;
-                animation: RainbowFlow 15s ease infinite;
-                overflow: hidden;
-            }
+        /* CONTROL PANEL */
+        .panel { 
+            display: flex; gap: 15px; padding: 15px; background: var(--dark); 
+            border-bottom: 1px solid #222; justify-content: center; flex-wrap: wrap;
+        }
+        button, .file-label { 
+            background: transparent; border: 1px solid var(--neon); color: var(--neon);
+            padding: 10px 20px; cursor: pointer; font-size: 0.8rem; font-weight: bold;
+            transition: all 0.3s; text-transform: uppercase;
+        }
+        button:hover, .file-label:hover { background: var(--neon); color: #000; box-shadow: 0 0 20px var(--neon); }
+        button.active { background: #f00; border-color: #f00; color: #fff; animation: blink 1s infinite; }
 
-            @keyframes RainbowFlow {
-                0%{background-position:0% 50%}
-                50%{background-position:100% 50%}
-                100%{background-position:0% 50%}
-            }
+        /* GRID 144 */
+        .grid-scroll { flex: 1; overflow-y: auto; padding: 20px; background: radial-gradient(circle, #111 0%, #050505 100%); }
+        .grid { 
+            display: grid; grid-template-columns: repeat(12, 1fr); gap: 5px; 
+            max-width: 1200px; margin: 0 auto;
+        }
+        .cell { 
+            aspect-ratio: 1; background: rgba(0, 255, 0, 0.02); border: 1px solid #1a1a1a;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 0.6rem; color: #333; transition: all 0.1s; border-radius: 2px;
+        }
+        .cell.active { 
+            background: var(--neon); color: #000; border-color: #fff;
+            box-shadow: 0 0 25px var(--neon); transform: scale(1.15); z-index: 5;
+        }
+        .cell.base { border-color: #fff; color: #fff; background: rgba(255,255,255,0.05); }
 
-            .player-card {
-                background: rgba(13, 17, 23, 0.85);
-                backdrop-filter: blur(10px);
-                border: 2px solid #00ffc8;
-                box-shadow: 0 0 30px rgba(0, 255, 200, 0.3);
-                width: 100%; max-width: 450px;
-                padding: 2rem; border-radius: 2rem;
-                color: white; z-index: 10;
-            }
+        /* STATUS OVERLAY */
+        #status-bar { position: fixed; bottom: 0; width: 100%; background: #000; font-size: 0.7rem; padding: 5px 20px; border-top: 1px solid #222; color: #888; }
 
-            /* ปุ่มทรงหยดน้ำ Morphing */
-            .liquid-btn {
-                background: #00ffc8;
-                color: #0d1117;
-                font-weight: bold;
-                border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
-                transition: 0.5s;
-                animation: liquidMorph 4s infinite alternate;
-                cursor: pointer;
-                padding: 12px 24px;
-                border: none;
-            }
-            @keyframes liquidMorph {
-                0% { border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%; }
-                100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
-            }
-            .liquid-btn:hover { transform: scale(1.05); background: #ffffff; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
 
-            #visualizer-canvas {
-                background: rgba(0,0,0,0.3);
-                border-radius: 12px;
-                height: 80px; width: 100%;
-                border-bottom: 2px solid #00ffc8;
-            }
+<header>
+    <div class="brand">
+        <h1>SYNAPSE MATH-ELASTIC</h1>
+        <p>SLOGAN: อยู่นิ่งๆ ไม่เจ็บตัว | MODE: PITCH-SHIFT 144-ENGINE</p>
+    </div>
+    <div id="db-meter" style="font-family: monospace; font-size: 1.2rem;">-∞ dB</div>
+</header>
 
-            .progress-container {
-                height: 6px; background: #30363d;
-                border-radius: 3px; cursor: pointer;
-            }
-            .progress-fill {
-                height: 100%; background: #00ffc8;
-                width: 0%; border-radius: 3px;
-                box-shadow: 0 0 10px #00ffc8;
-            }
-            
-            input[type="range"] {
-                accent-color: #00ffc8;
-                cursor: pointer;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="player-card">
-            <div class="text-center mb-4">
-                <h1 class="text-xl font-bold text-[#00ffc8]">SYNAPSE HYBRID AUDIO</h1>
-                <p class="text-xs text-gray-400">"อยู่นิ่งๆ ไม่เจ็บตัว"</p>
-            </div>
+<div class="viz-container">
+    <canvas id="scope"></canvas>
+</div>
 
-            <canvas id="visualizer-canvas" class="mb-4"></canvas>
+<div class="panel">
+    <button id="btnRec" onclick="toggleRecording()">1. อัดเสียง C4 (3 วินาที)</button>
+    <label class="file-label">
+        2. เลือกเพลง MP3
+        <input type="file" id="audioFile" accept="audio/*" style="display:none">
+    </label>
+    <button onclick="powerOn()" style="background: rgba(0,255,0,0.1)">3. เดินเครื่องระบบ (START)</button>
+    <button onclick="location.reload()" style="border-color:#444; color:#444;">RESET</button>
+</div>
 
-            <div class="mb-4 text-center">
-                <h2 id="song-title" class="text-lg font-semibold truncate">เลือกเพลงเพื่อเริ่มระบบ</h2>
-                <p id="song-info" class="text-xs text-gray-400">READY TO SCAN DEVICES</p>
-            </div>
+<div class="grid-scroll">
+    <div class="grid" id="noteGrid"></div>
+</div>
 
-            <div class="mb-4">
-                <div class="progress-container" id="prog-container">
-                    <div class="progress-fill" id="prog-fill"></div>
-                </div>
-                <div class="flex justify-between text-[10px] mt-1">
-                    <span id="cur-time">0:00</span>
-                    <span id="total-dur">0:00</span>
-                </div>
-            </div>
+<div id="status-bar">SYSTEM READY // WAITING FOR INPUT...</div>
 
-            <div class="flex justify-around items-center mb-6">
-                <button onclick="prevTrack()" class="text-[#00ffc8]">PREV</button>
-                <button id="play-pause-btn" onclick="togglePlay()" class="liquid-btn">PLAY</button>
-                <button onclick="nextTrack()" class="text-[#00ffc8]">NEXT</button>
-            </div>
+<script>
+    const NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    let audioCtx, masterGain, analyser, userBuffer, mp3Buffer, mp3Source;
+    let isRunning = false;
+    let lastNoteTime = 0;
 
-            <div class="grid grid-cols-2 gap-4 mt-4 border-t border-gray-700 pt-4">
-                <div>
-                    <label class="block text-[10px] mb-1">VOLUME</label>
-                    <input type="range" id="vol-slider" min="0" max="1" step="0.01" value="0.8" class="w-full">
-                </div>
-                <div>
-                    <label class="block text-[10px] mb-1">BASS BOOST</label>
-                    <input type="range" id="low-slider" min="-10" max="15" step="1" value="0" class="w-full">
-                </div>
-            </div>
+    // 1. สร้างตาราง 144 (12 Octaves)
+    const grid = document.getElementById('noteGrid');
+    for(let i=0; i<144; i++) {
+        const div = document.createElement('div');
+        div.className = 'cell';
+        if(i === 60) div.classList.add('base');
+        div.id = `n-${i}`;
+        div.innerHTML = `<span>${NOTES[i%12]}</span><span style="opacity:0.5">${Math.floor(i/12)}</span>`;
+        grid.appendChild(div);
+    }
 
-            <div class="mt-6">
-                <input type="file" id="file-input" multiple accept="audio/*" class="hidden" onchange="handleFiles(this.files)">
-                <button onclick="document.getElementById('file-input').click()" class="w-full py-2 bg-gray-800 border border-[#00ffc8] rounded-lg text-xs hover:bg-gray-700">
-                    + เพิ่มเพลงเข้าเพลย์ลิสต์
-                </button>
-            </div>
-        </div>
+    // 2. ระบบอัดเสียง
+    async function toggleRecording() {
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const btn = document.getElementById('btnRec');
+        const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+        const recorder = new MediaRecorder(stream);
+        const chunks = [];
+        
+        recorder.ondataavailable = e => chunks.push(e.data);
+        recorder.onstop = async () => {
+            const blob = new Blob(chunks);
+            userBuffer = await audioCtx.decodeAudioData(await blob.arrayBuffer());
+            document.getElementById('status-bar').innerText = "✅ บันทึกตัวอย่างเสียงแล้ว | พร้อมคำนวณ";
+        };
+        
+        recorder.start();
+        btn.classList.add('active');
+        btn.innerText = "กำลังรับคลื่นเสียง...";
+        setTimeout(() => { recorder.stop(); btn.classList.remove('active'); btn.innerText = "อัดเสียงใหม่"; }, 3000);
+    }
 
-        <audio id="main-audio"></audio>
+    // 3. โหลดเพลง
+    document.getElementById('audioFile').onchange = async (e) => {
+        if(!audioCtx) audioCtx = new AudioContext();
+        const file = e.target.files[0];
+        mp3Buffer = await audioCtx.decodeAudioData(await file.arrayBuffer());
+        document.getElementById('status-bar').innerText = `🎵 โหลดเพลง: ${file.name} สำเร็จ`;
+    };
 
-        <script>
-            let audioCtx, source, analyzer, gainNode, lowFilter;
-            let tracks = [];
-            let currentIdx = 0;
-            const audio = document.getElementById('main-audio');
-            const playBtn = document.getElementById('play-pause-btn');
+    // 4. เริ่มระบบคำนวณ
+    function powerOn() {
+        if(!userBuffer || !mp3Buffer || isRunning) return;
+        isRunning = true;
+        
+        // Setup Nodes
+        mp3Source = audioCtx.createBufferSource();
+        mp3Source.buffer = mp3Buffer;
+        
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        
+        masterGain = audioCtx.createGain();
+        
+        mp3Source.connect(analyser);
+        mp3Source.connect(audioCtx.destination);
+        mp3Source.start();
+        
+        document.getElementById('status-bar').innerText = "🚀 ENGINE RUNNING: ANALYZING FREQUENCIES...";
+        process();
+    }
 
-            function initAudio() {
-                if (audioCtx) return;
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                source = audioCtx.createMediaElementSource(audio);
-                
-                analyzer = audioCtx.createAnalyser();
-                analyzer.fftSize = 256;
+    // 5. THE ENGINE LOGIC
+    function process() {
+        if(!isRunning) return;
+        
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        analyser.getByteFrequencyData(data);
+        
+        // วาด Scope
+        drawVisualizer(data);
 
-                gainNode = audioCtx.createGain();
-                
-                lowFilter = audioCtx.createBiquadFilter();
-                lowFilter.type = 'lowshelf';
-                lowFilter.frequency.value = 200;
+        // หาความถี่สูงสุด (Pitch Detection)
+        let maxVal = 0;
+        let maxIdx = 0;
+        for(let i=0; i<data.length; i++) {
+            if(data[i] > maxVal) { maxVal = data[i]; maxIdx = i; }
+        }
 
-                source.connect(lowFilter);
-                lowFilter.connect(gainNode);
-                gainNode.connect(analyzer);
-                analyzer.connect(audioCtx.destination);
-
-                drawVisualizer();
-            }
-
-            function handleFiles(files) {
-                Array.from(files).forEach(f => {
-                    tracks.push({ name: f.name, url: URL.createObjectURL(f) });
-                });
-                if (tracks.length > 0 && audio.src === "") loadTrack(0);
-            }
-
-            function loadTrack(idx) {
-                initAudio();
-                currentIdx = idx;
-                audio.src = tracks[currentIdx].url;
-                document.getElementById('song-title').innerText = tracks[currentIdx].name;
-                audio.play();
-                playBtn.innerText = "PAUSE";
-            }
-
-            function togglePlay() {
-                if (!audio.src) return;
-                initAudio();
-                if (audio.paused) { audio.play(); playBtn.innerText = "PAUSE"; }
-                else { audio.pause(); playBtn.innerText = "PLAY"; }
-            }
-
-            function nextTrack() { if(currentIdx < tracks.length-1) loadTrack(currentIdx+1); }
-            function prevTrack() { if(currentIdx > 0) loadTrack(currentIdx-1); }
-
-            // Visualizer
-            function drawVisualizer() {
-                const canvas = document.getElementById('visualizer-canvas');
-                const ctx = canvas.getContext('2d');
-                const bufferLength = analyzer.frequencyBinCount;
-                const dataArray = new Uint8Array(bufferLength);
-
-                function animate() {
-                    requestAnimationFrame(animate);
-                    analyzer.getByteFrequencyData(dataArray);
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    
-                    let barWidth = (canvas.width / bufferLength) * 2.5;
-                    let x = 0;
-                    for(let i = 0; i < bufferLength; i++) {
-                        let barHeight = dataArray[i] / 2;
-                        ctx.fillStyle = `rgb(0, 255, ${dataArray[i]})`;
-                        ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-                        x += barWidth + 1;
-                    }
+        const now = audioCtx.currentTime;
+        // ปรับ Threshold ความดังที่ 200 เพื่อให้จับเฉพาะโน้ตชัดๆ
+        if(maxVal > 200 && now - lastNoteTime > 0.1) {
+            const freq = maxIdx * (audioCtx.sampleRate / analyser.fftSize);
+            // กรองช่วงเสียงมนุษย์ 100Hz - 1200Hz
+            if(freq > 100 && freq < 1200) {
+                const midi = Math.round(12 * Math.log2(freq / 440) + 69) + 12;
+                if(midi >= 0 && midi < 144) {
+                    playElasticNote(midi, maxVal / 255);
+                    lastNoteTime = now;
                 }
-                animate();
             }
+        }
+        
+        requestAnimationFrame(process);
+    }
 
-            // Listeners
-            document.getElementById('vol-slider').oninput = (e) => gainNode.gain.value = e.target.value;
-            document.getElementById('low-slider').oninput = (e) => lowFilter.gain.value = e.target.value;
-            
-            audio.ontimeupdate = () => {
-                const per = (audio.currentTime / audio.duration) * 100;
-                document.getElementById('prog-fill').style.width = per + "%";
-                document.getElementById('cur-time').innerText = Math.floor(audio.currentTime/60) + ":" + Math.floor(audio.currentTime%60).toString().padStart(2,'0');
-            };
-        </script>
-    </body>
-    </html>
-    """
-    components.html(player_html, height=700)
+    function playElasticNote(midi, velocity) {
+        // UI Effect
+        const cell = document.getElementById(`n-${midi}`);
+        if(cell) {
+            cell.classList.add('active');
+            setTimeout(() => cell.classList.remove('active'), 150);
+        }
 
-# รันฟังก์ชัน
-st.title("🛰️ SYNAPSE COMMAND CENTER")
-synapse_audio_player()
+        // Sound Engine
+        const voice = audioCtx.createBufferSource();
+        const vGain = audioCtx.createGain();
+        voice.buffer = userBuffer;
+        
+        // MATH: n = 60 (C4)
+        const playbackRate = Math.pow(2, (midi - 60) / 12);
+        voice.playbackRate.value = playbackRate;
+
+        // ADSR Envelope
+        vGain.gain.setValueAtTime(0, audioCtx.currentTime);
+        vGain.gain.linearRampToValueAtTime(velocity * 0.8, audioCtx.currentTime + 0.03);
+        vGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+        voice.connect(vGain);
+        vGain.connect(audioCtx.destination);
+        voice.start();
+    }
+
+    function drawVisualizer(data) {
+        const canvas = document.getElementById('scope');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const barWidth = canvas.width / data.length;
+        for(let i=0; i<data.length; i++) {
+            const h = (data[i] / 255) * canvas.height;
+            ctx.fillStyle = `hsl(${120 + data[i]/2}, 100%, 50%)`;
+            ctx.fillRect(i * barWidth, canvas.height - h, barWidth, h);
+        }
+        
+        // Update DB Meter
+        const avg = data.reduce((a, b) => a + b) / data.length;
+        document.getElementById('db-meter').innerText = `${Math.round(avg)} UNIT`;
+    }
+</script>
+</body>
+</html>
