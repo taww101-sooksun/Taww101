@@ -2,6 +2,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 import time
 import numpy as np
+# --- ระบบความจำ Matrix (State Management) ---
+if 'target_hz' not in st.session_state:
+    st.session_state.target_hz = 432.0  # ค่าเป้าหมายจากไฟล์ MP3
+if 'live_hz' not in st.session_state:
+    st.session_state.live_hz = 0.0      # ค่าจากไมค์สด
 
 # --- 0. ตั้งค่าเริ่มต้นของระบบ (ต้องเป็นคำสั่งแรกสุด) ---
 st.set_page_config(layout="wide", page_title="SYNAPSE: ASSASSIN 144 CORE")
@@ -141,5 +146,43 @@ with tabs[2]:
     render_analyzer_room()
 
 with tabs[3]:
-    st.info("ห้อง 3.1: ตาราง 144 ช่อง (Visualizer)")
-    st.write("ระบบจะวาดตาราง อา-อี-อู ตามพิกัด 6D ในเร็วๆ นี้")
+    st.subheader("📺 ROOM 3.1: MATRIX 144 SYNC-LOGIC")
+    
+    # ดึงค่ามาคำนวณหาความต่าง (Error Margin)
+    target = st.session_state.target_hz
+    live = st.session_state.live_hz
+    
+    # สูตรคำนวณความแม่นยำ: 100 - (ความต่าง %)
+    diff = abs(target - live)
+    accuracy = max(0, 100 - (diff / target * 100)) if target > 0 else 0
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.write("🎯 **TARGET (จาก MP3)**")
+        st.title(f"{target:.1f} Hz")
+    with col_b:
+        st.write("🎤 **LIVE (จากไมค์)**")
+        st.title(f"{live:.1f} Hz")
+
+    # แถบแสดงความแม่นยำ (Sync Bar)
+    st.write(f"### ความซิงค์ (Sync Level): {accuracy:.2f}%")
+    st.progress(accuracy / 100)
+
+    if accuracy > 95:
+        st.success("🔥 MATRIX STATUS: PERFECT MATCH (เข้าสภาวะนิ่ง)")
+    elif accuracy > 80:
+        st.warning("⚡ MATRIX STATUS: STABLE (กำลังเข้าที่)")
+    else:
+        st.error("❄️ MATRIX STATUS: OUT OF SYNC (ยังไม่นิ่ง)")
+
+    # วาดตาราง 144 ช่อง (จำลอง)
+    st.write("---")
+    st.write("ระบบพิกัดตาราง 144 (12x12 Grid)")
+    
+    # สร้างตารางไฟกระพริบตามความแม่นยำ
+    grid_html = f"""
+    <div style="display:grid; grid-template-columns: repeat(12, 1fr); gap:2px; background:#111; padding:10px; border:1px solid #333;">
+        {"".join([f'<div style="width:100%; height:20px; background:{"#0f0" if (i < (accuracy*1.44)) else "#111"}; border-radius:2px; opacity:0.8;"></div>' for i in range(144)])}
+    </div>
+    """
+    components.html(grid_html, height=300)
