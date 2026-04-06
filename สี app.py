@@ -77,7 +77,11 @@ core_6d_html = """
 
 def render_sensor_room():
     st.subheader("🛰️ ROOM 1.1: SENSOR CALIBRATION")
-    st.write("ดึงค่า Hz และ BPM เข้าสู่ระบบ Matrix")
+    # ในฟังก์ชัน render_sensor_room() ส่วนที่แสดงค่า Hz
+# ลองสร้าง Slider หรือ Input หลอกๆ ไว้ทดสอบก่อนว่า Matrix 144 ขยับไหม
+live_val = st.slider("จำลองค่าจากไมค์ (เพื่อเช็คระบบเปรียบเทียบ)", 0.0, 500.0, 432.0)
+st.session_state.live_hz = live_val 
+
     sensor_html = """
     <div style="background:#000; color:#0f0; padding:20px; border:1px solid #333; border-radius:10px; font-family:monospace;">
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
@@ -114,7 +118,14 @@ def render_analyzer_room():
     uploaded_file = st.file_uploader("เลือกไฟล์เพลง (MP3/WAV)", type=["mp3", "wav"], key="unique_mp3_uploader")
     if uploaded_file:
         st.audio(uploaded_file)
-        if st.button("🚀 เริ่มการสแกน DEEP SCAN", key="btn_deep_scan"):
+        # หาบรรทัดนี้ในโค้ดคุณ
+if st.button("🚀 เริ่มการสแกน DEEP SCAN", key="btn_deep_scan"):
+    # ... (โค้ดสแกนเดิม) ...
+    st.success("✅ ข้อมูลส่งเข้าแกน Z แล้ว")
+    
+    # เพิ่มบรรทัดนี้เข้าไปครับ เพื่อส่งค่า 432.0 (หรือค่าที่คุณต้องการ) ไปที่หน้า Matrix
+    st.session_state.target_hz = 441.27 # หรือใช้เลขที่คุณต้องการเทียบ
+
             with st.status("กำลังวิเคราะห์...", expanded=True) as status:
                 st.write("🔍 แยกเลเยอร์เครื่องดนตรี...")
                 time.sleep(1)
