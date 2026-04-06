@@ -223,4 +223,4 @@ html_code = """
 </html>
 """
 
-components.html(html_code, height=9000)
+components.html(html_code, height=900)
