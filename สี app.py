@@ -132,8 +132,8 @@ with st.status("กำลังวิเคราะห์...", expanded=True) a
                 st.write("📐 คำนวณค่าแม่นยำ...")
                 time.sleep(1)
                 status.update(label="สแกนสำเร็จ!", state="complete")
-            st.code("1. Vibrato: 54.19 Hz\n2. Timbre: 1667.93 Hz\n3. Dynamics: 7.0054", language="text")
-            st.success("✅ ข้อมูลส่งเข้าแกน Z แล้ว")
+                st.code("1. Vibrato: 54.19 Hz\n2. Timbre: 1667.93 Hz\n3. Dynamics: 7.0054", language="text")
+                st.success("✅ ข้อมูลส่งเข้าแกน Z แล้ว")
 
 # --- 4. การประกอบร่าง UI หลัก ---
 
