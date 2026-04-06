@@ -268,18 +268,27 @@ def render_sensor_room():
 # เรียกใช้ห้องนี้ใน Tab "เซนเซอร์"
 render_sensor_room()
 
-def render_analyzer_room():
-    st.subheader("📊 ROOM 2.1: AUDIO DNA ANALYZER")
-    st.write("อัปโหลดไฟล์ MP3 เพื่อสแกนหา '7 ค่าแม่นยำ' (Acoustic Fingerprint)")
-
-    # 1. ตัวอัปโหลดไฟล์
-    uploaded_file = st.file_uploader("เลือกไฟล์เพลง (MP3/WAV)", type=["mp3", "wav"])
-
-    if uploaded_file is not None:
-        st.audio(uploaded_file, format='audio/mp3')
+with tabs[2]:
+    # สร้างฟังก์ชันไว้ข้างในนี้เลยก็ได้ครับ แต่ต้องเรียกใช้แค่ครั้งเดียว
+    def render_analyzer_room_v2(): 
+        st.subheader("📊 ROOM 2.1: AUDIO DNA ANALYZER")
         
-        if st.button("🚀 เริ่มการสแกน DEEP SCAN"):
-            with st.status("กำลังวิเคราะห์โครงสร้างคณิตศาสตร์ของเสียง...", expanded=True) as status:
+        # ใส่ key ป้องกันชื่อซ้ำ
+        uploaded_file = st.file_uploader(
+            "เลือกไฟล์เพลง (MP3/WAV)", 
+            type=["mp3", "wav"], 
+            key="unique_analyzer_upload_01" # <--- หัวใจหลักคือตรงนี้!
+        )
+
+        if uploaded_file is not None:
+            st.audio(uploaded_file)
+            if st.button("🚀 เริ่มการสแกน DEEP SCAN", key="btn_deep_scan"):
+                st.write("กำลังวิเคราะห์...")
+                # ... โค้ดส่วนที่เหลือ ...
+
+    # สั่งรันฟังก์ชันแค่ "ครั้งเดียว"
+    render_analyzer_room_v2() 
+
                 st.write("🔍 แยกเลเยอร์เครื่องดนตรี...")
                 time.sleep(1)
                 st.write("📐 คำนวณค่า Vibrato และ Timbre...")
