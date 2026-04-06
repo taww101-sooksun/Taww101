@@ -1,3 +1,24 @@
+import streamlit as st
+
+# ใช้ตัวแปรเก็บโค้ด HTML ทั้งหมดที่คุณเขียนไว้
+html_code = """
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: #000; }
+        /* ใส่ CSS ของคุณต่อที่นี่ */
+    </style>
+</head>
+<body>
+    <h1 style="color: #0f0;">MATH-ELASTIC ENGINE READY</h1>
+</body>
+</html>
+"""
+
+# สั่งให้ Streamlit แสดงผล HTML
+st.components.v1.html(html_code, height=800, scrolling=True)
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
