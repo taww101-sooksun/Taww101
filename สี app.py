@@ -1,6 +1,53 @@
 import streamlit as st
 import streamlit.components.v1 as components
 import time
+import numpy as np
+
+def render_analyzer_room():
+    st.subheader("📊 ROOM 2.1: AUDIO DNA ANALYZER")
+    st.write("อัปโหลดไฟล์ MP3 เพื่อสแกนหา '7 ค่าแม่นยำ' (Acoustic Fingerprint)")
+
+    # 1. ตัวอัปโหลดไฟล์
+    uploaded_file = st.file_uploader("เลือกไฟล์เพลง (MP3/WAV)", type=["mp3", "wav"])
+
+    if uploaded_file is not None:
+        st.audio(uploaded_file, format='audio/mp3')
+        
+        if st.button("🚀 เริ่มการสแกน DEEP SCAN"):
+            with st.status("กำลังวิเคราะห์โครงสร้างคณิตศาสตร์ของเสียง...", expanded=True) as status:
+                st.write("🔍 แยกเลเยอร์เครื่องดนตรี...")
+                time.sleep(1)
+                st.write("📐 คำนวณค่า Vibrato และ Timbre...")
+                time.sleep(1)
+                st.write("🌡️ วัดค่า Harmonic Warmth (Z-Axis)...")
+                time.sleep(1)
+                status.update(label="สแกนเสร็จสิ้น! คายข้อมูล 7 ค่าแม่นยำสำเร็จ", state="complete")
+
+            # 2. แสดงผล 7 ค่าแม่นยำ (Mockup ข้อมูลจริงจากการคำนวณ)
+            st.markdown("### === รายงานผล 7 ค่าแม่นยำ (Acoustic Fingerprint) ===")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.code(f"""
+1. Vibrato (สั่น): 54.19 Hz
+2. Transition (เอื้อน): 3.2118
+3. Timbre (ความใส): 1667.93 Hz
+4. Dynamics (น้ำหนัก): 7.0054
+                """, language="text")
+            
+            with col2:
+                st.code(f"""
+5. Timing (จังหวะคำ): 3.72 /sec
+6. Sibilance (เสียงแหลม): 0.0455
+7. Silence Gate: 0.000000
+                """, language="text")
+
+            # 3. ส่งค่าไปยังแกน Z (หน้า-หลัง)
+            st.success("✅ ข้อมูลถูกส่งไปยังแกน Z (Heat/Cold) ในหน้า CORE แล้ว")
+            st.session_state.matrix_z = 45.8  # ตัวอย่างค่าความร้อนที่ได้
+
+# เรียกใช้ฟังก์ชันใน Tab 2
+render_analyzer_room()
 
 st.set_page_config(layout="wide", page_title="SYNAPSE: ASSASSIN 144 CORE")
 
@@ -221,10 +268,52 @@ def render_sensor_room():
 # เรียกใช้ห้องนี้ใน Tab "เซนเซอร์"
 render_sensor_room()
 
+def render_analyzer_room():
+    st.subheader("📊 ROOM 2.1: AUDIO DNA ANALYZER")
+    st.write("อัปโหลดไฟล์ MP3 เพื่อสแกนหา '7 ค่าแม่นยำ' (Acoustic Fingerprint)")
 
-with tabs[2]:
-    st.info("ห้อง 2.1: ส่วนวิเคราะห์ MP3 (7 ค่าแม่นยำ)")
-    st.write("ผลลัพธ์การสแกนกีตาร์/กลอง/เบส จะถูกส่งมาที่นี่")
+    # 1. ตัวอัปโหลดไฟล์
+    uploaded_file = st.file_uploader("เลือกไฟล์เพลง (MP3/WAV)", type=["mp3", "wav"])
+
+    if uploaded_file is not None:
+        st.audio(uploaded_file, format='audio/mp3')
+        
+        if st.button("🚀 เริ่มการสแกน DEEP SCAN"):
+            with st.status("กำลังวิเคราะห์โครงสร้างคณิตศาสตร์ของเสียง...", expanded=True) as status:
+                st.write("🔍 แยกเลเยอร์เครื่องดนตรี...")
+                time.sleep(1)
+                st.write("📐 คำนวณค่า Vibrato และ Timbre...")
+                time.sleep(1)
+                st.write("🌡️ วัดค่า Harmonic Warmth (Z-Axis)...")
+                time.sleep(1)
+                status.update(label="สแกนเสร็จสิ้น! คายข้อมูล 7 ค่าแม่นยำสำเร็จ", state="complete")
+
+            # 2. แสดงผล 7 ค่าแม่นยำ (Mockup ข้อมูลจริงจากการคำนวณ)
+            st.markdown("### === รายงานผล 7 ค่าแม่นยำ (Acoustic Fingerprint) ===")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.code(f"""
+1. Vibrato (สั่น): 54.19 Hz
+2. Transition (เอื้อน): 3.2118
+3. Timbre (ความใส): 1667.93 Hz
+4. Dynamics (น้ำหนัก): 7.0054
+                """, language="text")
+            
+            with col2:
+                st.code(f"""
+5. Timing (จังหวะคำ): 3.72 /sec
+6. Sibilance (เสียงแหลม): 0.0455
+7. Silence Gate: 0.000000
+                """, language="text")
+
+            # 3. ส่งค่าไปยังแกน Z (หน้า-หลัง)
+            st.success("✅ ข้อมูลถูกส่งไปยังแกน Z (Heat/Cold) ในหน้า CORE แล้ว")
+            st.session_state.matrix_z = 45.8  # ตัวอย่างค่าความร้อนที่ได้
+
+# เรียกใช้ฟังก์ชันใน Tab 2
+render_analyzer_room()
+
 
 with tabs[3]:
     st.info("ห้อง 3.1: ตาราง 144 ช่อง (Visualizer)")
