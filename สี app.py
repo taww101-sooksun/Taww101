@@ -20,7 +20,7 @@ html_code = """
         header { padding: 15px; border-bottom: 2px solid #333; display: flex; justify-content: space-between; align-items: center;}
         .main-engine { display: flex; flex: 1; overflow: hidden; gap: 10px; padding: 10px; }
         
-        /* ฝั่งซ้าย: กระดาน 144 (Melody Zone) */
+        /* ฝั่งซ้าย: กระดาน 248832 (Melody Zone) */
         .melody-zone { flex: 2; overflow-y: auto; background: #000; border: 1px solid #222; padding: 10px; }
         .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; }
         .cell { 
