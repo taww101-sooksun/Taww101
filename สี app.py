@@ -6,7 +6,7 @@ st.set_page_config(layout="wide", page_title="SYNAPSE: MATH-ELASTIC 7-COLOR")
 
 # --- 2. HEADER ---
 st.title("🥷 SYNAPSE: MATH-ELASTIC HEALER (RAINBOW CORE)")
-st.write("สถานะ: `FINALIZING` | ระบบบำบัดด้วยคณิตศาสตร์ 7 สี 144 ช่องสัญญาณ")
+st.write("สถานะ: `OPTIMIZED` | ระบบบำบัดด้วยคณิตศาสตร์ (ปรับจูนความนุ่มนวลของเสียง)")
 
 # --- 3. THE RAINBOW ENGINE (HTML/JS/MATH) ---
 rainbow_engine_html = """
@@ -48,7 +48,7 @@ rainbow_engine_html = """
                 <input type="file" id="mp3File" accept="audio/*" style="color:#0f0; margin-left:10px;">
             </div>
             <button id="startBtn">3. START MATH ENGINE</button>
-            <div id="msg" style="color:#0ff; font-size:0.9em; align-self:center;">- SYSTEM STANDBY -</div>
+            <div id="msg" style="color:#0ff; font-size:0.9em; align-self:center;">- SYSTEM OPTIMIZED -</div>
         </div>
         <div class="grid" id="grid"></div>
     </div>
@@ -60,7 +60,6 @@ rainbow_engine_html = """
         const msg = document.getElementById('msg');
         let lastTriggerTime = 0;
 
-        // สร้างตาราง 144
         const grid = document.getElementById('grid');
         for(let i=0; i<144; i++) {
             const div = document.createElement('div');
@@ -70,7 +69,6 @@ rainbow_engine_html = """
             grid.appendChild(div);
         }
 
-        // 1. ระบบอัดเสียง (Base Note)
         document.getElementById('recBtn').onclick = async function() {
             if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             try {
@@ -94,7 +92,6 @@ rainbow_engine_html = """
             } catch(e) { alert("Mic Access Denied"); }
         };
 
-        // 2. โหลด MP3
         document.getElementById('mp3File').onchange = async function(e) {
             if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const file = e.target.files[0];
@@ -104,7 +101,6 @@ rainbow_engine_html = """
             msg.innerText = "MP3 Synced.";
         };
 
-        // 3. รันระบบ (Math Logic)
         document.getElementById('startBtn').onclick = function() {
             if(!userBuffer || !mp3Buffer) return alert("กรุณาอัดเสียงและเลือก MP3 ก่อนครับ!");
             isRunning = true;
@@ -115,7 +111,7 @@ rainbow_engine_html = """
             source.connect(analyser);
             analyser.connect(audioCtx.destination);
             source.start();
-            msg.innerText = "🚀 ENGINE RUNNING (7-COLORS MODE)";
+            msg.innerText = "🚀 ENGINE RUNNING (SMOOTH MODE)";
             process(analyser);
         };
 
@@ -124,7 +120,6 @@ rainbow_engine_html = """
             const data = new Uint8Array(analyser.frequencyBinCount);
             analyser.getByteFrequencyData(data);
 
-            // วาด Viz 7 สี
             ctx.clearRect(0,0,viz.width, viz.height);
             for(let i=0; i<data.length; i+=4) {
                 const hue = (i / data.length) * 360;
@@ -132,14 +127,12 @@ rainbow_engine_html = """
                 ctx.fillRect(i * (viz.width/data.length) * 2, viz.height - data[i]/2, 2, data[i]/2);
             }
 
-            // ค้นหาโดมิแนนต์โน้ต (Human Voice Range)
             let maxVal = 0, maxIdx = 0;
-            for(let i=15; i<150; i++) { // ตัดเสียงเบสต่ำๆ ออก
+            for(let i=15; i<150; i++) {
                 if(data[i] > maxVal) { maxVal = data[i]; maxIdx = i; }
             }
 
-            // ถ้าความดังถึงเกณฑ์ และทิ้งช่วงห่างนิดนึงเพื่อไม่ให้เสียงรัวเกินไป
-            if(maxVal > 170 && audioCtx.currentTime - lastTriggerTime > 0.08) {
+            if(maxVal > 170 && audioCtx.currentTime - lastTriggerTime > 0.1) {
                 const freq = maxIdx * (audioCtx.sampleRate / analyser.fftSize);
                 const midi = Math.round(12 * Math.log2(freq / 440) + 69);
                 const gridIdx = Math.min(Math.max(midi + 12, 0), 143);
@@ -153,10 +146,8 @@ rainbow_engine_html = """
         function triggerRainbowVoice(idx, vol) {
             const cell = document.getElementById('c' + idx);
             if(cell) {
-                // MATH: คำนวณสีตามช่องโน้ต (รุ้ง 7 สี)
                 const hue = (idx / 144) * 360;
                 const color = `hsl(${hue}, 100%, 50%)`;
-                
                 cell.classList.add('active');
                 cell.style.background = color;
                 cell.style.boxShadow = `0 0 20px ${color}`;
@@ -167,20 +158,31 @@ rainbow_engine_html = """
                     cell.style.background = "#111";
                     cell.style.boxShadow = "none";
                     cell.style.color = "#444";
-                }, 150);
+                }, 200);
             }
 
-            // เล่นเสียงยืดหดตามคณิตศาสตร์
+            // --- MATH HEALING LOGIC (ADJUSTED) ---
             const s = audioCtx.createBufferSource();
             s.buffer = userBuffer;
-            const diff = idx - 60; // เทียบกับ C4
-            s.playbackRate.value = Math.pow(2, diff/12);
             
+            // 1. จำกัดความแหลม (Clamp Playback Rate)
+            let diff = idx - 60; 
+            let rawRate = Math.pow(2, diff/12);
+            // ไม่ให้เสียงสูงเกิน 1.5 เท่าของต้นฉบับ เพื่อลดความแหลมแทงหู
+            s.playbackRate.value = Math.max(0.6, Math.min(rawRate, 1.5)); 
+            
+            // 2. เพิ่ม Low-pass Filter ตัดย่านแหลมทิ้ง
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = "lowpass";
+            filter.frequency.value = 2500; // ตัดความถี่ที่สูงเกิน 2500Hz ให้เสียงนุ่มนวล
+            filter.Q.value = 1;
+
             const g = audioCtx.createGain();
-            g.gain.setValueAtTime(vol * 0.6, audioCtx.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+            g.gain.setValueAtTime(vol * 0.4, audioCtx.currentTime); // ลดความดังลงเล็กน้อย
+            g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6); // ค่อยๆ เงียบแบบนุ่มๆ
             
-            s.connect(g);
+            s.connect(filter);
+            filter.connect(g);
             g.connect(audioCtx.destination);
             s.start();
         }
@@ -192,5 +194,4 @@ rainbow_engine_html = """
 # --- 4. RENDER ---
 components.html(rainbow_engine_html, height=850, scrolling=True)
 
-st.success("✨ ระบบติดตั้ง 7-Colors Rainbow Engine เรียบร้อย!")
-st.info("💡 คำแนะนำสุดท้ายของวัน: ร้องโน้ตเดียวให้นิ่งที่สุดตอนอัด แล้วเพลงจะออกมาสวยครับ พักผ่อนได้!")
+st.success("✅ อัปเดต Filter ลดเสียงแหลมเรียบร้อย! ตอนนี้เสียงจะทุ้มนุ่มนวลขึ้นครับ")
