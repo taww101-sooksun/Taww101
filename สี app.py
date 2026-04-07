@@ -1,117 +1,130 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-# --- 1. SET PAGE CONFIG ---
-st.set_page_config(layout="wide", page_title="SYNAPSE: MATH-ELASTIC 7-COLOR")
+st.set_page_config(layout="wide", page_title="SYNAPSE MP3 VISUALIZER")
 
-# --- 2. HEADER ---
-st.title("🥷 SYNAPSE: MATH-ELASTIC HEALER (RAINBOW CORE)")
-st.write("สถานะ: `OPTIMIZED` | ระบบบำบัดด้วยคณิตศาสตร์ (ปรับจูนความนุ่มนวลของเสียง)")
+st.title("📟 SYNAPSE: RAINBOW MP3 PLAYER")
+st.write("สถานะ: `READY` | อัดเสียงคุณ > เลือกเพลง > ดูการร่ายรำของแสง")
 
-# --- 3. THE RAINBOW ENGINE (HTML/JS/MATH) ---
-rainbow_engine_html = """
+rainbow_player_html = """
 <!DOCTYPE html>
 <html>
 <head>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
-        .container { display: flex; flex-direction: column; height: 100vh; }
-        canvas { width: 100%; height: 150px; background: #050505; border-bottom: 2px solid #333; }
-        
-        .controls { padding: 15px; display: flex; gap: 15px; background: #111; border-bottom: 1px solid #0f0; flex-wrap: wrap; }
-        button { 
-            background: #000; color: #0f0; border: 1px solid #0f0; padding: 12px 20px; 
-            cursor: pointer; font-weight: bold; text-transform: uppercase;
+        body { background: #050505; color: #0f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .player-card { 
+            background: #111; border: 2px solid #333; border-radius: 20px; padding: 30px; 
+            width: 90%; max-width: 800px; box-shadow: 0 0 50px rgba(0,0,0,1); text-align: center;
         }
-        button:hover { background: #0f0; color: #000; box-shadow: 0 0 15px #0f0; }
-        button.active { background: #f00; border-color: #f00; color: #fff; }
         
-        .grid { 
-            display: grid; grid-template-columns: repeat(12, 1fr); gap: 3px; 
-            padding: 15px; flex: 1; overflow-y: auto; background: #080808;
+        /* Vinyl Disk Effect */
+        .disk-container { position: relative; width: 200px; height: 200px; margin: 0 auto 20px; }
+        .disk { 
+            width: 100%; height: 100%; background: radial-gradient(circle, #333 10%, #000 11%, #111 100%); 
+            border-radius: 50%; border: 5px solid #222; animation: rotate 5s linear infinite; animation-play-state: paused;
+        }
+        .disk.playing { animation-play-state: running; }
+        .disk-center { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 40px; height: 40px; background: #0f0; border-radius: 50%; box-shadow: 0 0 20px #0f0;
+        }
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .controls { display: flex; flex-direction: column; gap: 15px; margin-top: 20px; }
+        .btn-group { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        
+        button { 
+            background: transparent; color: #0f0; border: 1px solid #0f0; padding: 10px 20px; 
+            border-radius: 5px; cursor: pointer; transition: 0.3s; font-weight: bold;
+        }
+        button:hover { background: rgba(0,255,0,0.1); box-shadow: 0 0 10px #0f0; }
+        button.active { background: #f00; border-color: #f00; color: #fff; }
+
+        .grid-visualizer { 
+            display: grid; grid-template-columns: repeat(24, 1fr); gap: 4px; 
+            margin-top: 30px; background: #000; padding: 15px; border-radius: 10px; border: 1px solid #222;
         }
         .cell { 
-            height: 40px; background: #111; border: 1px solid #222; 
-            font-size: 0.7em; display: flex; align-items: center; justify-content: center;
-            transition: all 0.1s ease; color: #444; border-radius: 3px;
+            aspect-ratio: 1; background: #1a1a1a; border-radius: 2px; 
+            transition: all 0.2s ease;
         }
-        .cell.active { transform: scale(1.15); z-index: 10; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <canvas id="viz"></canvas>
-        <div class="controls">
-            <button id="recBtn">1. อัดเสียงต้นแบบ (C4)</button>
-            <div style="background:#222; padding:10px; border-radius:5px;">
-                <label>2. เลือก MP3:</label>
-                <input type="file" id="mp3File" accept="audio/*" style="color:#0f0; margin-left:10px;">
-            </div>
-            <button id="startBtn">3. START MATH ENGINE</button>
-            <div id="msg" style="color:#0ff; font-size:0.9em; align-self:center;">- SYSTEM OPTIMIZED -</div>
+    <div class="player-card">
+        <div class="disk-container">
+            <div class="disk" id="vinyl"></div>
+            <div class="disk-center"></div>
         </div>
-        <div class="grid" id="grid"></div>
+        
+        <h2 id="track-name" style="color: #fff; margin-bottom: 5px;">- NO TRACK LOADED -</h2>
+        <div id="status-msg" style="color: #666; font-size: 0.8em; margin-bottom: 20px;">READY TO SYNC</div>
+
+        <div class="controls">
+            <div class="btn-group">
+                <button id="recBtn">🎙️ อัดเสียงต้นแบบ (3 วิ)</button>
+                <input type="file" id="mp3File" accept="audio/*" style="display:none;">
+                <button onclick="document.getElementById('mp3File').click()">📂 เลือกไฟล์ MP3</button>
+                <button id="startBtn" style="background:#0f0; color:#000;">▶️ PLAY & SYNC</button>
+            </div>
+        </div>
+
+        <div class="grid-visualizer" id="grid"></div>
     </div>
 
     <script>
         let audioCtx, userBuffer, mp3Buffer, isRunning = false;
-        const viz = document.getElementById('viz');
-        const ctx = viz.getContext('2d');
-        const msg = document.getElementById('msg');
+        const statusMsg = document.getElementById('status-msg');
+        const vinyl = document.getElementById('vinyl');
         let lastTriggerTime = 0;
 
+        // สร้างตารางไฟ (ขยายเป็น 144 ช่อง แต่จัดเรียงแบบ Compact)
         const grid = document.getElementById('grid');
         for(let i=0; i<144; i++) {
             const div = document.createElement('div');
             div.className = 'cell';
             div.id = 'c' + i;
-            div.innerText = i;
             grid.appendChild(div);
         }
 
+        // --- Logic เหมือนเดิม แต่ปรับจูนความละมุน ---
         document.getElementById('recBtn').onclick = async function() {
             if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({audio: true});
-                const recorder = new MediaRecorder(stream);
-                const chunks = [];
-                this.classList.add('active');
-                this.innerText = "🎙️ กำลังอัดเสียง...";
-                
-                recorder.ondataavailable = e => chunks.push(e.data);
-                recorder.onstop = async () => {
-                    const blob = new Blob(chunks);
-                    const arrayBuf = await blob.arrayBuffer();
-                    userBuffer = await audioCtx.decodeAudioData(arrayBuf);
-                    this.classList.remove('active');
-                    this.innerText = "✅ บันทึกสำเร็จ (C4)";
-                    msg.innerText = "Math-Base Acquired.";
-                };
-                setTimeout(() => recorder.stop(), 3000); 
-                recorder.start();
-            } catch(e) { alert("Mic Access Denied"); }
+            const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+            const recorder = new MediaRecorder(stream);
+            const chunks = [];
+            this.classList.add('active');
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = async () => {
+                const arrayBuf = await (new Blob(chunks)).arrayBuffer();
+                userBuffer = await audioCtx.decodeAudioData(arrayBuf);
+                this.classList.remove('active');
+                statusMsg.innerText = "VOICE SYNCED ✅";
+            };
+            setTimeout(() => recorder.stop(), 3000);
+            recorder.start();
         };
 
         document.getElementById('mp3File').onchange = async function(e) {
             if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const file = e.target.files[0];
-            msg.innerText = "⏳ Decoding MP3...";
+            document.getElementById('track-name').innerText = file.name;
             const arrayBuf = await file.arrayBuffer();
             mp3Buffer = await audioCtx.decodeAudioData(arrayBuf);
-            msg.innerText = "MP3 Synced.";
+            statusMsg.innerText = "MP3 LOADED ✅";
         };
 
         document.getElementById('startBtn').onclick = function() {
-            if(!userBuffer || !mp3Buffer) return alert("กรุณาอัดเสียงและเลือก MP3 ก่อนครับ!");
+            if(!userBuffer || !mp3Buffer) return alert("อัดเสียงและเลือกเพลงก่อนนะเพื่อน!");
             isRunning = true;
+            vinyl.classList.add('playing');
             const source = audioCtx.createBufferSource();
             source.buffer = mp3Buffer;
             const analyser = audioCtx.createAnalyser();
-            analyser.fftSize = 2048;
+            analyser.fftSize = 1024;
             source.connect(analyser);
             analyser.connect(audioCtx.destination);
             source.start();
-            msg.innerText = "🚀 ENGINE RUNNING (SMOOTH MODE)";
             process(analyser);
         };
 
@@ -120,70 +133,48 @@ rainbow_engine_html = """
             const data = new Uint8Array(analyser.frequencyBinCount);
             analyser.getByteFrequencyData(data);
 
-            ctx.clearRect(0,0,viz.width, viz.height);
-            for(let i=0; i<data.length; i+=4) {
-                const hue = (i / data.length) * 360;
-                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-                ctx.fillRect(i * (viz.width/data.length) * 2, viz.height - data[i]/2, 2, data[i]/2);
-            }
-
             let maxVal = 0, maxIdx = 0;
-            for(let i=15; i<150; i++) {
+            for(let i=20; i<200; i++) {
                 if(data[i] > maxVal) { maxVal = data[i]; maxIdx = i; }
             }
 
-            if(maxVal > 170 && audioCtx.currentTime - lastTriggerTime > 0.1) {
+            if(maxVal > 180 && audioCtx.currentTime - lastTriggerTime > 0.12) {
                 const freq = maxIdx * (audioCtx.sampleRate / analyser.fftSize);
                 const midi = Math.round(12 * Math.log2(freq / 440) + 69);
                 const gridIdx = Math.min(Math.max(midi + 12, 0), 143);
-                
-                triggerRainbowVoice(gridIdx, maxVal/255);
+                triggerEffect(gridIdx, maxVal/255);
                 lastTriggerTime = audioCtx.currentTime;
             }
             requestAnimationFrame(() => process(analyser));
         }
 
-        function triggerRainbowVoice(idx, vol) {
+        function triggerEffect(idx, vol) {
             const cell = document.getElementById('c' + idx);
             if(cell) {
                 const hue = (idx / 144) * 360;
-                const color = `hsl(${hue}, 100%, 50%)`;
-                cell.classList.add('active');
-                cell.style.background = color;
-                cell.style.boxShadow = `0 0 20px ${color}`;
-                cell.style.color = "#000";
-
+                cell.style.background = `hsl(${hue}, 100%, 50%)`;
+                cell.style.boxShadow = `0 0 15px hsl(${hue}, 100%, 50%)`;
                 setTimeout(() => {
-                    cell.classList.remove('active');
-                    cell.style.background = "#111";
+                    cell.style.background = "#1a1a1a";
                     cell.style.boxShadow = "none";
-                    cell.style.color = "#444";
-                }, 200);
+                }, 250);
             }
 
-            // --- MATH HEALING LOGIC (ADJUSTED) ---
+            // เสียงบำบัดแบบ Smooth
             const s = audioCtx.createBufferSource();
             s.buffer = userBuffer;
+            let rate = Math.pow(2, (idx - 60)/12);
+            s.playbackRate.value = Math.max(0.7, Math.min(rate, 1.4)); // กรองเสียงแหลม
             
-            // 1. จำกัดความแหลม (Clamp Playback Rate)
-            let diff = idx - 60; 
-            let rawRate = Math.pow(2, diff/12);
-            // ไม่ให้เสียงสูงเกิน 1.5 เท่าของต้นฉบับ เพื่อลดความแหลมแทงหู
-            s.playbackRate.value = Math.max(0.6, Math.min(rawRate, 1.5)); 
-            
-            // 2. เพิ่ม Low-pass Filter ตัดย่านแหลมทิ้ง
             const filter = audioCtx.createBiquadFilter();
             filter.type = "lowpass";
-            filter.frequency.value = 2500; // ตัดความถี่ที่สูงเกิน 2500Hz ให้เสียงนุ่มนวล
-            filter.Q.value = 1;
+            filter.frequency.value = 2000;
 
             const g = audioCtx.createGain();
-            g.gain.setValueAtTime(vol * 0.4, audioCtx.currentTime); // ลดความดังลงเล็กน้อย
-            g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6); // ค่อยๆ เงียบแบบนุ่มๆ
+            g.gain.setValueAtTime(vol * 0.3, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
             
-            s.connect(filter);
-            filter.connect(g);
-            g.connect(audioCtx.destination);
+            s.connect(filter); filter.connect(g); g.connect(audioCtx.destination);
             s.start();
         }
     </script>
@@ -191,7 +182,6 @@ rainbow_engine_html = """
 </html>
 """
 
-# --- 4. RENDER ---
-components.html(rainbow_engine_html, height=850, scrolling=True)
+components.html(rainbow_player_html, height=750)
 
-st.success("✅ อัปเดต Filter ลดเสียงแหลมเรียบร้อย! ตอนนี้เสียงจะทุ้มนุ่มนวลขึ้นครับ")
+st.info("💡 วิธีเล่น: อัดเสียงตัวเองหนึ่งโน้ตนิ่งๆ ก่อน (C4) แล้วค่อยโหลดเพลง MP3 ที่ชอบมาเปิดครับ")
