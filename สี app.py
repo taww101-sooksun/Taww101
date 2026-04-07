@@ -19,36 +19,72 @@ def apply_custom_background():
     st.markdown(
         f"""
         <style>
-        /* จัดการพื้นหลังหลักของแอป */
+        /* 1. พื้นหลังหลัก (เหมือนเดิม) */
         .stApp {{
             background: linear-gradient(270deg, #AFEEEE, #FF7F50, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
             background-size: 1600% 1600%;
             animation: RainbowFlow 60s ease infinite;
         }}
 
-        /* ตัวคุมการวิ่งของสี */
         @keyframes RainbowFlow {{
             0%{{background-position:0% 50%}}
             50%{{background-position:100% 50%}}
             100%{{background-position:0% 50%}}
         }}
 
-        /* ปรับสีพื้นหลังของ Sidebar ให้โปร่งแสงเพื่อให้เห็นพื้นหลังวิ่งๆ */
-        [data-testid="stSidebar"] {{
-            background-color: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
+        /* 2. แก้ไขเมนูห้อง (Tabs) ให้มีไฟและนูน */
+        .stTabs [data-baseweb="tab-list"] {{
+            background-color: rgba(0, 0, 0, 0.7) !important; /* พื้นหลังแถบเมนูเข้มขึ้นเพื่อให้ไฟชัด */
+            border-radius: 20px !important;
+            padding: 10px !important;
+            gap: 10px !important;
+            border: 2px solid {st.session_state.theme_color} !important;
+            box-shadow: 0 0 15px {st.session_state.theme_color}88, inset 0 0 10px rgba(0,0,0,0.5) !important;
+            margin: 10px 0px !important;
         }}
 
-        /* ปรับพื้นหลังของ Tabs ให้ดูอ่านง่ายขึ้น */
-        .stTabs [data-baseweb="tab-list"] {{
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-            padding: 5px;
+        /* ตัวอักษรในเมนู */
+        .stTabs [data-baseweb="tab"] {{
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border-radius: 12px !important;
+            padding: 8px 16px !important;
+            height: 50px !important;
+            color: #BBBBBB !important; /* สีเทาอ่อนตอนยังไม่เลือก */
+            font-weight: bold !important;
+            transition: all 0.3s ease !important;
+            border: 1px solid transparent !important;
+        }}
+
+        /* เมนูห้องตอนที่ถูกเลือก (Selected Tab) */
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+            color: #FFFFFF !important; /* ตัวหนังสือขาวชัดเจน */
+            background-color: {st.session_state.theme_color}44 !important;
+            border: 1px solid {st.session_state.theme_color} !important;
+            box-shadow: 0 0 15px {st.session_state.theme_color} !important; /* ไฟนีออนรอบเมนูที่เลือก */
+            transform: scale(1.05); /* นูนออกมานิดนึง */
+        }}
+
+        /* เส้นใต้เมนูที่เลือก (ไฟวิ่งด้านล่าง) */
+        .stTabs [data-baseweb="tab-highlight"] {{
+            background-color: #FFFFFF !important;
+            height: 4px !important;
+            box-shadow: 0 0 10px #FFFFFF !important;
+        }}
+
+        /* 3. ปรับแต่งปุ่มทั่วไป (นูนมีไฟเหมือนเดิม) */
+        div.stButton > button {{
+            background-color: rgba(0, 0, 0, 0.8) !important;
+            color: white !important;
+            border: 2px solid {st.session_state.theme_color} !important;
+            border-radius: 15px !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+            filter: drop-shadow(0 0 5px {st.session_state.theme_color});
         }}
         </style>
         """,
         unsafe_allow_html=True
     )
+
 
 # ==========================================
 # 0. CONFIG & INITIALIZATION
@@ -129,33 +165,86 @@ def room_core(loc):
             <p style="color:{st.session_state.theme_color}; font-weight:bold;">AGENT {st.session_state.user} ONLINE</p>
         </div>
     """, unsafe_allow_html=True)
-
 def room_radar(loc):
-    st.subheader("🛰️ STRATEGIC GPS อยู่นิ้งๆไม่เจ็บตัว")
+    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัดเครือข่าย AGENT อยู่นิ้งๆไม่เจ็บตัว📡")
+    
+    # 1. พิกัดตัวเรา
     my_lat, my_lon = 13.7367, 100.5231 
     if loc and 'coords' in loc:
         my_lat = loc['coords'].get('latitude', my_lat)
         my_lon = loc['coords'].get('longitude', my_lon)
     
-    # --- เติมส่วนแผนที่ที่หายไป ---
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google Satellite')
-    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star'), tooltip="YOU").add_to(m)
+    # สร้าง Container แผนที่ให้นูนมีไฟ (เปิด div)
+    st.markdown(f'<div style="border: 2px solid {st.session_state.theme_color}; border-radius: 15px; overflow: hidden; box-shadow: 0 0 20px {st.session_state.theme_color}88;">', unsafe_allow_html=True)
     
+    # 2. สร้างแผนที่ดาวเทียม
+    m = folium.Map(
+        location=[my_lat, my_lon], 
+        zoom_start=15, 
+        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+        attr='Google Satellite'
+    )
+    
+    # Marker ของตัวเรา (สีแดง)
+    folium.Marker(
+        [my_lat, my_lon], 
+        icon=folium.Icon(color='red', icon='star'), 
+        tooltip="YOU (ฉันเอง)"
+    ).add_to(m)
+
+    # ลูกเล่น: วงรัศมีเรดาร์รอบตัวเรา
+    folium.Circle(
+        location=[my_lat, my_lon],
+        radius=1000,
+        color=st.session_state.theme_color,
+        fill=True,
+        fill_color=st.session_state.theme_color,
+        fill_opacity=0.1,
+        weight=2
+    ).add_to(m)
+    
+    # 3. ดึงข้อมูล AGENT คนอื่นๆ และลากเส้น
     try:
         users_ref = db.reference('users').get()
         if users_ref:
             for uid, data in users_ref.items():
-                if uid != st.session_state.user and 'lat' in data:
+                if uid != st.session_state.user and 'lat' in data and 'lon' in data:
                     u_lat, u_lon = data['lat'], data['lon']
                     dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                    folium.Marker([u_lat, u_lon], icon=folium.Icon(color='green', icon='info-sign'), tooltip=f"AGENT: {uid}").add_to(m)
-                    folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5', opacity=0.5).add_to(m)
+                    
+                    # วาง Marker เพื่อน
+                    folium.Marker(
+                        [u_lat, u_lon], 
+                        icon=folium.Icon(color='green', icon='info-sign'), 
+                        tooltip=f"AGENT: {uid} | ห่าง: {dist:.2f} กม."
+                    ).add_to(m)
+                    
+                    # ลากเส้นเชื่อมโยง
+                    folium.PolyLine(
+                        [[my_lat, my_lon], [u_lat, u_lon]], 
+                        color=st.session_state.theme_color, 
+                        weight=2, 
+                        dash_array='10', 
+                        opacity=0.6
+                    ).add_to(m)
     except: pass
     
-    st_folium(m, width="100%", height=300)
-    if st.button("📡 BROADCAST LOCATION", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-        st.toast("พิกัดถูกส่งเข้าศูนย์บัญชาการแล้ว")
+    # แสดงแผนที่
+    st_folium(m, width="100%", height=250, returned_objects=[])
+    
+    # ปิด Container (สำคัญมาก!)
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # 4. ปุ่มส่งพิกัด (เพื่อให้เพื่อนเห็นเรา)
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("📡 BROADCAST MY LOCATION", key="btn_broadcast", use_container_width=True):
+        db.reference(f'users/{st.session_state.user}').update({
+            'lat': my_lat, 
+            'lon': my_lon, 
+            'ts': time.time()
+        })
+        st.toast("ส่งพิกัดสำเร็จ! เพื่อนๆ จะเห็นคุณบนเรดาร์")
+
 
 def room_call():
     st.subheader("📞 SYNAPSE P2P CALL อยู่นิ้งๆไม่เจ็บตัว")
@@ -202,8 +291,9 @@ def room_call():
 # ==========================================
 
 def room_music():
-    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)อยู่นิ้งๆไม่เจ็บตัว")
+    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station) อยู่นิ้งๆไม่เจ็บตัว🎙")
     
+    # 1. ค้นหาไฟล์เพลง
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     if not music_files:
         st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในระบบ")
@@ -216,22 +306,17 @@ def room_music():
         st.session_state.song_index = 0
 
     current_song = music_files[st.session_state.song_index]
-    
-    st.info(f"🎵 กำลังเตรียมเล่น: {current_song}")
+    st.info(f"🎵 กำลังเล่น: {current_song}")
 
-    # ดึงไฟล์เพลง
+    # 2. เล่นเพลง (Native Player)
     with open(current_song, "rb") as f:
         audio_bytes = f.read()
-    
-    # 1. ใช้ Native Player ของ Streamlit
-    # หมายเหตุ: autoplay จะทำงานก็ต่อเมื่อ User เคยคลิกหน้าเว็บนี้แล้วอย่างน้อย 1 ครั้ง
     st.audio(audio_bytes, format="audio/mp3", autoplay=True)
 
-    # 2. JS สำหรับตรวจจับเพลงจบแล้วกด Next อัตโนมัติ
+    # 3. JS สำหรับ Auto-Next (แอบกดปุ่ม Next ให้เมื่อเพลงจบ)
     components.html(
         """
         <script>
-        // ฟังก์ชันตรวจหา Audio Element ใน Parent Window
         const autoNext = () => {
             const audios = window.parent.document.querySelectorAll('audio');
             audios.forEach(audio => {
@@ -249,27 +334,37 @@ def room_music():
                 }
             });
         };
-        // รันทุกๆ 2 วินาทีเพื่อความชัวร์
         setInterval(autoNext, 2000);
         </script>
         """,
         height=0,
     )
 
+    # 4. ปุ่มควบคุมหลัก (ใช้ Key ที่ชัดเจน)
     col1, col2, col3 = st.columns(3)
-    if col1.button("⏮️ Back", use_container_width=True):
+    if col1.button("⏮️ Back", key="main_prev", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
         st.rerun()
     
-    if col2.button("🔄 Reload / Unlock Audio", use_container_width=True):
+    if col2.button("🔄 Reload", key="main_reload", use_container_width=True):
         st.rerun()
 
-    if col3.button("⏭️ Next", use_container_width=True):
+    if col3.button("⏭️ Next", key="main_next", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
 
-    st.caption("💡 หากเพลงไม่เล่นอัตโนมัติ ให้กดปุ่ม 'Reload / Unlock Audio' เพื่ออนุญาตระบบเสียง")
-
+    # 5. รายชื่อเพลง (จุดที่เกิด Error - แก้ไขโดยใช้ key เฉพาะทาง)
+    st.write("---")
+    st.subheader("📂 รายชื่อเพลงทั้งหมด")
+    for i, f_name in enumerate(music_files):
+        is_playing = (i == st.session_state.song_index)
+        label = f"▶️ {f_name}" if is_playing else f"🎵 {f_name}"
+        
+        # แก้ไขจุดนี้: ใช้ key="list_btn_{i}" เพื่อไม่ให้ซ้ำกับปุ่มอื่นแน่นอน
+        if st.button(label, key=f"list_btn_{i}", use_container_width=True):
+            st.session_state.song_index = i
+            st.rerun()
+        
 
 def room_secure_chat():
     st.subheader("💬 SECURE CHAT📝อยู่นิ้งๆไม่เจ็บตัว")
