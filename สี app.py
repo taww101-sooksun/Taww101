@@ -1,56 +1,45 @@
 import streamlit as st
 import folium
 from streamlit_folium import st_folium
-import osmnx as ox
-import networkx as nx
 
-st.set_page_config(page_title="GPS Route Finder", layout="wide")
+st.set_page_config(page_title="GPS Navigator", layout="wide")
 
-st.title("📍 ระบบระบุเส้นทาง GPS (Real Road Network)")
-st.write("เลือกจุดเริ่มต้นและจุดหมายเพื่อดูเส้นทางจริงบนแผนที่")
+st.title("📍 ระบบระบุเส้นทาง GPS (Version ใช้งานง่าย)")
 
-# สร้าง Sidebar สำหรับกรอกพิกัด (ลองใช้พิกัดในกรุงเทพฯ เป็นตัวอย่าง)
+# สร้าง Sidebar รับพิกัด
 with st.sidebar:
-    st.header("กำหนดพิกัด")
-    start_lat = st.number_input("ละติจูดเริ่มต้น", value=13.7563, format="%.4f")
-    start_lng = st.number_input("ลองจิจูดเริ่มต้น", value=100.5018, format="%.4f")
-    
-    end_lat = st.number_input("ละติจูดปลายทาง", value=13.7367, format="%.4f")
-    end_lng = st.number_input("ลองจิจูดปลายทาง", value=100.5231, format="%.4f")
-    
-    search_btn = st.button("คำนวณเส้นทาง")
+    st.header("ระบุจุดหมาย")
+    s_lat = st.number_input("จุดเริ่ม (Lat)", value=13.7563, format="%.4f")
+    s_lng = st.number_input("จุดเริ่ม (Lng)", value=100.5018, format="%.4f")
+    e_lat = st.number_input("จุดหมาย (Lat)", value=13.7367, format="%.4f")
+    e_lng = st.number_input("จุดหมาย (Lng)", value=100.5231, format="%.4f")
 
-# ส่วนการคำนวณและแสดงแผนที่
-if search_btn:
-    with st.spinner("กำลังคำนวณเส้นทางจากโครงข่ายถนนจริง..."):
-        try:
-            # 1. ดึงข้อมูลโครงข่ายถนนรอบๆ จุดที่เลือก (รัศมี 2 กม.)
-            center_point = (start_lat, start_lng)
-            G = ox.graph_from_point(center_point, dist=2000, network_type='drive')
-            
-            # 2. หา Node (จุดบนถนน) ที่ใกล้พิกัดที่ระบุมากที่สุด
-            orig_node = ox.nearest_nodes(G, start_lng, start_lat)
-            dest_node = ox.nearest_nodes(G, end_lng, end_lat)
-            
-            # 3. คำนวณเส้นทางที่สั้นที่สุดด้วย Dijkstra (ใช้ NetworkX)
-            route = nx.shortest_path(G, orig_node, dest_node, weight='length')
-            
-            # 4. สร้างแผนที่ Folium และวาดเส้นทาง
-            m = ox.plot_route_folium(G, route, route_color="red", route_width=5)
-            
-            # เพิ่ม Marker จุดเริ่มและจุดจบ
-            folium.Marker([start_lat, start_lng], popup="จุดเริ่มต้น", icon=folium.Icon(color='green')).add_to(m)
-            folium.Marker([end_lat, end_lng], popup="จุดหมาย", icon=folium.Icon(color='blue')).add_to(m)
-            
-            # แสดงแผนที่ใน Streamlit
-            st_folium(m, width=1000, height=600)
-            st.success("คำนวณเส้นทางสำเร็จ!")
-            
-        except Exception as e:
-            st.error(f"เกิดข้อผิดพลาด: {e} (อาจเป็นเพราะพิกัดอยู่ไกลกันเกินไป หรือไม่มีข้อมูลถนนในบริเวณนั้น)")
-else:
-    # แสดงแผนที่ว่างๆ เริ่มต้นที่กรุงเทพฯ
-    m = folium.Map(location=[13.7563, 100.5018], zoom_start=13)
-    st_folium(m, width=1000, height=600)
+# สร้างแผนที่
+m = folium.Map(location=[s_lat, s_lng], zoom_start=13)
 
-st.info("คำแนะนำ: 'อยู่นิ่งๆ ไม่เจ็บตัว' แต่ถ้าจะเดินทางต้องระบุเส้นทางให้เป๊ะนะครับเพื่อน!")
+# ใส่ JavaScript สำหรับคำนวณเส้นทาง (OSRM)
+# วิธีนี้ไม่ต้องใช้ OSMnx ใน Python แต่ใช้ Browser คำนวณให้แทน
+routing_script = f"""
+<script>
+    var map = L.map('map').setView([{s_lat}, {s_lng}], 13);
+    L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png').addTo(map);
+
+    L.Routing.control({{
+        waypoints: [
+            L.latLng({s_lat}, {s_lng}),
+            L.latLng({e_lat}, {e_lng})
+        ],
+        routeWhileDragging: true
+    }}).addTo(map);
+</script>
+"""
+
+# ใช้คำสั่งวาดเส้นทางแบบง่ายๆ ของ Folium ไปก่อน
+folium.PolyLine(locations=[(s_lat, s_lng), (e_lat, e_lng)], color="blue", weight=5, opacity=0.8).add_to(m)
+folium.Marker([s_lat, s_lng], tooltip="ต้นทาง", icon=folium.Icon(color='green')).add_to(m)
+folium.Marker([e_lat, e_lng], tooltip="ปลายทาง", icon=folium.Icon(color='red')).add_to(m)
+
+# แสดงผล
+st_folium(m, width=1000, height=600)
+
+st.info("ถ้าจะเอาแบบคำนวณเลี้ยวซ้ายเลี้ยวขวาจริงจังบน Cloud ต้องใช้ Google Maps API หรือลง OSMnx ให้ผ่านครับ")
