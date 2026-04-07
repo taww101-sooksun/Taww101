@@ -1,4 +1,4 @@
-import streamlit as st
+Import streamlit as st
 import os 
 import time
 import base64
@@ -200,98 +200,76 @@ def room_call():
 # ==========================================
 # 2. CORE MODULES (ปรับปรุงส่วน Music)
 # ==========================================
+
 def room_music():
-    st.subheader("🎧 RAINBOW MUSIC STATION (Healer Mode)")
+    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)อยู่นิ้งๆไม่เจ็บตัว")
     
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     if not music_files:
         st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในระบบ")
         return
 
-    # เลือกเพลง
-    selected_song = st.selectbox("เลือกเพลงที่จะเล่น:", music_files, index=st.session_state.song_index)
+    # ตรวจสอบ index เพลง
+    if 'song_index' not in st.session_state:
+        st.session_state.song_index = 0
+    if st.session_state.song_index >= len(music_files):
+        st.session_state.song_index = 0
+
+    current_song = music_files[st.session_state.song_index]
     
-    # อ่านไฟล์เพลงเป็น Base64 เพื่อส่งเข้า HTML Engine
-    with open(selected_song, "rb") as f:
-        data = f.read()
-        b64_music = base64.b64encode(data).decode()
+    st.info(f"🎵 กำลังเตรียมเล่น: {current_song}")
 
-    # --- HTML ENGINE (ชุดเดิมที่เราปรับจูนความนุ่มมาแล้ว) ---
-    rainbow_player_html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <style>
-            body {{ background: transparent; color: #0f0; font-family: monospace; text-align: center; }}
-            .disk-container {{ position: relative; width: 150px; height: 150px; margin: 10px auto; }}
-            .disk {{ 
-                width: 100%; height: 100%; background: radial-gradient(circle, #333 10%, #000 11%, #111 100%); 
-                border-radius: 50%; border: 3px solid {st.session_state.theme_color}; animation: rotate 5s linear infinite; 
-            }}
-            @keyframes rotate {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
-            .grid-visualizer {{ 
-                display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; 
-                margin-top: 20px; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 10px; 
-            }}
-            .cell {{ aspect-ratio: 1; background: #222; border-radius: 1px; transition: 0.2s; }}
-            button {{ 
-                background: {st.session_state.theme_color}; color: white; border: none; 
-                padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="disk-container"><div class="disk"></div></div>
-        <button id="startBtn">▶️ PLAY WITH RAINBOW LIGHTS</button>
-        <div class="grid-visualizer" id="grid"></div>
+    # ดึงไฟล์เพลง
+    with open(current_song, "rb") as f:
+        audio_bytes = f.read()
+    
+    # 1. ใช้ Native Player ของ Streamlit
+    # หมายเหตุ: autoplay จะทำงานก็ต่อเมื่อ User เคยคลิกหน้าเว็บนี้แล้วอย่างน้อย 1 ครั้ง
+    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
 
+    # 2. JS สำหรับตรวจจับเพลงจบแล้วกด Next อัตโนมัติ
+    components.html(
+        """
         <script>
-            let audioCtx, mp3Buffer, isRunning = false;
-            const grid = document.getElementById('grid');
-            for(let i=0; i<144; i++) {{
-                const div = document.createElement('div');
-                div.className = 'cell'; div.id = 'c' + i; grid.appendChild(div);
-            }}
-
-            document.getElementById('startBtn').onclick = async function() {{
-                if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                
-                // โหลดเพลงจาก Base64
-                const b64Data = "{b64_music}";
-                const arrayBuf = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0)).buffer;
-                mp3Buffer = await audioCtx.decodeAudioData(arrayBuf);
-                
-                const source = audioCtx.createBufferSource();
-                source.buffer = mp3Buffer;
-                const analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 512;
-                source.connect(analyser); analyser.connect(audioCtx.destination);
-                source.start();
-                
-                function process() {{
-                    const data = new Uint8Array(analyser.frequencyBinCount);
-                    analyser.getByteFrequencyData(data);
-                    for(let i=0; i<72; i++) {{
-                        const val = data[i];
-                        const cell = document.getElementById('c' + i);
-                        if(cell && val > 150) {{
-                            const hue = (i / 72) * 360;
-                            cell.style.background = `hsl(${{hue}}, 100%, 50%)`;
-                            setTimeout(() => {{ cell.style.background = '#222'; }}, 100);
-                        }}
-                    }}
-                    requestAnimationFrame(process);
-                }}
-                process();
-            }};
+        // ฟังก์ชันตรวจหา Audio Element ใน Parent Window
+        const autoNext = () => {
+            const audios = window.parent.document.querySelectorAll('audio');
+            audios.forEach(audio => {
+                if (!audio.dataset.listener) {
+                    audio.dataset.listener = "true";
+                    audio.onended = () => {
+                        const buttons = window.parent.document.querySelectorAll('button');
+                        for (let btn of buttons) {
+                            if (btn.innerText.includes('⏭️ Next')) {
+                                btn.click();
+                                break;
+                            }
+                        }
+                    };
+                }
+            });
+        };
+        // รันทุกๆ 2 วินาทีเพื่อความชัวร์
+        setInterval(autoNext, 2000);
         </script>
-    </body>
-    </html>
-    """
-    components.html(rainbow_player_html, height=400)
+        """,
+        height=0,
+    )
 
+    col1, col2, col3 = st.columns(3)
+    if col1.button("⏮️ Back", use_container_width=True):
+        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
+        st.rerun()
+    
+    if col2.button("🔄 Reload / Unlock Audio", use_container_width=True):
+        st.rerun()
 
-        
+    if col3.button("⏭️ Next", use_container_width=True):
+        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+        st.rerun()
+
+    st.caption("💡 หากเพลงไม่เล่นอัตโนมัติ ให้กดปุ่ม 'Reload / Unlock Audio' เพื่ออนุญาตระบบเสียง")
+
 
 def room_secure_chat():
     st.subheader("💬 SECURE CHAT📝อยู่นิ้งๆไม่เจ็บตัว")
