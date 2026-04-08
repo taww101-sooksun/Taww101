@@ -56,7 +56,7 @@ st.sidebar.divider()
 lottery_num = st.sidebar.text_input("เลขมงคลประจำตัว (3 ตัว)", "785")
 
 # --- EXECUTION ---
-ra-si, that, naksat = get_horoscope_details(birth_date)
+rasi, that, naksat = get_horoscope_details(birth_date)
 thai_days = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
 weekday = thai_days[birth_date.weekday()]
 
