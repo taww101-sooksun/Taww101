@@ -53,8 +53,8 @@ def calculate_lunar(date_obj):
 
 # --- SIDEBAR ---
 st.sidebar.header("👤 ข้อมูลวิเคราะห์")
-date1 = st.sidebar.date_input("วันที่ 1 (วันหลัก/วันเกิด)", value=date(1984, 5, 18))
-date2 = st.sidebar.date_input("วันที่ 2 (วันที่เปรียบเทียบ)", value=date(1996, 8, 17))
+date1 = st.sidebar.date_input("วันที่ 1 (วันหลัก/วันเกิด)", value=date(2026, 4, 8))
+date2 = st.sidebar.date_input("วันที่ 2 (วันที่เปรียบเทียบ)", value=date(2026, 4, 8))
 lottery_num = st.sidebar.text_input("เลขเก็งวิเคราะห์ (3 ตัว)", "785", max_chars=3)
 
 # --- MAIN APP ---
