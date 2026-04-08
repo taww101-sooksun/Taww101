@@ -2,145 +2,133 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, date
 
-# ==========================================
-# 🛰️ SYNAPSE v15.2: THE OMNI-REVEALER
-# ==========================================
-
-st.set_page_config(page_title="SYNAPSE v15.2: THE OMNI-REVEALER", layout="wide")
-
-# --- ส่วนตกแต่งหน้าตา ---
+# --- CONFIG & UI ---
+st.set_page_config(page_title="SYNAPSE v15: OMNI-SCANNER", layout="wide")
 st.markdown("""
     <style>
     .main { background-color: #0b1016; color: #f0f0f0; }
-    .stMetric { background-color: #1a222d; padding: 20px; border-radius: 15px; border: 1px solid #4f4f4f; }
+    .stMetric { background-color: #1a222d; padding: 15px; border-radius: 10px; border: 1px solid #30363d; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- SIDEBAR: รับข้อมูล (Input) ---
-st.sidebar.header("📡 กรอกข้อมูลเพื่อสแกนรหัส")
+# --- CORE FUNCTIONS ---
+def get_lunar_data(date_obj):
+    """คำนวณข้างขึ้นข้างแรมแบบละเอียดเพื่อหาตัวเลขและเงื่อนไข (Logic พี่บาส)"""
+    ref_date = date(1900, 1, 1)
+    diff = (date_obj - ref_date).days
+    lunar_cycle = 29.530589
+    pos = (diff - 0.5) % lunar_cycle
+    
+    day_val = date_obj.weekday() + 1 # จันทร์=1 ... อาทิตย์=7
+    
+    if pos <= 14.765: # ข้างขึ้น
+        m_num = int(pos) + 1
+        label = f"ขึ้น {m_num} ค่ำ"
+        op = "บวก" if 1 <= m_num <= 7 else "คูณ"
+    else: # ข้างแรม
+        m_num = int(pos - 14.765) + 1
+        label = f"แรม {m_num} ค่ำ"
+        op = "ลบ" if 1 <= m_num <= 7 else "หาร"
+    return day_val, m_num, op, label
+
+def run_math_logic(v, m, op):
+    """ประมวลผลตามเงื่อนไขที่พี่บาสกำหนด"""
+    if op == "บวก": return v + m
+    if op == "คูณ": return v * m
+    if op == "ลบ": return v - m
+    return v / m if m != 0 else 0
+
+def get_time_gap_analysis(d1, d2):
+    """คำนยณระยะห่างเวลา (ปี/เดือน/วัน)"""
+    delta = abs((d1 - d2).days)
+    yy = delta // 365
+    mm = (delta % 365) // 30
+    dd = (delta % 365) % 30
+    direction = "ก่อนหน้า" if d2 < d1 else "ภายหลัง"
+    return delta, yy, mm, dd, direction
+
+# --- SIDEBAR: DATA INPUT ---
+st.sidebar.header("📡 SYNAPSE COMMAND CENTER")
 name_me = st.sidebar.text_input("ชื่อของคุณ", "บาส (Ta101)")
 d_me = st.sidebar.date_input(f"วันเกิด {name_me}", value=date(1984, 5, 18))
 
 st.sidebar.divider()
-name_target = st.sidebar.text_input("ชื่อคนที่จะสแกน (อนาคต/อดีต)", "เป้าหมาย")
+name_target = st.sidebar.text_input("ชื่อผู้ที่ต้องการสแกน", "เป้าหมาย")
 d_target = st.sidebar.date_input(f"วันเกิดของ {name_target}", value=date(1996, 8, 17))
 
-# ==========================================
-# 1️⃣ คำนวณรหัสชีวิตชุดที่ 1 (ของพี่บาส)
-# ==========================================
-ref_date = date(1900, 1, 1)
-diff1 = (d_me - ref_date).days
-lunar_cycle = 29.530589
-pos1 = (diff1 - 0.5) % lunar_cycle
-v1 = d_me.weekday() + 1 # จันทร์=1-อาทิตย์=7
+# --- CALCULATION PROCESS ---
+v1, m1, op1, lab1 = get_lunar_data(d_me)
+res1 = run_math_logic(v1, m1, op1)
 
-if pos1 <= 14.765: # ข้างขึ้น
-    m1 = int(pos1) + 1
-    lab1 = f"ขึ้น {m1} ค่ำ"
-    op1 = "บวก" if 1 <= m1 <= 7 else "คูณ"
-else: # ข้างแรม
-    m1 = int(pos1 - 14.765) + 1
-    lab1 = f"แรม {m1} ค่ำ"
-    op1 = "ลบ" if 1 <= m1 <= 7 else "หาร"
+v2, m2, op2, lab2 = get_lunar_data(d_target)
+res2 = run_math_logic(v2, m2, op2)
 
-# ผลลัพธ์ดวงหลัก
-if op1 == "บวก": res1 = v1 + m1
-elif op1 == "คูณ": res1 = v1 * m1
-elif op1 == "ลบ": res1 = v1 - m1
-else: res1 = v1 / m1 if m1 != 0 else 0
+t_days, t_yy, t_mm, t_dd, t_dir = get_time_gap_analysis(d_me, d_target)
 
-# ==========================================
-# 2️⃣ คำนวณรหัสชีวิตชุดที่ 2 (ของเป้าหมาย)
-# ==========================================
-diff2 = (d_target - ref_date).days
-pos2 = (diff2 - 0.5) % lunar_cycle
-v2 = d_target.weekday() + 1
+# --- MAIN INTERFACE ---
+st.title("🛰️ SYNAPSE v15: THE OMNI-SCANNER")
+st.write(f"ระบบวิเคราะห์ความสมบูรณ์แบบของตัวเลข | ผู้ใช้งาน: **{name_me}**")
 
-if pos2 <= 14.765: # ข้างขึ้น
-    m2 = int(pos2) + 1
-    lab2 = f"ขึ้น {m2} ค่ำ"
-    op2 = "บวก" if 1 <= m2 <= 7 else "คูณ"
-else: # ข้างแรม
-    m2 = int(pos2 - 14.765) + 1
-    lab2 = f"แรม {m2} ค่ำ"
-    op2 = "ลบ" if 1 <= m2 <= 7 else "หาร"
-
-# ผลลัพธ์ดวงเปรียบเทียบ
-if op2 == "บวก": res2 = v2 + m2
-elif op2 == "คูณ": res2 = v2 * m2
-elif op2 == "ลบ": res2 = v2 - m2
-else: res2 = v2 / m2 if m2 != 0 else 0
-
-# ==========================================
-# 3️⃣ สรุปผลลัพธ์รวม (ตารางที่พี่บาสต้องการ)
-# ==========================================
-plus_val = res1 + res2
-minus_val = res1 - res2
-multi_val = res1 * res2
-div_val = res1 / res2 if res2 != 0 else 0
-
-# ==========================================
-# 4️⃣ วิเคราะห์ระยะห่างเวลา (Time Analysis)
-# ==========================================
-delta_days = abs((d_me - d_target).days)
-yy = delta_days // 365
-mm = (delta_days % 365) // 30
-dd = (delta_days % 365) % 30
-direction = "ก่อนหน้าคุณ" if d_target < d_me else "หลังคุณ"
-
-# ==========================================
-# 🚀 การแสดงผลหน้าแอป (UI)
-# ==========================================
-st.title("🛰️ SYNAPSE v15.2: THE OMNI-REVEALER")
-st.write(f"ระบบวิเคราะห์ความจริงเชิงลึก | ผู้สร้าง: **Ta101**")
-
+# Section 1: Individual Data
 st.divider()
-c1, c2 = st.columns(2)
-with c1:
+col_a, col_b = st.columns(2)
+with col_a:
     st.subheader(f"👤 {name_me}")
-    st.info(f"วัน {v1} | {lab1} (ใช้ {op1})")
-    st.metric("ค่าสมการหลัก", f"{res1:.2f}")
+    st.info(f"วันสัปดาห์: **{v1}** | {lab1}")
+    st.write(f"ตัวดำเนินการ: **{op1}**")
+    st.metric("ค่ากำลังดวงหลัก", f"{res1:.2f}")
 
-with c2:
+with col_b:
     st.subheader(f"👤 {name_target}")
-    st.warning(f"วัน {v2} | {lab2} (ใช้ {op2})")
-    st.metric("ค่าสมการเปรียบเทียบ", f"{res2:.2f}")
+    st.warning(f"วันสัปดาห์: **{v2}** | {lab2}")
+    st.write(f"ตัวดำเนินการ: **{op2}**")
+    st.metric("ค่ากำลังเปรียบเทียบ", f"{res2:.2f}")
 
+# Section 2: Mathematical Summary (ตารางที่พี่บาสต้องการ)
 st.divider()
-st.subheader("📊 ตารางสรุปผลลัพธ์รวม (Mathematical Summary)")
-df = pd.DataFrame({
-    "เงื่อนไขการรวมข้อมูล": ["บวกกัน (+)", "ลบกัน (-)", "คูณกัน (×)", "หารกัน (÷)"],
-    "ผลลัพธ์สุดท้าย": [f"{plus_val:.2f}", f"{minus_val:.2f}", f"{multi_val:.2f}", f"{div_val:.2f}"]
-})
-st.table(df)
+st.subheader("📊 ตารางวิเคราะห์ผลลัพธ์รวม (Mathematical Summary)")
+res_plus = res1 + res2
+res_minus = res1 - res2
+res_multi = res1 * res2
+res_div = res1 / res2 if res2 != 0 else 0
 
+summary_df = pd.DataFrame({
+    "เงื่อนไขการรวมข้อมูล": ["บวกกัน (+)", "ลบกัน (-)", "คูณกัน (×)", "หารกัน (÷)"],
+    "ผลลัพธ์สุดท้าย": [f"{res_plus:.2f}", f"{res_minus:.2f}", f"{res_multi:.2f}", f"{res_div:.2f}"]
+})
+st.table(summary_df)
+
+# Section 3: Parallel & Time Analysis
 st.divider()
 st.subheader("🔮 วิเคราะห์รหัสคู่ขนานและวงโคจรเวลา")
 
-# เช็ค Gap 4 ที่พี่บาสเจอ
-gap = abs(res1 - res2)
-is_gap4 = 3.8 <= gap <= 4.2
+# คำนวณรหัส Gap 4 (อดีตแฟนสาวทั้ง 2)
+gap_num = abs(res1 - res2)
+is_parallel = 3.8 <= gap_num <= 4.2
 
-# เช็กพิกัด 6 ปี และ 12 ปี
-is_cycle = (5 <= yy <= 7) or (11 <= yy <= 13)
+# เช็กพิกัดเวลา 6 ปี และ 12 ปี
+is_time_hit = (5 <= t_yy <= 7) or (11 <= t_yy <= 13)
 
-col_out1, col_out2 = st.columns([2,1])
-with col_out1:
-    if is_gap4:
-        st.error(f"‼️ ตรวจพบรหัสคู่ขนาน! ค่าห่างกัน {gap:.2f} (พิกัด Gap 4 เหมือนแฟนเก่า)")
+c1, c2 = st.columns([2, 1])
+with c1:
+    # แสดงผลวิเคราะห์ Gap
+    if is_parallel:
+        st.error(f"‼️ ตรวจพบรหัสคู่ขนาน: ค่าห่างกัน {gap_num:.2f} (พิกัด Gap 4)")
+        st.write("คนนี้มีโครงสร้างตัวเลขแบบเดียวกับ 'อดีต' ที่พี่เคยเจอมา รูปแบบอาจจะวนลูปเดิม")
         st.balloons()
     else:
-        st.success(f"✅ ไม่พบรหัสคู่ขนานเดิม (รหัสห่าง {gap:.2f})")
-    
-    st.write("---")
-    if is_cycle:
-        st.warning(f"🎯 พิกัดเวลาสำคัญ: ห่างกัน {yy} ปี (เข้าข่ายรหัส 6/12 ปี)")
-    else:
-        st.write(f"ระยะห่างเวลา: {yy} ปี {mm} เดือน {dd} วัน ({direction})")
+        st.success(f"✅ ไม่พบรหัสคู่ขนาน: ค่าห่างกัน {gap_num:.2f} (รหัสใหม่)")
 
-with col_out2:
-    st.metric("GAP ตัวเลข", f"{gap:.2f}")
-    st.metric("รวมระยะห่างวัน", f"{delta_days:,} วัน")
+    # แสดงผลวิเคราะห์เวลา
+    st.write("---")
+    if is_time_hit:
+        st.warning(f"🎯 พิกัดเวลาสำคัญ: คนนี้เกิด {t_dir} พี่บาส {t_yy} ปี (เข้าข่ายรหัส 6/12 ปี)")
+    else:
+        st.write(f"ระยะห่างเวลา: {t_yy} ปี {t_mm} เดือน {t_dd} วัน ({t_dir}คุณ)")
+
+with c2:
+    st.metric("GAP ตัวเลข", f"{gap_num:.2f}")
+    st.metric("ระยะห่าง (วัน)", f"{t_days:,}")
 
 st.divider()
-st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | ID: Ta101/102 | ความจริงเปิดเผยที่นี่")
+st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | พัฒนาโดย Ta101 | 'ความจริงไม่เคยหลอกใคร'")
