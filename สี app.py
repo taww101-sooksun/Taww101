@@ -4,7 +4,7 @@ from datetime import datetime, date
 import itertools
 
 # --- CONFIG & UI ---
-st.set_page_config(page_title="SYNAPSE: UNIVERSAL ANALYZER", layout="wide")
+st.set_page_config(page_title="SYNAPSE: UNIVERSAL ANALYZER v10", layout="wide")
 st.markdown("<style>.main { background-color: #0b1016; color: #f0f0f0; }</style>", unsafe_allow_html=True)
 
 # --- ศาสตร์แห่งธาตุและการสมพงษ์ ---
@@ -48,13 +48,16 @@ def calculate_lunar(date_obj):
 
 # --- SIDEBAR: UNIVERSAL INPUT ---
 st.sidebar.header("🧭 ตั้งค่าข้อมูล")
-st.sidebar.write("ใส่ข้อมูลของคนสองคนที่ต้องการเปรียบเทียบ")
+st.sidebar.write("ย้อนหลังได้ถึงปี 1960 (พ.ศ. 2503)")
+
+# ปรับจุดเริ่มต้นเป็นปี 1960 (พ.ศ. 2503)
+min_date = date(1960, 1, 1)
 
 name1 = st.sidebar.text_input("ชื่อคนแรก/วันหลัก", "คนแรก")
-date1 = st.sidebar.date_input(f"วันเกิด {name1}", value=date(2000, 1, 1))
+date1 = st.sidebar.date_input(f"วันเกิด {name1}", value=date(1984, 5, 18), min_value=min_date)
 
 name2 = st.sidebar.text_input("ชื่อคนที่สอง/วันเปรียบเทียบ", "คนที่สอง")
-date2 = st.sidebar.date_input(f"วันเกิด {name2}", value=date(2000, 1, 1))
+date2 = st.sidebar.date_input(f"วันเกิด {name2}", value=date(1996, 8, 17), min_value=min_date)
 
 st.sidebar.divider()
 lottery_mode = st.sidebar.checkbox("โหมดวิเคราะห์เลขหวย", value=True)
@@ -62,7 +65,7 @@ if lottery_mode:
     lottery_num = st.sidebar.text_input("เลข 3 ตัวที่เก็งไว้", "785", max_chars=3)
 
 # --- MAIN APP ---
-st.title("🛰️ SYNAPSE: DESTINY COMMANDER")
+st.title("🛰️ SYNAPSE: UNIVERSAL ANALYZER v10")
 st.write(f"**วันปัจจุบัน:** {datetime.now().strftime('%d/%m/%Y')} | **BY:** Ta101")
 
 # ส่วนที่ 1: การคำนวณระยะห่าง
@@ -113,4 +116,4 @@ if lottery_mode and len(lottery_num) == 3:
     with c_b: st.code(" | ".join(p2))
 
 st.divider()
-st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | พัฒนาโดย Ta101 เพื่อคนไทยทุกคน")
+st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | พัฒนาโดย Ta101")
