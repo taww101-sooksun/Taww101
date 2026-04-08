@@ -65,7 +65,7 @@ st.subheader(f"✨ พื้นฐานดวงชะตาของ {weekday}
 
 c1, c2, c3 = st.columns(3)
 with c1:
-    st.metric("ราศี", ra-si)
+    st.metric("ราศี", rasi)
     st.write(f"**ปีนักษัตร:** {naksat}")
 with c2:
     st.metric("ธาตุเจ้าเรือน", that)
