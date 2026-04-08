@@ -56,16 +56,19 @@ st.sidebar.divider()
 lottery_num = st.sidebar.text_input("เลขมงคลประจำตัว (3 ตัว)", "785")
 
 # --- EXECUTION ---
-rasi, that, naksat = get_horoscope_details(birth_date)
+# --- แก้ไขบรรทัดที่ 59 เป็นต้นไป ---
+rasi, that, naksat = get_horoscope_details(birth_date) # แก้จุดที่ 1
 thai_days = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
 weekday = thai_days[birth_date.weekday()]
 
 # ส่วนแสดงดวงชะตา
-st.subheader(f"✨ พื้นฐานดวงชะตาของ {weekday} ที่ {birth_date.strftime('%d/%m/%Y')}")
+st.subheader(f"✨ พื้นฐานดวงชะตาของ วัน{weekday} ที่ {birth_date.strftime('%d/%m/%Y')}")
 
 c1, c2, c3 = st.columns(3)
 with c1:
-    st.metric("ราศี", rasi)
+    st.metric("ราศี", rasi)  # แก้จุดที่ 2 (บรรทัดที่ 68 ที่พี่เจอ Error)
+    st.write(f"**ปีนักษัตร:** {naksat}")
+
     st.write(f"**ปีนักษัตร:** {naksat}")
 with c2:
     st.metric("ธาตุเจ้าเรือน", that)
