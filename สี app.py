@@ -81,8 +81,10 @@ with c3:
 st.divider()
 st.write("### 🌒 สภาพท้องฟ้าในวันเกิดของคุณ")
 # (ใช้ฟังก์ชันคำนวณจันทรคติที่เคยให้ไป)
-ref_new_moon = datetime(2024, 1, 11)
-diff = (birth_date - ref_new_moon).days
+# --- แก้ไขบรรทัดที่ 84-85 ---
+ref_new_moon = datetime(2024, 1, 11).date() # เพิ่ม .date() ตรงนี้
+diff = (birth_date - ref_new_moon).days      # ทีนี้จะลบกันได้แล้วครับ
+
 lunar_age = diff % 29.53
 lunar_text = "🌑 แรม 14-15 ค่ำ (เดือนดับ)" if lunar_age < 1 else f"🌕 ข้างขึ้น/ข้างแรม (วัฏจักร {lunar_age:.1f})"
 st.info(f"วันเกิดของคุณตรงกับสภาวะ: **{lunar_text}**")
