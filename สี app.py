@@ -3,25 +3,25 @@ import pandas as pd
 from datetime import datetime
 import itertools
 
-# --- CONFIG ---
-st.set_page_config(page_title="SYNAPSE: PERSONAL FORTUNE & STATS", layout="wide")
+# --- CONFIG & UI ---
+st.set_page_config(page_title="SYNAPSE v7: MASTER COMMAND", layout="wide")
 st.markdown("<style>.main { background-color: #0b1016; color: #f0f0f0; }</style>", unsafe_allow_html=True)
 
-# --- DATA DICTIONARY (โหราศาสตร์) ---
+# --- ศาสตร์แห่งธาตุ ---
 ELEMENTS = {
-    "ไฟ": "🔥 กระตือรือร้น ใจร้อน กล้าหาญ (เหมาะกับเลข 3, 7, 8)",
-    "ดิน": "🌍 มั่นคง อดทน ละเอียด (เหมาะกับเลข 2, 5, 0)",
-    "ลม": "💨 ปราดเปรียว รวดเร็ว ชอบอิสระ (เหมาะกับเลข 4, 6)",
-    "น้ำ": "💧 อ่อนโยน ปรับตัวเก่ง มีเสน่ห์ (เหมาะกับเลข 1, 9)"
+    "ไฟ": "🔥 กระตือรือร้น ใจร้อน กล้าหาญ (เลขเด่น: 3, 7, 8)",
+    "ดิน": "🌍 มั่นคง อดทน ละเอียด (เลขเด่น: 2, 5, 0)",
+    "ลม": "💨 ปราดเปรียว รวดเร็ว ชอบอิสระ (เลขเด่น: 4, 6)",
+    "น้ำ": "💧 อ่อนโยน ปรับตัวเก่ง มีเสน่ห์ (เลขเด่น: 1, 9)"
 }
 
 # --- FUNCTIONS ---
-def get_horoscope_details(date):
+def get_thai_astrology(date):
     day = date.day
     month = date.month
     year_th = date.year + 543
     
-    # 1. ราศี & ธาตุ
+    # 1. ราศี & ธาตุ (นับแบบไทย ตัดยอดวันที่ 13-17)
     if (month == 4 and day >= 13) or (month == 5 and day <= 13): r, t = "เมษ", "ไฟ"
     elif (month == 5 and day >= 14) or (month == 6 and day <= 14): r, t = "พฤษภ", "ดิน"
     elif (month == 6 and day >= 15) or (month == 7 and day <= 15): r, t = "เมถุน", "ลม"
@@ -35,64 +35,86 @@ def get_horoscope_details(date):
     elif (month == 2 and day >= 13) or (month == 3 and day <= 13): r, t = "กุมภ์", "ลม"
     else: r, t = "มีน", "น้ำ"
     
-    # 2. ปีนักษัตร
-    zodiac_animals = ["ปีมะเมีย", "ปีมะแม", "ปีวอก", "ปีระกา", "ปีจอ", "ปีกุน", "ปีชวด", "ปีฉลู", "ปีขาล", "ปีเถาะ", "ปีมะโรง", "ปีมะเส็ง"]
-    animal = zodiac_animals[year_th % 12]
+    # 2. ปีนักษัตร (แบบไทย เปลี่ยนปีที่สงกรานต์ 13 เม.ย.)
+    zodiac_list = ["ปีวอก", "ปีระกา", "ปีจอ", "ปีกุน", "ปีชวด", "ปีฉลู", "ปีขาล", "ปีเถาะ", "ปีมะโรง", "ปีมะเส็ง", "ปีมะเมีย", "ปีมะแม"]
+    # ถ้าเกิดก่อน 13 เมษายน ให้ถือว่าเป็นนักษัตรของปีเก่า
+    eff_year = year_th - 1 if (month < 4 or (month == 4 and day < 13)) else year_th
+    animal = zodiac_list[eff_year % 12]
     
     return r, t, animal
 
-# --- APP LAYOUT ---
-st.title("🛡️ SYNAPSE COMMAND CENTER v6")
-st.write("ระบบวิเคราะห์ดวงชะตาและสถิติกราฟชีวิต (ย้อนหลัง 50 ปี)")
+def calculate_lunar(date):
+    """คำนวณข้างขึ้นข้างแรมแบบละเอียด"""
+    ref_new_moon = datetime(2024, 1, 11).date()
+    diff = (date - ref_new_moon).days
+    lunar_age = diff % 29.53059
+    
+    if lunar_age < 1 or lunar_age > 28.5:
+        return "🌑 แรม 14-15 ค่ำ (เดือนดับ/มืดสนิท)", "error"
+    elif lunar_age < 14.2:
+        return f"🌙 ขึ้น {int(lunar_age)+1} ค่ำ (ข้างขึ้น)", "success"
+    elif lunar_age < 15.8:
+        return "🌕 ขึ้น 15 ค่ำ (พระจันทร์เต็มดวง)", "success"
+    else:
+        return f"🌘 แรม {int(lunar_age-14.7)+1} ค่ำ (ข้างแรม)", "warning"
 
-# ส่วนรับข้อมูลวันเกิด
-st.sidebar.header("👤 ข้อมูลส่วนบุคคล")
-birth_date = st.sidebar.date_input("เลือกวัน/เดือน/ปีเกิด", 
-                                  value=datetime(1990, 1, 1),
-                                  min_value=datetime(1970, 1, 1),
-                                  max_value=datetime.now())
+# --- SIDEBAR ---
+st.sidebar.header("👤 ข้อมูลส่วนบุคคล (ย้อนหลัง 50 ปี)")
+user_date = st.sidebar.date_input("เลือกวันที่/วันเกิด", 
+                                 value=datetime(2026, 4, 16),
+                                 min_value=datetime(1970, 1, 1))
+lottery_num = st.sidebar.text_input("เลขเก็งวิเคราะห์ (3 ตัว)", "785", max_chars=3)
 
-st.sidebar.divider()
-lottery_num = st.sidebar.text_input("เลขมงคลประจำตัว (3 ตัว)", "785")
+# --- MAIN APP ---
+st.title("🛰️ SYNAPSE COMMAND CENTER v7")
+st.write("**สถานะระบบ:** ออนไลน์ | **ID:** Ta101 | **สโลแกน:** 'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-# --- EXECUTION ---
-# --- แก้ไขบรรทัดที่ 59 เป็นต้นไป ---
-rasi, that, naksat = get_horoscope_details(birth_date) # แก้จุดที่ 1
+# ดึงข้อมูลโหราศาสตร์
+rasi, that, naksat = get_thai_astrology(user_date)
+lunar_text, lunar_type = calculate_lunar(user_date)
 thai_days = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-weekday = thai_days[birth_date.weekday()]
+day_name = thai_days[user_date.weekday()]
 
-# ส่วนแสดงดวงชะตา
-st.subheader(f"✨ พื้นฐานดวงชะตาของ วัน{weekday} ที่ {birth_date.strftime('%d/%m/%Y')}")
+# ส่วนแสดงผลข้อมูล
+st.divider()
+st.subheader(f"📅 วิเคราะห์วันที่ {user_date.strftime('%d/%m/%Y')} (วัน{day_name})")
 
-c1, c2, c3 = st.columns(3)
-with c1:
-    st.metric("ราศี", rasi)  # แก้จุดที่ 2 (บรรทัดที่ 68 ที่พี่เจอ Error)
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric("ราศี", rasi)
     st.write(f"**ปีนักษัตร:** {naksat}")
-
-    st.write(f"**ปีนักษัตร:** {naksat}")
-with c2:
-    st.metric("ธาตุเจ้าเรือน", that)
+with col2:
+    st.metric("ธาตุ", that)
     st.caption(ELEMENTS[that])
-with c3:
-    st.metric("กำลังวันเกิด", weekday)
-    st.write("ใช้สำหรับเลือกเลขนำโชคประจำวัน")
+with col3:
+    st.metric("กำลังวัน", day_name)
+    st.write("เลขประจำวันพฤหัสคือ **5**")
 
-# ส่วนคำนวณข้างขึ้นข้างแรมวันเกิด
+# แสดงข้างขึ้นข้างแรม
+st.write("### 🌒 สภาพข้างขึ้นข้างแรม")
+if lunar_type == "success": st.success(lunar_text)
+elif lunar_type == "warning": st.warning(lunar_text)
+else: st.error(lunar_text)
+
+# วิเคราะห์ 18 ประตู
 st.divider()
-st.write("### 🌒 สภาพท้องฟ้าในวันเกิดของคุณ")
-# (ใช้ฟังก์ชันคำนวณจันทรคติที่เคยให้ไป)
-# --- แก้ไขบรรทัดที่ 84-85 ---
-ref_new_moon = datetime(2024, 1, 11).date() # เพิ่ม .date() ตรงนี้
-diff = (birth_date - ref_new_moon).days      # ทีนี้จะลบกันได้แล้วครับ
+st.subheader(f"🔢 ชุดเลข 18 ประตู (จากเลข {lottery_num})")
+if lottery_num.isdigit() and len(lottery_num) == 3:
+    p3 = [''.join(p) for p in itertools.permutations(lottery_num)]
+    p2_raw = list(itertools.combinations(lottery_num, 2))
+    p2 = []
+    for pair in p2_raw:
+        p2.append(f"{pair[0]}{pair[1]}"); p2.append(f"{pair[1]}{pair[0]}")
+    
+    c_a, c_b = st.columns(2)
+    with c_a:
+        st.write("**3 ตัวตรง/สลับ (6 ประตู):**")
+        st.code(" | ".join(sorted(set(p3))))
+    with c_b:
+        st.write("**2 ตัว บน-ล่าง (12 ประตู):**")
+        st.code(" | ".join(sorted(set(p2))))
+else:
+    st.error("กรุณากรอกเลขให้ครบ 3 หลัก")
 
-lunar_age = diff % 29.53
-lunar_text = "🌑 แรม 14-15 ค่ำ (เดือนดับ)" if lunar_age < 1 else f"🌕 ข้างขึ้น/ข้างแรม (วัฏจักร {lunar_age:.1f})"
-st.info(f"วันเกิดของคุณตรงกับสภาวะ: **{lunar_text}**")
-
-# ส่วนวิเคราะห์เลข 18 ประตู
 st.divider()
-st.write(f"### 🔢 วิเคราะห์เลขมงคลจากฐานดวง {lottery_num}")
-p3 = [''.join(p) for p in itertools.permutations(lottery_num)]
-st.success(" | ".join(p3))
-
-st.caption("ข้อมูลนี้รันตามหลักสถิติและความจริง 'อยู่นิ่งๆ ไม่เจ็บตัว' | พัฒนาโดย Ta101")
+st.caption("ระบบรันข้อมูลตามความจริง 'ไม่โกหก' ตามหลักการของ Ta101")
