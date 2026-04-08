@@ -119,4 +119,30 @@ st.subheader("🔮 วิเคราะห์รหัสคู่ขนาน�
 
 # 1. ตรวจจับ Gap 4 (อดีตแฟนสาว)
 gap_found = abs(res1 - res2)
-is_parallel = 3.8 <=
+is_parallel = 3.8 <= gap_found <= 4.2
+
+# 2. ตรวจจับพิกัด 6 ปี และ 12 ปี
+is_time_hit = (5 <= yy <= 7) or (11 <= yy <= 13)
+
+c_res1, c_res2 = st.columns([2, 1])
+with c_res1:
+    if is_parallel:
+        st.error(f"‼️ ตรวจพบรหัสคู่ขนาน: ค่าห่างกัน {gap_found:.2f} (พิกัด Gap 4)")
+        st.write("📢 **คำเตือน:** รหัสนี้ตรงกับสถิติแฟนเก่าที่พี่เจอมา รูปแบบชีวิตมีโอกาสวนลูปเดิม")
+        st.balloons()
+    else:
+        st.success(f"✅ ไม่พบรหัสคู่ขนาน: ค่าห่างกัน {gap_found:.2f}")
+        st.write("✨ **วิเคราะห์:** คนนี้มีโครงสร้างตัวเลขใหม่ ไม่ซ้ำรอยรหัสอดีต")
+    
+    st.write("---")
+    if is_time_hit:
+        st.warning(f"🎯 พิกัดเวลาสำคัญ: คนนี้{direction} {yy} ปี (เข้าข่ายรหัส 6/12 ปี)")
+    else:
+        st.write(f"ระยะห่างเวลา: {yy} ปี {mm} เดือน {dd} วัน ({direction})")
+
+with c_res2:
+    st.metric("GAP ตัวเลข", f"{gap_found:.2f}")
+    st.metric("ห่างกันทั้งหมด (วัน)", f"{delta_days:,}")
+
+st.divider()
+st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | พัฒนาโดย Ta101 | 'ความจริงอยู่ที่การพิสูจน์'")
