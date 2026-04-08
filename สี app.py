@@ -51,9 +51,14 @@ def calculate_lunar(date_obj):
     elif lunar_age < 15.8: return "🌕 ขึ้น 15 ค่ำ (เต็มดวง)", "success"
     else: return f"🌘 แรม {int(lunar_age-14.7)+1} ค่ำ (ข้างแรม)", "warning"
 
-# --- SIDEBAR ---
-st.sidebar.header("👤 ข้อมูลวิเคราะห์")
-date1 = st.sidebar.date_input("วันที่ 1 (วันหลัก/วันเกิด)", value=date(2026, 4, 8))
+# --- แก้ไขตรงส่วนรับค่า Sidebar (ประมาณบรรทัดที่ 53-56) ---
+date1 = st.sidebar.date_input("วันที่ 1 (วันหลัก/วันเกิด)", value=date(1984, 5, 18))
+date2 = st.sidebar.date_input("วันที่ 2 (วันที่เปรียบเทียบ)", value=date(1996, 8, 17))
+
+# --- แก้ไขตรงส่วนคำนวณ (บรรทัดที่ 67) ---
+# มั่นใจได้เลยว่า date1 และ date2 เป็นชนิดเดียวกันแล้ว
+delta = abs((date2 - date1).days)
+
 date2 = st.sidebar.date_input("วันที่ 2 (วันที่เปรียบเทียบ)", value=date(2026, 4, 8))
 lottery_num = st.sidebar.text_input("เลขเก็งวิเคราะห์ (3 ตัว)", "785", max_chars=3)
 
