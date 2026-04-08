@@ -2,6 +2,13 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import itertools
+from datetime import date
+
+d1 = date(1984, 5, 18)
+d2 = date(1996, 8, 17)
+delta = d2 - d1
+
+print(f"ห่างกันทั้งหมด: {delta.days} วัน")
 
 # --- CONFIG & UI ---
 st.set_page_config(page_title="SYNAPSE v7: MASTER COMMAND", layout="wide")
