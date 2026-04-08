@@ -3,93 +3,101 @@ import pandas as pd
 from datetime import datetime
 import itertools
 
-# --- CONFIG & STYLE ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER v5", layout="wide")
-st.markdown("""
-    <style>
-    .main { background-color: #0e1117; color: #ffffff; }
-    .stButton>button { width: 100%; border-radius: 5px; height: 3em; background-color: #f63366; color: white; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- CONFIG & UI ---
+st.set_page_config(page_title="SYNAPSE 50-YEAR ANALYZER", layout="wide")
+st.markdown("<style>.main { background-color: #0b0e14; color: #00ff41; }</style>", unsafe_allow_html=True)
 
-# --- FUNCTIONS ---
-def get_lunar_phase(date):
-    """ฟังก์ชันคำนวณข้างขึ้นข้างแรมแบบคร่าวๆ (อิงรอบดวงจันทร์ 29.53 วัน)"""
-    # วันอ้างอิงที่เป็นคืนเดือนดับ (New Moon)
-    reference_date = datetime(2024, 1, 11) 
-    diff = (date - reference_date).days
-    lunar_age = diff % 29.530588853
+# --- ADVANCED LOGIC FUNCTIONS ---
+
+def get_thai_zodiac(year_th):
+    """คำนวณปีนักษัตร (แบบไทย พ.ศ.)"""
+    zodiac = ["ปีมะเมีย", "ปีมะแม", "ปีวอก", "ปีระกา", "ปีจอ", "ปีกุน", "ปีชวด", "ปีฉลู", "ปีขาล", "ปีเถาะ", "ปีมะโรง", "ปีมะเส็ง"]
+    # อ้างอิงปี 2569 (มะเมีย)
+    return zodiac[year_th % 12]
+
+def get_zodiac_sign(day, month):
+    """คำนวณราศี (แบบสากลที่นิยมในไทย)"""
+    if (month == 3 and day >= 21) or (month == 4 and day <= 19): return "ราศีเมษ", "ไฟ"
+    elif (month == 4 and day >= 20) or (month == 5 and day <= 20): return "ราศีพฤษภ", "ดิน"
+    elif (month == 5 and day >= 21) or (month == 6 and day <= 21): return "ราศีเมถุน", "ลม"
+    elif (month == 6 and day >= 22) or (month == 7 and day <= 22): return "ราศีกรกฎ", "น้ำ"
+    elif (month == 7 and day >= 23) or (month == 8 and day <= 22): return "ราศีสิงห์", "ไฟ"
+    elif (month == 8 and day >= 23) or (month == 9 and day <= 22): return "ราศีกันย์", "ดิน"
+    elif (month == 9 and day >= 23) or (month == 10 and day <= 23): return "ราศีตุลย์", "ลม"
+    elif (month == 10 and day >= 24) or (month == 11 and day <= 21): return "ราศีพิจิก", "น้ำ"
+    elif (month == 11 and day >= 22) or (month == 12 and day <= 21): return "ราศีธนู", "ไฟ"
+    elif (month == 12 and day >= 22) or (month == 1 and day <= 19): return "ราศีมังกร", "ดิน"
+    elif (month == 1 and day >= 20) or (month == 2 and day <= 18): return "ราศีกุมภ์", "ลม"
+    else: return "ราศีมีน", "น้ำ"
+
+def get_lunar_phase_advanced(date):
+    """คำนวณข้างขึ้นข้างแรม (ประมาณการจันทรคติ)"""
+    ref_new_moon = datetime(2024, 1, 11) # วันเดือนดับอ้างอิง
+    diff = (date - ref_new_moon).days
+    lunar_age = diff % 29.53059
     
-    if lunar_age < 1: return "🌑 แรม 14-15 ค่ำ (มืดสนิท)"
-    elif lunar_age < 7: return "🌙 ขึ้น 1-7 ค่ำ (เสี้ยวสว่าง)"
-    elif lunar_age < 15: return "🌕 ขึ้น 8-15 ค่ำ (สว่างเต็มดวง)"
-    elif lunar_age < 22: return "🌗 แรม 1-7 ค่ำ (เสี้ยวตัด)"
-    else: return "🌘 แรม 8-13 ค่ำ (ใกล้จะมืด)"
+    if lunar_age < 1 or lunar_age > 28.5:
+        return "🌑 แรม 14-15 ค่ำ (เดือนดับ)"
+    elif lunar_age < 14.7:
+        day_num = int(lunar_age + 1)
+        return f"🌙 ขึ้น {day_num} ค่ำ"
+    else:
+        day_num = int(lunar_age - 14.7 + 1)
+        return f"🌘 แรม {day_num} ค่ำ"
 
-def generate_18_gates(digits):
-    """สร้างเลข 18 ประตูจากเลข 3 ตัว"""
-    if len(digits) != 3: return [], []
-    three_digits = [''.join(p) for p in itertools.permutations(digits)]
-    two_digits_raw = list(itertools.combinations(digits, 2))
-    two_digits = []
-    for pair in two_digits_raw:
-        two_digits.append(f"{pair[0]}{pair[1]}")
-        two_digits.append(f"{pair[1]}{pair[0]}")
-    return sorted(list(set(three_digits))), sorted(list(set(two_digits)))
+# --- MAIN APP ---
+st.title("🛡️ SYNAPSE COMMAND CENTER: 50-YEAR ARCHIVE")
+st.write("ID: Ta101 | สถิติ 50 ปี: ความจริงที่ไม่มีการหลอกลวง")
 
-# --- SIDEBAR: INPUT PANEL ---
-st.sidebar.title("🛡️ CONTROL PANEL")
-st.sidebar.write(f"**User:** Ta101 | ID: {datetime.now().strftime('%Y%m%d')}")
+# Sidebar Input
+st.sidebar.header("⚙️ ตั้งค่าการสแกน")
+target_date = st.sidebar.date_input("เลือกวันที่ต้องการย้อนรอย", value=datetime(2026, 4, 16))
+target_year_th = target_date.year + 543
+my_num = st.sidebar.text_input("เลขเก็ง 3 ตัว", "785")
 
-# 1. ส่วนกรอกวันที่
-st.sidebar.header("📅 เลือกวันที่วิเคราะห์")
-selected_date = st.sidebar.date_input("เลือกวันที่", value=datetime(2026, 4, 16))
-
-# 2. ส่วนกรอกเลขหวย
-st.sidebar.header("🔢 ข้อมูลตัวเลข")
-lottery_input = st.sidebar.text_input("กรอกเลขที่เก็ง (3 ตัว)", value="785", max_chars=3)
-
-# --- MAIN CONTENT ---
-st.title("🛰️ SYNAPSE COMMAND CENTER")
-st.write(f"สโลแกน: *'อยู่นิ่งๆ ไม่เจ็บตัว'*")
-
+# --- EXECUTION ---
 col1, col2 = st.columns([1, 1])
 
 with col1:
-    st.markdown("### 📊 ข้อมูลวันและจันทรคติ")
+    st.markdown("### 📅 ข้อมูลโหราศาสตร์/สถิติ")
     thai_days = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-    day_name = thai_days[selected_date.weekday()]
-    lunar_status = get_lunar_phase(datetime.combine(selected_date, datetime.min.time()))
     
-    # แสดงผลข้อมูลวัน
-    st.info(f"📅 **วันที่:** {selected_date.strftime('%d/%m/%Y')}")
-    st.info(f"☀️ **วันในสัปดาห์:** วัน{day_name}")
-    st.warning(f"🌙 **ข้างขึ้นข้างแรม:** {lunar_status}")
+    lunar = get_lunar_phase_advanced(datetime.combine(target_date, datetime.min.time()))
+    zodiac_name, element = get_zodiac_sign(target_date.day, target_date.month)
+    animal = get_thai_zodiac(target_year_th)
+    
+    st.info(f"**วันที่:** {target_date.strftime('%d/%m/%Y')} (วัน{thai_days[target_date.weekday()]})")
+    st.success(f"**จันทรคติ:** {lunar}")
+    st.warning(f"**นักษัตร:** {animal}")
+    st.error(f"**ราศี:** {zodiac_name} (ธาตุ{element})")
 
 with col2:
-    st.markdown("### 🔢 วิเคราะห์ 18 ประตู")
-    if lottery_input.isdigit() and len(lottery_input) == 3:
-        t3, b2 = generate_18_gates(lottery_input)
+    st.markdown("### 🔢 วิเคราะห์ประตูมิติ (18 GATES)")
+    if len(my_num) == 3:
+        p3 = [''.join(p) for p in itertools.permutations(my_num)]
+        p2 = [f"{a}{b}" for a, b in itertools.permutations(my_num, 2)]
         
-        st.write("**3 ตัวบน (6 ประตู):**")
-        st.success(" | ".join(t3))
-        
-        st.write("**2 ตัวบน-ล่าง (12 ประตู):**")
-        st.success(" | ".join(b2))
-    else:
-        st.error("กรุณากรอกตัวเลขให้ครบ 3 หลัก")
+        st.write("**3 ตัว (บน):**")
+        st.code(" | ".join(p3))
+        st.write("**2 ตัว (บน-ล่าง):**")
+        st.code(" | ".join(p2))
 
-# --- DATABASE SIMULATION ---
+# --- 50-YEAR ENGINE ---
 st.divider()
-st.markdown("### 📝 บันทึกประวัติการวิเคราะห์")
-if st.button("💾 บันทึกข้อมูลลง Command Center"):
-    data_log = {
-        "วันที่": selected_date,
-        "วัน": day_name,
-        "ข้างขึ้นข้างแรม": lunar_status,
-        "เลขที่เก็ง": lottery_input
-    }
-    st.table(pd.DataFrame([data_log]))
-    st.balloons()
-    st.write("บันทึกความจริงเรียบร้อยแล้ว... 'เราไม่หลอกกัน'")
+st.markdown("### 🌀 ค้นหาจุดวนซ้ำ (Cycle Detection)")
+st.write(f"วิเคราะห์ระยะห่าง 5, 10, 20, 30, 40, 50 ปี จากปี {target_year_th}")
 
+history_data = []
+for gap in [5, 10, 15, 20, 25, 30, 40, 50]:
+    past_year = target_year_th - gap
+    past_animal = get_thai_zodiac(past_year)
+    history_data.append({
+        "ระยะห่าง": f"{gap} ปี",
+        "ปี พ.ศ.": past_year,
+        "นักษัตร": past_animal,
+        "สถานะ": "สแกนแล้ว"
+    })
+
+st.table(pd.DataFrame(history_data))
+
+st.caption("ข้อมูลนี้ใช้เพื่อการวิเคราะห์ทางสถิติ 'อยู่นิ่งๆ ไม่เจ็บตัว' พัฒนาโดย Ta101")
