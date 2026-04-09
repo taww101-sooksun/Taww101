@@ -4,26 +4,25 @@ from datetime import datetime, date
 import itertools
 import random
 
-# ==========================================
-# 🛰️ SYNAPSE v18: THE ULTIMATE COMMAND CENTER
-# ==========================================
+# --- CONFIG & UI ---
+st.set_page_config(page_title="SYNAPSE v19: MASTER CONTROL", layout="wide")
 
-st.set_page_config(page_title="SYNAPSE v18: MASTER CONTROL", layout="wide")
-
-# --- UI STYLING ---
+# ตกแต่งหน้าตาแบบ High-Contrast (Green Glow) ตามสไตล์พี่บาส
 st.markdown("""
     <style>
     .main { background-color: #0b1016; color: #f0f0f0; }
-    .stMetric { background-color: #1a222d; padding: 20px; border-radius: 15px; border: 1px solid #30363d; }
-    h1, h2, h3 { color: #00ff41; text-shadow: 2px 2px #000; }
-    .stButton>button { width: 100%; border-radius: 10px; background-color: #00ff41; color: black; font-weight: bold; }
+    .stMetric { background-color: #1a222d; padding: 20px; border-radius: 15px; border: 1px solid #00ff41; }
+    h1, h2, h3 { color: #00ff41; text-shadow: 1px 1px #000; }
+    .stSidebar { background-color: #0e141b; }
+    .stButton>button { width: 100%; border-radius: 10px; background-color: #00ff41; color: black; font-weight: bold; border: none; }
+    .stButton>button:hover { background-color: #00cc33; color: white; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- CORE LOGIC FUNCTIONS ---
 
 def get_lunar_data(dt):
-    """คำนวณข้างขึ้นข้างแรมและตัวแปรทางคณิตศาสตร์"""
+    """คำนวณข้างขึ้นข้างแรมและค่าพลังงาน (Logic พี่บาส)"""
     ref_date = date(1900, 1, 1)
     diff = (dt - ref_date).days
     lunar_cycle = 29.530589
@@ -43,116 +42,127 @@ def get_lunar_data(dt):
     return day_val, m_num, op, label, res
 
 def get_thai_zodiac(dt):
+    """คำนวณนักษัตรตามปี พ.ศ."""
     year_th = dt.year + 543
     zodiac = ["ปีมะเส็ง", "ปีมะเมีย", "ปีมะแม", "ปีวอก", "ปีระกา", "ปีจอ", "ปีกุน", "ปีชวด", "ปีฉลู", "ปีขาล", "ปีเถาะ", "ปีมะโรง"]
     eff_y = year_th - 1 if (dt.month < 4 or (dt.month == 4 and dt.day < 13)) else year_th
     return zodiac[eff_y % 12]
 
-# --- SIDEBAR: ALL USER INPUTS ---
-st.sidebar.header("🕹️ แผงควบคุม (INPUT)")
-menu = st.sidebar.selectbox("เลือกฟีเจอร์", ["📊 สแกนรหัสคู่ขนาน", "🎰 คำนวณหวยรัฐบาล", "🌀 ย้อนรอยสถิติ 50 ปี", "🔮 ไพ่ยิปซีพยากรณ์"])
+# --- SIDEBAR: INPUT PANEL (ส่วนที่ผู้ใช้กรอกเอง) ---
+st.sidebar.header("🕹️ SYNAPSE INPUT PANEL")
+st.sidebar.caption("กรอกข้อมูลเพื่อรันระบบ")
+
+# 1. ข้อมูลผู้ใช้งานหลัก (พี่บาสหรือใครก็ได้)
+st.sidebar.subheader("👤 ข้อมูลผู้ใช้หลัก")
+user_name = st.sidebar.text_input("ชื่อของคุณ", "บาส (Ta101)")
+user_dob = st.sidebar.date_input("วันเดือนปีเกิดของคุณ", value=date(1984, 5, 18))
 
 st.sidebar.divider()
-# พี่กรอกชื่อและวันเกิดตัวเองที่นี่
-name_me = st.sidebar.text_input("ชื่อของคุณ", "บาส (Ta101)")
-d_me = st.sidebar.date_input("วันเกิดของคุณ", value=date(1984, 5, 18))
 
-# ข้อมูลผู้เปรียบเทียบ (จะกรอกเมื่อใช้โหมดสแกน)
-if menu == "📊 สแกนรหัสคู่ขนาน":
-    st.sidebar.divider()
-    name_target = st.sidebar.text_input("ชื่อคนที่จะสแกน", "เป้าหมาย")
-    d_target = st.sidebar.date_input("วันเกิดเป้าหมาย", value=date(1996, 8, 17))
+# 2. เมนูเลือกโหมด
+app_mode = st.sidebar.selectbox("🎯 เลือกโหมดการทำงาน", 
+    ["🔍 สแกนรหัสคู่ขนาน (แฟน/เพื่อน)", "🎰 วิเคราะห์เลขเด็ดรัฐบาล", "🌀 สถิติวงโคจร 50 ปี", "🔮 ไพ่ยิปซีพยากรณ์"])
 
-# ข้อมูลตัวเลข (จะกรอกเมื่อใช้โหมดหวย)
-if menu == "🎰 คำนวณหวยรัฐบาล":
-    st.sidebar.divider()
+st.sidebar.divider()
+
+# 3. ข้อมูลเพิ่มเติมตามโหมด
+if app_mode == "🔍 สแกนรหัสคู่ขนาน (แฟน/เพื่อน)":
+    target_name = st.sidebar.text_input("ชื่อเป้าหมาย", "เป้าหมาย X")
+    target_dob = st.sidebar.date_input("วันเกิดเป้าหมาย", value=date(1996, 8, 17))
+elif app_mode == "🎰 วิเคราะห์เลขเด็ดรัฐบาล":
     lotto_date = st.sidebar.date_input("งวดวันที่ต้องการคำนวณ", value=date.today())
-    target_num = st.sidebar.text_input("เลขเก็ง 3 ตัว", "785", max_chars=3)
+    guess_num = st.sidebar.text_input("เลขเก็ง 3 ตัว (ถ้ามี)", "785", max_chars=3)
 
-# --- PROCESSING ---
-v1, m1, op1, lab1, res1 = get_lunar_data(d_me)
+# --- EXECUTION ---
+v1, m1, op1, lab1, res1 = get_lunar_data(user_dob)
 
 # --- MAIN INTERFACE ---
-st.title(f"🛰️ SYNAPSE COMMANDER: {menu}")
-st.write(f"ID: **Ta101** | วันปัจจุบัน: {datetime.now().strftime('%d/%m/%Y')}")
+st.title(f"🛰️ SYNAPSE v19: {app_mode}")
+st.write(f"**สถานะ:** ระบบออนไลน์ | **ผู้ใช้งาน:** {user_name} | **ID:** Ta101")
 
 # ==========================================
-# MODE 1: สแกนรหัสคู่ขนาน
+# โหมด 1: สแกนรหัสคู่ขนาน
 # ==========================================
-if menu == "📊 สแกนรหัสคู่ขนาน":
-    v2, m2, op2, lab2, res2 = get_lunar_data(d_target)
+if app_mode == "🔍 สแกนรหัสคู่ขนาน (แฟน/เพื่อน)":
+    v2, m2, op2, lab2, res2 = get_lunar_data(target_dob)
     
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader(f"👤 {name_me}")
+        st.subheader(f"📊 {user_name}")
         st.info(f"{lab1} | {op1}")
-        st.metric("ค่ากำลังดวงหลัก", f"{res1:.2f}")
+        st.metric("ค่ากำลังดวง", f"{res1:.2f}")
     with col2:
-        st.subheader(f"👤 {name_target}")
+        st.subheader(f"📊 {target_name}")
         st.warning(f"{lab2} | {op2}")
-        st.metric("ค่ากำลังเปรียบเทียบ", f"{res2:.2f}")
+        st.metric("ค่ากำลังดวง", f"{res2:.2f}")
 
     st.divider()
-    st.subheader("📊 ตารางสรุป 4 ทิศทาง")
-    r_plus, r_minus = res1 + res2, res1 - res2
-    r_multi, r_div = res1 * res2, (res1 / res2 if res2 != 0 else 0)
-    st.table(pd.DataFrame({
-        "สมการ": ["บวก (+)", "ลบ (-)", "คูณ (×)", "หาร (÷)"],
-        "ผลลัพธ์": [f"{r_plus:.2f}", f"{r_minus:.2f}", f"{r_multi:.2f}", f"{r_div:.2f}"]
-    }))
+    st.subheader("📊 ตารางสรุปสมการ (Summary)")
+    df = pd.DataFrame({
+        "เงื่อนไข": ["บวก (+)", "ลบ (-)", "คูณ (×)", "หาร (÷)"],
+        "ผลลัพธ์": [f"{res1+res2:.2f}", f"{res1-res2:.2f}", f"{res1*res2:.2f}", f"{res1/res2 if res2!=0 else 0:.2f}"]
+    })
+    st.table(df)
 
+    # เช็ก Gap 4
     gap = abs(res1 - res2)
     if 3.8 <= gap <= 4.2:
-        st.error(f"‼️ ตรวจพบรหัสคู่ขนาน (Gap {gap:.2f}) - มาทรงเดียวกับอดีต!")
+        st.error(f"‼️ ตรวจพบรหัสคู่ขนาน! (Gap {gap:.2f}) - ระวังวนลูปอดีต")
         st.balloons()
-    else: st.success(f"✅ ไม่พบรหัสคู่ขนานเดิม (Gap {gap:.2f})")
+    else:
+        st.success(f"✅ รหัสผ่าน: ไม่ซ้ำซ้อนกับอดีต (Gap {gap:.2f})")
 
 # ==========================================
-# MODE 2: คำนวณหวยรัฐบาล
+# โหมด 2: วิเคราะห์เลขเด็ด
 # ==========================================
-elif menu == "🎰 คำนวณหวยรัฐบาล":
-    v_l, m_l, op_l, lab_l, res_l = get_lunar_data(lotto_date)
-    lotto_total = res1 + res_l
+elif app_mode == "🎰 วิเคราะห์เลขเด็ดรัฐบาล":
+    vl, ml, opl, labl, resl = get_lunar_data(lotto_date)
+    final_lotto = res1 + resl
     
     st.subheader(f"📅 วิเคราะห์งวดวันที่ {lotto_date.strftime('%d/%m/%Y')}")
-    col_l1, col_l2 = st.columns(2)
-    with col_l1:
-        st.info(f"วันเกิดคุณ: {res1:.2f} + วันหวยออก: {res_l:.2f}")
-        st.metric("ผลลัพธ์รวมรหัส", f"{lotto_total:.2f}")
+    st.info(f"พลังงานรวม (คุณ + วันหวยออก): **{final_lotto:.2f}**")
     
-    with col_l2:
-        st.success("🎯 เลขสกัดจากรหัส SYNAPSE")
-        s_num = str(abs(round(lotto_total, 2))).replace('.', '')[-2:]
-        st.header(f"เลขท้าย: {s_num} - {s_num[::-1]}")
+    # ดึงเลข 2 ตัวท้ายมาโชว์
+    l_str = str(abs(round(final_lotto, 2))).replace('.', '')
+    pair = l_str[-2:] if len(l_str) >= 2 else "00"
+    
+    c1, c2 = st.columns(2)
+    c1.metric("เลขสกัดจากรหัส (ตรง)", pair)
+    c2.metric("เลขสกัดจากรหัส (กลับ)", pair[::-1])
 
-    if len(target_num) == 3:
+    if len(guess_num) == 3:
         st.divider()
-        st.subheader(f"🔢 ประตูมิติเลขเก็ง: {target_num}")
-        p3 = sorted(set([''.join(p) for p in itertools.permutations(target_num)]))
+        st.subheader(f"🔢 ประตูมิติเลขเก็ง: {guess_num}")
+        p3 = sorted(set([''.join(p) for p in itertools.permutations(guess_num)]))
         st.code(" | ".join(p3))
 
 # ==========================================
-# MODE 3: ย้อนรอยสถิติ 50 ปี
+# โหมด 3: สถิติ 50 ปี
 # ==========================================
-elif menu == "🌀 ย้อนรอยสถิติ 50 ปี":
-    st.subheader(f"สแกนรอบวงโคจรปีนักษัตร (อ้างอิงคุณ {name_me})")
-    y_th = d_me.year + 543
-    history = []
-    for gap in [5, 10, 20, 30, 40, 50]:
-        past_y = y_th - gap
-        history.append({"ระยะ": f"ย้อน {gap} ปี", "พ.ศ.": past_y, "นักษัตร": get_thai_zodiac(date(past_y-543, 1, 1))})
-    st.table(pd.DataFrame(history))
+elif app_mode == "🌀 สถิติวงโคจร 50 ปี":
+    st.subheader("🌀 ตารางเปรียบเทียบวงโคจรย้อนหลัง")
+    y_th = user_dob.year + 543
+    hist = []
+    for g in [5, 10, 15, 20, 25, 30, 40, 50]:
+        py = y_th - g
+        hist.append({"ระยะ": f"ย้อนไป {g} ปี", "พ.ศ.": py, "นักษัตร": get_thai_zodiac(date(py-543, 1, 1))})
+    st.table(pd.DataFrame(hist))
 
 # ==========================================
-# MODE 4: ไพ่ยิปซี
+# โหมด 4: ไพ่ยิปซี
 # ==========================================
-elif menu == "🔮 ไพ่ยิปซีพยากรณ์":
-    deck = {"The Sun": "ความสำเร็จ", "Wheel of Fortune": "โชคชะตาเปลี่ยน", "The Star": "ความหวัง"}
-    if st.button("🃏 จิ้มเพื่อเปิดความจริง"):
-        card = random.choice(list(deck.items()))
+elif app_mode == "🔮 ไพ่ยิปซีพยากรณ์":
+    deck = {
+        "The Sun": "ความสำเร็จ ความสว่างไสว",
+        "The Moon": "ความกังวล ความลับ",
+        "The World": "ความสมบูรณ์แบบ",
+        "Wheel of Fortune": "จังหวะชีวิตที่กำลังเปลี่ยน"
+    }
+    if st.button("🃏 เปิดไพ่ความจริง"):
+        card, mean = random.choice(list(deck.items()))
         st.balloons()
-        st.header(f"ได้ไพ่: {card[0]}")
-        st.info(f"ความหมาย: {card[1]}")
+        st.subheader(f"คุณได้ไพ่: {card}")
+        st.info(f"ความหมาย: {mean}")
 
 st.divider()
-st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | ความจริงอยู่ที่พี่กรอกเอง")
+st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | ระบบจัดการโดย Ta101 | ความจริงเปิดเผยที่นี่")
