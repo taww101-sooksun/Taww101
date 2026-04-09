@@ -5,6 +5,101 @@ import itertools
 import random
 
 # --- CONFIG & UI ---
+st.set_page_config(page_title="SYNAPSE v9: DESTINY COMPARISON", layout="wide")
+st.markdown("<style>.main { background-color: #0b1016; color: #f0f0f0; }</style>", unsafe_allow_html=True)
+
+# --- ศาสตร์แห่งธาตุและการสมพงษ์ ---
+# ดิน ช่วย น้ำ / ไฟ ช่วย ดิน / ลม ช่วย ไฟ / น้ำ ช่วย ลม
+MATCHING = {
+    "ดิน": ["ดิน", "ไฟ", "น้ำ"],
+    "น้ำ": ["น้ำ", "ดิน", "ลม"],
+    "ไฟ": ["ไฟ", "ดิน", "ลม"],
+    "ลม": ["ลม", "ไฟ", "น้ำ"]
+}
+
+# --- FUNCTIONS ---
+def get_thai_astrology(date_obj):
+    day, month = date_obj.day, date_obj.month
+    year_th = date_obj.year + 543
+    # ราศี & ธาตุ
+    if (month == 4 and day >= 13) or (month == 5 and day <= 13): r, t = "เมษ", "ไฟ"
+    elif (month == 5 and day >= 14) or (month == 6 and day <= 14): r, t = "พฤษภ", "ดิน"
+    elif (month == 6 and day >= 15) or (month == 7 and day <= 15): r, t = "เมถุน", "ลม"
+    elif (month == 7 and day >= 16) or (month == 8 and day <= 16): r, t = "กรกฎ", "น้ำ"
+    elif (month == 8 and day >= 17) or (month == 9 and day <= 16): r, t = "สิงห์", "ไฟ"
+    elif (month == 9 and day >= 17) or (month == 10 and day <= 16): r, t = "กันย์", "ดิน"
+    elif (month == 10 and day >= 17) or (month == 11 and day <= 15): r, t = "ตุลย์", "ลม"
+    elif (month == 11 and day >= 16) or (month == 12 and day <= 15): r, t = "พิจิก", "น้ำ"
+    elif (month == 12 and day >= 16) or (month == 1 and day <= 14): r, t = "ธนู", "ไฟ"
+    elif (month == 1 and day >= 15) or (month == 2 and day <= 12): r, t = "มังกร", "ดิน"
+    elif (month == 2 and day >= 13) or (month == 3 and day <= 13): r, t = "กุมภ์", "ลม"
+    else: r, t = "มีน", "น้ำ"
+    # ปีนักษัตร
+    z_list = ["ปีมะเส็ง", "ปีมะเมีย", "ปีมะแม", "ปีวอก", "ปีระกา", "ปีจอ", "ปีกุน", "ปีชวด", "ปีฉลู", "ปีขาล", "ปีเถาะ", "ปีมะโรง"]
+    eff_y = year_th - 1 if (month < 4 or (month == 4 and day < 13)) else year_th
+    return r, t, z_list[eff_y % 12]
+
+def calculate_lunar(date_obj):
+    ref = date(2024, 1, 11)
+    diff = (date_obj - ref).days
+    age = diff % 29.53
+    if age < 1 or age > 28.5: return "🌑 แรม 14-15 ค่ำ"
+    elif age < 14.2: return f"🌙 ขึ้น {int(age)+1} ค่ำ"
+    elif age < 15.8: return "🌕 ขึ้น 15 ค่ำ"
+    else: return f"🌘 แรม {int(age-14.7)+1} ค่ำ"
+
+# --- SIDEBAR ---
+st.sidebar.header("⚙️ ระบบควบคุม")
+d_main = st.sidebar.date_input("📅 วันหลัก (เช่น วันเกิดเรา)", value=date(1984, 5, 18))
+d_comp = st.sidebar.date_input("📅 วันเปรียบเทียบ", value=date(1996, 8, 17))
+
+# --- MAIN APP ---
+st.title("🛰️ SYNAPSE COMMAND CENTER v9")
+curr_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+st.write(f"**วันปัจจุบัน:** {curr_time} | **ID:** Ta101")
+
+# ส่วนที่ 1: สรุปผลระยะห่าง
+st.divider()
+st.subheader("⏱️ สรุปผลระยะห่าง")
+delta_days = abs((d_comp - d_main).days)
+y, d = delta_days // 365, delta_days % 365
+m = d // 30
+d_left = d % 30
+st.info(f"ระยะห่างรวม: **{delta_days:,} วัน** | คิดเป็น: **{y} ปี {m} เดือน {d_left} วัน**")
+
+# ส่วนที่ 2: ตารางเปรียบเทียบดวงชะตา
+st.divider()
+col1, col2 = st.columns(2)
+thai_days = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+
+r1, t1, a1 = get_thai_astrology(d_main)
+r2, t2, a2 = get_thai_astrology(d_comp)
+
+with col1:
+    st.markdown("### 📌 วันหลัก")
+    st.success(f"**วัน{thai_days[d_main.weekday()]}** ที่ {d_main.strftime('%d/%m/%Y')}")
+    st.write(f"- ราศี: {r1} | ปี: {a1}")
+    st.write(f"- ธาตุ: {t1} | {calculate_lunar(d_main)}")
+
+with col2:
+    st.markdown("### 🔍 วันเปรียบเทียบ")
+    st.warning(f"**วัน{thai_days[d_comp.weekday()]}** ที่ {d_comp.strftime('%d/%m/%Y')}")
+    st.write(f"- ราศี: {r2} | ปี: {a2}")
+    st.write(f"- ธาตุ: {t2} | {calculate_lunar(d_comp)}")
+
+# ส่วนที่ 3: สรุปผลความสมพงษ์
+st.divider()
+st.subheader("🔮 ผลการวิเคราะห์ความสมพงษ์")
+if t2 in MATCHING[t1]:
+    st.balloons()
+    st.success(f"✅ **สมพงษ์กัน:** ธาตุ{t1} และ ธาตุ{t2} เป็นธาตุที่ส่งเสริมหรือเกื้อหนุนกันตามตำรา")
+else:
+    st.error(f"❌ **ไม่สมพงษ์กัน:** ธาตุ{t1} และ ธาตุ{t2} อาจมีความขัดแย้งกัน ควรระวังการใช้ใจร้อนตัดสินปัญหา")
+
+st.divider()
+st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | ข้อมูลนี้รันเพื่อการวิเคราะห์ทางสถิติและความจริงเท่านั้น")
+
+# --- CONFIG & UI ---
 st.set_page_config(page_title="SYNAPSE v11: TAROT & DESTINY", layout="wide")
 st.markdown("<style>.main { background-color: #0b1016; color: #f0f0f0; }</style>", unsafe_allow_html=True)
 
