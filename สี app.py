@@ -1,152 +1,112 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
-import itertools
+import math # เรียกใช้เครื่องมือคณิตศาสตร์ขั้นสูง
 
 # --- CONFIG & UI ---
-st.set_page_config(page_title="SYNAPSE: THE TRUTH REVEALER", layout="wide")
+st.set_page_config(page_title="SYNAPSE QUANTUM", layout="wide")
 
+# UI สไตล์ Hacker / Command Center
 st.markdown("""
     <style>
-    .main { background-color: #0b1016; color: #f0f0f0; }
-    .stMetric { background-color: #1a222d; padding: 20px; border-radius: 15px; border: 1px solid #00ff41; box-shadow: 0 0 10px #00ff41; }
-    h1, h2, h3 { color: #00ff41; text-shadow: 1px 1px #000; }
-    .stAlert { background-color: #1a222d; border: 1px solid #00ff41; color: white; }
+    .main { background-color: #050a0e; color: #00ff41; }
+    .stMetric { background-color: #0e161f; border: 2px solid #00ff41; border-radius: 10px; }
+    h1, h2, h3 { color: #00ff41; font-family: 'Courier New', Courier, monospace; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- CORE LOGIC FUNCTIONS ---
+# --- THE QUANTUM CALCULATOR (หัวใจการคำนวณ) ---
 
-def get_complete_data(dt):
-    # 1. ข้อมูลจันทรคติ &คณิตศาสตร์ (Logic พี่บาส)
+def quantum_calculation(dt):
+    # 1. ข้อมูลจันทรคติ (พื้นฐานเดิมของพี่บาส)
     ref_date = date(1900, 1, 1)
     diff = (dt - ref_date).days
     lunar_cycle = 29.530589
     pos = (diff - 0.5) % lunar_cycle
-    day_val = dt.weekday() + 1 # จันทร์=1, อาทิตย์=7
+    day_val = dt.weekday() + 1
     
+    # 2. สูตรคำนวณใหม่ (Quantum Mode)
     if pos <= 14.765:
         m_num = int(pos) + 1
-        l_label = f"ขึ้น {m_num} ค่ำ"
-        op = "บวก (+)" if 1 <= m_num <= 7 else "คูณ (×)"
-        op_char = "+" if 1 <= m_num <= 7 else "*"
+        phase_label = f"ขึ้น {m_num} ค่ำ"
+        # สูตรข้างขึ้น: ใช้รากที่สองของผลรวมกำลังสอง (Pythagorean logic)
+        res = math.sqrt((day_val**2) + (m_num**2))
+        formula_text = f"√({day_val}² + {m_num}²)"
     else:
         m_num = int(pos - 14.765) + 1
-        l_label = f"แรม {m_num} ค่ำ"
-        op = "ลบ (-)" if 1 <= m_num <= 7 else "หาร (÷)"
-        op_char = "-" if 1 <= m_num <= 7 else "/"
-    
-    # คำนวณค่าพลังงาน
-    if op_char == "+": res = day_val + m_num
-    elif op_char == "*": res = day_val * m_num
-    elif op_char == "-": res = day_val - m_num
-    else: res = day_val / m_num if m_num != 0 else 0
+        phase_label = f"แรม {m_num} ค่ำ"
+        # สูตรข้างแรม: ใช้ค่าลอการิทึมหรือการหารสัดส่วนทองคำ (Golden Ratio)
+        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+        formula_text = f"({day_val} × Φ) / {m_num}"
 
-    # 2. ราศี & ธาตุ (แบบไทย)
+    # 3. ข้อมูลธาตุและราศี (ความจริงทางสถิติ)
     d, m = dt.day, dt.month
-    if (m == 4 and d >= 13) or (m == 5 and d <= 13): r, t = "เมษ", "ไฟ"
-    elif (m == 5 and d >= 14) or (m == 6 and d <= 14): r, t = "พฤษภ", "ดิน"
-    elif (m == 6 and d >= 15) or (m == 7 and d <= 15): r, t = "เมถุน", "ลม"
-    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): r, t = "กรกฎ", "น้ำ"
-    elif (m == 8 and d >= 17) or (m == 9 and d <= 16): r, t = "สิงห์", "ไฟ"
-    elif (m == 9 and d >= 17) or (m == 10 and d <= 16): r, t = "กันย์", "ดิน"
-    elif (m == 10 and d >= 17) or (m == 11 and d <= 15): r, t = "ตุลย์", "ลม"
-    elif (m == 11 and d >= 16) or (m == 12 and d <= 15): r, t = "พิจิก", "น้ำ"
-    elif (m == 12 and d >= 16) or (m == 1 and d <= 14): r, t = "ธนู", "ไฟ"
-    elif (m == 1 and d >= 15) or (m == 2 and d <= 12): r, t = "มังกร", "ดิน"
-    elif (m == 2 and d >= 13) or (m == 3 and d <= 13): r, t = "กุมภ์", "ลม"
-    else: r, t = "มีน", "น้ำ"
-
-    # 3. ปีนักษัตร (ไทย)
-    y_th = dt.year + 543
-    z_list = ["ปีมะเส็ง", "ปีมะเมีย", "ปีมะแม", "ปีวอก", "ปีระกา", "ปีจอ", "ปีกุน", "ปีชวด", "ปีฉลู", "ปีขาล", "ปีเถาะ", "ปีมะโรง"]
-    eff_y = y_th - 1 if (m < 4 or (m == 4 and d < 13)) else y_th
-    animal = z_list[eff_y % 12]
+    zodiac_map = [
+        (1, 15, "มังกร", "ดิน"), (2, 13, "กุมภ์", "ลม"), (3, 14, "มีน", "น้ำ"),
+        (4, 13, "เมษ", "ไฟ"), (5, 14, "พฤษภ", "ดิน"), (6, 15, "เมถุน", "ลม"),
+        (7, 16, "กรกฎ", "น้ำ"), (8, 17, "สิงห์", "ไฟ"), (9, 17, "กันย์", "ดิน"),
+        (10, 17, "ตุลย์", "ลม"), (11, 16, "พิจิก", "น้ำ"), (12, 16, "ธนู", "ไฟ")
+    ]
+    r, t = "มีน", "น้ำ"
+    for mo, da, name, ele in zodiac_map:
+        if m == mo and d >= da: r, t = name, ele
 
     return {
-        "day_val": day_val, "m_num": m_num, "op": op, "label": l_label, 
-        "res": res, "r": r, "t": t, "animal": animal, "formula": f"{day_val} {op_char} {m_num}"
+        "res": round(res, 4), "label": phase_label, 
+        "formula": formula_text, "zodiac": r, "element": t, "day": day_val
     }
 
-# --- MAIN APP ---
-st.title("🛰️ SYNAPSE: THE TRUTH REVEALER")
-st.write("ระบบสแกนรหัสชีวิตแบบเปิด (Open Source Input) | ID: Ta101")
+# --- APP INTERFACE ---
+st.title("🛰️ SYNAPSE QUANTUM MATRIX v20")
+st.write("เครื่องคำนวณรหัสชีวิตผ่านสมการคณิตศาสตร์และดาราศาสตร์ | ID: Ta101")
 
 st.divider()
 
-# ส่วนที่ให้ทุกคนกรอกเอง (ไม่มี Default ของใครทั้งนั้น)
-st.subheader("📝 กรอกข้อมูลเพื่อสแกนความจริง")
-c_in1, c_in2 = st.columns(2)
+# รับค่าจากผู้ใช้ (ไม่มี Default)
+c1, c2 = st.columns(2)
+with c1:
+    name1 = st.text_input("ชื่อผู้สแกน (1)", placeholder="ระบุชื่อ...")
+    dob1 = st.date_input("วันเกิด (1)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31))
 
-with c_in1:
-    st.markdown("### 👤 บุคคลที่ 1")
-    name1 = st.text_input("ชื่อ/ฉายา (1)", placeholder="ระบุชื่อ...")
-    dob1 = st.date_input("วันเดือนปีเกิด (1)", 
-                         value=None, 
-                         min_value=date(1960, 1, 1), 
-                         max_value=date(2026, 12, 31),
-                         help="เลือกปี พ.ศ. ที่ต้องการสแกน")
+with c2:
+    name2 = st.text_input("ชื่อผู้สแกน (2)", placeholder="ระบุชื่อ...")
+    dob2 = st.date_input("วันเกิด (2)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31))
 
-with c_in2:
-    st.markdown("### 👤 บุคคลที่ 2")
-    name2 = st.text_input("ชื่อ/ฉายา (2)", placeholder="ระบุชื่อ...")
-    dob2 = st.date_input("วันเดือนปีเกิด (2)", 
-                         value=None, 
-                         min_value=date(1960, 1, 1), 
-                         max_value=date(2026, 12, 31),
-                         help="เลือกปี พ.ศ. ที่ต้องการสแกน")
-
-# ตรวจสอบว่ากรอกครบหรือยัง
 if dob1 and dob2:
-    d1 = get_complete_data(dob1)
-    d2 = get_complete_data(dob2)
+    res1 = quantum_calculation(dob1)
+    res2 = quantum_calculation(dob2)
 
     st.divider()
     
-    # แสดงผลลัพธ์แยกรายคน
-    res_col1, res_col2 = st.columns(2)
-    
-    with res_col1:
-        st.success(f"📌 ผลลัพธ์ของ {name1}")
-        st.metric("รหัสพลังงาน", f"{d1['res']:.2f}")
-        st.write(f"**ที่มา:** วันที่ {d1['day_val']} ({d1['op']}) กับ {d1['label']}")
-        st.write(f"**สมการ:** `{d1['formula']}`")
-        st.write(f"**ลักษณะ:** {d1['animal']} | ราศี{d1['r']} | ธาตุ{d1['t']}")
+    # แสดงผลลัพธ์
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.subheader(f"📟 รหัสชีวิต: {name1}")
+        st.metric("Quantum Value", res1['res'])
+        st.write(f"🧬 **สมการที่ใช้:** `{res1['formula']}`")
+        st.write(f"🌒 **สถานะ:** {res1['label']}")
+        st.write(f"🔮 **พื้นดวง:** ราศี{res1['zodiac']} (ธาตุ{res1['element']})")
 
-    with res_col2:
-        st.warning(f"📌 ผลลัพธ์ของ {name2}")
-        st.metric("รหัสพลังงาน", f"{d2['res']:.2f}")
-        st.write(f"**ที่มา:** วันที่ {d2['day_val']} ({d2['op']}) กับ {d2['label']}")
-        st.write(f"**สมการ:** `{d2['formula']}`")
-        st.write(f"**ลักษณะ:** {d2['animal']} | ราศี{d2['r']} | ธาตุ{d2['t']}")
+    with col_b:
+        st.subheader(f"📟 รหัสชีวิต: {name2}")
+        st.metric("Quantum Value", res2['res'])
+        st.write(f"🧬 **สมการที่ใช้:** `{res2['formula']}`")
+        st.write(f"🌒 **สถานะ:** {res2['label']}")
+        st.write(f"🔮 **พื้นดวง:** ราศี{res2['zodiac']} (ธาตุ{res2['element']})")
 
-    # สรุปความสัมพันธ์
     st.divider()
-    st.subheader("🔍 วิเคราะห์จุดเชื่อมโยง (The Truth Analysis)")
+    # วิเคราะห์ Gap (ความจริงที่พี่ค้นพบ)
+    gap = abs(res1['res'] - res2['res'])
+    st.subheader(f"🔍 บทวิเคราะห์รหัสคู่ขนาน (Gap Analysis: {gap:.4f})")
     
-    gap = abs(d1['res'] - d2['res'])
-    
-    col_sum1, col_sum2 = st.columns([2, 1])
-    with col_sum1:
-        st.write(f"**1. ค่าความต่าง (Gap):** {gap:.2f}")
-        if 3.8 <= gap <= 4.2:
-            st.error("⚠️ ตรวจพบรหัสคู่ขนาน (Gap 4): โครงสร้างตัวเลขนี้คือรหัสเดียวกับเคสสำคัญในอดีต")
-        else:
-            st.info("✅ ไม่พบรหัสซ้ำซ้อน: โครงสร้างตัวเลขเป็นชุดใหม่")
-            
-        st.write(f"**2. การเข้ากันของธาตุ:** ธาตุ{d1['t']} กับ ธาตุ{d2['t']}")
-        if d1['t'] == d2['t']: st.write("➡️ ธาตุเดียวกัน: ส่งเสริมกันได้ง่าย")
-        else: st.write("➡️ ธาตุต่างชนิด: ต้องปรับตัวตามธรรมชาติของดิน น้ำ ลม ไฟ")
-
-    with col_sum2:
-        st.write("**ตารางสรุปเลข**")
-        st.write(f"บวก: {d1['res']+d2['res']:.2f}")
-        st.write(f"ลบ: {d1['res']-d2['res']:.2f}")
-        st.write(f"คูณ: {d1['res']*d2['res']:.2f}")
-        st.write(f"หาร: {d1['res']/d2['res'] if d2['res']!=0 else 0:.2f}")
+    if 3.5 <= gap <= 4.5:
+        st.error("‼️ ตรวจพบสัญญาณสะท้อนรหัสคู่ขนาน! (รหัสชีวิตมีการซ้อนทับกันสูง)")
+        st.write("โครงสร้างรหัสนี้มักดึงดูดเหตุการณ์หรือความสัมพันธ์ในอดีตให้กลับมาฉายซ้ำ")
+    else:
+        st.success("✅ รหัสเป็นอิสระต่อกัน: โครงสร้างพลังงานมีความต่างกันอย่างสมดุล")
 
 else:
-    st.info("💡 กรุณาเลือกวันเกิดของทั้ง 2 ท่านเพื่อเริ่มการสแกนความจริง")
+    st.info("💡 ระบบ Standby... กรุณากรอกวันเกิดทั้ง 2 ฝ่ายเพื่อเริ่มการคำนวณ")
 
 st.divider()
-st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | ทุกตัวเลขมีที่มาและตรวจสอบได้ | พัฒนาโดย Ta101")
+st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | ระบบคำนวณอัตโนมัติโดย SYNAPSE CORE")
