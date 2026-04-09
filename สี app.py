@@ -107,7 +107,7 @@ if dob1 and dob2:
 
     # --- ส่วนการวิเคราะห์ Gap (แทนที่ของเดิม) ---
 st.divider()
-gap = abs(data1['res'] - data2['res'])
+gap = abs(res1['res'] - res2['res'])
 
 st.subheader(f"🔍 การวิเคราะห์พิกัดคู่ขนาน (Gap: {gap:.4f})")
 
