@@ -1,6 +1,95 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, date
+import streamlit as st
+from datetime import datetime, date
+import random
+
+# --- CONFIG & UI ---
+st.set_page_config(page_title="SYNAPSE v13: FUTURE SCANNER", layout="wide")
+st.markdown("<style>.main { background-color: #0b1016; color: #f0f0f0; }</style>", unsafe_allow_html=True)
+
+# --- LOGIC FUNCTIONS ---
+def get_lunar_data(date_obj):
+    ref_date = date(1900, 1, 1)
+    diff = (date_obj - ref_date).days
+    lunar_cycle = 29.530589
+    pos = (diff - 0.5) % lunar_cycle
+    day_val = date_obj.weekday() + 1
+    if pos <= 14.765:
+        m_num = int(pos) + 1
+        op = "บวก" if 1 <= m_num <= 7 else "คูณ"
+    else:
+        m_num = int(pos - 14.765) + 1
+        op = "ลบ" if 1 <= m_num <= 7 else "หาร"
+    return day_val, m_num, op
+
+def run_math(v, m, op):
+    if op == "บวก": return v + m
+    if op == "คูณ": return v * m
+    if op == "ลบ": return v - m
+    return v / m if m != 0 else 0
+
+# --- SIDEBAR ---
+st.sidebar.header("🛸 FUTURE RADAR")
+my_birth = st.sidebar.date_input("วันเกิดพี่บาส (วันหลัก)", value=date(1984, 5, 18))
+target_name = st.sidebar.text_input("ชื่อคนที่จะสแกน", "สาวนิรนาม")
+target_birth = st.sidebar.date_input(f"วันเกิดของ {target_name}", value=date(1996, 8, 17))
+
+# --- MAIN APP ---
+st.title("🛰️ SYNAPSE v13: FUTURE SCANNER")
+st.write(f"**สถานะระบบ:** กำลังตรวจสอบรหัสคู่ขนาน... | **ID:** Ta101")
+
+# คำนวณค่าของพี่บาส (ตัวตั้ง)
+v_me, m_me, op_me = get_lunar_data(my_birth)
+res_me = run_math(v_me, m_me, op_me)
+
+# คำนวณค่าของเป้าหมาย
+v_t, m_t, op_t = get_lunar_data(target_birth)
+res_t = run_math(v_t, m_t, op_t)
+
+# ส่วนการแสดงผลวิเคราะห์
+st.divider()
+col1, col2 = st.columns(2)
+with col1:
+    st.subheader("📌 รหัสพี่บาส")
+    st.info(f"วัน {v_me} | {op_me} {m_me} = **{res_me:.2f}**")
+
+with col2:
+    st.subheader(f"📌 รหัสคุณ {target_name}")
+    st.warning(f"วัน {v_t} | {op_t} {m_t} = **{res_t:.2f}**")
+
+# --- ระบบ SCANNER (ตรวจจับรหัสแฝด) ---
+st.divider()
+st.subheader("🔮 ผลการสแกนรหัสคู่ขนาน (DNA Analysis)")
+
+sum_val = res_me + res_t
+diff_val = res_me - res_t
+multi_val = res_me * res_t
+div_val = res_me / res_t if res_t != 0 else 0
+
+# วิเคราะห์ตามสถิติที่พี่บาสพบ (Gap 4 และเลข 18, 22)
+gap = abs(res_me - res_t)
+is_parallel = False
+if 3.5 <= gap <= 4.5: # ตรวจพบ Gap 4 ที่พี่เจอ
+    is_parallel = True
+
+st.write("---")
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("บวก", f"{sum_val:.2f}")
+c2.metric("ลบ", f"{diff_val:.2f}")
+c3.metric("คูณ", f"{multi_val:.2f}")
+c4.metric("หาร", f"{div_val:.2f}")
+
+if is_parallel:
+    st.balloons()
+    st.success(f"‼️ **ตรวจพบรหัสคู่ขนาน!** ค่า Gap ห่างกัน {gap:.2f} (ใกล้เคียง 4) คนนี้มีรหัสชีวิตแบบเดียวกับอดีตที่พี่เคยเจอ!")
+    st.info("คำแนะนำ: 'อยู่นิ่งๆ ไม่เจ็บตัว' ดูท่าทีไปก่อน เพราะคนนี้รหัสแรงเหมือนเดิม!")
+else:
+    st.write("🔍 ผลการคำนวณอยู่ในเกณฑ์ใหม่ ไม่ซ้ำกับรหัสอดีต")
+
+st.divider()
+st.caption("พัฒนาโดย Ta101 | 'ความจริงอยู่ที่ปลายนิ้ว' ")
 
 # ==========================================
 # 🛰️ SYNAPSE v17: THE MASTER CONTROL (LOTTO + DESTINY)
