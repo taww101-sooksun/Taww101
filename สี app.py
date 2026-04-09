@@ -37,14 +37,14 @@ def get_detailed_logic(dt):
     if pos <= 14.765:
         m_num = int(pos) + 1
         phase = f"ขึ้น {m_num} ค่ำ"
-        # สูตร: Pythagorean Theorem (หาแรงผลักดัน)
+        # สูตร: Pythagorean Theorem
         res = math.sqrt((day_val**2) + (m_num**2))
         logic_desc = f"ใช้สูตร **'แรงผลักดัน (Vector)'**: นำค่าวันเกิด ({day_val}) และค่าข้างขึ้น ({m_num}) มาหาจุดตัดของพลังงานด้วยทฤษฎีพีทาโกรัส"
         formula = f"√({day_val}² + {m_num}²)"
     else:
         m_num = int(pos - 14.765) + 1
         phase = f"แรม {m_num} ค่ำ"
-        # สูตร: Golden Ratio Balance (หาความสมดุล)
+        # สูตร: Golden Ratio Balance
         res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
         logic_desc = f"ใช้สูตร **'สัดส่วนทองคำ (Golden Ratio)'**: นำค่าวันเกิด ({day_val}) คูณค่าคงที่จักรวาล (1.618) แล้วปรับสมดุลด้วยค่าข้างแรม ({m_num})"
         formula = f"({day_val} × 1.618) / {m_num}"
@@ -67,71 +67,48 @@ with c1:
 with c2:
     dob2 = st.date_input("เลือกวันเกิดเป้าหมาย", value=None, min_value=date(1960,1,1), key="d2")
 
+# --- จุดสำคัญ: ต้องใส่ Logic ทั้งหมดไว้ใน if นี้ ---
 if dob1 and dob2:
     data1 = get_detailed_logic(dob1)
     data2 = get_detailed_logic(dob2)
 
-    # แสดงผลลัพธ์พร้อมคำอธิบายสูตร
+    # แสดงผลลัพธ์รายบุคคล
     col_a, col_b = st.columns(2)
-    
     with col_a:
         st.subheader("📟 ข้อมูลชุดที่ 1")
         st.metric("ค่ารหัสที่ได้", data1['res'])
-        
-        # กล่องอธิบายให้ผู้ใช้เห็นภาพ
-        st.markdown(f"""
-        <div class="logic-box">
-            <b>📍 ที่มาของตัวเลข:</b><br>
-            • วันเกิด: {data1['day_name']} (ค่าดัชนี = {data1['day_val']})<br>
-            • จันทรคติ: {data1['phase']} (ค่าตัวแปร = {data1['m_num']})<br><br>
-            <b>🧬 วิธีคำนวณ:</b><br>
-            {data1['logic_desc']}<br>
-            <b>สมการ:</b> <code>{data1['formula']}</code>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="logic-box"><b>📍 ที่มา:</b> {data1['day_name']} / {data1['phase']}<br><b>🧬 สูตร:</b> {data1['formula']}</div>""", unsafe_allow_html=True)
 
     with col_b:
         st.subheader("📟 ข้อมูลชุดที่ 2")
         st.metric("ค่ารหัสที่ได้", data2['res'])
-        
-        st.markdown(f"""
-        <div class="logic-box">
-            <b>📍 ที่มาของตัวเลข:</b><br>
-            • วันเกิด: {data2['day_name']} (ค่าดัชนี = {data2['day_val']})<br>
-            • จันทรคติ: {data2['phase']} (ค่าตัวแปร = {data2['m_num']})<br><br>
-            <b>🧬 วิธีคำนวณ:</b><br>
-            {data2['logic_desc']}<br>
-            <b>สมการ:</b> <code>{data2['formula']}</code>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="logic-box"><b>📍 ที่มา:</b> {data2['day_name']} / {data2['phase']}<br><b>🧬 สูตร:</b> {data2['formula']}</div>""", unsafe_allow_html=True)
 
-    # --- ส่วนการวิเคราะห์ Gap (แทนที่ของเดิม) ---
-st.divider()
-gap = abs(res1['res'] - res2['res'])
+    # --- ส่วนการวิเคราะห์ Gap (แก้ชื่อตัวแปรให้ตรงกับ data1, data2) ---
+    st.divider()
+    gap = abs(data1['res'] - data2['res']) # แก้จาก res1 เป็น data1
 
-st.subheader(f"🔍 การวิเคราะห์พิกัดคู่ขนาน (Gap: {gap:.4f})")
+    st.subheader(f"🔍 การวิเคราะห์พิกัดคู่ขนาน (Gap: {gap:.4f})")
 
-# สร้างแถบความต่าง (Progress Bar) เพื่อให้เห็นภาพ
-# สมมติว่า Gap สูงสุดที่น่าสนใจคือ 15
-progress_val = min(gap / 15.0, 1.0) 
-st.progress(progress_val)
+    progress_val = min(gap / 15.0, 1.0) 
+    st.progress(progress_val)
 
-if gap < 1.0:
-    st.warning("🔮 **ระดับ: รหัสแฝด (Twin Code)**")
-    st.write("ค่า Gap ต่ำมาก พลังงานของทั้งคู่แทบจะเป็นชุดเดียวกัน มักมีความคิดหรือการตัดสินใจที่คล้ายกันโดยไม่ได้นัดหมาย")
-
-elif 3.5 <= gap <= 4.5:
-    st.error("⚠️ **ระดับ: รหัสคู่ขนาน (Parallel Connection)**")
-    st.write("ตรวจพบสัญญาณสะท้อน! พลังงานห่างกันในสัดส่วน 'รหัสเลข 4' ซึ่งอ้างอิงถึงโครงสร้างความสัมพันธ์ที่มีพันธะต่อกันสูง")
-    st.balloons()
-
-elif 7.0 <= gap <= 9.0:
-    st.info("🌀 **ระดับ: รหัสส่งเสริม (Supporting Code)**")
-    st.write("เป็นค่าความต่างที่ช่วยเติมเต็มส่วนที่ขาด พลังงานไม่ทับซ้อนกัน แต่ช่วยผลักดันซึ่งกันและกันได้ดี")
+    if gap < 1.0:
+        st.warning("🔮 **ระดับ: รหัสแฝด (Twin Code)**")
+        st.write("ค่า Gap ต่ำมาก พลังงานของทั้งคู่แทบจะเป็นชุดเดียวกัน")
+    elif 3.5 <= gap <= 4.5:
+        st.error("⚠️ **ระดับ: รหัสคู่ขนาน (Parallel Connection)**")
+        st.write("ตรวจพบสัญญาณสะท้อน! พลังงานห่างกันในสัดส่วน 'รหัสเลข 4'")
+        st.balloons()
+    elif 7.0 <= gap <= 9.0:
+        st.info("🌀 **ระดับ: รหัสส่งเสริม (Supporting Code)**")
+        st.write("เป็นค่าความต่างที่ช่วยเติมเต็มส่วนที่ขาด")
+    else:
+        st.success("✅ **ระดับ: รหัสอิสระ (Independent Energy)**")
+        st.write("พลังงานมีความเป็นตัวของตัวเองสูง")
 
 else:
-    st.success("✅ **ระดับ: รหัสอิสระ (Independent Energy)**")
-    st.write("พลังงานมีความเป็นตัวของตัวเองสูง ไม่มีการดึงดูดหรือขัดแย้งในเชิงโครงสร้างรหัส เป็นความสัมพันธ์ที่เริ่มจากศูนย์ได้ดี")
+    st.info("💡 กรุณากรอกวันเกิดทั้ง 2 ฝ่ายเพื่อเริ่มการสแกนความจริง")
 
 st.divider()
 st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | คำนวณโดย SYNAPSE CORE v20.1")
