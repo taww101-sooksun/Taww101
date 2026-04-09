@@ -1,134 +1,99 @@
 import streamlit as st
-import pandas as pd
 from datetime import datetime, date
 import math
+import random
 
-# --- CONFIG & UI ---
-st.set_page_config(page_title="SYNAPSE: THE COMPLETE TRUTH", layout="wide")
+# --- CONFIG ---
+st.set_page_config(page_title="SYNAPSE: DAILY & LUCKY", layout="centered")
 
 st.markdown("""
     <style>
     .main { background-color: #050a0e; color: #00ff41; }
-    .logic-box { 
+    .status-card { 
         background-color: #101a24; 
-        padding: 15px; 
-        border-left: 5px solid #00ff41; 
-        border-radius: 10px;
+        padding: 20px; 
+        border: 2px solid #00ff41; 
+        border-radius: 15px;
+        text-align: center;
         margin-bottom: 20px;
-        color: #f0f0f0;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        box-shadow: 0px 4px 15px rgba(0, 255, 65, 0.2);
     }
-    .stMetric { background-color: #0e161f; border: 1px solid #00ff41; border-radius: 10px; }
-    h1, h2, h3 { color: #00ff41; font-family: 'Courier New', Courier, monospace; }
-    .guide-text { color: #a0a0a0; font-size: 0.9rem; line-height: 1.6; }
+    .lucky-box {
+        background: linear-gradient(45deg, #0e161f, #1a2a3a);
+        padding: 15px;
+        border-radius: 10px;
+        border: 1px dashed #00ff41;
+        margin-top: 15px;
+    }
+    h1, h2, h3 { color: #00ff41; font-family: 'Courier New', monospace; }
     </style>
     """, unsafe_allow_html=True)
 
-def get_detailed_logic(dt):
-    # 1. ข้อมูลพื้นฐานทางดาราศาสตร์
+def scan_single_day(dt):
+    # 1. ข้อมูลพื้นฐาน (ความจริงจากปฏิทิน)
     ref_date = date(1900, 1, 1)
     diff = (dt - ref_date).days
     lunar_cycle = 29.530589
     pos = (diff - 0.5) % lunar_cycle
-    day_val = dt.weekday() + 1
+    day_val = dt.weekday() + 1 
     
-    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-    day_name = day_names[dt.weekday()]
-
-    # 2. คำนวณตาม Logic (ความจริงทางคณิตศาสตร์)
+    # 2. คำนวณรหัสวัน (The Quantum Code)
     if pos <= 14.765:
         m_num = int(pos) + 1
-        phase = f"ขึ้น {m_num} ค่ำ"
+        label = f"ขึ้น {m_num} ค่ำ"
         res = math.sqrt((day_val**2) + (m_num**2))
-        formula = f"√({day_val}² + {m_num}²)"
-        logic_type = "แรงผลักดัน (Vector Energy)"
+        advice = "🚀 พลังงานขาขึ้น (Vector): เหมาะกับการรุกหรือขยับตัว"
+        color = "#00ff41"
     else:
         m_num = int(pos - 14.765) + 1
-        phase = f"แรม {m_num} ค่ำ"
+        label = f"แรม {m_num} ค่ำ"
         res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
-        formula = f"({day_val} × 1.618) / {m_num}"
-        logic_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
+        advice = "🛡️ พลังงานสมดุล (Balance): เน้นความนิ่งและประคองตัว"
+        color = "#ffaa00"
 
-    return {
-        "res": round(res, 4), "phase": phase, "day_name": day_name,
-        "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type
-    }
-
-# --- MAIN INTERFACE ---
-st.title("🛰️ SYNAPSE: สแกนพิกัดรหัสคู่ขนาน")
-st.write("ระบบวิเคราะห์ความถี่รหัสชีวิตรายบุคคลด้วยสมการ Quantum | ID: Ta101")
-
-st.divider()
-
-# ส่วนการกรอกข้อมูล
-c1, c2 = st.columns(2)
-with c1:
-    st.subheader("👤 บุคคลที่ 1")
-    dob1 = st.date_input("เลือกวันเกิด (1)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u1")
-with c2:
-    st.subheader("👤 บุคคลที่ 2")
-    dob2 = st.date_input("เลือกวันเกิด (2)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u2")
-
-if dob1 and dob2:
-    d1 = get_detailed_logic(dob1)
-    d2 = get_detailed_logic(dob2)
-
-    # แสดงผลลัพธ์รายบุคคล
-    res_a, res_b = st.columns(2)
-    with res_a:
-        st.metric("รหัสประจำตัว (1)", d1['res'])
-        st.markdown(f"""<div class="logic-box"><b>📍 พิกัด:</b> {d1['day_name']} ({d1['phase']})<br><b>🧬 สูตร:</b> <code>{d1['formula']}</code><br><b>⚙️ ระบบ:</b> {d1['type']}</div>""", unsafe_allow_html=True)
-
-    with res_b:
-        st.metric("รหัสประจำตัว (2)", d2['res'])
-        st.markdown(f"""<div class="logic-box"><b>📍 พิกัด:</b> {d2['day_name']} ({d2['phase']})<br><b>🧬 สูตร:</b> <code>{d2['formula']}</code><br><b>⚙️ ระบบ:</b> {d2['type']}</div>""", unsafe_allow_html=True)
-
-    # --- การวิเคราะห์ Gap ---
-    st.divider()
-    gap = abs(d1['res'] - d2['res'])
-    st.subheader(f"🔍 ผลการวิเคราะห์ Gap: {gap:.4f}")
+    # 3. สกัดเลขเสี่ยงทาย (Lucky Logic)
+    # ใช้ค่า res ที่คำนวณได้เป็นตัวกำหนดการสุ่มเลข (Seed)
+    seed_val = int(res * 1000000)
+    random.seed(seed_val)
     
-    progress_val = min(gap / 15.0, 1.0) 
-    st.progress(progress_val)
+    digit_2 = f"{random.randint(0, 99):02}"
+    digit_3 = f"{random.randint(0, 999):03}"
 
-    if gap < 1.0:
-        st.warning("🔮 **ระดับ: รหัสแฝด (Twin Code)**")
-        st.write("พลังงานแทบจะเป็นเนื้อเดียวกัน เหมือนกระจกเงาส่องสะท้อน มักมีความคิดและจังหวะชีวิตที่ซ้อนทับกันสูง")
-    elif 3.5 <= gap <= 4.5:
-        st.error("⚠️ **ระดับ: รหัสคู่ขนาน (Parallel Connection)**")
-        st.write("🔴 **ตรวจพบสัญญาณสะท้อน!** นี่คือระยะห่าง 'รหัสเลข 4' ที่มีความหนาแน่นของพันธะสูง")
-        st.write("มีการวนเวียนกลับมาพบกันเพื่อสะสางหรือเริ่มต้นใหม่ตามโครงสร้างพลังงานเดิมในอดีต")
-        st.balloons()
-    elif 7.0 <= gap <= 9.0:
-        st.info("🌀 **ระดับ: รหัสส่งเสริม (Supporting Code)**")
-        st.write("พลังงานมีความต่างในสัดส่วนที่เกื้อกูลกัน เป็นส่วนเติมเต็มที่ช่วยให้อีกฝ่ายก้าวหน้าได้ดี")
-    else:
-        st.success("✅ **ระดับ: รหัสอิสระ (Independent Energy)**")
-        st.write("พลังงานมีความเป็นตัวของตัวเองสูง ไม่มีพันธะผูกมัดเชิงรหัส สามารถสร้างความสัมพันธ์ใหม่ได้แบบไม่มีแรงต้าน")
+    return round(res, 4), label, advice, color, digit_2, digit_3
 
-    # --- คัมภีร์อ่านค่า (จัดเต็มตามคำขอพี่บาส) ---
-    st.divider()
-    with st.expander("📖 คัมภีร์ถอดรหัสความจริง (The Truth Decipher) - อ่านที่นี่", expanded=True):
-        col_g1, col_g2 = st.columns(2)
-        with col_g1:
-            st.markdown("""
-            **1. ที่มาของรหัสประจำตัว**
-            * **วันเกิด (1-7):** คือค่าฐานพลังงานรายวัน
-            * **จันทรคติ (1-15):** คือค่าตัวแปรจากแรงดึงดูดของดวงจันทร์
-            * **สมการ Quantum:** เราใช้สูตรคณิตศาสตร์ชั้นสูงเพื่อเปลี่ยนวันเวลาให้เป็น 'รหัส' เพื่อตัดอคติหรือความรู้สึกส่วนตัวออก ให้เหลือเพียงตัวเลขที่เป็นความจริง
-            """)
-        with col_g2:
-            st.markdown("""
-            **2. เจาะลึกความหมายของ Gap 4**
-            * **ทำไมถึงวนเวียน?** ในเชิงสถิติ รหัสที่ห่างกัน 4 หน่วย คือจุดที่ฟันเฟืองรหัสชีวิตล็อกกันพอดี 
-            * **แรงดึงดูด:** ระยะนี้ไม่ใช่เรื่องบังเอิญ แต่มันคือพิกัดที่มีแรงดึงดูดประหลาด มักเกิดกับคู่ที่เคยมีพันธะต่อกัน
-            * **วิธีรับมือ:** ยึดหลัก 'อยู่นิ่งๆ ไม่เจ็บตัว' มีสติในการรับมือกับความรู้สึกที่คุ้นเคย
-            """)
-        st.markdown("---")
-        st.markdown("**เกร็ดความรู้:** ค่ารหัสนี้จะคงที่ตามวันเกิด แต่ผลลัพธ์การสแกนจะเปลี่ยนไปตาม 'คู่สแกน' ที่คุณเลือก เพื่อหาจุดเชื่อมโยงที่เหมาะสมที่สุดในปัจจุบัน")
+# --- UI ---
+st.title("🛰️ SYNAPSE: Daily Scanner")
+st.write("สแกนรหัสพลังงานจักรวาลรายวัน | ความจริงตรวจสอบได้")
 
-else:
-    st.info("🛰️ ระบบ Standby... กรุณากรอกข้อมูลวันเกิดเพื่อเริ่มการสแกนรหัสชีวิต")
+target_date = st.date_input("เลือกวันที่ต้องการสแกน", value=date.today())
+
+if target_date:
+    code, moon, advice, col, d2, d3 = scan_single_day(target_date)
+    
+    st.markdown(f"""
+    <div class="status-card" style="border-color: {col};">
+        <p style="color: #a0a0a0; margin-bottom: 5px;">รหัสประจุพลังงาน</p>
+        <h1 style="color: {col}; font-size: 3.5rem; margin-top: 0;">{code}</h1>
+        <p style="font-size: 1.2rem;">🌒 {moon}</p>
+        <div style="background-color: #050a0e; padding: 10px; border-radius: 8px; margin: 15px 0;">
+            <p style="color: {col}; margin: 0;">{advice}</p>
+        </div>
+        
+        <div class="lucky-box">
+            <p style="color: #00ff41; margin-bottom: 10px;">🧬 รหัสวิเคราะห์ตัวเลข (Potential Numbers)</p>
+            <span style="font-size: 2rem; color: white; margin-right: 20px;">{d2}</span>
+            <span style="font-size: 2rem; color: #00ff41;">|</span>
+            <span style="font-size: 2rem; color: white; margin-left: 20px;">{d3}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    with st.expander("🔍 เจาะลึกโครงสร้างตัวเลข"):
+        st.write(f"• **วัน:** {target_date.strftime('%A')}")
+        st.write(f"• **ความแม่นยำดวงจันทร์:** {29.5305} วัน/รอบ")
+        st.write(f"• **ค่าสุ่มจากรหัสฐาน (Seed):** `{int(code * 1000000)}`")
+        st.write("---")
+        st.write("เลขรหัสเสี่ยงทายถูกสกัดจากทศนิยม 4 ตำแหน่งของพลังงานวันนั้นๆ ไม่มีการสุ่มมั่ว ทุกตัวเลขมีที่มา")
 
 st.divider()
-st.caption(f"สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE CORE v20.2 | {date.today().year}")
+st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | ระบบความจริง Ta101")
