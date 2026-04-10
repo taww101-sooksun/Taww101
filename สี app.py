@@ -17,23 +17,22 @@ import random
 from streamlit_js_eval import get_geolocation 
 import streamlit as st
 
-# คำสั่งสำหรับซ่อนเมนูและ Footer ของ Streamlit
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
+import streamlit as st
 
-# เนื้อหาแอปของคุณ
-st.title("GPSติดตาม
-แชตสวนตัว
-ระบุค่าตัวเลขของวัน
-วีดีโอคอล
-เพลงmp3. 
-อยู่นิ้งๆไม่เจ็บตัว")
+# ปรับชื่อเมนูให้ดูเป็นเพื่อนกันมากขึ้น
+menu = st.sidebar.radio(
+    "เมนูหลัก",
+    ("พิกัดตอนนี้", "คุยกันหน่อย", "เปิดกล้อง", "ข้อมูลวันนี้", "ฟังเพลงกัน")
+)
+
+if menu == "พิกัดตอนนี้":
+    st.subheader("📍 ระบุตำแหน่งพิกัดของคุณ")
+    # ใส่โค้ด GPS จริงๆ ของคุณตรงนี้
+    
+elif menu == "ฟังเพลงกัน":
+    st.subheader("🎵 เครื่องเล่นเพลงส่วนตัว")
+    # ใส่โค้ดเพลง mp3 ตรงนี้
+
 
 # ==========================================
 # 0. CONFIG & CSS STYLING (Matrix & Neon Style)
