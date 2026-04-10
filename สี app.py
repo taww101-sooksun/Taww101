@@ -119,65 +119,60 @@ def get_local_time(lat, lon):
 # ==========================================
 # 2. CORE MODULES
 # ==========================================
-import os
-import streamlit as st
-
 # ==========================================
-# ส่วนของวิดีโอพร้อมไฟแสงสี (Neon Glow)
+# 🌈 SYNAPSE MULTI-COLOR NEON LIGHTS (โค้ดไฟกระพริบ)
 # ==========================================
 
-# 1. กำหนดชื่อไฟล์เป้าหมาย (เพื่อให้โค้ดไม่งง)
-video_filename = "synapse.mp4"
-
-if os.path.exists(video_filename):
-    # 2. ใส่ CSS เพื่อสร้างแสงสีฟุ้งๆ (Neon Glow Effect)
-    # ท่านสามารถเปลี่ยนสีตรง #1408BF เป็นสีอื่นที่ชอบได้เลยครับ
-    st.markdown(f"""
-        <style>
-        /* สร้าง Class ชื่อ neon-video เพื่อครอบตัววิดีโอ */
-        .neon-video-container {{
-            border: 5px solid {st.session_state.get('theme_color', '#1408BF')}; /* ขอบหนา 5px สีตามธีม */
-            border-radius: 20px; /* ขอบมนๆ */
-            
-            /* --- หัวใจหลักของแสงสี: box-shadow --- */
-            /* ชิ้นที่ 1: แสงฟุ้งด้านใน */
-            box-shadow: inset 0 0 15px {st.session_state.get('theme_color', '#1408BF')},
-                        /* ชิ้นที่ 2: แสงฟุ้งด้านนอกชั้นแรก */
-                        0 0 20px {st.session_state.get('theme_color', '#1408BF')}, 
-                        /* ชิ้นที่ 3: แสงฟุ้งด้านนอกชั้นที่สอง (กว้างขึ้น) */
-                        0 0 35px rgba(20, 8, 191, 0.5); /* สีน้ำเงินจางๆ */
-            
-            /* เว้นระยะห่างด้านในไม่ให้วิดีโอชนขอบไฟ */
-            padding: 10px; 
-            background: rgba(0,0,0,0.8); /* พื้นหลังดำสนิทเพื่อให้ไฟเด่น */
-            margin-bottom: 20px; /* เว้นระยะด้านล่าง */
-            
-            /* ทำให้วิดีโอขยายเต็มความกว้าง */
-            width: 100%; 
-            max-width: 100%; 
-        }}
+st.markdown("""
+    <style>
+    /* 1. สร้างแถบไฟเส้น (LED Strip) */
+    .neon-strip {
+        width: 100%;
+        height: 15px;
+        background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff);
+        background-size: 400% 400%;
+        border-radius: 10px;
+        margin: 10px 0;
         
-        /* สั่งให้วิดีโอที่อยู่ด้านในทำขอบมนตามคอนเทนเนอร์ */
-        .neon-video-container video {{
-            border-radius: 15px; 
-        }}
-        </style>
-    """, unsafe_allow_html=True)
+        /* ใส่ความฟุ้งของแสงไฟ */
+        box-shadow: 0 0 20px rgba(255, 255, 255, 0.2),
+                    0 0 10px #ff0000,
+                    0 0 15px #00ff00,
+                    0 0 20px #0000ff;
+        
+        /* สั่งให้ไฟวิ่งและกระพริบ */
+        animation: RGBFlow 4s linear infinite, Pulse 1.5s ease-in-out infinite;
+    }
 
-    # 3. แสดงวิดีโอภายใน "เกราะแสง" (Container)
-    # เราใช้ st.markdown ครอบ st.video เพื่อดึง CSS มาใช้ครับ
-    st.markdown('<div class="neon-video-container">', unsafe_allow_html=True)
-    st.video(video_filename)
-    st.markdown('</div>', unsafe_allow_html=True)
+    /* 2. สร้างแสงออร่ารอบๆ (Ambient Glow) */
+    .ambient-glow {
+        padding: 5px;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 15px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+    }
 
-else:
-    # 4. กรณีไม่พบไฟล์ (แจ้งเตือนแบบขอบหนา Matrix)
-    st.markdown(f"""
-        <div class="logic-box" style="border-color:#ff4444; color:#ff4444; text-align:center;">
-            <h3>⚠️ ACCESS DENIED: ไม่พบไฟล์ {video_filename}</h3>
-            <p>กรุณาตรวจสอบว่าไฟล์วางอยู่ในโฟลเดอร์หลักของแอปครับ</p>
+    /* แอนิเมชันให้สีวิ่งเคลื่อนที่ */
+    @keyframes RGBFlow {
+        0% { background-position: 0% 50%; }
+        100% { background-position: 100% 50%; }
+    }
+
+    /* แอนิเมชันให้ไฟกระพริบวูบวาบ */
+    @keyframes Pulse {
+        0%, 100% { opacity: 1; transform: scaleX(1); }
+        50% { opacity: 0.7; transform: scaleX(0.98); }
+    }
+    </style>
+
+    <div class="ambient-glow">
+        <div class="neon-strip"></div>
+        <div style="text-align:center; color:#00ff41; font-family:monospace; font-size:10px; letter-spacing:5px;">
+            SYSTEM STATUS: RAINBOW NEON ACTIVE
         </div>
-    """, unsafe_allow_html=True)
+        <div class="neon-strip" style="animation-direction: reverse;"></div>
+    </div>
+""", unsafe_allow_html=True)
 
 def room_login():
     show_logo()
