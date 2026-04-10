@@ -146,9 +146,8 @@ with col_m:
 st.title("🛰️ SYNAPSE: Reality Extractor")
 # ... (โค้ดส่วนที่เหลือของท่าน)
 
-    col1, col2, col3 = st.columns([1, 1.5, 1])
-    with col2:
-        st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; letter-spacing: 5px;'>SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
+    
+        scol1t.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; letter-spacing: 5px;'>SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
         tab_l, tab_r = st.tabs(["🔑 UNLOCK SYSTEM", "📝 REGISTER AGENT"])
         with tab_l:
             with st.form("login"):
