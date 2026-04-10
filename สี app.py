@@ -65,8 +65,8 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 # 3. ใส่เนื้อหาแอปใน div ที่เราเว้นระยะไว้
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
-st.title("ยินดีต้อนรับสู่แอป")
-st.write("SYNAPSE อยู่นิ้งๆไม่เจ็บตัว")
+st.title("SYNAPSE อยู่นิ้งๆไม่เจ็บตัว")
+st.write("🇹🇭")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
