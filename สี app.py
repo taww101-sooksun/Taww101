@@ -20,26 +20,23 @@ import streamlit as st
 # ตั้งค่าหน้ากระดาษ
 st.set_page_config(layout="wide")
 
-# CSS สำหรับจัดการติ่งบน-ล่าง และสร้างเมนูใหม่
-hide_all_st_style = """
+hide_all_style = """
             <style>
-            /* 1. ซ่อนติ่งบน (Header) และปุ่มเมนูเดิม */
+            /* ซ่อน Header และ Footer เดิม */
             header {visibility: hidden;}
-            #MainMenu {visibility: hidden;}
-            
-            /* 2. ซ่อนติ่งล่าง (Footer) ที่เขียนว่า Made with Streamlit */
             footer {visibility: hidden;}
-            
-            /* 3. จัดการระยะขอบเพื่อไม่ให้มีช่องว่างขาวๆ */
-            .block-container {
-                padding-top: 2rem;
-                padding-bottom: 0rem;
-            }
+            #MainMenu {visibility: hidden;}
 
-            /* 4. สร้างแถบเมนู 5 ข้อของคุณมาบังด้านบนไว้ */
+            /* ซ่อนปุ่ม "Manage App" หรือ "จัดการแอป" ด้านล่างขวา */
+            /* ปุ่มนี้จะถูกสร้างโดย Streamlit Toolbar */
+            .stAppToolbar {display: none;}
+            button[title="Manage app"] {display: none;}
+            section[data-testid="stSidebarNav"] {display: none;}
+
+            /* จัดการความสวยงามของเมนู 5 ข้อของคุณ */
             .custom-nav {
-                background-color: #0E1117; /* สีพื้นหลังโทน Dark */
-                padding: 15px;
+                background-color: #0E1117;
+                padding: 10px;
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -50,27 +47,26 @@ hide_all_st_style = """
                 border-bottom: 1px solid #333;
             }
             .nav-link {
-                color: #00FF00; /* สีเขียว Glow ตามสไตล์คุณ */
+                color: #00FF00;
                 text-decoration: none;
                 font-size: 14px;
                 font-weight: bold;
+                text-align: center;
             }
             </style>
             
             <div class="custom-nav">
-                <div class="nav-link">📍 GPS ระบุตำแหน่ง</div>
-                <div class="nav-link">💬 แชตส่วนตัว</div>
-                <div class="nav-link">🎥 วีดีโอคอล</div>
-                <div class="nav-link">🔢 ระบุค่าตัวเลขของวัน</div>
-                <div class="nav-link">🎵 เพลง mp3</div>
+                <div class="nav-link">📍 GPS<br>ระบุตำแหน่ง</div>
+                <div class="nav-link">💬 แชต<br>ส่วนตัว</div>
+                <div class="nav-link">🎥 วิดีโอ<br>คอล</div>
+                <div class="nav-link">🔢 ระบุค่า<br>เลขของวัน</div>
+                <div class="nav-link">🎵 เพลง<br>mp3</div>
             </div>
             """
 
-st.markdown(hide_all_st_style, unsafe_allow_html=True)
+st.markdown(hide_all_style, unsafe_allow_html=True)
 
-# ส่วนเนื้อหาแอปของคุณ
-st.write("## ระบบทำงานปกติ")
-st.write("ตอนนี้ทั้งติ่งบนและติ่งล่างถูกซ่อนเรียบร้อยแล้วครับ")
+# เนื้อหาแอปของคุณด้านล่าง...
 
 
 # ==========================================
