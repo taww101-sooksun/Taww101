@@ -202,7 +202,7 @@ def room_radar(loc):
 
 def room_reality_scanner():
    min_date = dt.date(1960, 1, 1) # แก้ไขตามคำขอ: ปี 1960
-    max_date = dt.date.today()
+   max_date = dt.date.today()
     
     col1, col2 = st.columns(2)
     with col1:
