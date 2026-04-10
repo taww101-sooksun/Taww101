@@ -17,56 +17,102 @@ import random
 from streamlit_js_eval import get_geolocation 
 import streamlit as st
 
-# ตั้งค่าหน้ากระดาษ
+# 1. ตั้งค่า Page เบื้องต้น
 st.set_page_config(layout="wide")
 
-hide_all_style = """
-            <style>
-            /* ซ่อน Header และ Footer เดิม */
-            header {visibility: hidden;}
-            footer {visibility: hidden;}
-            #MainMenu {visibility: hidden;}
+# 2. สร้างระบบเลือกธีม (ห้องที่ 6)
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'Neon Green'
 
-            /* ซ่อนปุ่ม "Manage App" หรือ "จัดการแอป" ด้านล่างขวา */
-            /* ปุ่มนี้จะถูกสร้างโดย Streamlit Toolbar */
-            .stAppToolbar {display: none;}
-            button[title="Manage app"] {display: none;}
-            section[data-testid="stSidebarNav"] {display: none;}
+# สร้างเมนูสำหรับเลือกธีมใน Sidebar หรือจะทำเป็นปุ่มก็ได้
+theme_choice = st.sidebar.selectbox("เลือกโทนสีแอป", ["Neon Green", "Cyber Red", "Midnight Blue"])
+st.session_state.theme = theme_choice
 
-            /* จัดการความสวยงามของเมนู 5 ข้อของคุณ */
-            .custom-nav {
-                background-color: #0E1117;
-                padding: 10px;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                z-index: 9999;
-                display: flex;
-                justify-content: space-around;
-                border-bottom: 1px solid #333;
-            }
-            .nav-link {
-                color: #00FF00;
-                text-decoration: none;
-                font-size: 14px;
-                font-weight: bold;
-                text-align: center;
-            }
-            </style>
-            
-            <div class="custom-nav">
-                <div class="nav-link">📍 GPS<br>ระบุตำแหน่ง</div>
-                <div class="nav-link">💬 แชต<br>ส่วนตัว</div>
-                <div class="nav-link">🎥 วิดีโอ<br>คอล</div>
-                <div class="nav-link">🔢 ระบุค่า<br>เลขของวัน</div>
-                <div class="nav-link">🎵 เพลง<br>mp3</div>
-            </div>
-            """
+# 3. กำหนดค่าสีของแต่ละชุด
+if st.session_state.theme == "Neon Green":
+    bg_color = "#0E1117"     # พื้นหลังดำ
+    text_color = "#00FF00"   # ตัวหนังสือเขียวเรืองแสง
+    border_color = "#00FF00"
+elif st.session_state.theme == "Cyber Red":
+    bg_color = "#1A0000"     # พื้นหลังแดงเข้มดำ
+    text_color = "#FF0033"   # ตัวหนังสือแดงไซเบอร์
+    border_color = "#FF0033"
+else: # Midnight Blue
+    bg_color = "#000511"     # พื้นหลังน้ำเงินเข้ม
+    text_color = "#00D4FF"   # ตัวหนังสือน้ำเงินฟ้า
+    border_color = "#00D4FF"
 
-st.markdown(hide_all_style, unsafe_allow_html=True)
+# 4. รวม CSS ทั้งหมด (ซ่อนติ่งบน-ล่าง + เปลี่ยนสีตามธีม)
+theme_css = f"""
+    <style>
+    /* ซ่อนส่วนประกอบ Streamlit ทั้งหมด */
+    header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    #MainMenu {{visibility: hidden;}}
+    .stAppToolbar {{display: none;}}
+    button[title="Manage app"] {{display: none;}}
 
-# เนื้อหาแอปของคุณด้านล่าง...
+    /* เปลี่ยนสีพื้นหลังทั้งแอป */
+    .stApp {{
+        background-color: {bg_color};
+    }}
+
+    /* เปลี่ยนสีตัวหนังสือทั้งหมด */
+    html, body, [data-testid="stWidgetLabel"], .stText, p, h1, h2, h3 {{
+        color: {text_color} !important;
+    }}
+
+    /* แถบเมนู 6 ข้อ (รวมห้องเปลี่ยนธีม) */
+    .custom-nav {{
+        background-color: {bg_color};
+        padding: 10px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 9999;
+        display: flex;
+        justify-content: space-around;
+        border-bottom: 2px solid {border_color};
+    }}
+    .nav-link {{
+        color: {text_color};
+        text-decoration: none;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+    }}
+    
+    /* ดันเนื้อหาลงมา */
+    .main-content {{
+        margin-top: 80px;
+    }}
+    </style>
+
+    <div class="custom-nav">
+        <div class="nav-link">📍 GPS<br>ตำแหน่ง</div>
+        <div class="nav-link">💬 แชต<br>ส่วนตัว</div>
+        <div class="nav-link">🎥 วีดีโอ<br>คอล</div>
+        <div class="nav-link">🔢 เลข<br>ของวัน</div>
+        <div class="nav-link">🎵 เพลง<br>mp3</div>
+        <div class="nav-link">🎨 ธีม:<br>{st.session_state.theme}</div>
+    </div>
+"""
+
+st.markdown(theme_css, unsafe_allow_html=True)
+
+# 5. ส่วนแสดงผลเนื้อหา
+st.markdown('<div class="main-content">', unsafe_allow_html=True)
+
+st.title(f"SYNAPSE: {st.session_state.theme}")
+st.write("---")
+st.write("ระบบนี้เปลี่ยนสีพื้นหลัง สีตัวหนังสือ และสีธีมทั้งหมดตามที่คุณเลือกครับ")
+
+# ตัวอย่างปุ่มหรือ Widget จะถูกเปลี่ยนสีตาม CSS ด้านบน
+st.button("ปุ่มตัวอย่าง")
+
+st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 # ==========================================
