@@ -119,11 +119,33 @@ def get_local_time(lat, lon):
             return datetime.now(local_tz)
     except: pass
     return datetime.now(pytz.timezone('Asia/Bangkok'))
+# --- เพิ่มส่วนนี้ไว้หลัง st.set_page_config ---
+c1, c2, c3 = st.columns([1, 1, 1])
+with c2:
+    if os.path.exists("logo1.png"):
+        st.image("logo1.png", use_container_width=True)
+    else:
+        st.markdown("<h1 style='text-align:center; color:#00ff41;'>SYNAPSE</h1>", unsafe_allow_html=True)
+
+st.title("🛰️ SYNAPSE: สแกนพิกัดรหัสคู่ขนาน")
+# ... (โค้ดส่วนที่เหลือของท่าน)
 
 # ==========================================
 # 1. AUTHENTICATION
 # ==========================================
-def room_login():
+def room_login(): 
+# --- เพิ่มส่วนนี้ไว้บนสุดของหน้าจอ ---
+    col_l, col_m, col_r = st.columns([1, 2, 1])
+with col_m:
+    if os.path.exists("logo1.png"):
+        # ใส่เอฟเฟกต์เงาสีเขียว Matrix ให้โลโก้
+        st.markdown('<div style="filter: drop-shadow(0 0 15px #00ff41); text-align:center;">', unsafe_allow_html=True)
+        st.image("logo1.png", width=200)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+st.title("🛰️ SYNAPSE: Reality Extractor")
+# ... (โค้ดส่วนที่เหลือของท่าน)
+
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; letter-spacing: 5px;'>SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
@@ -397,7 +419,30 @@ def room_secure_chat():
 # ==========================================
 # 3. MAIN (ปรับปรุงตำแหน่งโลโก้และลำดับการรัน)
 # ==========================================
+# --- แก้ไขในฟังก์ชัน main() ของแอปหลัก ---
 def main():
+    init_system()
+    apply_custom_background()
+    loc = get_geolocation() 
+
+    if not st.session_state.get('logged_in', False):
+        room_login()
+        return
+
+    # --- ส่วนแสดงโลโก้ที่ปรับปรุงใหม่ (ใช้ .png) ---
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 1, 1])
+    with c2:
+        # เปลี่ยนเป็น logo1.png และทำให้ขอบฟุ้งมีไฟ
+        if os.path.exists("logo1.png"): 
+            st.markdown(f"""
+                <div style="text-align:center; filter: drop-shadow(0 0 10px {st.session_state.theme_color});">
+                    <img src="data:image/png;base64,{base64.b64encode(open("logo1.png", "rb").read()).decode()}" style="width:100%; border-radius:15px;">
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; text-shadow: 0 0 10px {st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
+
     init_system()
     apply_custom_background()
     
