@@ -15,104 +15,72 @@ from datetime import datetime, date
 import math
 import random
 from streamlit_js_eval import get_geolocation 
+
 import streamlit as st
 
-# 1. ตั้งค่า Page เบื้องต้น
+# 1. ตั้งค่าพื้นฐาน
 st.set_page_config(layout="wide")
 
-# 2. สร้างระบบเลือกธีม (ห้องที่ 6)
+# 2. ตัวเช็คสถานะสี (Session State)
 if 'theme' not in st.session_state:
     st.session_state.theme = 'Neon Green'
 
-# สร้างเมนูสำหรับเลือกธีมใน Sidebar หรือจะทำเป็นปุ่มก็ได้
-theme_choice = st.sidebar.selectbox("เลือกโทนสีแอป", ["Neon Green", "Cyber Red", "Midnight Blue"])
-st.session_state.theme = theme_choice
+# 3. ฟังก์ชันสำหรับกดเปลี่ยนสี
+def change_theme(name):
+    st.session_state.theme = name
 
-# 3. กำหนดค่าสีของแต่ละชุด
+# --- ส่วนของการเลือกสี (วางไว้บนหน้าจอหลักเลย) ---
+st.write("### 🎨 เลือกเปลี่ยนสีที่นี่:")
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.button("🟢 Neon Green", on_click=change_theme, args=('Neon Green',), use_container_width=True)
+with col2:
+    st.button("🔴 Cyber Red", on_click=change_theme, args=('Cyber Red',), use_container_width=True)
+with col3:
+    st.button("🔵 Midnight Blue", on_click=change_theme, args=('Midnight Blue',), use_container_width=True)
+
+# 4. กำหนดค่าสีตามที่เลือก
 if st.session_state.theme == "Neon Green":
-    bg_color = "#0E1117"     # พื้นหลังดำ
-    text_color = "#00FF00"   # ตัวหนังสือเขียวเรืองแสง
-    border_color = "#00FF00"
+    bg_color, text_color = "#0E1117", "#00FF00"
 elif st.session_state.theme == "Cyber Red":
-    bg_color = "#1A0000"     # พื้นหลังแดงเข้มดำ
-    text_color = "#FF0033"   # ตัวหนังสือแดงไซเบอร์
-    border_color = "#FF0033"
-else: # Midnight Blue
-    bg_color = "#000511"     # พื้นหลังน้ำเงินเข้ม
-    text_color = "#00D4FF"   # ตัวหนังสือน้ำเงินฟ้า
-    border_color = "#00D4FF"
+    bg_color, text_color = "#1A0000", "#FF0033"
+else:
+    bg_color, text_color = "#000511", "#00D4FF"
 
-# 4. รวม CSS ทั้งหมด (ซ่อนติ่งบน-ล่าง + เปลี่ยนสีตามธีม)
-theme_css = f"""
+# 5. ใส่ CSS (ซ่อนติ่ง + เปลี่ยนสี)
+st.markdown(f"""
     <style>
-    /* ซ่อนส่วนประกอบ Streamlit ทั้งหมด */
-    header {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    #MainMenu {{visibility: hidden;}}
-    .stAppToolbar {{display: none;}}
-    button[title="Manage app"] {{display: none;}}
-
-    /* เปลี่ยนสีพื้นหลังทั้งแอป */
-    .stApp {{
-        background-color: {bg_color};
-    }}
-
-    /* เปลี่ยนสีตัวหนังสือทั้งหมด */
-    html, body, [data-testid="stWidgetLabel"], .stText, p, h1, h2, h3 {{
-        color: {text_color} !important;
-    }}
-
-    /* แถบเมนู 6 ข้อ (รวมห้องเปลี่ยนธีม) */
+    header, footer, .stAppToolbar {{visibility: hidden; display: none;}}
+    .stApp {{ background-color: {bg_color}; }}
+    * {{ color: {text_color} !important; }}
+    
+    /* แถบเมนู 5 ข้อด้านบน */
     .custom-nav {{
         background-color: {bg_color};
         padding: 10px;
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
+        top: 0; left: 0; width: 100%;
         z-index: 9999;
         display: flex;
         justify-content: space-around;
-        border-bottom: 2px solid {border_color};
+        border-bottom: 2px solid {text_color};
     }}
-    .nav-link {{
-        color: {text_color};
-        text-decoration: none;
-        font-size: 12px;
-        font-weight: bold;
-        text-align: center;
-    }}
-    
-    /* ดันเนื้อหาลงมา */
-    .main-content {{
-        margin-top: 80px;
-    }}
+    .nav-link {{ color: {text_color}; font-size: 12px; font-weight: bold; text-align: center; }}
+    .main-content {{ margin-top: 80px; }}
     </style>
-
+    
     <div class="custom-nav">
         <div class="nav-link">📍 GPS<br>ตำแหน่ง</div>
         <div class="nav-link">💬 แชต<br>ส่วนตัว</div>
         <div class="nav-link">🎥 วีดีโอ<br>คอล</div>
         <div class="nav-link">🔢 เลข<br>ของวัน</div>
         <div class="nav-link">🎵 เพลง<br>mp3</div>
-        <div class="nav-link">🎨 ธีม:<br>{st.session_state.theme}</div>
     </div>
-"""
+""", unsafe_allow_html=True)
 
-st.markdown(theme_css, unsafe_allow_html=True)
-
-# 5. ส่วนแสดงผลเนื้อหา
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
-
-st.title(f"SYNAPSE: {st.session_state.theme}")
-st.write("---")
-st.write("ระบบนี้เปลี่ยนสีพื้นหลัง สีตัวหนังสือ และสีธีมทั้งหมดตามที่คุณเลือกครับ")
-
-# ตัวอย่างปุ่มหรือ Widget จะถูกเปลี่ยนสีตาม CSS ด้านบน
-st.button("ปุ่มตัวอย่าง")
-
+st.title(f"โหมดปัจจุบัน: {st.session_state.theme}")
 st.markdown('</div>', unsafe_allow_html=True)
-
 
 
 # ==========================================
