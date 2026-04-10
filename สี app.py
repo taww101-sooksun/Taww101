@@ -129,7 +129,7 @@ st.markdown("""
     .neon-strip {
         width: 100%;
         height: 15px;
-        background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff);
+        background: linear-gradient(90deg, #ff0000, #ff7f00,#EAF1F9, #00ff00,#E60B3B, #4b0082, #8b00ff);
         background-size: 400% 400%;
         border-radius: 10px;
         margin: 10px 0;
