@@ -53,11 +53,11 @@ hide_st_style = """
             </style>
             
             <div class="nav-bar">
-                <a class="nav-item">📍 GPS ระบุตำแหน่ง</a>
-                <a class="nav-item">💬 แชตส่วนตัว</a>
-                <a class="nav-item">🎥 วีดีโอคอล</a>
-                <a class="nav-item">🔢 ข้อมูลตัวเลขวัน</a>
-                <a class="nav-item">🎵 เพลง mp3</a>
+                <a class="nav-item">📍 GPS </a>
+                <a class="nav-item">💬 แชต </a>
+                <a class="nav-item">🎥 วีดีโอคอล </a>
+                <a class="nav-item">🔢 ข้อมูลตัวเลขวัน </a>
+                <a class="nav-item">🎵 เพลง mp3 </a>
             </div>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -66,7 +66,7 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
 st.title("ยินดีต้อนรับสู่แอป")
-st.write("ตอนนี้แถบเมนูด้านบนถูกแทนที่ด้วย 5 หัวข้อที่คุณต้องการแล้วครับ")
+st.write("SYNAPSE อยู่นิ้งๆไม่เจ็บตัว")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
