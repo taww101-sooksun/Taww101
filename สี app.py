@@ -1,74 +1,88 @@
 import streamlit as st
 import time
 
-# 1. ตั้งค่าหน้าแอป
-st.set_page_config(page_title="Lyrics Sync App", page_icon="🎵")
+# ตั้งค่าหน้าจอเป็นแบบ Wide และซ่อน Menu ของ Streamlit เพื่อให้แคปจอสวยๆ
+st.set_page_config(page_title="Lyric Video Creator", layout="wide")
 
-# 2. ใส่ CSS เพื่อให้ตัวหนังสือ "วิ้ง" (Glow Effect)
+# CSS สำหรับ Green Screen และตัวหนังสือวิ้ง
 st.markdown("""
     <style>
+    /* พื้นหลังสีเขียวสำหรับทำ Green Screen */
+    .stApp {
+        background-color: #00FF00;
+    }
     .lyric-box {
-        font-size: 40px;
+        font-family: 'Kanit', sans-serif;
+        font-size: 60px;
         font-weight: bold;
         text-align: center;
-        min-height: 150px;
+        height: 80vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.5s ease-in-out;
+        line-height: 1.2;
     }
-    /* เอฟเฟกต์วิ้ง */
     .glow {
-        color: #fff;
-        text-shadow: 0 0 10px #fff, 0 0 20px #00f2ff, 0 0 30px #00f2ff, 0 0 40px #00f2ff;
-        transform: scale(1.1);
+        color: #ffffff;
+        text-shadow: 0 0 15px #fff, 0 0 25px #ff00de, 0 0 35px #ff00de;
+        animation: pulse 1.5s infinite;
     }
-    .normal {
-        color: #444;
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
     }
+    /* ซ่อน UI ของ Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🎵 เครื่องเล่นเนื้อเพลงวิ้งๆ")
-
-# 3. เตรียมข้อมูลเนื้อเพลงและเวลา (Time markers ในวินาที)
+# ข้อมูลเนื้อเพลงแบบจัดเต็ม (Time Sync คร่าวๆ ตามคลิป)
 lyrics_data = [
     {"time": 0, "text": "ความจริงที่ฉันให้ไป"},
     {"time": 5, "text": "จะเอาไปทิ้งไว้ที่ไหน"},
-    {"time": 11, "text": "ในวันที่ฉันจริงใจ"},
-    {"time": 16, "text": "แต่เธอกลับกลายเป็นใครที่ฉันไม่รู้"},
-    {"time": 22, "text": "จ้างจะสู้ถึงร้อย ความห่วงใยที่ฉันคอยประคอง"}
+    {"time": 11, "text": "ในวันที่ฉันจริงใจ แต่เธอกลับกลายเป็นใครที่ฉันไม่รู้"},
+    {"time": 22, "text": "จ้างจะสู้ถึงร้อย ความห่วงใยที่ฉันคอยประคอง"},
+    {"time": 27, "text": "แทบจะมองเป็นแค่ของเล่น ที่อยากจะขว้างหรืออยากจะลอง"},
+    {"time": 31, "text": "แววตาที่พ่นออกมา มันมีแต่ลมลวงหลอก"},
+    {"time": 34, "text": "กี่ครั้งที่บอกว่ารัก แต่ค้างในใจกลับคิดจะบอกลา"},
+    {"time": 38, "text": "ความจริงของเธอ มันช่างพร่ามัว"},
+    {"time": 42, "text": "ก็เข็ดซ้ำๆ จนใจของฉัน มันเริ่มจะชินกับความกลัว"},
+    {"time": 49, "text": "ในโลกที่หมุนวนไป ฉันเพิ่งจะรู้ว่าเธอสำคัญเพียงใด"},
+    {"time": 60, "text": "ภาพที่เธอยิ้มให้กัน วันนี้มันกลายเป็นเพียงแค่เงา"},
+    {"time": 72, "text": "โอ้นางร้ายที่ฉันเคยรักหมดใจ"},
+    {"time": 76, "text": "เพราะสิ่งที่เธอให้มา มันคือพิษทิ่มลงไปข้างใน"},
+    {"time": 79, "text": "รักคือการปล่อยมือ คือการยื้อเพื่อรอความตาย"},
+    {"time": 88, "text": "ในโลกความจริงที่ว่างเปล่า ฉันขอจากไปให้ไกลจากเธอ"},
+    {"time": 92, "text": "จะบอกว่ารักฉันจริง แต่การกระทำมันดูย้อนแย้ง"},
+    {"time": 96, "text": "มันแสงสว่างที่ปลายอุโมงค์ แต่มันคือไฟที่คอยแผดเผา"},
+    {"time": 100, "text": "นี่คือเวรกรรมที่ฉันยอมทน"},
+    {"time": 104, "text": "ใจจะพังให้กลายเป็นกำแพงที่แข็งแรงและไม่ยอมคน"},
+    {"time": 108, "text": "ไม่ต้องมีคำลา ไม่ต้องมีสัญญา ทิ้งท้าย"},
+    {"time": 114, "text": "ปล่อยให้ภาพวันหลังจางหายไปในความหลัง"},
+    {"time": 120, "text": "ฉันไม่เจ็บอีกต่อไป ฉันไม่เลือกใคร... แต่ฉันเลือกตัวเอง"},
+    {"time": 125, "text": "จบเพลง"}
 ]
 
-# 4. ส่วนแสดงผล
-placeholder = st.empty()  # ใช้สำหรับอัปเดตตัวหนังสือซ้ำๆ ในตำแหน่งเดิม
+placeholder = st.empty()
 
-if st.button('เริ่มเล่นเนื้อเพลง'):
-    start_time = time.time()
-    
-    # วนลูปเช็คเวลาเพื่อเปลี่ยนเนื้อเพลง
-    current_index = 0
-    while current_index < len(lyrics_data):
-        elapsed_time = time.time() - start_time
+if st.button('กดตรงนี้แล้วเริ่มอัดหน้าจอเลย!'):
+    # นับถอยหลังให้เตรียมตัวอัดจอ
+    for i in range(3, 0, -1):
+        placeholder.markdown(f'<div class="lyric-box">{i}</div>', unsafe_allow_html=True)
+        time.sleep(1)
         
-        # ถ้าถึงเวลาของเนื้อเพลงบรรทัดนั้น
-        if elapsed_time >= lyrics_data[current_index]["time"]:
-            text = lyrics_data[current_index]["text"]
-            # อัปเดต HTML พร้อม Class 'glow'
-            placeholder.markdown(f'<div class="lyric-box glow">{text}</div>', unsafe_allow_html=True)
-            
-            # เช็คว่าจะเปลี่ยนบรรทัดถัดไปเมื่อไหร่
-            if current_index + 1 < len(lyrics_data):
-                # รอจนกว่าจะถึงเวลาบรรทัดถัดไป
-                next_time = lyrics_data[current_index + 1]["time"]
-                time.sleep(0.1) # ป้องกัน Loop ทำงานหนักเกินไป
-                if elapsed_time >= next_time:
-                    current_index += 1
-            else:
+    start_time = time.time()
+    for i in range(len(lyrics_data)):
+        while True:
+            elapsed = time.time() - start_time
+            if elapsed >= lyrics_data[i]["time"]:
+                placeholder.markdown(f'<div class="lyric-box glow">{lyrics_data[i]["text"]}</div>', unsafe_allow_html=True)
                 break
-        else:
-            time.sleep(0.1)
-
-    st.success("จบเพลงแล้วครับ")
+            time.sleep(0.05)
+    
+    st.balloons()
 else:
-    placeholder.markdown('<div class="lyric-box normal">กดปุ่มด้านล่างเพื่อเริ่ม</div>', unsafe_allow_html=True)
+    placeholder.markdown('<div class="lyric-box" style="color:black; font-size:30px;">เตรียมแอปอัดหน้าจอให้พร้อม แล้วกดปุ่มเริ่ม</div>', unsafe_allow_html=True)
