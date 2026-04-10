@@ -205,9 +205,9 @@ def room_reality_scanner():
         max_date = dt.date.today()
     
         col1, col2 = st.columns(2)
-    with col1:
-        u1 = st.date_input("AGENT 1 (วันเกิด)", value=dt.date(1996, 8, 17), min_value=min_date, max_value=max_date, format="YYYY/MM/DD")
-    with col2:
+with col1:
+        u1 = st.date_input("AGENT 1 (วันเกิด)", value=dt.date(1996, 8, 17), min_value=min_date, max_value=max_date, format="YYYY/MM/DD") 
+with col2:
         u2 = st.date_input("AGENT 2 (วันเกิด)", value=max_date, min_value=min_date, max_value=max_date, format="YYYY/MM/DD")
 
     if st.button("COMPUTE GAP", use_container_width=True):
