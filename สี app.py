@@ -201,27 +201,33 @@ def room_radar(loc):
         st.toast("SIGNAL BROADCASTED TO NETWORK")
 
 def room_reality_scanner():
-        min_date = dt.date(1960, 1, 1) # แก้ไขตามคำขอ: ปี 1960
-        max_date = dt.date.today()
-    
-        col1, col2 = st.columns(2)
-with col1:
-        u1 = st.date_input("AGENT 1 (วันเกิด)", value=dt.date(1996, 8, 17), min_value=min_date, max_value=max_date, format="YYYY/MM/DD") 
-with col2:
-        u2 = st.date_input("AGENT 2 (วันเกิด)", value=max_date, min_value=min_date, max_value=max_date, format="YYYY/MM/DD")
-
-   if st.button("COMPUTE GAP", use_container_width=True):
-        r1 = get_reality_logic(u1)
-        r2 = get_reality_logic(u2)
-        gap = abs(r1['res'] - r2['res'])
-        st.markdown(f"""
-            <div class="logic-box">
-                <h2 style="color:#00ff41;">RESULT GAP: {gap:.4f}</h2>
-                <hr style="border-color:#00ff41; opacity:0.3;">
-                <p>CODE 1: {r1['res']} ({r1['phase']})</p>
-                <p>CODE 2: {r2['res']} ({r2['phase']})</p>
-            </div>
-        """, unsafe_allow_html=True)
+    st.subheader("🧬 Reality Extractor & Code Scanner")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown('<div class="logic-box">', unsafe_allow_html=True)
+        st.write("### 🔍 สแกนรหัสส่วนบุคคล")
+        dob = st.date_input("เลือกวันเกิด / วันเหตุการณ์", value=date.today())
+        if dob:
+            logic = get_reality_logic(dob)
+            st.metric("REALITY CODE", logic['res'])
+            st.write(f"**สภาวะ:** {logic['phase']}")
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    with col2:
+        st.markdown('<div class="logic-box" style="border-color:#1408BF;">', unsafe_allow_html=True)
+        st.write("### 🛰️ ตรวจสอบพิกัดรหัสคู่ขนาน")
+        u1_date = st.date_input("AGENT 1 (วันเกิด)", value=date(1996, 8, 17))
+        u2_date = st.date_input("AGENT 2 (วันเกิด)", value=date.today())
+        if st.button("COMPUTE GAP"):
+            r1 = get_reality_logic(u1_date)['res']
+            r2 = get_reality_logic(u2_date)['res']
+            gap = abs(r1 - r2)
+            st.write(f"CODE 1: `{r1}` | CODE 2: `{r2}`")
+            st.subheader(f"RESULT GAP: {gap:.4f}")
+            if gap <= 1.0: st.success("ระดับความสัมพันธ์: แนบแน่นพิเศษ")
+            elif gap <= 4.0: st.warning("ระดับความสัมพันธ์: รหัสสะท้อน (คู่ขนาน)")
+            else: st.error("ระดับความสัมพันธ์: แรงผลักดัน")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def room_secure_chat():
     st.subheader("💬 SECURE REAL-TIME MESSENGER")
@@ -259,42 +265,98 @@ def room_secure_chat():
                     db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'ts': time.time()})
                     st.rerun()
 
-def room_voice_call():
-    st.subheader("📞 P2P ENCRYPTED VOICE CALL")
+def room_audio_call():
+    st.markdown(f"""
+        <div class="logic-box" style="border-color:{st.session_state.theme_color};">
+            <h2 style="color:{st.session_state.theme_color}; text-align:center;">📞 SYNAPSE VOICE ENCRYPTION</h2>
+            <p style="text-align:center; opacity:0.7;">ระบบสื่อสารผ่านคลื่นเสียงระดับ AGENT (P2P)</p>
+        </div>
+    """, unsafe_allow_html=True)
+
     users = db.reference('users').get()
     friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    target = st.selectbox("CALL TO:", friends, key="v_call_target")
     
-    if target:
-        st.markdown(f"""
-            <div style="background:#000; padding:30px; border-radius:20px; border:2px solid {st.session_state.theme_color}; text-align:center; box-shadow: 0 0 20px {st.session_state.theme_color}55;">
-                <h2 style="color:{st.session_state.theme_color};">VOICE CHANNEL ACTIVE</h2>
-                <audio id="remoteAudio" autoplay></audio>
-                <div style="margin: 20px 0;">
-                    <div style="width:100px; height:100px; border-radius:50%; border:5px solid {st.session_state.theme_color}; display:inline-block; animation: pulse 1.5s infinite;"></div>
-                </div>
-                <button id="startCall" style="background:{st.session_state.theme_color}; color:white; padding:12px 30px; border:none; border-radius:10px; cursor:pointer;">START CALL</button>
-                <button onclick="location.reload()" style="background:red; color:white; padding:12px 30px; border:none; border-radius:10px; cursor:pointer; margin-left:10px;">HANG UP</button>
-            </div>
-            <style> @keyframes pulse {{ 0%{{box-shadow:0 0 0 0 {st.session_state.theme_color}aa;}} 70%{{box-shadow:0 0 0 20px rgba(0,0,0,0);}} 100%{{box-shadow:0 0 0 0 rgba(0,0,0,0);}} }} </style>
+    col_sel, col_stat = st.columns([2, 1])
+    with col_sel:
+        target = st.selectbox("🎯 เลือกเป้าหมายที่จะสื่อสาร:", friends, key="v_target")
+    with col_stat:
+        st.write(f"สถานะ: **ONLINE**")
+        st.write(f"ID: `{st.session_state.user}`")
+
+    # ส่วนประมวลผล JavaScript พร้อมระบบเสียงแจ้งเตือน (Ringtone)
+    call_js_logic = f"""
+    <div id="call-ui" style="background:rgba(0,0,0,0.9); padding:20px; border-radius:15px; border:2px solid {st.session_state.theme_color}; text-align:center;">
+        <h3 id="call-status" style="color:#00ff41;">📡 พร้อมเชื่อมต่อ...</h3>
+        <audio id="remoteAudio" autoplay></audio>
+        <audio id="ringtoneAudio" loop src="static/synapse.mp3"></audio> <div id="visualizer" style="height:50px; display:flex; justify-content:center; align-items:center; gap:5px; margin:15px 0;">
+            <div class="bar" style="width:5px; height:10px; background:{st.session_state.theme_color}; animation: v-wave 1s infinite alternate;"></div>
+            <div class="bar" style="width:5px; height:30px; background:{st.session_state.theme_color}; animation: v-wave 0.8s infinite alternate;"></div>
+            <div class="bar" style="width:5px; height:15px; background:{st.session_state.theme_color}; animation: v-wave 1.2s infinite alternate;"></div>
+        </div>
+        <button id="btn-call" style="background:{st.session_state.theme_color}; color:white; border:none; padding:10px 25px; border-radius:10px; cursor:pointer; font-weight:bold;">📞 เริ่มการโทร</button>
+        <button id="btn-hangup" style="background:#ff4444; color:white; border:none; padding:10px 25px; border-radius:10px; cursor:pointer; font-weight:bold; margin-left:10px;">❌ วางสาย / ปิดเสียง</button>
+    </div>
+
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script>
+        const peer = new Peer('{st.session_state.user}');
+        const ringtone = document.getElementById('ringtoneAudio');
+        let currentCall = null;
+
+        peer.on('open', (id) => {{
+            document.getElementById('call-status').innerText = "✅ ระบบออนไลน์ ID: " + id;
+        }});
+
+        // --- ระบบแจ้งเตือนสายเข้าพร้อมเสียง ---
+        peer.on('call', (call) => {{
+            // 1. เริ่มเล่นเสียงเพลง Synapse ทันทีที่มีสายเข้า
+            ringtone.play().catch(e => console.log("Autoplay blocked, waiting for interaction"));
             
-            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-            <script>
-                const peer = new Peer('{st.session_state.user}');
-                peer.on('call', call => {{
-                    navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then(s => {{
-                        call.answer(s);
-                        call.on('stream', rs => {{ document.getElementById('remoteAudio').srcObject = rs; }});
+            document.getElementById('call-status').innerText = "🚨 ALERT: Incoming Call...";
+            document.getElementById('call-status').style.color = "#ff4444";
+
+            if(confirm("🚨 มีสายเรียกเข้าจาก AGENT อื่น! คุณจะรับหรือไม่?")) {{
+                ringtone.pause(); // หยุดเสียงเรียกเข้าเมื่อกดรับ
+                ringtone.currentTime = 0;
+                
+                navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then((stream) => {{
+                    call.answer(stream);
+                    document.getElementById('call-status').innerText = "🎙️ กำลังสนทนา...";
+                    document.getElementById('call-status').style.color = "#00ff41";
+                    call.on('stream', (remoteStream) => {{
+                        document.getElementById('remoteAudio').srcObject = remoteStream;
                     }});
+                    currentCall = call;
                 }});
-                document.getElementById('startCall').onclick = () => {{
-                    navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then(s => {{
-                        const call = peer.call('{target}', s);
-                        call.on('stream', rs => {{ document.getElementById('remoteAudio').srcObject = rs; }});
-                    }});
-                }};
-            </script>
-        """, unsafe_allow_html=True)
+            }} else {{
+                ringtone.pause(); // หยุดเสียงถ้ากดปฏิเสธ
+                call.close();
+            }}
+        }});
+
+        document.getElementById('btn-call').onclick = () => {{
+            const targetId = "{target}";
+            if(!targetId) return;
+            navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then((stream) => {{
+                const call = peer.call(targetId, stream);
+                document.getElementById('call-status').innerText = "🛰️ กำลังเรียก...";
+                call.on('stream', (remoteStream) => {{
+                    document.getElementById('call-status').innerText = "🎙️ เชื่อมต่อสำเร็จ!";
+                    document.getElementById('remoteAudio').srcObject = remoteStream;
+                }});
+                currentCall = call;
+            }});
+        }};
+
+        document.getElementById('btn-hangup').onclick = () => {{
+            ringtone.pause();
+            if(currentCall) currentCall.close();
+            location.reload();
+        }};
+    </script>
+    """
+    components.html(call_js_logic, height=400)
+
 
 def room_music():
     st.subheader("🎧 SYNAPSE MUSIC STATION")
