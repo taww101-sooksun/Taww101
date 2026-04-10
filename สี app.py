@@ -17,45 +17,100 @@ import random
 from streamlit_js_eval import get_geolocation 
 
 # ==========================================
-# 0. CONFIG & CSS STYLING (Matrix & Neon Style)
+# 4. UPDATED CSS - เพิ่มความหนาขอบแบบจัดเต็ม
 # ==========================================
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", initial_sidebar_state="collapsed")
-
 def apply_custom_background():
     theme = st.session_state.get('theme_color', "#1408BF")
     st.markdown(f"""
         <style>
-        /* ส่วนของ Tabs - ขอบใหญ่ขึ้นไฟฟุ้งขึ้น */
+        /* ขอบเมนูหลัก (Tabs) - ปรับให้ใหญ่และฟุ้ง */
         .stTabs [data-baseweb="tab-list"] {{
-            background-color: rgba(0, 0, 0, 0.8) !important;
-            border-radius: 25px !important;
-            padding: 12px !important;
-            border: 6px solid {theme} !important; /* <--- ปรับขอบใหญ่ตรงนี้ */
-            box-shadow: 0 0 40px {theme};         /* <--- ปรับไฟฟุ้งตรงนี้ */
-            margin: 15px 0px !important;
-        }}
-        
-        /* ส่วนของปุ่ม - ขอบหนาขึ้น */
-        div.stButton > button {{
-            background: linear-gradient(145deg, #000, #222) !important;
-            color: white !important;
-            border: 5px solid {theme} !important; /* <--- ขอบปุ่มหนาๆ */
-            border-radius: 20px !important;
-            filter: drop-shadow(0 0 15px {theme}); /* <--- ไฟนูนๆ */
-            transition: all 0.3s ease;
+            border: 8px solid {theme} !important; 
+            box-shadow: 0 0 50px {theme} !important;
+            border-radius: 30px !important;
+            background: rgba(0,0,0,0.9) !important;
         }}
 
-        /* ส่วนของกล่องคำนวณ - ขอบเขียวหนาๆ */
-        .logic-box {{
-            background: rgba(0, 10, 0, 0.9);
-            border: 5px solid #00ff41;             /* <--- ขอบหนาตรงนี้ */
-            border-radius: 20px;
+        /* ขอบปุ่มกด - หนาและมีมิติ */
+        div.stButton > button {{
+            border: 5px solid {theme} !important;
+            box-shadow: 0 0 20px {theme}88;
+            font-size: 1.2rem !important;
+            padding: 15px 30px !important;
+        }}
+
+        /* กล่องเนื้อเพลง / กล่องข้อมูล - ขอบหนาพิเศษ */
+        .lyrics-box {{
+            background: rgba(0, 0, 0, 0.7);
+            border: 6px solid #00ff41; /* ขอบเขียว Matrix หนาๆ */
+            border-radius: 25px;
             padding: 25px;
-            box-shadow: 0 0 30px rgba(0, 255, 65, 0.6);
+            color: #00ff41;
+            font-family: 'Courier New', Courier, monospace;
+            box-shadow: 0 0 35px rgba(0, 255, 65, 0.4);
+            line-height: 1.8;
+            text-align: center;
         }}
         </style>
     """, unsafe_allow_html=True)
 
+# ==========================================
+# 5. MUSIC & LYRICS MODULE
+# ==========================================
+def room_music():
+    st.subheader("🎧 SYNAPSE MUSIC STATION")
+    
+    # ส่วนแสดงเนื้อเพลงที่ท่านส่งมา
+    lyrics = """
+    (อยู่นิ่งๆ ไม่เจ็บตัว… Let’s go!)
+    
+    เริ่มที่หน้า LOGIN ใส่ AGENT ID เข้ามา
+    ตั้งรหัสให้ดี อย่าให้ใครเห็นด้วยสายตา
+    ถ้ายังไม่มี ก็ REGISTER สร้างตัวตน
+    เข้าสู่ระบบความปลอดภัย ในโลกที่สับสน
+    
+    📍 มองไปที่ CORE เห็นเวลาและพิกัด
+    ทุกอย่างมันชัดเจน ระบบเราน่ะคัดจัด!
+    
+    เลื่อนไปที่แถบเมนู ไฟนีออนมันสะท้อนตา
+    ทุกฟีเจอร์ที่เราสร้างมา เพื่อให้คุณได้นำพา… Connection
+    
+    🔥 SYNAPSE ในมือคุณ จังหวะเบสกระแทกใจ
+    RADAR ส่องพิกัด เพื่อนอยู่ไหนเรารู้ไป
+    CHAT กันให้สุด ส่งรูปวิดีโอได้ทันที
+    หรือจะ CALL แบบ P2P เสียงชัดแจ๋วเลย Baby
+    
+    (อยู่นิ่งๆ ไม่เจ็บตัว.!)
+    """
+    
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.markdown('<div class="lyrics-box">', unsafe_allow_html=True)
+        st.write("### 📜 LYRICS")
+        st.text(lyrics) # หรือใช้ st.markdown ถ้าต้องการใส่สี
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+    with col2:
+        # ระบบเล่นเพลง
+        files = sorted([f for f in os.listdir('.') if f.endswith(".mp3") or f.endswith(".mp4")])
+        if files:
+            song = st.selectbox("💿 SELECT TRACK", files)
+            if song.endswith(".mp3"):
+                st.audio(song, format="audio/mp3")
+            else:
+                st.video(song)
+                
+            st.markdown(f"""
+                <div style="margin-top:20px; padding:20px; border:4px dashed {st.session_state.theme_color}; border-radius:15px; text-align:center;">
+                    <h4 style="color:{st.session_state.theme_color};">NOW PLAYING:</h4>
+                    <p style="font-size:1.5em; font-weight:bold;">{song}</p>
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning("กรุณาตรวจสอบไฟล์ .mp3 หรือ .mp4 ในโฟลเดอร์")
+
+# อย่าลืมเรียกใช้ในฟังก์ชัน main() นะครับ
 
 def show_logo():
     theme = st.session_state.get('theme_color', "#1408BF")
