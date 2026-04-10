@@ -325,42 +325,88 @@ def room_secure_chat():
                     db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'ts': time.time()})
                     st.rerun()
 
-def room_voice_call():
-    st.subheader("📞 P2P ENCRYPTED VOICE CALL")
+def room_audio_call():
+    st.markdown(f"""
+        <div class="logic-box" style="border-color:{st.session_state.theme_color};">
+            <h2 style="color:{st.session_state.theme_color}; text-align:center;">📞 SYNAPSE VOICE ENCRYPTION</h2>
+            <p style="text-align:center; opacity:0.7;">ระบบสื่อสารผ่านคลื่นเสียงระดับ AGENT (P2P)</p>
+        </div>
+    """, unsafe_allow_html=True)
+
     users = db.reference('users').get()
     friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    target = st.selectbox("CALL TO:", friends, key="v_call_target")
     
-    if target:
-        st.markdown(f"""
-            <div style="background:#000; padding:30px; border-radius:20px; border:2px solid {st.session_state.theme_color}; text-align:center; box-shadow: 0 0 20px {st.session_state.theme_color}55;">
-                <h2 style="color:{st.session_state.theme_color};">VOICE CHANNEL ACTIVE</h2>
-                <audio id="remoteAudio" autoplay></audio>
-                <div style="margin: 20px 0;">
-                    <div style="width:100px; height:100px; border-radius:50%; border:5px solid {st.session_state.theme_color}; display:inline-block; animation: pulse 1.5s infinite;"></div>
-                </div>
-                <button id="startCall" style="background:{st.session_state.theme_color}; color:white; padding:12px 30px; border:none; border-radius:10px; cursor:pointer;">START CALL</button>
-                <button onclick="location.reload()" style="background:red; color:white; padding:12px 30px; border:none; border-radius:10px; cursor:pointer; margin-left:10px;">HANG UP</button>
-            </div>
-            <style> @keyframes pulse {{ 0%{{box-shadow:0 0 0 0 {st.session_state.theme_color}aa;}} 70%{{box-shadow:0 0 0 20px rgba(0,0,0,0);}} 100%{{box-shadow:0 0 0 0 rgba(0,0,0,0);}} }} </style>
-            
-            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-            <script>
-                const peer = new Peer('{st.session_state.user}');
-                peer.on('call', call => {{
-                    navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then(s => {{
-                        call.answer(s);
-                        call.on('stream', rs => {{ document.getElementById('remoteAudio').srcObject = rs; }});
+    col_sel, col_stat = st.columns([2, 1])
+    with col_sel:
+        target = st.selectbox("🎯 เลือกเป้าหมายที่จะสื่อสาร:", friends, key="v_target")
+    with col_stat:
+        st.write(f"สถานะ: **ONLINE**")
+        st.write(f"ID: `{st.session_state.user}`")
+
+    # ส่วนประมวลผล JavaScript (ของจริงอยู่ตรงนี้!)
+    call_js_logic = f"""
+    <div id="call-ui" style="background:rgba(0,0,0,0.9); padding:20px; border-radius:15px; border:2px solid {st.session_state.theme_color}; text-align:center;">
+        <h3 id="call-status" style="color:#00ff41;">📡 พร้อมเชื่อมต่อ...</h3>
+        <audio id="remoteAudio" autoplay></audio>
+        <div id="visualizer" style="height:50px; display:flex; justify-content:center; align-items:center; gap:5px; margin:15px 0;">
+            <div class="bar" style="width:5px; height:10px; background:{st.session_state.theme_color}; animation: v-wave 1s infinite alternate;"></div>
+            <div class="bar" style="width:5px; height:30px; background:{st.session_state.theme_color}; animation: v-wave 0.8s infinite alternate;"></div>
+            <div class="bar" style="width:5px; height:15px; background:{st.session_state.theme_color}; animation: v-wave 1.2s infinite alternate;"></div>
+        </div>
+        <button id="btn-call" style="background:{st.session_state.theme_color}; color:white; border:none; padding:10px 25px; border-radius:10px; cursor:pointer; font-weight:bold;">📞 เริ่มการโทร</button>
+        <button id="btn-hangup" style="background:#ff4444; color:white; border:none; padding:10px 25px; border-radius:10px; cursor:pointer; font-weight:bold; margin-left:10px;">❌ วางสาย</button>
+    </div>
+
+    <style>
+        @keyframes v-wave {{ from {{ height: 5px; opacity:0.5; }} to {{ height: 40px; opacity:1; }} }}
+    </style>
+
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script>
+        const peer = new Peer('{st.session_state.user}'); // ใช้ AGENT ID เป็นชื่อที่อยู่
+        let currentCall = null;
+
+        peer.on('open', (id) => {{
+            document.getElementById('call-status').innerText = "✅ ระบบออนไลน์ ID: " + id;
+        }});
+
+        // ฟังการเรียกเข้า (รับสาย)
+        peer.on('call', (call) => {{
+            if(confirm("🚨 มีสายเรียกเข้าจาก AGENT อื่น! คุณจะรับหรือไม่?")) {{
+                navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then((stream) => {{
+                    call.answer(stream); // ตอบรับการโทรพร้อมส่งเสียงเราไป
+                    document.getElementById('call-status').innerText = "🎙️ กำลังสนทนา...";
+                    call.on('stream', (remoteStream) => {{
+                        document.getElementById('remoteAudio').srcObject = remoteStream;
                     }});
+                    currentCall = call;
                 }});
-                document.getElementById('startCall').onclick = () => {{
-                    navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then(s => {{
-                        const call = peer.call('{target}', s);
-                        call.on('stream', rs => {{ document.getElementById('remoteAudio').srcObject = rs; }});
-                    }});
-                }};
-            </script>
-        """, unsafe_allow_html=True)
+            }}
+        }});
+
+        // ฟังก์ชันโทรออก
+        document.getElementById('btn-call').onclick = () => {{
+            const targetId = "{target}";
+            if(!targetId) return;
+            
+            document.getElementById('call-status').innerText = "🛰️ กำลังเรียกไปยัง " + targetId + "...";
+            navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then((stream) => {{
+                const call = peer.call(targetId, stream);
+                call.on('stream', (remoteStream) => {{
+                    document.getElementById('call-status').innerText = "🎙️ เชื่อมต่อสำเร็จ!";
+                    document.getElementById('remoteAudio').srcObject = remoteStream;
+                }});
+                currentCall = call;
+            }});
+        }};
+
+        document.getElementById('btn-hangup').onclick = () => {{
+            if(currentCall) currentCall.close();
+            location.reload();
+        }};
+    </script>
+    """
+    components.html(call_js_logic, height=350)
 
 def room_music():
     st.subheader("🎧 SYNAPSE MUSIC STATION")
