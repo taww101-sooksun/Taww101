@@ -1,59 +1,56 @@
 import streamlit as st
 import time
 
-# ตั้งค่าหน้าจอเป็นแบบ Wide และซ่อน Menu ของ Streamlit เพื่อให้แคปจอสวยๆ
-st.set_page_config(page_title="Lyric Video Creator", layout="wide")
+# ตั้งค่าหน้าจอและซ่อน UI ส่วนเกิน
+st.set_page_config(page_title="Lyric Video Player", layout="wide")
 
-# CSS สำหรับ Green Screen และตัวหนังสือวิ้ง
 st.markdown("""
     <style>
-    /* พื้นหลังสีเขียวสำหรับทำ Green Screen */
     .stApp {
-        background-color: #00FF00;
+        background-color: #00FF00; /* Green Screen สำหรับดูดสีออก */
     }
     .lyric-box {
         font-family: 'Kanit', sans-serif;
-        font-size: 60px;
+        font-size: 65px;
         font-weight: bold;
         text-align: center;
-        height: 80vh;
+        height: 60vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        line-height: 1.2;
-    }
-    .glow {
+        line-height: 1.3;
         color: #ffffff;
-        text-shadow: 0 0 15px #fff, 0 0 25px #ff00de, 0 0 35px #ff00de;
-        animation: pulse 1.5s infinite;
+        text-shadow: 0 0 20px #ff00de, 0 0 40px #ff00de;
     }
-    @keyframes pulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-        100% { transform: scale(1); }
+    /* ซ่อนเครื่องเล่นเพลงตอนจะอัดจอ (ถ้าต้องการ) หรือแสดงไว้ก็ได้ */
+    audio {
+        width: 100%;
+        filter: invert(100%); /* ปรับสีเครื่องเล่นให้ตัดกับพื้นหลัง */
     }
-    /* ซ่อน UI ของ Streamlit */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# ข้อมูลเนื้อเพลงแบบจัดเต็ม (Time Sync คร่าวๆ ตามคลิป)
+# 1. แสดงเครื่องเล่นเพลง
+st.write("### 🎵 เครื่องเล่นเพลง")
+audio_file = open('ความจริงของเธอคือการโกหก.mp3', 'rb')
+audio_bytes = audio_file.read()
+st.audio(audio_bytes, format='audio/mp3')
+
+# 2. ข้อมูลเนื้อเพลงและเวลา
 lyrics_data = [
     {"time": 0, "text": "ความจริงที่ฉันให้ไป"},
     {"time": 5, "text": "จะเอาไปทิ้งไว้ที่ไหน"},
     {"time": 11, "text": "ในวันที่ฉันจริงใจ แต่เธอกลับกลายเป็นใครที่ฉันไม่รู้"},
-    {"time": 22, "text": "จ้างจะสู้ถึงร้อย ความห่วงใยที่ฉันคอยประคอง"},
+    {"time": 22, "text": "จ้างจะสู้ถึงร้อย ความห่วงใยที่ฉันค่อยประคอง"},
     {"time": 27, "text": "แทบจะมองเป็นแค่ของเล่น ที่อยากจะขว้างหรืออยากจะลอง"},
     {"time": 31, "text": "แววตาที่พ่นออกมา มันมีแต่ลมลวงหลอก"},
-    {"time": 34, "text": "กี่ครั้งที่บอกว่ารัก แต่ค้างในใจกลับคิดจะบอกลา"},
+    {"time": 34, "text": "กี่ครั้งที่บอกว่ารัก แต่ค้างในใจกับคิดจะบอกลา"},
     {"time": 38, "text": "ความจริงของเธอ มันช่างพร่ามัว"},
     {"time": 42, "text": "ก็เข็ดซ้ำๆ จนใจของฉัน มันเริ่มจะชินกับความกลัว"},
     {"time": 49, "text": "ในโลกที่หมุนวนไป ฉันเพิ่งจะรู้ว่าเธอสำคัญเพียงใด"},
     {"time": 60, "text": "ภาพที่เธอยิ้มให้กัน วันนี้มันกลายเป็นเพียงแค่เงา"},
     {"time": 72, "text": "โอ้นางร้ายที่ฉันเคยรักหมดใจ"},
-    {"time": 76, "text": "เพราะสิ่งที่เธอให้มา มันคือพิษทิ่มลงไปข้างใน"},
+    {"time": 76, "text": "เพราะยิ่งที่เธอให้มา มันคือพิษทิ่มลงไปข้างใน"},
     {"time": 79, "text": "รักคือการปล่อยมือ คือการยื้อเพื่อรอความตาย"},
     {"time": 88, "text": "ในโลกความจริงที่ว่างเปล่า ฉันขอจากไปให้ไกลจากเธอ"},
     {"time": 92, "text": "จะบอกว่ารักฉันจริง แต่การกระทำมันดูย้อนแย้ง"},
@@ -62,27 +59,21 @@ lyrics_data = [
     {"time": 104, "text": "ใจจะพังให้กลายเป็นกำแพงที่แข็งแรงและไม่ยอมคน"},
     {"time": 108, "text": "ไม่ต้องมีคำลา ไม่ต้องมีสัญญา ทิ้งท้าย"},
     {"time": 114, "text": "ปล่อยให้ภาพวันหลังจางหายไปในความหลัง"},
-    {"time": 120, "text": "ฉันไม่เจ็บอีกต่อไป ฉันไม่เลือกใคร... แต่ฉันเลือกตัวเอง"},
+    {"time": 120, "text": "ฉันไม่เจ็บอีกต่อไป ฉันไม่เลือกใคร... แต่ฉันมีตัวฉันเอง"},
     {"time": 125, "text": "จบเพลง"}
 ]
 
 placeholder = st.empty()
 
-if st.button('กดตรงนี้แล้วเริ่มอัดหน้าจอเลย!'):
-    # นับถอยหลังให้เตรียมตัวอัดจอ
-    for i in range(3, 0, -1):
-        placeholder.markdown(f'<div class="lyric-box">{i}</div>', unsafe_allow_html=True)
-        time.sleep(1)
-        
+# 3. ปุ่มเริ่มรันเนื้อเพลง
+if st.button('เริ่มแสดงเนื้อเพลง (กดพร้อมเล่นเพลง)'):
     start_time = time.time()
-    for i in range(len(lyrics_data)):
+    for line in lyrics_data:
         while True:
             elapsed = time.time() - start_time
-            if elapsed >= lyrics_data[i]["time"]:
-                placeholder.markdown(f'<div class="lyric-box glow">{lyrics_data[i]["text"]}</div>', unsafe_allow_html=True)
+            if elapsed >= line["time"]:
+                placeholder.markdown(f'<div class="lyric-box">{line["text"]}</div>', unsafe_allow_html=True)
                 break
-            time.sleep(0.05)
-    
-    st.balloons()
+            time.sleep(0.01)
 else:
-    placeholder.markdown('<div class="lyric-box" style="color:black; font-size:30px;">เตรียมแอปอัดหน้าจอให้พร้อม แล้วกดปุ่มเริ่ม</div>', unsafe_allow_html=True)
+    placeholder.markdown('<div class="lyric-box" style="color:#000; font-size:30px;">กดเล่นเพลงแล้วกดปุ่มเริ่มรันเนื้อเพลงครับ</div>', unsafe_allow_html=True)
