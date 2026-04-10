@@ -102,7 +102,7 @@ def show_logo():
                 data = base64.b64encode(f.read()).decode()
             st.markdown(f"""
                 <div style="text-align:center; filter: drop-shadow(0 0 15px {theme}); margin-bottom: 25px;">
-                    <img src="data:image/png;base64,{data}" style="width:100%; max-width:150px; border-radius:20px;">
+                    <img src="data:image/png;base64,{data}" style="width:100%; max-width:240px; border-radius:20px;">
                 </div>
             """, unsafe_allow_html=True)
         else:
@@ -273,7 +273,7 @@ def room_secure_chat():
     
     if target:
         rid = "_".join(sorted([st.session_state.user, target]))
-        chat_container = st.container(height=25000, border=True)
+        chat_container = st.container(height=150, border=True)
         
         # Load Messages
         chats = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(25).get()
