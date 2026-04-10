@@ -210,7 +210,7 @@ with col1:
 with col2:
         u2 = st.date_input("AGENT 2 (วันเกิด)", value=max_date, min_value=min_date, max_value=max_date, format="YYYY/MM/DD")
 
-    if st.button("COMPUTE GAP", use_container_width=True):
+if st.button("COMPUTE GAP", use_container_width=True):
         r1 = get_reality_logic(u1)
         r2 = get_reality_logic(u2)
         gap = abs(r1['res'] - r2['res'])
