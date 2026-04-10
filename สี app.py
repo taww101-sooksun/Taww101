@@ -141,7 +141,7 @@ st.markdown("""
                     0 0 20px #0000ff;
         
         /* สั่งให้ไฟวิ่งและกระพริบ */
-        animation: RGBFlow 4s linear infinite, Pulse 1.5s ease-in-out infinite;
+        animation: RGBFlow 1s linear infinite, Pulse 1.5s ease-in-out infinite;
     }
 
     /* 2. สร้างแสงออร่ารอบๆ (Ambient Glow) */
