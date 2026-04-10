@@ -363,7 +363,7 @@ def room_voice_call():
         """, unsafe_allow_html=True)
 
 def room_music():
-    st.subheader("🎧 SYNAPSE MUSIC STATION"🎸อยู่นิ้งๆไม่เจ็บตัว🎤)
+    st.subheader("🎧 SYNAPSE MUSIC STATION")
     files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     if not files:
         st.warning("⚠️ No MP3 files detected in root directory.")
