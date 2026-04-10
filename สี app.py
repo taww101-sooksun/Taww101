@@ -15,6 +15,8 @@ from datetime import datetime, date
 import math
 import random
 from streamlit_js_eval import get_geolocation 
+import datetime as dt_module # เปลี่ยนชื่อเล่นเพื่อไม่ให้ชื่อซ้ำ
+from datetime import datetime, date # ดึงคำสั่งหลักมาใช้ตรงๆ
 
 # ==========================================
 # 4. UPDATED CSS - เพิ่มความหนาขอบแบบจัดเต็ม
@@ -168,8 +170,14 @@ def get_local_time(lat, lon):
     try:
         tf = TimezoneFinder()
         tz_str = tf.timezone_at(lat=lat, lng=lon)
-        return datetime.now(pytz.timezone(tz_str)) if tz_str else datetime.now()
-    except: return datetime.now()
+        if tz_str:
+            # ระบุชื่อแบบเต็มยศป้องกันการตีกัน
+            return datetime.now(pytz.timezone(tz_str))
+    except Exception as e: 
+        pass # ถ้าพลาดให้ข้ามมาทำบรรทัดล่าง
+    
+    # กรณีหาพิกัดไม่เจอ ให้ใช้เวลาไทยเป็นค่ามาตรฐาน
+    return datetime.now(pytz.timezone('Asia/Bangkok'))
 
 # ==========================================
 # 2. CORE MODULES
