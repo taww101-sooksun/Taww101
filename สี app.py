@@ -184,7 +184,7 @@ def room_login():
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown('<div class="logic-box" style="text-align:center; border-color:#1408BF;">', unsafe_allow_html=True)
-        tab_l, tab_r = st.tabs(["🔑 UNLOCK", "📝 NEW AGENT"])
+        tab_l, tab_r = st.tabs(["🔑 UNLOCK เข้าสู่ระบบ", "📝 NEW AGENT ลงทะเบียนก่อนเข้าระบบ"])
         with tab_l:
             with st.form("login_form"):
                 uid = st.text_input("AGENT ID")
@@ -363,7 +363,7 @@ def room_voice_call():
         """, unsafe_allow_html=True)
 
 def room_music():
-    st.subheader("🎧 SYNAPSE MUSIC STATION")
+    st.subheader("🎧 SYNAPSE MUSIC STATION"🎸อยู่นิ้งๆไม่เจ็บตัว🎤)
     files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     if not files:
         st.warning("⚠️ No MP3 files detected in root directory.")
