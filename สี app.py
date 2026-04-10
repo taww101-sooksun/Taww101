@@ -260,34 +260,50 @@ def room_radar(loc):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
         st.toast("SIGNAL BROADCASTED TO NETWORK")
 
+import datetime # อย่าลืมเช็คว่ามี import นี้ด้านบนสุดของไฟล์ด้วยนะครับ
+
 def room_reality_scanner():
-    st.subheader("🧬 Reality Extractor & Code Scanner")
+    st.subheader("🛰️ ตรวจสอบพิกัดรหัสคู่ขนาน")
+    
+    # กำหนดขอบเขตวันที่: เริ่มตั้งแต่ 1 มกราคม 1960 จนถึงปัจจุบัน
+    min_date = datetime.date(1960, 1, 1)
+    max_date = datetime.date.today()
+    
     col1, col2 = st.columns(2)
+    
     with col1:
-        st.markdown('<div class="logic-box">', unsafe_allow_html=True)
-        st.write("### 🔍 สแกนรหัสส่วนบุคคล")
-        dob = st.date_input("เลือกวันเกิด / วันเหตุการณ์", value=date.today())
-        if dob:
-            logic = get_reality_logic(dob)
-            st.metric("REALITY CODE", logic['res'])
-            st.write(f"**สภาวะ:** {logic['phase']}")
-        st.markdown('</div>', unsafe_allow_html=True)
+        # AGENT 1: ตั้งค่าให้กรอกปี 1960 ได้ และผู้ใช้สามารถพิมพ์ตัวเลขลงไปได้เลย
+        u1_date = st.date_input(
+            "AGENT 1 (วันเกิด)", 
+            value=datetime.date(1996, 8, 17), # ค่าเริ่มต้น (17 ส.ค. 2539 ตามข้อมูลท่าน)
+            min_value=min_date, 
+            max_value=max_date,
+            format="YYYY/MM/DD", # รูปแบบการแสดงผล
+            help="ท่านสามารถคลิกที่ปีเพื่อเลือก หรือพิมพ์ตัวเลขลงไปได้โดยตรง"
+        )
         
     with col2:
-        st.markdown('<div class="logic-box" style="border-color:#1408BF;">', unsafe_allow_html=True)
-        st.write("### 🛰️ ตรวจสอบพิกัดรหัสคู่ขนาน")
-        u1_date = st.date_input("AGENT 1 (วันเกิด)", value=date(1996, 8, 17))
-        u2_date = st.date_input("AGENT 2 (วันเกิด)", value=date.today())
-        if st.button("COMPUTE GAP"):
-            r1 = get_reality_logic(u1_date)['res']
-            r2 = get_reality_logic(u2_date)['res']
-            gap = abs(r1 - r2)
-            st.write(f"CODE 1: `{r1}` | CODE 2: `{r2}`")
-            st.subheader(f"RESULT GAP: {gap:.4f}")
-            if gap <= 1.0: st.success("ระดับความสัมพันธ์: แนบแน่นพิเศษ")
-            elif gap <= 4.0: st.warning("ระดับความสัมพันธ์: รหัสสะท้อน (คู่ขนาน)")
-            else: st.error("ระดับความสัมพันธ์: แรงผลักดัน")
-        st.markdown('</div>', unsafe_allow_html=True)
+        # AGENT 2: ตั้งค่าเหมือนกัน
+        u2_date = st.date_input(
+            "AGENT 2 (วันเกิด)", 
+            value=max_date, 
+            min_value=min_date, 
+            max_value=max_date,
+            format="YYYY/MM/DD"
+        )
+
+    if st.button("COMPUTE GAP", use_container_width=True):
+        # ส่วนคำนวณเดิมของท่าน
+        r1 = get_reality_logic(u1_date)['res']
+        r2 = get_reality_logic(u2_date)['res']
+        gap = abs(r1 - r2)
+        
+        st.markdown(f"""
+            <div class="logic-box" style="text-align:center;">
+                <h3 style="color:#00ff41;">RESULT GAP: {gap:.4f}</h3>
+                <p>CODE 1: {r1} | CODE 2: {r2}</p>
+            </div>
+        """, unsafe_allow_html=True)
 
 def room_secure_chat():
     st.subheader("💬 SECURE REAL-TIME MESSENGER")
