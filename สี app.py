@@ -53,11 +53,11 @@ hide_st_style = """
             </style>
             
             <div class="nav-bar">
-                <a class="nav-item">📍 GPS </a>
-                <a class="nav-item">💬 แชต </a>
-                <a class="nav-item">🎥 วีดีโอคอล </a>
-                <a class="nav-item">🔢 ข้อมูลตัวเลขวัน </a>
-                <a class="nav-item">🎵 เพลง mp3 </a>
+                <a class="nav-item">📍  GPS  </a>
+                <a class="nav-item">💬  แชต  </a>
+                <a class="nav-item">🎥  คอล  </a>
+                <a class="nav-item">🔢  ทีเด็ด  </a>
+                <a class="nav-item">🎵  mp3  </a>
             </div>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
@@ -65,8 +65,8 @@ st.markdown(hide_st_style, unsafe_allow_html=True)
 # 3. ใส่เนื้อหาแอปใน div ที่เราเว้นระยะไว้
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
-st.title("SYNAPSE อยู่นิ้งๆไม่เจ็บตัว")
-st.write("🇹🇭")
+st.title("SYNAPSE  อยู่นิ้งๆไม่เจ็บตัว")
+st.write("Thai 🇹🇭")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
