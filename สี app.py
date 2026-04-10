@@ -174,6 +174,11 @@ def get_local_time(lat, lon):
 # ==========================================
 # 2. CORE MODULES
 # ==========================================
+if os.path.exists("synapse.mp4"):
+    st.video("synapse.mp4")
+else:
+    st.warning("⚠️ ไม่พบไฟล์วิดีโอ synapse.mp4")
+
 def room_login():
     show_logo()
     col1, col2, col3 = st.columns([1, 1.5, 1])
