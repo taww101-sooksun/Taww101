@@ -15,6 +15,20 @@ from datetime import datetime, date
 import math
 import random
 from streamlit_js_eval import get_geolocation 
+import streamlit as st
+
+# คำสั่งสำหรับซ่อนเมนูและ Footer ของ Streamlit
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
+# เนื้อหาแอปของคุณ
+st.title("ยินดีต้อนรับสู่แอปของผม อยู่นิ้งๆไม่เจ็บตัว")
 
 # ==========================================
 # 0. CONFIG & CSS STYLING (Matrix & Neon Style)
