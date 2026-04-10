@@ -201,10 +201,10 @@ def room_radar(loc):
         st.toast("SIGNAL BROADCASTED TO NETWORK")
 
 def room_reality_scanner():
-   min_date = dt.date(1960, 1, 1) # แก้ไขตามคำขอ: ปี 1960
-   max_date = dt.date.today()
+        min_date = dt.date(1960, 1, 1) # แก้ไขตามคำขอ: ปี 1960
+        max_date = dt.date.today()
     
-    col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
     with col1:
         u1 = st.date_input("AGENT 1 (วันเกิด)", value=dt.date(1996, 8, 17), min_value=min_date, max_value=max_date, format="YYYY/MM/DD")
     with col2:
