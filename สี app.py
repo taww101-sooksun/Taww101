@@ -17,20 +17,29 @@ import random
 from streamlit_js_eval import get_geolocation 
 import streamlit as st
 
-# 1. ตั้งค่า Page ให้เป็น Wide mode เพื่อให้เมนูแผ่เต็มจอ
+# ตั้งค่าหน้ากระดาษ
 st.set_page_config(layout="wide")
 
-# 2. ใช้ CSS ซ่อน Header เดิม และสร้าง Header ใหม่ทับ
-hide_st_style = """
+# CSS สำหรับจัดการติ่งบน-ล่าง และสร้างเมนูใหม่
+hide_all_st_style = """
             <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
+            /* 1. ซ่อนติ่งบน (Header) และปุ่มเมนูเดิม */
             header {visibility: hidden;}
+            #MainMenu {visibility: hidden;}
             
-            /* สร้างแถบเมนูใหม่ด้านบนสุด */
-            .nav-bar {
-                background-color: #262730;
-                padding: 10px;
+            /* 2. ซ่อนติ่งล่าง (Footer) ที่เขียนว่า Made with Streamlit */
+            footer {visibility: hidden;}
+            
+            /* 3. จัดการระยะขอบเพื่อไม่ให้มีช่องว่างขาวๆ */
+            .block-container {
+                padding-top: 2rem;
+                padding-bottom: 0rem;
+            }
+
+            /* 4. สร้างแถบเมนู 5 ข้อของคุณมาบังด้านบนไว้ */
+            .custom-nav {
+                background-color: #0E1117; /* สีพื้นหลังโทน Dark */
+                padding: 15px;
                 position: fixed;
                 top: 0;
                 left: 0;
@@ -38,37 +47,30 @@ hide_st_style = """
                 z-index: 9999;
                 display: flex;
                 justify-content: space-around;
-                border-bottom: 2px solid #4F8BF9;
+                border-bottom: 1px solid #333;
             }
-            .nav-item {
-                color: white;
+            .nav-link {
+                color: #00FF00; /* สีเขียว Glow ตามสไตล์คุณ */
                 text-decoration: none;
-                font-size: 16px;
+                font-size: 14px;
                 font-weight: bold;
-            }
-            /* ดันเนื้อหาแอปเดิลงมาไม่ให้โดนเมนูใหม่ทับ */
-            .main-content {
-                margin-top: 60px;
             }
             </style>
             
-            <div class="nav-bar">
-                <a class="nav-item">📍  GPS  </a>
-                <a class="nav-item">💬  แชต  </a>
-                <a class="nav-item">🎥  คอล  </a>
-                <a class="nav-item">🔢  ทีเด็ด  </a>
-                <a class="nav-item">🎵  mp3  </a>
+            <div class="custom-nav">
+                <div class="nav-link">📍 GPS ระบุตำแหน่ง</div>
+                <div class="nav-link">💬 แชตส่วนตัว</div>
+                <div class="nav-link">🎥 วีดีโอคอล</div>
+                <div class="nav-link">🔢 ระบุค่าตัวเลขของวัน</div>
+                <div class="nav-link">🎵 เพลง mp3</div>
             </div>
             """
-st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# 3. ใส่เนื้อหาแอปใน div ที่เราเว้นระยะไว้
-st.markdown('<div class="main-content">', unsafe_allow_html=True)
+st.markdown(hide_all_st_style, unsafe_allow_html=True)
 
-st.title("SYNAPSEอยู่นิ้งๆไม่เจ็บตัว")
-st.write("Thai 🇹🇭")
-
-st.markdown('</div>', unsafe_allow_html=True)
+# ส่วนเนื้อหาแอปของคุณ
+st.write("## ระบบทำงานปกติ")
+st.write("ตอนนี้ทั้งติ่งบนและติ่งล่างถูกซ่อนเรียบร้อยแล้วครับ")
 
 
 # ==========================================
