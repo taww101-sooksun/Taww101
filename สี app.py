@@ -464,7 +464,7 @@ def main():
     with tabs[1]: room_radar(loc)
     with tabs[2]: room_reality_scanner()
     with tabs[3]: room_secure_chat()
-    with tabs[4]: room_voice_call()
+    with tabs[4]: room_audio_call()
     with tabs[5]: room_music()
 
 if __name__ == "__main__":
