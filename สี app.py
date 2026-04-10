@@ -74,7 +74,7 @@ def apply_custom_background():
         div.stButton > button {{
             background: linear-gradient(145deg, #000, #222) !important;
             color: white !important;
-            border: 2px solid {theme} !important;
+            border: 4px solid {theme} !important;
             border-radius: 15px !important;
             padding: 10px 25px !important;
             font-weight: bold !important;
@@ -102,7 +102,7 @@ def show_logo():
                 data = base64.b64encode(f.read()).decode()
             st.markdown(f"""
                 <div style="text-align:center; filter: drop-shadow(0 0 15px {theme}); margin-bottom: 25px;">
-                    <img src="data:image/png;base64,{data}" style="width:100%; max-width:240px; border-radius:20px;">
+                    <img src="data:image/png;base64,{data}" style="width:100%; max-width:150px; border-radius:20px;">
                 </div>
             """, unsafe_allow_html=True)
         else:
@@ -214,7 +214,7 @@ def room_radar(loc):
                   tooltip="MY POSITION").add_to(m)
     
     # วงรัศมี
-    folium.Circle([my_lat, my_lon], radius=500, color="#00ff41", fill=True, opacity=0.1).add_to(m)
+    folium.Circle([my_lat, my_lon], radius=400, color="#00ff41", fill=True, opacity=0.1).add_to(m)
 
     # ดึงพิกัด AGENTS อื่นๆ
     try:
@@ -273,7 +273,7 @@ def room_secure_chat():
     
     if target:
         rid = "_".join(sorted([st.session_state.user, target]))
-        chat_container = st.container(height=400, border=True)
+        chat_container = st.container(height=25000, border=True)
         
         # Load Messages
         chats = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(25).get()
