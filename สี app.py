@@ -17,21 +17,58 @@ import random
 from streamlit_js_eval import get_geolocation 
 import streamlit as st
 
-import streamlit as st
+# 1. ตั้งค่า Page ให้เป็น Wide mode เพื่อให้เมนูแผ่เต็มจอ
+st.set_page_config(layout="wide")
 
-# ปรับชื่อเมนูให้ดูเป็นเพื่อนกันมากขึ้น
-menu = st.sidebar.radio(
-    "เมนูหลัก",
-    ("พิกัดตอนนี้", "คุยกันหน่อย", "เปิดกล้อง", "ข้อมูลวันนี้", "ฟังเพลงกัน")
-)
+# 2. ใช้ CSS ซ่อน Header เดิม และสร้าง Header ใหม่ทับ
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            
+            /* สร้างแถบเมนูใหม่ด้านบนสุด */
+            .nav-bar {
+                background-color: #262730;
+                padding: 10px;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                z-index: 9999;
+                display: flex;
+                justify-content: space-around;
+                border-bottom: 2px solid #4F8BF9;
+            }
+            .nav-item {
+                color: white;
+                text-decoration: none;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            /* ดันเนื้อหาแอปเดิลงมาไม่ให้โดนเมนูใหม่ทับ */
+            .main-content {
+                margin-top: 60px;
+            }
+            </style>
+            
+            <div class="nav-bar">
+                <a class="nav-item">📍 GPS ระบุตำแหน่ง</a>
+                <a class="nav-item">💬 แชตส่วนตัว</a>
+                <a class="nav-item">🎥 วีดีโอคอล</a>
+                <a class="nav-item">🔢 ข้อมูลตัวเลขวัน</a>
+                <a class="nav-item">🎵 เพลง mp3</a>
+            </div>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
-if menu == "พิกัดตอนนี้":
-    st.subheader("📍 ระบุตำแหน่งพิกัดของคุณ")
-    # ใส่โค้ด GPS จริงๆ ของคุณตรงนี้
-    
-elif menu == "ฟังเพลงกัน":
-    st.subheader("🎵 เครื่องเล่นเพลงส่วนตัว")
-    # ใส่โค้ดเพลง mp3 ตรงนี้
+# 3. ใส่เนื้อหาแอปใน div ที่เราเว้นระยะไว้
+st.markdown('<div class="main-content">', unsafe_allow_html=True)
+
+st.title("ยินดีต้อนรับสู่แอป")
+st.write("ตอนนี้แถบเมนูด้านบนถูกแทนที่ด้วย 5 หัวข้อที่คุณต้องการแล้วครับ")
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ==========================================
