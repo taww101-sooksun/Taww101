@@ -270,46 +270,50 @@ def room_radar(loc):
 
 import datetime # อย่าลืมเช็คว่ามี import นี้ด้านบนสุดของไฟล์ด้วยนะครับ
 
+# แก้ไขเฉพาะในส่วนห้อง SCANNER
 def room_reality_scanner():
     st.subheader("🛰️ ตรวจสอบพิกัดรหัสคู่ขนาน")
     
-    # กำหนดขอบเขตวันที่: เริ่มตั้งแต่ 1 มกราคม 1960 จนถึงปัจจุบัน
-    min_date = datetime.date(1960, 1, 1)
-    max_date = datetime.date.today()
+    # --- ส่วนที่แก้ไข: กำหนดค่าปี 1960 เป็นค่าต่ำสุด ---
+    min_date_val = dt_module.date(1960, 1, 1)
+    max_date_val = dt_module.date.today()
     
     col1, col2 = st.columns(2)
     
     with col1:
-        # AGENT 1: ตั้งค่าให้กรอกปี 1960 ได้ และผู้ใช้สามารถพิมพ์ตัวเลขลงไปได้เลย
+        # AGENT 1: รองรับปี 1960 และให้พิมพ์กรอกเองได้
         u1_date = st.date_input(
             "AGENT 1 (วันเกิด)", 
-            value=datetime.date(1996, 8, 17), # ค่าเริ่มต้น (17 ส.ค. 2539 ตามข้อมูลท่าน)
-            min_value=min_date, 
-            max_value=max_date,
-            format="YYYY/MM/DD", # รูปแบบการแสดงผล
-            help="ท่านสามารถคลิกที่ปีเพื่อเลือก หรือพิมพ์ตัวเลขลงไปได้โดยตรง"
+            value=dt_module.date(1996, 8, 17), 
+            min_value=min_date_val, 
+            max_value=max_date_val,
+            format="YYYY/MM/DD",
+            help="คลิกที่ปีเพื่อพิมพ์เลข 1960 หรือปีอื่นๆ ได้ทันที"
         )
         
     with col2:
-        # AGENT 2: ตั้งค่าเหมือนกัน
+        # AGENT 2: รองรับปี 1960 เช่นกัน
         u2_date = st.date_input(
             "AGENT 2 (วันเกิด)", 
-            value=max_date, 
-            min_value=min_date, 
-            max_value=max_date,
+            value=max_date_val, 
+            min_value=min_date_val, 
+            max_value=max_date_val,
             format="YYYY/MM/DD"
         )
 
+    # ปุ่มคำนวณแบบขอบหนาจัดเต็ม
     if st.button("COMPUTE GAP", use_container_width=True):
-        # ส่วนคำนวณเดิมของท่าน
         r1 = get_reality_logic(u1_date)['res']
         r2 = get_reality_logic(u2_date)['res']
         gap = abs(r1 - r2)
         
         st.markdown(f"""
-            <div class="logic-box" style="text-align:center;">
+            <div class="lyrics-box" style="border-color:#00ff41;">
                 <h3 style="color:#00ff41;">RESULT GAP: {gap:.4f}</h3>
+                <hr style="border-color:#00ff41; opacity:0.3;">
                 <p>CODE 1: {r1} | CODE 2: {r2}</p>
+                <small>สภาวะ 1: {get_reality_logic(u1_date)['phase']}</small><br>
+                <small>สภาวะ 2: {get_reality_logic(u2_date)['phase']}</small>
             </div>
         """, unsafe_allow_html=True)
 
