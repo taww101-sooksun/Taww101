@@ -28,7 +28,7 @@ hide_st_style = """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # เนื้อหาแอปของคุณ
-st.title("ยินดีต้อนรับสู่แอปของผม อยู่นิ้งๆไม่เจ็บตัว")
+st.title("SYNAPSE อยู่นิ้งๆไม่เจ็บตัว")
 
 # ==========================================
 # 0. CONFIG & CSS STYLING (Matrix & Neon Style)
