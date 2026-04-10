@@ -25,73 +25,37 @@ def apply_custom_background():
     theme = st.session_state.get('theme_color', "#1408BF")
     st.markdown(f"""
         <style>
-        /* Rainbow Flow Background */
-        .stApp {{
-            background: linear-gradient(270deg, #AFEEEE, #FF7F50, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-            background-size: 1600% 1600%;
-            animation: RainbowFlow 60s ease infinite;
-        }}
-        @keyframes RainbowFlow {{
-            0%{{background-position:0% 50%}}
-            50%{{background-position:100% 50%}}
-            100%{{background-position:0% 50%}}
-        }}
-
-        /* Neon Glass Tabs */
+        /* ส่วนของ Tabs - ขอบใหญ่ขึ้นไฟฟุ้งขึ้น */
         .stTabs [data-baseweb="tab-list"] {{
             background-color: rgba(0, 0, 0, 0.8) !important;
-            border-radius: 20px !important;
-            padding: 10px !important;
-            border: 2px solid {theme} !important;
-            box-shadow: 0 0 20px {theme}88;
+            border-radius: 25px !important;
+            padding: 12px !important;
+            border: 6px solid {theme} !important; /* <--- ปรับขอบใหญ่ตรงนี้ */
+            box-shadow: 0 0 40px {theme};         /* <--- ปรับไฟฟุ้งตรงนี้ */
             margin: 15px 0px !important;
         }}
-        .stTabs [data-baseweb="tab"] {{
-            color: #888 !important;
-            font-weight: bold !important;
-            transition: 0.3s;
-        }}
-        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
-            color: #FFF !important;
-            background-color: {theme}55 !important;
-            border-radius: 12px !important;
-            box-shadow: 0 0 15px {theme} !important;
-        }}
-
-        /* Matrix Style Boxes */
-        .logic-box {{
-            background: rgba(0, 10, 0, 0.85);
-            border: 2px solid #00ff41;
-            border-radius: 15px;
-            padding: 20px;
-            color: #00ff41;
-            font-family: 'Courier New', Courier, monospace;
-            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
-            margin-bottom: 20px;
-        }}
-
-        /* 3D Neon Buttons */
+        
+        /* ส่วนของปุ่ม - ขอบหนาขึ้น */
         div.stButton > button {{
             background: linear-gradient(145deg, #000, #222) !important;
             color: white !important;
-            border: 4px solid {theme} !important;
-            border-radius: 15px !important;
-            padding: 10px 25px !important;
-            font-weight: bold !important;
-            filter: drop-shadow(0 0 8px {theme});
+            border: 5px solid {theme} !important; /* <--- ขอบปุ่มหนาๆ */
+            border-radius: 20px !important;
+            filter: drop-shadow(0 0 15px {theme}); /* <--- ไฟนูนๆ */
             transition: all 0.3s ease;
         }}
-        div.stButton > button:hover {{
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 0 5px 20px {theme};
+
+        /* ส่วนของกล่องคำนวณ - ขอบเขียวหนาๆ */
+        .logic-box {{
+            background: rgba(0, 10, 0, 0.9);
+            border: 5px solid #00ff41;             /* <--- ขอบหนาตรงนี้ */
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.6);
         }}
-        
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {{ width: 8px; }}
-        ::-webkit-scrollbar-track {{ background: #000; }}
-        ::-webkit-scrollbar-thumb {{ background: {theme}; border-radius: 10px; }}
         </style>
     """, unsafe_allow_html=True)
+
 
 def show_logo():
     theme = st.session_state.get('theme_color', "#1408BF")
