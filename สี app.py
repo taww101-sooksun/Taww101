@@ -18,55 +18,72 @@ from streamlit_js_eval import get_geolocation
 
 import streamlit as st
 
-# 1. ตั้งค่าพื้นฐาน
+# 1. ตั้งค่าหน้ากระดาษ
 st.set_page_config(layout="wide")
 
-# 2. ตัวเช็คสถานะสี (Session State)
-if 'theme' not in st.session_state:
-    st.session_state.theme = 'Neon Green'
+# 2. สร้างตัวเก็บสถานะแยกกัน 3 อย่าง (ถ้ายังไม่มีให้ตั้งค่าเริ่มต้น)
+if 'bg_color' not in st.session_state:
+    st.session_state.bg_color = "#0E1117"  # เริ่มต้นดำ
+if 'text_color' not in st.session_state:
+    st.session_state.text_color = "#00FF00"  # เริ่มต้นเขียว
+if 'border_color' not in st.session_state:
+    st.session_state.border_color = "#4F8BF9"  # เริ่มต้นฟ้า
 
-# 3. ฟังก์ชันสำหรับกดเปลี่ยนสี
-def change_theme(name):
-    st.session_state.theme = name
-
-# --- ส่วนของการเลือกสี (วางไว้บนหน้าจอหลักเลย) ---
-st.write("### 🎨 เลือกเปลี่ยนสีที่นี่:")
+# 3. ส่วนของปุ่มกด (แยกการทำงาน 3 ชุด)
+st.write("### 🛠️ แผงควบคุมสีแยกส่วน")
 col1, col2, col3 = st.columns(3)
+
 with col1:
-    st.button("🟢 Neon Green", on_click=change_theme, args=('Neon Green',), use_container_width=True)
+    st.write("1. เปลี่ยนสีพื้นหลัง")
+    if st.button("พื้นหลัง แดงเข้ม"): st.session_state.bg_color = "#1A0000"
+    if st.button("พื้นหลัง น้ำเงินเข้ม"): st.session_state.bg_color = "#000511"
+    if st.button("พื้นหลัง ดำสนิท"): st.session_state.bg_color = "#000000"
+
 with col2:
-    st.button("🔴 Cyber Red", on_click=change_theme, args=('Cyber Red',), use_container_width=True)
+    st.write("2. เปลี่ยนสีตัวหนังสือ")
+    if st.button("อักษร เขียวเรืองแสง"): st.session_state.text_color = "#00FF00"
+    if st.button("อักษร แดงสด"): st.session_state.text_color = "#FF0000"
+    if st.button("อักษร ขาวบริสุทธิ์"): st.session_state.text_color = "#FFFFFF"
+
 with col3:
-    st.button("🔵 Midnight Blue", on_click=change_theme, args=('Midnight Blue',), use_container_width=True)
+    st.write("3. เปลี่ยนสีขอบ/เมนู")
+    if st.button("ขอบ เหลืองทอง"): st.session_state.border_color = "#FFD700"
+    if st.button("ขอบ ชมพูนีออน"): st.session_state.border_color = "#FF00FF"
+    if st.button("ขอบ ฟ้าใส"): st.session_state.border_color = "#00D4FF"
 
-# 4. กำหนดค่าสีตามที่เลือก
-if st.session_state.theme == "Neon Green":
-    bg_color, text_color = "#0E1117", "#00FF00"
-elif st.session_state.theme == "Cyber Red":
-    bg_color, text_color = "#1A0000", "#FF0033"
-else:
-    bg_color, text_color = "#000511", "#00D4FF"
-
-# 5. ใส่ CSS (ซ่อนติ่ง + เปลี่ยนสี)
-st.markdown(f"""
+# 4. นำค่าจากปุ่มไปใส่ใน CSS
+custom_style = f"""
     <style>
+    /* ซ่อนติ่งบน-ล่าง */
     header, footer, .stAppToolbar {{visibility: hidden; display: none;}}
-    .stApp {{ background-color: {bg_color}; }}
-    * {{ color: {text_color} !important; }}
-    
+    button[title="Manage app"] {{display: none;}}
+
+    /* เปลี่ยนสีพื้นหลัง */
+    .stApp {{
+        background-color: {st.session_state.bg_color} !important;
+    }}
+
+    /* เปลี่ยนสีตัวหนังสือ */
+    html, body, [data-testid="stWidgetLabel"], p, h1, h2, h3, .stMarkdown {{
+        color: {st.session_state.text_color} !important;
+    }}
+
     /* แถบเมนู 5 ข้อด้านบน */
     .custom-nav {{
-        background-color: {bg_color};
+        background-color: {st.session_state.bg_color};
         padding: 10px;
         position: fixed;
         top: 0; left: 0; width: 100%;
         z-index: 9999;
         display: flex;
         justify-content: space-around;
-        border-bottom: 2px solid {text_color};
+        border-bottom: 3px solid {st.session_state.border_color}; /* สีขอบเปลี่ยนตามปุ่มที่ 3 */
     }}
-    .nav-link {{ color: {text_color}; font-size: 12px; font-weight: bold; text-align: center; }}
-    .main-content {{ margin-top: 80px; }}
+    .nav-link {{
+        color: {st.session_state.text_color}; /* สีตัวหนังสือเปลี่ยนตามปุ่มที่ 2 */
+        font-size: 12px; font-weight: bold; text-align: center;
+    }}
+    .main-content {{ margin-top: 100px; }}
     </style>
     
     <div class="custom-nav">
@@ -76,12 +93,15 @@ st.markdown(f"""
         <div class="nav-link">🔢 เลข<br>ของวัน</div>
         <div class="nav-link">🎵 เพลง<br>mp3</div>
     </div>
-""", unsafe_allow_html=True)
+"""
 
+st.markdown(custom_style, unsafe_allow_html=True)
+
+# 5. แสดงผลเนื้อหา
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
-st.title(f"โหมดปัจจุบัน: {st.session_state.theme}")
+st.title("SYNAPSE CUSTOMIZER")
+st.info(f"ตอนนี้: พื้นหลัง {st.session_state.bg_color} | ตัวหนังสือ {st.session_state.text_color} | ขอบ {st.session_state.border_color}")
 st.markdown('</div>', unsafe_allow_html=True)
-
 
 # ==========================================
 # 0. CONFIG & CSS STYLING (Matrix & Neon Style)
