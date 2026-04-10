@@ -147,19 +147,7 @@ st.title("🛰️ SYNAPSE: Reality Extractor")
 # ... (โค้ดส่วนที่เหลือของท่าน)
 
     
-        scol1t.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; letter-spacing: 5px;'>SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
-        tab_l, tab_r = st.tabs(["🔑 UNLOCK SYSTEM", "📝 REGISTER AGENT"])
-        with tab_l:
-            with st.form("login"):
-                uid = st.text_input("AGENT ID ใสชื่อผู้ใช่")
-                pw = st.text_input("PASSWORD", type="password")
-                if st.form_submit_button("ACCESS GRANTED", use_container_width=True):
-                    user_data = db.reference(f'users/{uid}').get()
-                    if user_data and user_data.get('pw') == pw:
-                        st.session_state.user = uid
-                        st.session_state.logged_in = True
-                        st.rerun()
-                    else: st.error("รหัสผ่านไม่ถูกต้อง")
+        
         with tab_r:
             with st.form("reg"):
                 new_id = st.text_input("NEW AGENT ID")
