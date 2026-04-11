@@ -16,6 +16,9 @@ import math
 import random
 from streamlit_js_eval import get_geolocation 
 import streamlit as st
+import streamlit as st
+import datetime  # ต้องมีบรรทัดนี้
+from datetime import date # หรือใช้แบบนี้ร่วมด้วย
 
 # 1. ตั้งค่าหน้าจอ (ต้องอยู่บนสุดเสมอ)
 st.set_page_config(layout="wide", page_title="SYNAPSE")
