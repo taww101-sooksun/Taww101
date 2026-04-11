@@ -146,31 +146,7 @@ def apply_custom_background():
         }}
         </style>
     """, unsafe_allow_html=True)
-
-
-        /* ตัวคุมการวิ่งของสี */
-        @keyframes RainbowFlow {{
-            0%{{background-position:0% 50%}}
-            50%{{background-position:100% 50%}}
-            100%{{background-position:0% 50%}}
-        }}
-
-        /* ปรับสีพื้นหลังของ Sidebar ให้โปร่งแสงเพื่อให้เห็นพื้นหลังวิ่งๆ */
-        [data-testid="stSidebar"] {{
-            background-color: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-        }}
-
-        /* ปรับพื้นหลังของ Tabs ให้ดูอ่านง่ายขึ้น */
-        .stTabs [data-baseweb="tab-list"] {{
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 10px;
-            padding: 5px;
-        }}
-        </style>
-        """,
-        unsafe_allow_html=True
-
+    
 def show_logo():
     theme = st.session_state.get('theme_color', "#1408BF")
     c1, c2, c3 = st.columns([1, 1, 1])
