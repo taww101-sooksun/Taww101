@@ -108,7 +108,7 @@ def lobby_music():  # เปลี่ยนจาก room_music เป็น lob
     if col3.button("⏭️ เพลงถัดไป") or result == 'next':
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
-    else
+    
 # ==========================================
 # 0. CONFIG & CSS STYLING (Matrix & Neon Style)
 # ==========================================
