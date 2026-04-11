@@ -1,4 +1,8 @@
 import streamlit as st
+import datetime # บรรทัดนี้ห้ามขาด!
+from datetime import datetime, date # เพิ่มอันนี้เข้าไปด้วยเพื่อความชัวร์
+
+import streamlit as st
 import os 
 import time
 import base64
@@ -149,13 +153,14 @@ def init_system():
             cred = credentials.Certificate(fb_creds)
             firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
         except: pass
-
 def get_local_time(lat, lon):
     try:
-        tf = TimezoneFinder()
-        tz_str = tf.timezone_at(lat=lat, lng=lon)
-        return datetime.now(pytz.timezone(tz_str)) if tz_str else datetime.now()
-    except: return datetime.now()
+        # ... โค้ดส่วนคำนวณเวลาของคุณ ...
+        pass 
+    except: 
+        # แก้ตรงนี้ให้เรียกใช้ผ่าน library ให้ชัดเจน
+        return datetime.now() 
+
 
 # ==========================================
 # 2. CORE MODULES
