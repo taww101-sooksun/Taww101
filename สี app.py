@@ -200,9 +200,7 @@ else:
     st.info("🛰️ ระบบ Standby... กรุณากรอกข้อมูลวันเกิดเพื่อเริ่มการสแกนรหัสชีวิต")
 
 st.divider()
-    st.video("
-
-
+    
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", initial_sidebar_state="collapsed")
 
 def apply_custom_background():
