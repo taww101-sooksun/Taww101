@@ -15,7 +15,42 @@ from datetime import datetime, date
 import math
 import random
 from streamlit_js_eval import get_geolocation 
+# --- จุดสำคัญ: ต้อง Import แบบนี้เท่านั้น ---
+from streamlit_js_eval import get_geolocation 
+def apply_custom_background():
+    st.markdown(
+        f"""
+        <style>
+        /* จัดการพื้นหลังหลักของแอป */
+        .stApp {{
+            background: linear-gradient(270deg, #AFEEEE, #FF7F50, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
+            background-size: 1600% 1600%;
+            animation: RainbowFlow 60s ease infinite;
+        }}
 
+        /* ตัวคุมการวิ่งของสี */
+        @keyframes RainbowFlow {{
+            0%{{background-position:0% 50%}}
+            50%{{background-position:100% 50%}}
+            100%{{background-position:0% 50%}}
+        }}
+
+        /* ปรับสีพื้นหลังของ Sidebar ให้โปร่งแสงเพื่อให้เห็นพื้นหลังวิ่งๆ */
+        [data-testid="stSidebar"] {{
+            background-color: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }}
+
+        /* ปรับพื้นหลังของ Tabs ให้ดูอ่านง่ายขึ้น */
+        .stTabs [data-baseweb="tab-list"] {{
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 5px;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 # ==========================================
 # 0. CONFIG & CSS STYLING (Matrix & Neon Style)
 # ==========================================
