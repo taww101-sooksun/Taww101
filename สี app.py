@@ -51,8 +51,8 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- หลังจากนี้คือโค้ดส่วนที่เหลือของคุณ ---
-st.write("ระบบ SYNAPSE พร้อมใช้งาน (ไม่มีติ่งกวนใจแล้วครับ)")
+# --- thai 🇹🇭 ---
+st.write("ระบบ SYNAPSE พร้อมใช้งาน (อยู่นิ้งๆไม่เจ็บตัว)")
 
 # ==========================================
 # 0. CONFIG & CSS STYLING (Matrix & Neon Style)
