@@ -52,7 +52,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- thai 🇹🇭 ---
-st.write("ระบบ SYNAPSE พร้อมใช้งาน (อยู่นิ้งๆไม่เจ็บตัว)")
+st.write("ระบบ SYNAPSE อยู่นิ้งๆไม่เจ็บตัว app พร้อมใช้งาน (THAI 🇹🇭)")
 
 # ==========================================
 # 0. CONFIG & CSS STYLING (Matrix & Neon Style)
