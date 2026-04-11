@@ -599,8 +599,6 @@ def main():
     with tabs[4]: room_voice_call()
     with tabs[5]: room_music()
 
-else:
-    st.warning("⚠️ ไม่พบไฟล์วิดีโอ synapse.mp4")
 # ==========================================
 # 1. UTILS & CALCULATION LOGIC
 # ==========================================
