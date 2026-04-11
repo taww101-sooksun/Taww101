@@ -55,7 +55,10 @@ def apply_custom_background():
         """,
         unsafe_allow_html=True
     )
-   if os.path.exists
+if os.path.exists("synapse.mp4"):
+    st.video("synapse.mp4")
+else:
+    st.warning("⚠️ ไม่พบไฟล์วิดีโอ synapse.mp4")
 def lobby_music():  # เปลี่ยนจาก room_music เป็น lobby_music (เพลงหน้าล็อบบี้)
     st.subheader("🎧 พักฟังเพลงก่อนลุยต่อ (Lobby Station)")
     
