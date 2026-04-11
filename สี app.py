@@ -19,7 +19,7 @@ from streamlit_js_eval import get_geolocation
 # --- 1. SETTING & CUSTOM NEON UI ---
 st.set_page_config(page_title="SYNAPSE - Ultra Control", layout="wide")
 
-    <style>
+
     /* พื้นหลังแบบล้ำสมัย */
     .stApp {
         background: radial-gradient(circle at top right, #0a2342, #0e1117);
