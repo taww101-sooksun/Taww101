@@ -418,7 +418,7 @@ def room_music():
     if c3.button("⏭️ NEXT", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(files)
         st.rerun()
-    # --- ห้องที่ 6: SYSTEM THEME CONTROL ---
+  def room_theme() 
     with tabs[6]:
         st.markdown(f"""
             <div style='background: rgba(0,0,0,0.6); padding: 25px; border-radius: 20px; border: 2px solid {st.session_state.theme_color}; box-shadow: 0 0 20px {st.session_state.theme_color};'>
@@ -503,6 +503,6 @@ def main():
     with tabs[3]: room_secure_chat()
     with tabs[4]: room_audio_call()
     with tabs[5]: room_music()
-    
+    with tabs[6]: room_theme()
 if __name__ == "__main__":
     main()
