@@ -168,6 +168,82 @@ st.markdown(f"""
 
 # ส่วนแสดงผลเนื้อหาอื่นๆ (ถ้ามี)
 # st.write("## ระบบ SYNAPSE: พร้อมใช้งาน")
+import streamlit as st
+
+# 1. ตั้งค่าพื้นฐาน (ถ้ายังไม่ได้ตั้ง)
+# st.set_page_config(layout="wide")
+
+# 2. ตัวเก็บสถานะสี
+if 'my_color' not in st.session_state:
+    st.session_state.my_color = '#620909' # สีเริ่มต้นแดงเข้มแบบในรูป
+
+# 3. ส่วนโค้ดที่รวม HTML/CSS และปุ่มเลือกสีจริงเข้าด้วยกัน
+# ผมปรับให้ .color-gradient-mock เป็นปุ่มที่กดได้จริง
+
+st.markdown(f"""
+    <style>
+    /* สไตล์ของแผงเลือกสี */
+    .color-section {{
+        background-color: #2D333B;
+        padding: 15px;
+        border-radius: 10px;
+        width: 300px;
+    }}
+    .system-theme-text {{
+        color: white;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }}
+    .color-square {{
+        width: 40px;
+        height: 40px;
+        background-color: {st.session_state.my_color};
+        border-radius: 5px;
+        margin-bottom: 10px;
+    }}
+    .color-gradient-mock {{
+        width: 100%;
+        height: 120px;
+        /* ไล่สีจากขาวไปใส และ ดำไปใส ซ้อนบนสีหลัก */
+        background: 
+            linear-gradient(to bottom, white 0%, transparent 50%, black 100%),
+            linear-gradient(to right, transparent, {st.session_state.my_color});
+        background-color: {st.session_state.my_color};
+        border-radius: 8px;
+        position: relative;
+        cursor: pointer;
+    }}
+    .color-pointer {{
+        width: 15px;
+        height: 15px;
+        border: 2px solid white;
+        border-radius: 50%;
+        position: absolute;
+        top: 50%;
+        left: 70%;
+        background-color: {st.session_state.my_color};
+    }}
+    </style>
+    
+    <div class="color-section">
+        <div class="system-theme-text">🎨 SYSTEM THEME (Neon)</div>
+        <div class="color-square"></div>
+        <div class="color-gradient-mock">
+            <div class="color-pointer"></div>
+        </div>
+    </div>
+""", unsafe_allow_html=True)
+
+# 4. ปุ่มเลือกสีจริง (วางไว้ใต้แผงเพื่อให้กดเปลี่ยนค่าได้)
+new_color = st.color_picker("จิ้มตรงนี้เพื่อเปลี่ยนสีในแผงข้างบน", st.session_state.my_color)
+
+# ถ้ามีการเปลี่ยนสี ให้จดจำค่าและ Refresh หน้าจอ
+if new_color != st.session_state.my_color:
+    st.session_state.my_color = new_color
+    st.rerun()
+
+# 5. แสดงรหัสสี (Hex Code) แบบเท่ๆ
+st.code(f"COLOR CODE: {st.session_state.my_color}")
 
 
 def apply_custom_background():
