@@ -16,7 +16,6 @@ import math
 import random
 from streamlit_js_eval import get_geolocation 
 
-if os.path.exists
 # --- 1. SETTING & CUSTOM NEON UI ---
 st.set_page_config(page_title="SYNAPSE - Ultra Control", layout="wide")
 
