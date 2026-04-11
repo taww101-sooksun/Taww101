@@ -17,6 +17,8 @@ import random
 from streamlit_js_eval import get_geolocation 
 import streamlit as st
 
+import streamlit as st
+
 # 1. ตั้งค่าหน้าจอ
 st.set_page_config(layout="wide", page_title="SYNAPSE")
 
@@ -81,6 +83,7 @@ if new_color != st.session_state.main_color:
 
 # เปลี่ยนสีพื้นหลัง
 st.markdown(f"<style>.stApp {{background-color: {st.session_state.main_color} !important;}}</style>", unsafe_allow_html=True)
+
 
 def apply_custom_background():
     theme = st.session_state.get('theme_color', "#1408BF")
