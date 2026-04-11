@@ -504,5 +504,5 @@ def main():
     with tabs[4]: room_audio_call()
     with tabs[5]: room_music()
     
-    if __name__ == "__main__":
+if __name__ == "__main__":
     main()
