@@ -153,7 +153,7 @@ def room_core(loc):
     
     current_time = get_local_time(lat, lon)
     st.markdown(f"""
-        <div style="text-align:center; padding:40px; border:4px solid {st.session_state.theme_color}; border-radius:25px; background:rgba(0,0,0,0.6); box-shadow: 0 0 30px {st.session_state.theme_color}88;">
+        <div style="text-align:center; padding:10px; border:4px solid {st.session_state.theme_color}; border-radius:10px; background:rgba(0,0,0,0.6); box-shadow: 0 0 10px {st.session_state.theme_color}88;">
             <h1 style="font-size:6em; color:{st.session_state.theme_color}; margin:0; font-family: 'Courier New'; text-shadow: 0 0 20px {st.session_state.theme_color};">
                 {current_time.strftime('%H:%M:%S')}
             </h1>
@@ -194,7 +194,7 @@ def room_radar(loc):
                     folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
     except: pass
 
-    st_folium(m, width="100%", height=450)
+    st_folium(m, width="100%", height=300)
     
     if st.button("📡 BROADCAST MY SIGNAL", use_container_width=True):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
