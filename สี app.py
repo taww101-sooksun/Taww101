@@ -379,75 +379,7 @@ def room_music():
     if c2.button("🔄 REFRESH", use_container_width=True): st.rerun()
     if c3.button("⏭️ NEXT", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(files)
- def room_music():
-    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station)อยู่นิ้งๆไม่เจ็บตัว")
-    
-    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในระบบ")
-        return
-
-    # ตรวจสอบ index เพลง
-    if 'song_index' not in st.session_state:
-        st.session_state.song_index = 0
-    if st.session_state.song_index >= len(music_files):
-        st.session_state.song_index = 0
-
-    current_song = music_files[st.session_state.song_index]
-    
-    st.info(f"🎵 กำลังเตรียมเล่น: {current_song}")
-
-    # ดึงไฟล์เพลง
-    with open(current_song, "rb") as f:
-        audio_bytes = f.read()
-    
-    # 1. ใช้ Native Player ของ Streamlit
-    # หมายเหตุ: autoplay จะทำงานก็ต่อเมื่อ User เคยคลิกหน้าเว็บนี้แล้วอย่างน้อย 1 ครั้ง
-    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
-
-    # 2. JS สำหรับตรวจจับเพลงจบแล้วกด Next อัตโนมัติ
-    components.html(
-        """
-        <script>
-        // ฟังก์ชันตรวจหา Audio Element ใน Parent Window
-        const autoNext = () => {
-            const audios = window.parent.document.querySelectorAll('audio');
-            audios.forEach(audio => {
-                if (!audio.dataset.listener) {
-                    audio.dataset.listener = "true";
-                    audio.onended = () => {
-                        const buttons = window.parent.document.querySelectorAll('button');
-                        for (let btn of buttons) {
-                            if (btn.innerText.includes('⏭️ Next')) {
-                                btn.click();
-                                break;
-                            }
-                        }
-                    };
-                }
-            });
-        };
-        // รันทุกๆ 2 วินาทีเพื่อความชัวร์
-        setInterval(autoNext, 200);
-        </script>
-        """,
-        height=0,
-    )
-
-    col1, col2, col3 = st.columns(3)
-    if col1.button("⏮️ Back", use_container_width=True):
-        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
-        st.rerun()
-    
-    if col2.button("🔄 Reload / Unlock Audio", use_container_width=True):
-        st.rerun()
-
-    if col3.button("⏭️ Next", use_container_width=True):
-        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
-        st.rerun()
-
-    st.caption("💡 หากเพลงไม่เล่นอัตโนมัติ ให้กดปุ่ม 'Reload / Unlock Audio' เพื่ออนุญาตระบบเสียง")
-
+ 
 
 def room_secure_chat():
     st.subheader("💬 SECURE CHAT📝อยู่นิ้งๆไม่เจ็บตัว")
