@@ -147,7 +147,6 @@ def apply_custom_background():
         </style>
     """, unsafe_allow_html=True)
 
-        }}
 
         /* ตัวคุมการวิ่งของสี */
         @keyframes RainbowFlow {{
