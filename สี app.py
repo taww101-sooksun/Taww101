@@ -496,7 +496,7 @@ def main():
     with tabs[3]: room_secure_chat()
     with tabs[4]: room_audio_call()
     with tabs[5]: room_music()
-    
+    with tabs[6]: room_design()
     # --- ห้องที่ 6: DESIGN CENTER (ห้องเปลี่ยนสี) ---
     with tabs[6]:
         st.markdown(f"### 🎨 SYNAPSE DESIGN CENTER")
