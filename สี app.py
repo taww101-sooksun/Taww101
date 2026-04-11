@@ -18,69 +18,57 @@ from streamlit_js_eval import get_geolocation
 
 import streamlit as st
 
-# 1. ตั้งค่าหน้ากระดาษ
+# 1. ตั้งค่าหน้าจอ
 st.set_page_config(layout="wide")
 
-# 2. สร้างตัวเก็บสถานะแยกกัน 3 อย่าง (ถ้ายังไม่มีให้ตั้งค่าเริ่มต้น)
-if 'bg_color' not in st.session_state:
-    st.session_state.bg_color = "#0E1117"  # เริ่มต้นดำ
-if 'text_color' not in st.session_state:
-    st.session_state.text_color = "#00FF00"  # เริ่มต้นเขียว
-if 'border_color' not in st.session_state:
-    st.session_state.border_color = "#4F8BF9"  # เริ่มต้นฟ้า
+# 2. สร้างส่วนเลือกสี (Color Pickers)
+st.sidebar.header("🎨 ปรับแต่งสีด้วยตัวเอง")
 
-# 3. ส่วนของปุ่มกด (แยกการทำงาน 3 ชุด)
-st.write("### 🛠️ แผงควบคุมสีแยกส่วน")
+# ตัวเลือกที่ 1: เลือกสีพื้นหลัง
+bg_input = st.sidebar.color_picker('1. เลือกสีพื้นหลัง', '#0E1117')
+
+# ตัวเลือกที่ 2: เลือกสีตัวหนังสือ
+text_input = st.sidebar.color_picker('2. เลือกสีตัวหนังสือ', '#00FF00')
+
+# ตัวเลือกที่ 3: เลือกสีขอบเมนู
+border_input = st.sidebar.color_picker('3. เลือกสีขอบเมนู', '#FF00FF')
+
+# 3. แสดงรหัสสีให้คุณก๊อปปี้ไปใช้ในโค้ด (ตามที่คุณต้องการ)
+st.write("### 📋 รหัสสีที่คุณเลือก (ก๊อปปี้ไปใช้ได้เลย)")
 col1, col2, col3 = st.columns(3)
+col1.code(f"พื้นหลัง: {bg_input}")
+col2.code(f"ตัวหนังสือ: {text_input}")
+col3.code(f"ขอบเมนู: {border_input}")
 
-with col1:
-    st.write("1. เปลี่ยนสีพื้นหลัง")
-    if st.button("พื้นหลัง แดงเข้ม"): st.session_state.bg_color = "#1A0000"
-    if st.button("พื้นหลัง น้ำเงินเข้ม"): st.session_state.bg_color = "#000511"
-    if st.button("พื้นหลัง ดำสนิท"): st.session_state.bg_color = "#000000"
-
-with col2:
-    st.write("2. เปลี่ยนสีตัวหนังสือ")
-    if st.button("อักษร เขียวเรืองแสง"): st.session_state.text_color = "#00FF00"
-    if st.button("อักษร แดงสด"): st.session_state.text_color = "#FF0000"
-    if st.button("อักษร ขาวบริสุทธิ์"): st.session_state.text_color = "#FFFFFF"
-
-with col3:
-    st.write("3. เปลี่ยนสีขอบ/เมนู")
-    if st.button("ขอบ เหลืองทอง"): st.session_state.border_color = "#FFD700"
-    if st.button("ขอบ ชมพูนีออน"): st.session_state.border_color = "#FF00FF"
-    if st.button("ขอบ ฟ้าใส"): st.session_state.border_color = "#00D4FF"
-
-# 4. นำค่าจากปุ่มไปใส่ใน CSS
+# 4. ใช้ CSS นำค่าจาก Color Picker มาใช้งานจริง
 custom_style = f"""
     <style>
     /* ซ่อนติ่งบน-ล่าง */
     header, footer, .stAppToolbar {{visibility: hidden; display: none;}}
     button[title="Manage app"] {{display: none;}}
 
-    /* เปลี่ยนสีพื้นหลัง */
+    /* ใช้สีที่เลือกจาก Color Picker */
     .stApp {{
-        background-color: {st.session_state.bg_color} !important;
+        background-color: {bg_input} !important;
     }}
 
-    /* เปลี่ยนสีตัวหนังสือ */
-    html, body, [data-testid="stWidgetLabel"], p, h1, h2, h3, .stMarkdown {{
-        color: {st.session_state.text_color} !important;
+    html, body, [data-testid="stWidgetLabel"], p, h1, h2, h3 {{
+        color: {text_input} !important;
     }}
 
     /* แถบเมนู 5 ข้อด้านบน */
     .custom-nav {{
-        background-color: {st.session_state.bg_color};
+        background-color: {bg_input};
         padding: 10px;
         position: fixed;
         top: 0; left: 0; width: 100%;
         z-index: 9999;
         display: flex;
         justify-content: space-around;
-        border-bottom: 3px solid {st.session_state.border_color}; /* สีขอบเปลี่ยนตามปุ่มที่ 3 */
+        border-bottom: 3px solid {border_input};
     }}
     .nav-link {{
-        color: {st.session_state.text_color}; /* สีตัวหนังสือเปลี่ยนตามปุ่มที่ 2 */
+        color: {text_input};
         font-size: 12px; font-weight: bold; text-align: center;
     }}
     .main-content {{ margin-top: 100px; }}
@@ -97,16 +85,11 @@ custom_style = f"""
 
 st.markdown(custom_style, unsafe_allow_html=True)
 
-# 5. แสดงผลเนื้อหา
+# 5. เนื้อหาแอป
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
-st.title("SYNAPSE CUSTOMIZER")
-st.info(f"ตอนนี้: พื้นหลัง {st.session_state.bg_color} | ตัวหนังสือ {st.session_state.text_color} | ขอบ {st.session_state.border_color}")
+st.title("ระบบ SYNAPSE: ปรับสีอิสระ")
+st.write("ลองเลื่อนเลือกสีที่แถบด้านข้าง (Sidebar) ดูครับ สีจะเปลี่ยนทันที!")
 st.markdown('</div>', unsafe_allow_html=True)
-
-# ==========================================
-# 0. CONFIG & CSS STYLING (Matrix & Neon Style)
-# ==========================================
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", initial_sidebar_state="collapsed")
 
 def apply_custom_background():
     theme = st.session_state.get('theme_color', "#1408BF")
