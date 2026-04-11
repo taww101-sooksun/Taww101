@@ -418,7 +418,36 @@ def room_music():
     if c3.button("⏭️ NEXT", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(files)
         st.rerun()
-
+    # --- ห้องที่ 6: SYSTEM THEME CONTROL ---
+    with tabs[6]:
+        st.markdown(f"""
+            <div style='background: rgba(0,0,0,0.6); padding: 25px; border-radius: 20px; border: 2px solid {st.session_state.theme_color}; box-shadow: 0 0 20px {st.session_state.theme_color};'>
+                <h2 style='color: white; margin-top: 0;'>🎨 SYSTEM COLOR CONTROL</h2>
+                <p style='color: #8C959F;'>ปรับแต่งโทนสีหลักของระบบ SYNAPSE ทั้งหมดได้ที่นี่</p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        st.write("")
+        # ตัวเลือกสีในห้องที่ 6
+        new_color = st.color_picker("จิ้มเพื่อเปลี่ยนสีระบบ (Background & UI)", st.session_state.theme_color)
+        
+        if new_color != st.session_state.theme_color:
+            st.session_state.theme_color = new_color
+            st.rerun()
+            
+        # พรีวิวหน้าต่าง AGENT CARD แบบที่คุณชอบ
+        st.markdown(f"""
+            <div style="background-color: #1A1D21; border-radius: 15px; padding: 20px; color: white; border: 1px solid #333; max-width: 350px; margin-top: 20px;">
+                <div style="font-weight: bold; font-size: 18px;">👤 AGENT: {st.session_state.user}</div>
+                <div style="background-color: #262B30; border-radius: 10px; padding: 15px; margin-top: 10px;">
+                    <div style="font-size:11px; margin-bottom: 8px;">🎨 CURRENT THEME PREVIEW</div>
+                    <div style="width: 100%; height: 60px; background: linear-gradient(to right, {new_color}, transparent); background-color: {new_color}; border-radius: 8px;"></div>
+                </div>
+                <div style="background-color: #0D1117; padding: 8px; border-radius: 5px; text-align: center; font-family: monospace; margin-top: 15px; border: 1px solid #444;">
+                    {new_color}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 # ==========================================
 # 3. MAIN CONTROLLER
 # ==========================================
@@ -475,33 +504,5 @@ def main():
     with tabs[4]: room_audio_call()
     with tabs[5]: room_music()
     
-    # --- ห้องที่ 6: SYSTEM THEME CONTROL ---
-    with tabs[6]:
-        st.markdown(f"""
-            <div style='background: rgba(0,0,0,0.6); padding: 25px; border-radius: 20px; border: 2px solid {st.session_state.theme_color}; box-shadow: 0 0 20px {st.session_state.theme_color};'>
-                <h2 style='color: white; margin-top: 0;'>🎨 SYSTEM COLOR CONTROL</h2>
-                <p style='color: #8C959F;'>ปรับแต่งโทนสีหลักของระบบ SYNAPSE ทั้งหมดได้ที่นี่</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.write("")
-        # ตัวเลือกสีในห้องที่ 6
-        new_color = st.color_picker("จิ้มเพื่อเปลี่ยนสีระบบ (Background & UI)", st.session_state.theme_color)
-        
-        if new_color != st.session_state.theme_color:
-            st.session_state.theme_color = new_color
-            st.rerun()
-            
-        # พรีวิวหน้าต่าง AGENT CARD แบบที่คุณชอบ
-        st.markdown(f"""
-            <div style="background-color: #1A1D21; border-radius: 15px; padding: 20px; color: white; border: 1px solid #333; max-width: 350px; margin-top: 20px;">
-                <div style="font-weight: bold; font-size: 18px;">👤 AGENT: {st.session_state.user}</div>
-                <div style="background-color: #262B30; border-radius: 10px; padding: 15px; margin-top: 10px;">
-                    <div style="font-size:11px; margin-bottom: 8px;">🎨 CURRENT THEME PREVIEW</div>
-                    <div style="width: 100%; height: 60px; background: linear-gradient(to right, {new_color}, transparent); background-color: {new_color}; border-radius: 8px;"></div>
-                </div>
-                <div style="background-color: #0D1117; padding: 8px; border-radius: 5px; text-align: center; font-family: monospace; margin-top: 15px; border: 1px solid #444;">
-                    {new_color}
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+    if __name__ == "__main__":
+    main()
