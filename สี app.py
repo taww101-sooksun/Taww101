@@ -15,6 +15,72 @@ from datetime import datetime, date
 import math
 import random
 from streamlit_js_eval import get_geolocation 
+import streamlit as st
+
+# 1. ตั้งค่าหน้าจอ
+st.set_page_config(layout="wide", page_title="SYNAPSE")
+
+# 2. แก้จุดที่ Error (ต้องใช้ st.markdown ครอบ CSS ไว้แบบนี้)
+st.markdown("""
+    <style>
+    /* ซ่อน Header และ Footer */
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stAppToolbar {display: none;}
+    #MainMenu {visibility: hidden;}
+    button[title="Manage app"] {display: none;}
+    
+    /* ตรงนี้แหละครับที่เคย Error - ตอนนี้อยู่ในรูปแบบที่ถูกต้องแล้ว */
+    .block-container {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# 3. ตัวเก็บสถานะสี
+if 'main_color' not in st.session_state:
+    st.session_state.main_color = '#620909'
+
+# 4. ส่วนแสดงหน้าต่าง AGENT (ครอบด้วย st.markdown เช่นกัน)
+agent_card_html = f"""
+<div style="
+    background-color: #1A1D21;
+    border-radius: 15px;
+    padding: 20px;
+    font-family: sans-serif;
+    color: white;
+    max-width: 350px;
+    margin: 10px auto;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    border: 1px solid #333;
+">
+    <div style="display: flex; align-items: center; font-size: 20px; font-weight: bold; gap: 10px;">
+        👤 AGENT: Ta103
+    </div>
+    <div style="color: #8C959F; font-size: 14px; margin-left: 34px; margin-bottom: 20px;">
+        Status: AUTHENTICATED
+    </div>
+    <div style="background-color: #262B30; border-radius: 10px; padding: 15px;">
+        <div style="font-size:12px; margin-bottom: 10px;">🎨 SYSTEM THEME (Neon)</div>
+        <div style="width: 45px; height: 45px; background-color: {st.session_state.main_color}; border-radius: 5px; margin-bottom: 10px;"></div>
+        <div style="width: 100%; height: 100px; background: linear-gradient(to bottom, white, transparent, black), linear-gradient(to right, transparent, {st.session_state.main_color}); background-color: {st.session_state.main_color}; border-radius: 8px;"></div>
+    </div>
+    <div style="background-color: #0D1117; padding: 10px; border-radius: 5px; text-align: center; font-family: monospace; font-size: 22px; margin-top: 15px;">
+        {st.session_state.main_color}
+    </div>
+</div>
+"""
+st.markdown(agent_card_html, unsafe_allow_html=True)
+
+# 5. ปุ่มเลือกสี
+new_color = st.color_picker("🎨 เลือกสีระบบ", st.session_state.main_color)
+if new_color != st.session_state.main_color:
+    st.session_state.main_color = new_color
+    st.rerun()
+
+# เปลี่ยนสีพื้นหลัง
+st.markdown(f"<style>.stApp {{background-color: {st.session_state.main_color} !important;}}</style>", unsafe_allow_html=True)
 
 def apply_custom_background():
     theme = st.session_state.get('theme_color', "#1408BF")
