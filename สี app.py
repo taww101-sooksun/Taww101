@@ -428,7 +428,7 @@ def room_music():
             });
         };
         // รันทุกๆ 2 วินาทีเพื่อความชัวร์
-        setInterval(autoNext, 2000);
+        setInterval(autoNext, 200);
         </script>
         """,
         height=0,
