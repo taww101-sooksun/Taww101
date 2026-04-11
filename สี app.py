@@ -418,65 +418,98 @@ def room_music():
     if c3.button("⏭️ NEXT", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(files)
         st.rerun()
-  
-def room_music():
-    st.subheader("🎧 SYNAPSE MUSIC STATION")
-    files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    if not files:
-        st.warning("⚠️ No MP3 files detected.")
-        return
-
-    song = files[st.session_state.song_index]
-    st.info(f"🎶 NOW STREAMING: {song}")
+  # --- 1. ฟังก์ชันห้องที่ 6: DESIGN CENTER ---
+def room_design():
+    st.markdown(f"""
+        <div style='background: rgba(0,0,0,0.6); padding: 25px; border-radius: 20px; border: 2px solid {st.session_state.border_color}; box-shadow: 0 0 20px {st.session_state.border_color};'>
+            <h2 style='color: {st.session_state.text_color}; margin-top: 0;'>🎨 SYNAPSE DESIGN CENTER</h2>
+            <p style='color: {st.session_state.text_color}; opacity: 0.8;'>ศูนย์ควบคุมสีระบบ: ปรับแต่งสีพื้นหลัง ตัวหนังสือ และสีกรอบไฟนีออน</p>
+        </div>
+    """, unsafe_allow_html=True)
     
-    with open(song, "rb") as f:
-        st.audio(f.read(), format="audio/mp3")
-
-    c1, c2, c3 = st.columns(3)
-    if c1.button("⏮️ PREVIOUS"):
-        st.session_state.song_index = (st.session_state.song_index - 1) % len(files)
-        st.rerun()
-    if c2.button("🔄 REFRESH"): st.rerun()
-    if c3.button("⏭️ NEXT"):
-        st.session_state.song_index = (st.session_state.song_index + 1) % len(files)
-        st.rerun()
-# จบแค่นี้ครับ ห้ามมี with tabs[6] ต่อท้ายตรงนี้
+    st.write("")
+    col1, col2, col3 = st.columns(3)
     
-# ==========================================
-# 3. MAIN CONTROLLER
-# ==========================================
+    with col1:
+        bg = st.color_picker("🖼️ สีพื้นหลัง (Background)", st.session_state.bg_color)
+        if bg != st.session_state.bg_color:
+            st.session_state.bg_color = bg
+            st.rerun()
+            
+    with col2:
+        txt = st.color_picker("✍️ สีตัวหนังสือ (Text Color)", st.session_state.text_color)
+        if txt != st.session_state.text_color:
+            st.session_state.text_color = txt
+            st.rerun()
+            
+    with col3:
+        brd = st.color_picker("🔳 สีกรอบ/ไฟ (Border)", st.session_state.border_color)
+        if brd != st.session_state.border_color:
+            st.session_state.border_color = brd
+            st.rerun()
+
+    # แสดงพรีวิว Agent Card ในห้อง Design เลย
+    st.markdown(f"""
+        <div style="
+            background: rgba(0,0,0,0.7); 
+            padding: 25px; 
+            border-radius: 20px; 
+            border: 4px solid {st.session_state.border_color}; 
+            margin-top: 20px;
+            color: {st.session_state.text_color};
+            box-shadow: 0 0 25px {st.session_state.border_color};
+            max-width: 400px;
+        ">
+            <h3 style="margin:0; color:{st.session_state.text_color};">👤 AGENT: {st.session_state.user}</h3>
+            <p style="font-size: 14px; color:{st.session_state.text_color}; opacity: 0.7;">STATUS: SYNCING VISUALS...</p>
+            <div style="height: 10px; background: {st.session_state.border_color}; border-radius: 5px; margin: 15px 0;"></div>
+            <div style="display:flex; gap:10px; font-family: monospace; font-size: 12px; text-align:center;">
+                <div style="flex:1; padding:10px; background:{st.session_state.bg_color}; border:1px solid {st.session_state.border_color};">BG</div>
+                <div style="flex:1; padding:10px; background:{st.session_state.text_color}; color:#000;">TEXT</div>
+                <div style="flex:1; padding:10px; background:{st.session_state.border_color}; color:#000;">BRD</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+# --- 2. ฟังก์ชันหลัก MAIN ---
 def main():
     init_system()
     
-    # 1. ตั้งค่าตัวแปรสีเริ่มต้น (ถ้ายังไม่มี)
+    # เช็คและตั้งค่าตัวแปรสีใน Session State
     if 'bg_color' not in st.session_state: st.session_state.bg_color = '#620909'
     if 'text_color' not in st.session_state: st.session_state.text_color = '#FFFFFF'
     if 'border_color' not in st.session_state: st.session_state.border_color = '#00FF41'
 
-    # 2. ลบติ่งส่วนเกินออกให้กริบ
-    st.markdown("""
+    # ลบติ่งส่วนเกิน + บังคับใช้สีที่เลือก
+    st.markdown(f"""
         <style>
-        header {visibility: hidden;}
-        footer {visibility: hidden;}
-        .stAppToolbar {display: none;}
-        #MainMenu {visibility: hidden;}
-        button[title="Manage app"] {display: none;}
-        .block-container { padding-top: 0rem; padding-bottom: 0rem; }
+        header {{visibility: hidden;}}
+        footer {{visibility: hidden;}}
+        .stAppToolbar {{display: none;}}
+        #MainMenu {{visibility: hidden;}}
+        button[title="Manage app"] {{display: none;}}
+        .block-container {{ padding-top: 0rem; padding-bottom: 0rem; }}
         
-        /* สั่งเปลี่ยนสีตัวหนังสือและพื้นหลังทั้งแอป */
-        .stApp {
-            background-color: """ + st.session_state.bg_color + """ !important;
-            color: """ + st.session_state.text_color + """ !important;
-        }
+        /* เปลี่ยนสีพื้นหลังและตัวหนังสือทั้งแอป */
+        .stApp {{
+            background-color: {st.session_state.bg_color} !important;
+            color: {st.session_state.text_color} !important;
+        }}
         
-        /* สั่งเปลี่ยนสีกรอบของ Tabs และ Logic Box */
-        .stTabs [data-baseweb="tab-list"], .logic-box {
-            border: 3px solid """ + st.session_state.border_color + """ !important;
-            box-shadow: 0 0 15px """ + st.session_state.border_color + """;
-        }
+        /* เปลี่ยนสีตัวหนังสือในองค์ประกอบต่างๆ */
+        h1, h2, h3, p, span, label, .stMarkdown {{ 
+            color: {st.session_state.text_color} !important; 
+        }}
+
+        /* เปลี่ยนสีขอบ Tabs และ Logic Box ตาม Border Color */
+        .stTabs [data-baseweb="tab-list"], .logic-box {{
+            border: 3px solid {st.session_state.border_color} !important;
+            box-shadow: 0 0 15px {st.session_state.border_color};
+            background-color: rgba(0,0,0,0.4) !important;
+        }}
         
-        /* แก้สีตัวหนังสือในหน้าจอให้มองเห็นชัด */
-        h1, h2, h3, p, span, label { color: """ + st.session_state.text_color + """ !important; }
+        /* แก้สีของพิกเกอร์และปุ่มเบื้องต้น */
+        .stColorPicker label {{ color: {st.session_state.text_color} !important; }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -487,7 +520,15 @@ def main():
     loc = get_geolocation()
     show_logo()
 
-    # --- เมนูหลัก 7 ห้อง ---
+    # Sidebar
+    with st.sidebar:
+        st.markdown(f"### 👤 AGENT: {st.session_state.user}")
+        if st.button("🚪 LOGOUT SYSTEM", use_container_width=True):
+            st.session_state.logged_in = False
+            st.rerun()
+        st.write("'อยู่นิ่งๆ ไม่เจ็บตัว'")
+
+    # --- เมนูหลัก 7 ห้อง (0-6) ---
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "🧬 SCANNER", "💬 CHAT", "📞 VOICE", "🎧 MUSIC", "🎨 DESIGN"])
     
     with tabs[0]: room_core(loc)
@@ -496,50 +537,9 @@ def main():
     with tabs[3]: room_secure_chat()
     with tabs[4]: room_audio_call()
     with tabs[5]: room_music()
-    with tabs[6]: room_design()
-    # --- ห้องที่ 6: DESIGN CENTER (ห้องเปลี่ยนสี) ---
-    with tabs[6]:
-        st.markdown(f"### 🎨 SYNAPSE DESIGN CENTER")
-        st.write("ปรับแต่ง UI ของคุณได้แบบ Real-time")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            bg = st.color_picker("🖼️ สีพื้นหลัง (Background)", st.session_state.bg_color)
-            if bg != st.session_state.bg_color:
-                st.session_state.bg_color = bg
-                st.rerun()
-                
-        with col2:
-            txt = st.color_picker("✍️ สีตัวหนังสือ (Text Color)", st.session_state.text_color)
-            if txt != st.session_state.text_color:
-                st.session_state.text_color = txt
-                st.rerun()
-                
-        with col3:
-            brd = st.color_picker("🔳 สีกรอบ/ไฟนีออน (Border)", st.session_state.border_color)
-            if brd != st.session_state.border_color:
-                st.session_state.border_color = brd
-                st.rerun()
+    with tabs[6]: room_design() # เรียกใช้ฟังก์ชันที่แยกออกมา
 
-        # พรีวิวหน้าต่าง AGENT CARD ที่เปลี่ยนตามทุกอย่าง
-        st.markdown(f"""
-            <div style="
-                background: rgba(0,0,0,0.5); 
-                padding: 25px; 
-                border-radius: 20px; 
-                border: 4px solid {st.session_state.border_color}; 
-                margin-top: 20px;
-                color: {st.session_state.text_color};
-                box-shadow: 0 0 20px {st.session_state.border_color};
-            ">
-                <h2 style="margin:0;">👤 AGENT: {st.session_state.user}</h2>
-                <p>Status: CONFIGURING SYSTEM...</p>
-                <hr style="border: 1px solid {st.session_state.border_color}; opacity: 0.3;">
-                <div style="display:flex; gap:10px;">
-                    <div style="flex:1; height:40px; background:{st.session_state.bg_color}; border:1px solid #555; text-align:center; line-height:40px;">BG</div>
-                    <div style="flex:1; height:40px; background:{st.session_state.text_color}; border:1px solid #555; text-align:center; line-height:40px; color:#000;">TXT</div>
-                    <div style="flex:1; height:40px; background:{st.session_state.border_color}; border:1px solid #555; text-align:center; line-height:40px; color:#000;">BRD</div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+if __name__ == "__main__":
+    main()
+
+            
