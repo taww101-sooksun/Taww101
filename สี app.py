@@ -1,8 +1,5 @@
 import streamlit as st
-import datetime # บรรทัดนี้ห้ามขาด!
-from datetime import datetime, date # เพิ่มอันนี้เข้าไปด้วยเพื่อความชัวร์
-
-import streamlit as st
+import datetime
 import os 
 import time
 import base64
@@ -12,123 +9,58 @@ import streamlit.components.v1 as components
 import folium
 from folium.features import DivIcon
 from streamlit_folium import st_folium
+import math
 from math import radians, cos, sin, asin, sqrt
 import pytz
 from timezonefinder import TimezoneFinder
-from datetime import datetime, date
-import math
-import random
 from streamlit_js_eval import get_geolocation 
-import streamlit as st
-import streamlit as st
-import datetime  # ต้องมีบรรทัดนี้
-from datetime import date # หรือใช้แบบนี้ร่วมด้วย
-
-# 1. ตั้งค่าหน้าจอ (ต้องอยู่บนสุดเสมอ)
-st.set_page_config(layout="wide", page_title="SYNAPSE")
-
-# 2. โค้ดสำหรับ "ลบติ่ง" และส่วนเกินทั้งหมด
-st.markdown("""
-    <style>
-    /* ซ่อน Header (แถบด้านบน) */
-    header {visibility: hidden;}
-    
-    /* ซ่อน Footer (ที่เขียนว่า Made with Streamlit) */
-    footer {visibility: hidden;}
-    
-    /* ซ่อนแถบ Toolbar ของ Streamlit */
-    .stAppToolbar {display: none;}
-    
-    /* ซ่อนปุ่ม MainMenu (สามขีด) */
-    #MainMenu {visibility: hidden;}
-    
-    /* ซ่อนปุ่ม Manage app (สำหรับตอนรันบน Cloud) */
-    button[title="Manage app"] {display: none;}
-    
-    /* ดันเนื้อหาขึ้นไปข้างบนสุด ไม่ให้เหลือช่องว่าง */
-    .block-container {
-        padding-top: 0rem;
-        padding-bottom: 0rem;
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-
-    /* ซ่อนขอบขาวๆ ตอน Hover บนรูปภาพหรือองค์ประกอบต่างๆ */
-    .stDeployButton {display:none;}
-    </style>
-""", unsafe_allow_html=True)
-
-# --- thai 🇹🇭 ---
-st.write("ระบบ SYNAPSE อยู่นิ้งๆไม่เจ็บตัว app พร้อมใช้งาน (THAI 🇹🇭)")
 
 # ==========================================
-# 0. CONFIG & CSS STYLING (Matrix & Neon Style)
+# 0. INITIAL SETTINGS & CLEAN UI
 # ==========================================
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(layout="wide", page_title="SYNAPSE COMMAND CENTER")
 
-def apply_custom_background():
-    theme = st.session_state.get('theme_color', "#1408BF")
+# ฟังก์ชันลบติ่ง Streamlit แบบถอนรากถอนโคน
+def apply_clean_ui():
+    bg = st.session_state.get('bg_color', '#620909')
+    txt = st.session_state.get('text_color', '#FFFFFF')
+    brd = st.session_state.get('border_color', '#00FF41')
+    
     st.markdown(f"""
         <style>
-        /* ส่วนของ Tabs - ขอบใหญ่ขึ้นไฟฟุ้งขึ้น */
-        .stTabs [data-baseweb="tab-list"] {{
-            background-color: rgba(0, 0, 0, 0.8) !important;
-            border-radius: 25px !important;
-            padding: 12px !important;
-            border: 6px solid {theme} !important; /* <--- ปรับขอบใหญ่ตรงนี้ */
-            box-shadow: 0 0 40px {theme};         /* <--- ปรับไฟฟุ้งตรงนี้ */
-            margin: 15px 0px !important;
-        }}
+        header {{visibility: hidden;}}
+        footer {{visibility: hidden;}}
+        .stAppToolbar {{display: none;}}
+        #MainMenu {{visibility: hidden;}}
+        button[title="Manage app"] {{display: none;}}
+        .block-container {{ padding-top: 0rem; padding-bottom: 0rem; }}
         
-        /* ส่วนของปุ่ม - ขอบหนาขึ้น */
-        div.stButton > button {{
-            background: linear-gradient(145deg, #000, #222) !important;
-            color: white !important;
-            border: 5px solid {theme} !important; /* <--- ขอบปุ่มหนาๆ */
-            border-radius: 20px !important;
-            filter: drop-shadow(0 0 15px {theme}); /* <--- ไฟนูนๆ */
-            transition: all 0.3s ease;
-        }}
+        /* คุมสีทั้งแอป */
+        .stApp {{ background-color: {bg} !important; color: {txt} !important; }}
+        h1, h2, h3, p, span, label, .stMarkdown {{ color: {txt} !important; }}
 
-        /* ส่วนของกล่องคำนวณ - ขอบเขียวหนาๆ */
+        /* ดีไซน์ Tabs และ Logic Box */
+        .stTabs [data-baseweb="tab-list"] {{
+            background-color: rgba(0,0,0,0.6) !important;
+            border: 3px solid {brd} !important;
+            border-radius: 20px !important;
+            box-shadow: 0 0 15px {brd};
+        }}
         .logic-box {{
-            background: rgba(0, 10, 0, 0.9);
-            border: 5px solid #00ff41;             /* <--- ขอบหนาตรงนี้ */
+            background: rgba(0, 0, 0, 0.7);
+            border: 4px solid {brd};
             border-radius: 20px;
             padding: 25px;
-            box-shadow: 0 0 30px rgba(0, 255, 65, 0.6);
+            box-shadow: 0 0 20px {brd}88;
         }}
         </style>
     """, unsafe_allow_html=True)
 
-
-def show_logo():
-    theme = st.session_state.get('theme_color', "#1408BF")
-    c1, c2, c3 = st.columns([1, 1, 1])
-    with c2:
-        if os.path.exists("logo1.png"):
-            with open("logo1.png", "rb") as f:
-                data = base64.b64encode(f.read()).decode()
-            st.markdown(f"""
-                <div style="text-align:center; filter: drop-shadow(0 0 15px {theme}); margin-bottom: 25px;">
-                    <img src="data:image/png;base64,{data}" style="width:100%; max-width:240px; border-radius:20px;">
-                </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"<h1 style='text-align:center; color:{theme}; text-shadow: 0 0 15px {theme};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
-
 # ==========================================
-# 1. UTILS & CALCULATION LOGIC
+# 1. CORE LOGIC
 # ==========================================
-def haversine(lat1, lon1, lat2, lon2):
-    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
-    dlon, dlat = lon2 - lon1, lat2 - lat1 
-    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-    return 2 * asin(sqrt(a)) * 6371
-
 def get_reality_logic(dt):
-    """สูตรคำนวณรหัสคู่ขนานตามวันที่"""
-    ref_date = date(1900, 1, 1)
+    ref_date = datetime.date(1900, 1, 1)
     diff = (dt - ref_date).days
     lunar_cycle = 29.530589
     pos = (diff - 0.5) % lunar_cycle
@@ -143,8 +75,20 @@ def get_reality_logic(dt):
         phase = f"แรม {m_num} ค่ำ"
     return {"res": round(res, 4), "phase": phase}
 
+def get_local_time(lat, lon):
+    try:
+        tf = TimezoneFinder()
+        tz_str = tf.timezone_at(lng=lon, lat=lat)
+        if tz_str:
+            return datetime.datetime.now(pytz.timezone(tz_str))
+        return datetime.datetime.now()
+    except:
+        return datetime.datetime.now()
+
 def init_system():
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#1408BF"
+    if 'bg_color' not in st.session_state: st.session_state.bg_color = '#620909'
+    if 'text_color' not in st.session_state: st.session_state.text_color = '#FFFFFF'
+    if 'border_color' not in st.session_state: st.session_state.border_color = '#00FF41'
     if 'logged_in' not in st.session_state: st.session_state.logged_in = False
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
     if not firebase_admin._apps:
@@ -153,427 +97,145 @@ def init_system():
             cred = credentials.Certificate(fb_creds)
             firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
         except: pass
-def get_local_time(lat, lon):
-    try:
-        # ... โค้ดส่วนคำนวณเวลาของคุณ ...
-        pass 
-    except: 
-        # แก้ตรงนี้ให้เรียกใช้ผ่าน library ให้ชัดเจน
-        return datetime.now() 
 
+def show_logo():
+    brd = st.session_state.get('border_color', '#00FF41')
+    if os.path.exists("logo1.png"):
+        with open("logo1.png", "rb") as f:
+            data = base64.b64encode(f.read()).decode()
+        st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{data}" style="width:200px; filter:drop-shadow(0 0 10px {brd});"></div>', unsafe_allow_html=True)
+    else:
+        st.markdown(f"<h1 style='text-align:center; color:{brd};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
 
 # ==========================================
-# 2. CORE MODULES
+# 2. ROOM MODULES
 # ==========================================
-def room_login():
-    show_logo()
-    col1, col2, col3 = st.columns([1, 1.5, 1])
-    with col2:
-        st.markdown('<div class="logic-box" style="text-align:center; border-color:#1408BF;">', unsafe_allow_html=True)
-        tab_l, tab_r = st.tabs(["🔑 UNLOCK", "📝 NEW AGENT"])
-        with tab_l:
-            with st.form("login_form"):
-                uid = st.text_input("AGENT ID")
-                pw = st.text_input("PASSWORD", type="password")
-                if st.form_submit_button("ACCESS GRANTED", use_container_width=True):
-                    user_data = db.reference(f'users/{uid}').get()
-                    if user_data and user_data.get('pw') == pw:
-                        st.session_state.user = uid
-                        st.session_state.logged_in = True
-                        st.rerun()
-                    else: st.error("ACCESS DENIED: ข้อมูลไม่ถูกต้อง")
-        with tab_r:
-            with st.form("reg_form"):
-                new_id = st.text_input("CREATE ID")
-                new_pw = st.text_input("CREATE PASSWORD", type="password")
-                if st.form_submit_button("REGISTER", use_container_width=True):
-                    db.reference(f'users/{new_id}').set({'pw': new_pw, 'ts': time.time()})
-                    st.success("AGENT REGISTERED!")
-        st.markdown('</div>', unsafe_allow_html=True)
-
 def room_core(loc):
-    st.subheader("🏠 CORE CONTROL - อยู่นิ่งๆไม่เจ็บตัว")
     lat, lon = 13.7367, 100.5231
     if loc and 'coords' in loc:
         lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
     
     current_time = get_local_time(lat, lon)
+    brd = st.session_state.border_color
     st.markdown(f"""
-        <div style="text-align:center; padding:40px; border:4px solid {st.session_state.theme_color}; border-radius:25px; background:rgba(0,0,0,0.6); box-shadow: 0 0 30px {st.session_state.theme_color}88;">
-            <h1 style="font-size:6em; color:{st.session_state.theme_color}; margin:0; font-family: 'Courier New'; text-shadow: 0 0 20px {st.session_state.theme_color};">
-                {current_time.strftime('%H:%M:%S')}
-            </h1>
-            <p style="color:#FFF; font-size:1.2em; letter-spacing: 4px;">DATE: {current_time.strftime('%Y-%m-%d')}</p>
-            <hr style="border-color:{st.session_state.theme_color}; opacity:0.3;">
-            <p style="color:#00ff41; font-family:monospace;">📍 POSITION: {lat:.5f}, {lon:.5f}</p>
-            <p style="color:{st.session_state.theme_color}; font-weight:bold; font-size:1.5em;">AGENT {st.session_state.user} IS ONLINE</p>
+        <div style="text-align:center; padding:40px; border:4px solid {brd}; border-radius:25px; background:rgba(0,0,0,0.6); box-shadow: 0 0 30px {brd}88;">
+            <h1 style="font-size:5em; color:{brd}; margin:0; font-family:monospace;">{current_time.strftime('%H:%M:%S')}</h1>
+            <p>DATE: {current_time.strftime('%Y-%m-%d')}</p>
+            <p style="color:#00ff41;">📍 {lat:.5f}, {lon:.5f}</p>
+            <h3>AGENT {st.session_state.get('user', 'UNKNOWN')} ONLINE</h3>
         </div>
     """, unsafe_allow_html=True)
 
-def room_radar(loc):
-    st.subheader("🛰️ STRATEGIC RADAR SCANNER")
-    my_lat, my_lon = 13.7367, 100.5231 
-    if loc and 'coords' in loc:
-        my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
-    
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google Satellite')
-    
-    # Marker เรา
-    folium.Marker([my_lat, my_lon], 
-                  icon=folium.Icon(color='red', icon='screenshot', prefix='fa'),
-                  tooltip="MY POSITION").add_to(m)
-    
-    # วงรัศมี
-    folium.Circle([my_lat, my_lon], radius=400, color="#00ff41", fill=True, opacity=0.1).add_to(m)
-
-    # ดึงพิกัด AGENTS อื่นๆ
-    try:
-        users = db.reference('users').get()
-        if users:
-            for uid, data in users.items():
-                if uid != st.session_state.user and 'lat' in data:
-                    u_lat, u_lon = data['lat'], data['lon']
-                    dist = haversine(my_lat, my_lon, u_lat, u_lon)
-                    folium.Marker([u_lat, u_lon], 
-                                  icon=folium.Icon(color='blue', icon='user', prefix='fa'),
-                                  tooltip=f"AGENT: {uid} | DIST: {dist:.2f} km").add_to(m)
-                    folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
-    except: pass
-
-    st_folium(m, width="100%", height=450)
-    
-    if st.button("📡 BROADCAST MY SIGNAL", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-        st.toast("SIGNAL BROADCASTED TO NETWORK")
 def room_reality_scanner():
-    # ใช้ datetime.date ให้ชัดเจน
-    min_d = datetime.date(1900, 1, 1) 
-    max_d = datetime.date.today()
-    
-    st.subheader("🧬 Reality Extractor & Code Scanner")
+    min_d, max_d = datetime.date(1900, 1, 1), datetime.date.today()
+    st.subheader("🧬 Reality Extractor")
     col1, col2 = st.columns(2)
-    
     with col1:
         st.markdown('<div class="logic-box">', unsafe_allow_html=True)
-        st.write("### 🔍 สแกนรหัสส่วนบุคคล")
-        # กำหนดค่าเริ่มต้นเป็นปี 1970
-        dob = st.date_input(
-            "เลือกวันเกิด / วันเหตุการณ์", 
-            value=datetime.date(1970, 1, 1), 
-            min_value=min_d,
-            max_value=max_d,
-            key="scanner_dob_v2"
-        )
+        dob = st.date_input("วันเกิด / วันเหตุการณ์", value=datetime.date(1970, 1, 1), min_value=min_d, max_value=max_d, key="dob_main")
         if dob:
             logic = get_reality_logic(dob)
             st.metric("REALITY CODE", logic['res'])
             st.write(f"**สภาวะ:** {logic['phase']}")
         st.markdown('</div>', unsafe_allow_html=True)
-
     with col2:
-        st.markdown(f'<div class="logic-box" style="border-color:{st.session_state.get("border_color", "#00FF41")};">', unsafe_allow_html=True)
-        st.write("### 🛰️ ตรวจสอบพิกัดรหัสคู่ขนาน")
-        
-        # AGENT 1 (1996)
-        u1_date = st.date_input(
-            "AGENT 1 (วันเกิด)", 
-            value=datetime.date(1996, 8, 17), 
-            min_value=min_d,
-            max_value=max_d,
-            key="agent1_dob_v2"
-        )
-        
-        # AGENT 2
-        u2_date = st.date_input(
-            "AGENT 2 (วันเกิด)", 
-            value=max_d,
-            min_value=min_d,
-            max_value=max_d,
-            key="agent2_dob_v2"
-        )
-        
-        if st.button("COMPUTE GAP", use_container_width=True):
-            r1 = get_reality_logic(u1_date)['res']
-            r2 = get_reality_logic(u2_date)['res']
+        st.markdown('<div class="logic-box">', unsafe_allow_html=True)
+        u1 = st.date_input("AGENT 1", value=datetime.date(1996, 8, 17), min_value=min_d, max_value=max_d, key="u1")
+        u2 = st.date_input("AGENT 2", value=max_d, min_value=min_d, max_value=max_d, key="u2")
+        if st.button("COMPUTE GAP"):
+            r1, r2 = get_reality_logic(u1)['res'], get_reality_logic(u2)['res']
             gap = abs(r1 - r2)
-            st.write(f"CODE 1: `{r1}` | CODE 2: `{r2}`")
-            st.subheader(f"RESULT GAP: {gap:.4f}")
-            # แสดงผลตามเงื่อนไข GAP
-
-           
-def room_secure_chat():
-    st.subheader("💬 SECURE REAL-TIME MESSENGER")
-    users = db.reference('users').get()
-    friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    target = st.selectbox("🎯 SELECT TARGET AGENT:", friends)
-    
-    if target:
-        rid = "_".join(sorted([st.session_state.user, target]))
-        chat_container = st.container(height=150, border=True)
-        
-        # Load Messages
-        chats = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(25).get()
-        
-        with chat_container:
-            if chats:
-                for c in chats.values():
-                    is_me = c['u'] == st.session_state.user
-                    align = "right" if is_me else "left"
-                    bg = st.session_state.theme_color if is_me else "#222"
-                    st.markdown(f"""
-                        <div style="text-align:{align}; margin-bottom:12px;">
-                            <div style="display:inline-block; background:{bg}; padding:10px 18px; border-radius:18px; color:white; border:1px solid rgba(255,255,255,0.1);">
-                                <small style="opacity:0.6;">{c['u']}</small><br>{c['m']}
-                            </div>
-                        </div>
-                    """, unsafe_allow_html=True)
-            else: st.caption("No communication history found.")
-
-        with st.form("msg_form", clear_on_submit=True):
-            c_input, c_btn = st.columns([4, 1])
-            msg = c_input.text_input("Enter Message...", label_visibility="collapsed")
-            if c_btn.form_submit_button("SEND", use_container_width=True):
-                if msg:
-                    db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'ts': time.time()})
-                    st.rerun()
-
-def room_audio_call():
-    st.markdown(f"""
-        <div class="logic-box" style="border-color:{st.session_state.theme_color};">
-            <h2 style="color:{st.session_state.theme_color}; text-align:center;">📞 SYNAPSE VOICE ENCRYPTION</h2>
-            <p style="text-align:center; opacity:0.7;">ระบบสื่อสารผ่านคลื่นเสียงระดับ AGENT (P2P)</p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    users = db.reference('users').get()
-    friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    
-    col_sel, col_stat = st.columns([2, 1])
-    with col_sel:
-        target = st.selectbox("🎯 เลือกเป้าหมายที่จะสื่อสาร:", friends, key="v_target")
-    with col_stat:
-        st.write(f"สถานะ: **ONLINE**")
-        st.write(f"ID: `{st.session_state.user}`")
-
-    # ส่วนประมวลผล JavaScript พร้อมระบบเสียงแจ้งเตือน (Ringtone)
-    call_js_logic = f"""
-    <div id="call-ui" style="background:rgba(0,0,0,0.9); padding:20px; border-radius:15px; border:2px solid {st.session_state.theme_color}; text-align:center;">
-        <h3 id="call-status" style="color:#00ff41;">📡 พร้อมเชื่อมต่อ...</h3>
-        <audio id="remoteAudio" autoplay></audio>
-        <audio id="ringtoneAudio" loop src="static/synapse.mp3"></audio> <div id="visualizer" style="height:50px; display:flex; justify-content:center; align-items:center; gap:5px; margin:15px 0;">
-            <div class="bar" style="width:5px; height:10px; background:{st.session_state.theme_color}; animation: v-wave 1s infinite alternate;"></div>
-            <div class="bar" style="width:5px; height:30px; background:{st.session_state.theme_color}; animation: v-wave 0.8s infinite alternate;"></div>
-            <div class="bar" style="width:5px; height:15px; background:{st.session_state.theme_color}; animation: v-wave 1.2s infinite alternate;"></div>
-        </div>
-        <button id="btn-call" style="background:{st.session_state.theme_color}; color:white; border:none; padding:10px 25px; border-radius:10px; cursor:pointer; font-weight:bold;">📞 เริ่มการโทร</button>
-        <button id="btn-hangup" style="background:#ff4444; color:white; border:none; padding:10px 25px; border-radius:10px; cursor:pointer; font-weight:bold; margin-left:10px;">❌ วางสาย / ปิดเสียง</button>
-    </div>
-
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script>
-        const peer = new Peer('{st.session_state.user}');
-        const ringtone = document.getElementById('ringtoneAudio');
-        let currentCall = null;
-
-        peer.on('open', (id) => {{
-            document.getElementById('call-status').innerText = "✅ ระบบออนไลน์ ID: " + id;
-        }});
-
-        // --- ระบบแจ้งเตือนสายเข้าพร้อมเสียง ---
-        peer.on('call', (call) => {{
-            // 1. เริ่มเล่นเสียงเพลง Synapse ทันทีที่มีสายเข้า
-            ringtone.play().catch(e => console.log("Autoplay blocked, waiting for interaction"));
-            
-            document.getElementById('call-status').innerText = "🚨 ALERT: Incoming Call...";
-            document.getElementById('call-status').style.color = "#ff4444";
-
-            if(confirm("🚨 มีสายเรียกเข้าจาก AGENT อื่น! คุณจะรับหรือไม่?")) {{
-                ringtone.pause(); // หยุดเสียงเรียกเข้าเมื่อกดรับ
-                ringtone.currentTime = 0;
-                
-                navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then((stream) => {{
-                    call.answer(stream);
-                    document.getElementById('call-status').innerText = "🎙️ กำลังสนทนา...";
-                    document.getElementById('call-status').style.color = "#00ff41";
-                    call.on('stream', (remoteStream) => {{
-                        document.getElementById('remoteAudio').srcObject = remoteStream;
-                    }});
-                    currentCall = call;
-                }});
-            }} else {{
-                ringtone.pause(); // หยุดเสียงถ้ากดปฏิเสธ
-                call.close();
-            }}
-        }});
-
-        document.getElementById('btn-call').onclick = () => {{
-            const targetId = "{target}";
-            if(!targetId) return;
-            navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then((stream) => {{
-                const call = peer.call(targetId, stream);
-                document.getElementById('call-status').innerText = "🛰️ กำลังเรียก...";
-                call.on('stream', (remoteStream) => {{
-                    document.getElementById('call-status').innerText = "🎙️ เชื่อมต่อสำเร็จ!";
-                    document.getElementById('remoteAudio').srcObject = remoteStream;
-                }});
-                currentCall = call;
-            }});
-        }};
-
-        document.getElementById('btn-hangup').onclick = () => {{
-            ringtone.pause();
-            if(currentCall) currentCall.close();
-            location.reload();
-        }};
-    </script>
-    """
-    components.html(call_js_logic, height=400)
-
-
+            st.subheader(f"GAP: {gap:.4f}")
+        st.markdown('</div>', unsafe_allow_html=True)
 def room_music():
     st.subheader("🎧 SYNAPSE MUSIC STATION")
+    
+    # 1. สแกนหาไฟล์เพลง
     files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+    
     if not files:
         st.warning("⚠️ No MP3 files detected in root directory.")
         return
 
+    # 2. ส่วนแสดงรายชื่อเพลง (Playlist)
+    st.markdown(f"""
+        <div style='background: rgba(0,0,0,0.4); padding: 15px; border-radius: 15px; border: 1px solid {st.session_state.border_color}; margin-bottom: 20px;'>
+            <h4 style='margin:0; color:{st.session_state.border_color};'>📜 PLAYLIST SCANNER</h4>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # สร้างกล่อง Scroll สำหรับรายชื่อเพลง
+    playlist_html = ""
+    for i, f in enumerate(files):
+        # ถ้าเป็นเพลงที่กำลังเล่น ให้ทำไฮไลท์สีตามธีม
+        active_style = f"background:{st.session_state.border_color}44; border-left: 5px solid {st.session_state.border_color}; font-weight:bold;" if i == st.session_state.song_index else "opacity:0.6;"
+        playlist_html += f"""
+            <div style="padding: 8px 15px; margin: 4px 0; border-radius: 5px; {active_style}">
+                {i+1}. 🎵 {f}
+            </div>
+        """
+    
+    st.markdown(f'<div style="max-height: 200px; overflow-y: auto; margin-bottom: 20px; font-family: monospace; font-size: 14px;">{playlist_html}</div>', unsafe_allow_html=True)
+
+    # 3. ส่วนเครื่องเล่นเพลง
     song = files[st.session_state.song_index]
-    st.info(f"🎶 NOW STREAMING: {song}")
+    st.info(f"▶️ NOW PLAYING: {song}")
     
     with open(song, "rb") as f:
-        st.audio(f.read(), format="audio/mp3", autoplay=True)
+        st.audio(f.read(), format="audio/mp3")
 
-    # UI Controls
+    # 4. ปุ่มควบคุม
     c1, c2, c3 = st.columns(3)
     if c1.button("⏮️ PREVIOUS", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index - 1) % len(files)
         st.rerun()
-    if c2.button("🔄 REFRESH", use_container_width=True): st.rerun()
+    if c2.button("🔄 REFRESH", use_container_width=True): 
+        st.rerun()
     if c3.button("⏭️ NEXT", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(files)
         st.rerun()
-  # --- 1. ฟังก์ชันห้องที่ 6: DESIGN CENTER ---
+
 def room_design():
-    st.markdown(f"""
-        <div style='background: rgba(0,0,0,0.6); padding: 25px; border-radius: 20px; border: 2px solid {st.session_state.border_color}; box-shadow: 0 0 20px {st.session_state.border_color};'>
-            <h2 style='color: {st.session_state.text_color}; margin-top: 0;'>🎨 SYNAPSE DESIGN CENTER</h2>
-            <p style='color: {st.session_state.text_color}; opacity: 0.8;'>ศูนย์ควบคุมสีระบบ: ปรับแต่งสีพื้นหลัง ตัวหนังสือ และสีกรอบไฟนีออน</p>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.write("")
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        bg = st.color_picker("🖼️ สีพื้นหลัง (Background)", st.session_state.bg_color)
-        if bg != st.session_state.bg_color:
-            st.session_state.bg_color = bg
-            st.rerun()
-            
-    with col2:
-        txt = st.color_picker("✍️ สีตัวหนังสือ (Text Color)", st.session_state.text_color)
-        if txt != st.session_state.text_color:
-            st.session_state.text_color = txt
-            st.rerun()
-            
-    with col3:
-        brd = st.color_picker("🔳 สีกรอบ/ไฟ (Border)", st.session_state.border_color)
-        if brd != st.session_state.border_color:
-            st.session_state.border_color = brd
-            st.rerun()
+    st.markdown('<div class="logic-box"><h3>🎨 DESIGN CENTER</h3>', unsafe_allow_html=True)
+    c1, c2, c3 = st.columns(3)
+    bg = c1.color_picker("พื้นหลัง", st.session_state.bg_color)
+    txt = c2.color_picker("ตัวหนังสือ", st.session_state.text_color)
+    brd = c3.color_picker("สีกรอบ/ไฟ", st.session_state.border_color)
+    if bg != st.session_state.bg_color or txt != st.session_state.text_color or brd != st.session_state.border_color:
+        st.session_state.bg_color, st.session_state.text_color, st.session_state.border_color = bg, txt, brd
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # แสดงพรีวิว Agent Card ในห้อง Design เลย
-    st.markdown(f"""
-        <div style="
-            background: rgba(0,0,0,0.7); 
-            padding: 25px; 
-            border-radius: 20px; 
-            border: 4px solid {st.session_state.border_color}; 
-            margin-top: 20px;
-            color: {st.session_state.text_color};
-            box-shadow: 0 0 25px {st.session_state.border_color};
-            max-width: 400px;
-        ">
-            <h3 style="margin:0; color:{st.session_state.text_color};">👤 AGENT: {st.session_state.user}</h3>
-            <p style="font-size: 14px; color:{st.session_state.text_color}; opacity: 0.7;">STATUS: SYNCING VISUALS...</p>
-            <div style="height: 10px; background: {st.session_state.border_color}; border-radius: 5px; margin: 15px 0;"></div>
-            <div style="display:flex; gap:10px; font-family: monospace; font-size: 12px; text-align:center;">
-                <div style="flex:1; padding:10px; background:{st.session_state.bg_color}; border:1px solid {st.session_state.border_color};">BG</div>
-                <div style="flex:1; padding:10px; background:{st.session_state.text_color}; color:#000;">TEXT</div>
-                <div style="flex:1; padding:10px; background:{st.session_state.border_color}; color:#000;">BRD</div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+# (ห้องอื่นๆ เช่น room_radar, room_music, room_secure_chat ให้คงโค้ดเดิมของคุณไว้)
 
-# --- 2. ฟังก์ชันหลัก MAIN ---
+# ==========================================
+# 3. MAIN EXECUTION
+# ==========================================
 def main():
     init_system()
-    
-    # เช็คและตั้งค่าตัวแปรสีใน Session State
-    if 'bg_color' not in st.session_state: st.session_state.bg_color = '#620909'
-    if 'text_color' not in st.session_state: st.session_state.text_color = '#FFFFFF'
-    if 'border_color' not in st.session_state: st.session_state.border_color = '#00FF41'
+    apply_clean_ui() # ลบติ่งและคุมสีทันที
 
-    # ลบติ่งส่วนเกิน + บังคับใช้สีที่เลือก
-    st.markdown(f"""
-        <style>
-        header {{visibility: hidden;}}
-        footer {{visibility: hidden;}}
-        .stAppToolbar {{display: none;}}
-        #MainMenu {{visibility: hidden;}}
-        button[title="Manage app"] {{display: none;}}
-        .block-container {{ padding-top: 0rem; padding-bottom: 0rem; }}
-        
-        /* เปลี่ยนสีพื้นหลังและตัวหนังสือทั้งแอป */
-        .stApp {{
-            background-color: {st.session_state.bg_color} !important;
-            color: {st.session_state.text_color} !important;
-        }}
-        
-        /* เปลี่ยนสีตัวหนังสือในองค์ประกอบต่างๆ */
-        h1, h2, h3, p, span, label, .stMarkdown {{ 
-            color: {st.session_state.text_color} !important; 
-        }}
-
-        /* เปลี่ยนสีขอบ Tabs และ Logic Box ตาม Border Color */
-        .stTabs [data-baseweb="tab-list"], .logic-box {{
-            border: 3px solid {st.session_state.border_color} !important;
-            box-shadow: 0 0 15px {st.session_state.border_color};
-            background-color: rgba(0,0,0,0.4) !important;
-        }}
-        
-        /* แก้สีของพิกเกอร์และปุ่มเบื้องต้น */
-        .stColorPicker label {{ color: {st.session_state.text_color} !important; }}
-        </style>
-    """, unsafe_allow_html=True)
-
-    if not st.session_state.get('logged_in', False):
-        room_login()
+    if not st.session_state.logged_in:
+        # ใส่ room_login() ตรงนี้
+        st.title("SYNAPSE LOGIN")
+        uid = st.text_input("AGENT ID")
+        if st.button("ACCESS"):
+            st.session_state.user = uid
+            st.session_state.logged_in = True
+            st.rerun()
         return
 
     loc = get_geolocation()
     show_logo()
 
-    # Sidebar
-    with st.sidebar:
-        st.markdown(f"### 👤 AGENT: {st.session_state.user}")
-        if st.button("🚪 LOGOUT SYSTEM", use_container_width=True):
-            st.session_state.logged_in = False
-            st.rerun()
-        st.write("'อยู่นิ่งๆ ไม่เจ็บตัว'")
-
-    # --- เมนูหลัก 7 ห้อง (0-6) ---
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "🧬 SCANNER", "💬 CHAT", "📞 VOICE", "🎧 MUSIC", "🎨 DESIGN"])
-    
     with tabs[0]: room_core(loc)
-    with tabs[1]: room_radar(loc)
+    with tabs[1]: st.write("Radar Room (ใส่โค้ดเดิมของคุณ)")
     with tabs[2]: room_reality_scanner()
-    with tabs[3]: room_secure_chat()
-    with tabs[4]: room_audio_call()
+    with tabs[3]: st.write("Chat Room (ใส่โค้ดเดิมของคุณ)")
+    with tabs[4]: st.write("Voice Room (ใส่โค้ดเดิมของคุณ)")
     with tabs[5]: room_music()
-    with tabs[6]: room_design() # เรียกใช้ฟังก์ชันที่แยกออกมา
+    with tabs[6]: room_design()
 
 if __name__ == "__main__":
     main()
-
-            
