@@ -71,7 +71,7 @@ def show_logo():
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"<h1 style='text-align:center; color:{theme}; text-shadow: 0 0 15px {theme};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
-if os.path.exists("
+
 # --- CONFIG & UI ---
 st.set_page_config(page_title="SYNAPSE: THE COMPLETE TRUTH", layout="wide")
 
