@@ -17,7 +17,7 @@ import random
 from streamlit_js_eval import get_geolocation 
 # --- จุดสำคัญ: ต้อง Import แบบนี้เท่านั้น ---
 from streamlit_js_eval import get_geolocation 
-if os.path.exists("
+if os.path.exists
 else:
     st.warning("⚠️ ไม่พบไฟล์วิดีโอ synapse.mp4")   
 def apply_custom_background():
