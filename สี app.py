@@ -15,104 +15,47 @@ from datetime import datetime, date
 import math
 import random
 from streamlit_js_eval import get_geolocation 
-import datetime as dt_module # เปลี่ยนชื่อเล่นเพื่อไม่ให้ชื่อซ้ำ
-from datetime import datetime, date # ดึงคำสั่งหลักมาใช้ตรงๆ
 
 # ==========================================
-# 4. UPDATED CSS - เพิ่มความหนาขอบแบบจัดเต็ม
+# 0. CONFIG & CSS STYLING (Matrix & Neon Style)
 # ==========================================
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", initial_sidebar_state="collapsed")
+
 def apply_custom_background():
     theme = st.session_state.get('theme_color', "#1408BF")
     st.markdown(f"""
         <style>
-        /* ขอบเมนูหลัก (Tabs) - ปรับให้ใหญ่และฟุ้ง */
+        /* ส่วนของ Tabs - ขอบใหญ่ขึ้นไฟฟุ้งขึ้น */
         .stTabs [data-baseweb="tab-list"] {{
-            border: 8px solid {theme} !important; 
-            box-shadow: 0 0 50px {theme} !important;
-            border-radius: 30px !important;
-            background: rgba(0,0,0,0.9) !important;
+            background-color: rgba(0, 0, 0, 0.8) !important;
+            border-radius: 25px !important;
+            padding: 12px !important;
+            border: 6px solid {theme} !important; /* <--- ปรับขอบใหญ่ตรงนี้ */
+            box-shadow: 0 0 40px {theme};         /* <--- ปรับไฟฟุ้งตรงนี้ */
+            margin: 15px 0px !important;
         }}
-
-        /* ขอบปุ่มกด - หนาและมีมิติ */
+        
+        /* ส่วนของปุ่ม - ขอบหนาขึ้น */
         div.stButton > button {{
-            border: 5px solid {theme} !important;
-            box-shadow: 0 0 20px {theme}88;
-            font-size: 1.2rem !important;
-            padding: 15px 30px !important;
+            background: linear-gradient(145deg, #000, #222) !important;
+            color: white !important;
+            border: 5px solid {theme} !important; /* <--- ขอบปุ่มหนาๆ */
+            border-radius: 20px !important;
+            filter: drop-shadow(0 0 15px {theme}); /* <--- ไฟนูนๆ */
+            transition: all 0.3s ease;
         }}
 
-        /* กล่องเนื้อเพลง / กล่องข้อมูล - ขอบหนาพิเศษ */
-        .lyrics-box {{
-            background: rgba(0, 0, 0, 0.7);
-            border: 6px solid #00ff41; /* ขอบเขียว Matrix หนาๆ */
-            border-radius: 25px;
+        /* ส่วนของกล่องคำนวณ - ขอบเขียวหนาๆ */
+        .logic-box {{
+            background: rgba(0, 10, 0, 0.9);
+            border: 5px solid #00ff41;             /* <--- ขอบหนาตรงนี้ */
+            border-radius: 20px;
             padding: 25px;
-            color: #00ff41;
-            font-family: 'Courier New', Courier, monospace;
-            box-shadow: 0 0 35px rgba(0, 255, 65, 0.4);
-            line-height: 1.8;
-            text-align: center;
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.6);
         }}
         </style>
     """, unsafe_allow_html=True)
 
-# ==========================================
-# 5. MUSIC & LYRICS MODULE
-# ==========================================
-def room_music():
-    st.subheader("🎧 SYNAPSE MUSIC STATION")
-    
-    # ส่วนแสดงเนื้อเพลงที่ท่านส่งมา
-    lyrics = """
-    (อยู่นิ่งๆ ไม่เจ็บตัว… Let’s go!)
-    
-    เริ่มที่หน้า LOGIN ใส่ AGENT ID เข้ามา
-    ตั้งรหัสให้ดี อย่าให้ใครเห็นด้วยสายตา
-    ถ้ายังไม่มี ก็ REGISTER สร้างตัวตน
-    เข้าสู่ระบบความปลอดภัย ในโลกที่สับสน
-    
-    📍 มองไปที่ CORE เห็นเวลาและพิกัด
-    ทุกอย่างมันชัดเจน ระบบเราน่ะคัดจัด!
-    
-    เลื่อนไปที่แถบเมนู ไฟนีออนมันสะท้อนตา
-    ทุกฟีเจอร์ที่เราสร้างมา เพื่อให้คุณได้นำพา… Connection
-    
-    🔥 SYNAPSE ในมือคุณ จังหวะเบสกระแทกใจ
-    RADAR ส่องพิกัด เพื่อนอยู่ไหนเรารู้ไป
-    CHAT กันให้สุด ส่งรูปวิดีโอได้ทันที
-    หรือจะ CALL แบบ P2P เสียงชัดแจ๋วเลย Baby
-    
-    (อยู่นิ่งๆ ไม่เจ็บตัว.!)
-    """
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.markdown('<div class="lyrics-box">', unsafe_allow_html=True)
-        st.write("### 📜 LYRICS")
-        st.text(lyrics) # หรือใช้ st.markdown ถ้าต้องการใส่สี
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-    with col2:
-        # ระบบเล่นเพลง
-        files = sorted([f for f in os.listdir('.') if f.endswith(".mp3") or f.endswith(".mp4")])
-        if files:
-            song = st.selectbox("💿 SELECT TRACK", files)
-            if song.endswith(".mp3"):
-                st.audio(song, format="audio/mp3")
-            else:
-                st.video(song)
-                
-            st.markdown(f"""
-                <div style="margin-top:20px; padding:20px; border:4px dashed {st.session_state.theme_color}; border-radius:15px; text-align:center;">
-                    <h4 style="color:{st.session_state.theme_color};">NOW PLAYING:</h4>
-                    <p style="font-size:1.5em; font-weight:bold;">{song}</p>
-                </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.warning("กรุณาตรวจสอบไฟล์ .mp3 หรือ .mp4 ในโฟลเดอร์")
-
-# อย่าลืมเรียกใช้ในฟังก์ชัน main() นะครับ
 
 def show_logo():
     theme = st.session_state.get('theme_color', "#1408BF")
@@ -170,29 +113,18 @@ def get_local_time(lat, lon):
     try:
         tf = TimezoneFinder()
         tz_str = tf.timezone_at(lat=lat, lng=lon)
-        if tz_str:
-            # ระบุชื่อแบบเต็มยศป้องกันการตีกัน
-            return datetime.now(pytz.timezone(tz_str))
-    except Exception as e: 
-        pass # ถ้าพลาดให้ข้ามมาทำบรรทัดล่าง
-    
-    # กรณีหาพิกัดไม่เจอ ให้ใช้เวลาไทยเป็นค่ามาตรฐาน
-    return datetime.now(pytz.timezone('Asia/Bangkok'))
+        return datetime.now(pytz.timezone(tz_str)) if tz_str else datetime.now()
+    except: return datetime.now()
 
 # ==========================================
 # 2. CORE MODULES
 # ==========================================
-if os.path.exists("synapse.mp4"):
-    st.video("synapse.mp4")
-else:
-    st.warning("⚠️ ไม่พบไฟล์วิดีโอ synapse.mp4")
-
 def room_login():
     show_logo()
     col1, col2, col3 = st.columns([1, 1.5, 1])
     with col2:
         st.markdown('<div class="logic-box" style="text-align:center; border-color:#1408BF;">', unsafe_allow_html=True)
-        tab_l, tab_r = st.tabs(["🔑 UNLOCK เข้าสู่ระบบ", "📝 NEW AGENT ลงทะเบียนก่อนเข้าระบบ"])
+        tab_l, tab_r = st.tabs(["🔑 UNLOCK", "📝 NEW AGENT"])
         with tab_l:
             with st.form("login_form"):
                 uid = st.text_input("AGENT ID")
@@ -268,50 +200,34 @@ def room_radar(loc):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
         st.toast("SIGNAL BROADCASTED TO NETWORK")
 
-import datetime # อย่าลืมเช็คว่ามี import นี้ด้านบนสุดของไฟล์ด้วยนะครับ
-
 def room_reality_scanner():
-    st.subheader("🛰️ ตรวจสอบพิกัดรหัสคู่ขนาน")
-    
-    # กำหนดขอบเขตวันที่: เริ่มตั้งแต่ 1 มกราคม 1960 จนถึงปัจจุบัน
-    min_date = datetime.date(1960, 1, 1)
-    max_date = datetime.date.today()
-    
+    st.subheader("🧬 Reality Extractor & Code Scanner")
     col1, col2 = st.columns(2)
-    
     with col1:
-        # AGENT 1: ตั้งค่าให้กรอกปี 1960 ได้ และผู้ใช้สามารถพิมพ์ตัวเลขลงไปได้เลย
-        u1_date = st.date_input(
-            "AGENT 1 (วันเกิด)", 
-            value=datetime.date(1996, 8, 17), # ค่าเริ่มต้น (17 ส.ค. 2539 ตามข้อมูลท่าน)
-            min_value=min_date, 
-            max_value=max_date,
-            format="YYYY/MM/DD", # รูปแบบการแสดงผล
-            help="ท่านสามารถคลิกที่ปีเพื่อเลือก หรือพิมพ์ตัวเลขลงไปได้โดยตรง"
-        )
+        st.markdown('<div class="logic-box">', unsafe_allow_html=True)
+        st.write("### 🔍 สแกนรหัสส่วนบุคคล")
+        dob = st.date_input("เลือกวันเกิด / วันเหตุการณ์", value=date.today())
+        if dob:
+            logic = get_reality_logic(dob)
+            st.metric("REALITY CODE", logic['res'])
+            st.write(f"**สภาวะ:** {logic['phase']}")
+        st.markdown('</div>', unsafe_allow_html=True)
         
     with col2:
-        # AGENT 2: ตั้งค่าเหมือนกัน
-        u2_date = st.date_input(
-            "AGENT 2 (วันเกิด)", 
-            value=max_date, 
-            min_value=min_date, 
-            max_value=max_date,
-            format="YYYY/MM/DD"
-        )
-
-    if st.button("COMPUTE GAP", use_container_width=True):
-        # ส่วนคำนวณเดิมของท่าน
-        r1 = get_reality_logic(u1_date)['res']
-        r2 = get_reality_logic(u2_date)['res']
-        gap = abs(r1 - r2)
-        
-        st.markdown(f"""
-            <div class="logic-box" style="text-align:center;">
-                <h3 style="color:#00ff41;">RESULT GAP: {gap:.4f}</h3>
-                <p>CODE 1: {r1} | CODE 2: {r2}</p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div class="logic-box" style="border-color:#1408BF;">', unsafe_allow_html=True)
+        st.write("### 🛰️ ตรวจสอบพิกัดรหัสคู่ขนาน")
+        u1_date = st.date_input("AGENT 1 (วันเกิด)", value=date(1996, 8, 17))
+        u2_date = st.date_input("AGENT 2 (วันเกิด)", value=date.today())
+        if st.button("COMPUTE GAP"):
+            r1 = get_reality_logic(u1_date)['res']
+            r2 = get_reality_logic(u2_date)['res']
+            gap = abs(r1 - r2)
+            st.write(f"CODE 1: `{r1}` | CODE 2: `{r2}`")
+            st.subheader(f"RESULT GAP: {gap:.4f}")
+            if gap <= 1.0: st.success("ระดับความสัมพันธ์: แนบแน่นพิเศษ")
+            elif gap <= 4.0: st.warning("ระดับความสัมพันธ์: รหัสสะท้อน (คู่ขนาน)")
+            else: st.error("ระดับความสัมพันธ์: แรงผลักดัน")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 def room_secure_chat():
     st.subheader("💬 SECURE REAL-TIME MESSENGER")
@@ -367,55 +283,63 @@ def room_audio_call():
         st.write(f"สถานะ: **ONLINE**")
         st.write(f"ID: `{st.session_state.user}`")
 
-    # ส่วนประมวลผล JavaScript (ของจริงอยู่ตรงนี้!)
+    # ส่วนประมวลผล JavaScript พร้อมระบบเสียงแจ้งเตือน (Ringtone)
     call_js_logic = f"""
     <div id="call-ui" style="background:rgba(0,0,0,0.9); padding:20px; border-radius:15px; border:2px solid {st.session_state.theme_color}; text-align:center;">
         <h3 id="call-status" style="color:#00ff41;">📡 พร้อมเชื่อมต่อ...</h3>
         <audio id="remoteAudio" autoplay></audio>
-        <div id="visualizer" style="height:50px; display:flex; justify-content:center; align-items:center; gap:5px; margin:15px 0;">
+        <audio id="ringtoneAudio" loop src="static/synapse.mp3"></audio> <div id="visualizer" style="height:50px; display:flex; justify-content:center; align-items:center; gap:5px; margin:15px 0;">
             <div class="bar" style="width:5px; height:10px; background:{st.session_state.theme_color}; animation: v-wave 1s infinite alternate;"></div>
             <div class="bar" style="width:5px; height:30px; background:{st.session_state.theme_color}; animation: v-wave 0.8s infinite alternate;"></div>
             <div class="bar" style="width:5px; height:15px; background:{st.session_state.theme_color}; animation: v-wave 1.2s infinite alternate;"></div>
         </div>
         <button id="btn-call" style="background:{st.session_state.theme_color}; color:white; border:none; padding:10px 25px; border-radius:10px; cursor:pointer; font-weight:bold;">📞 เริ่มการโทร</button>
-        <button id="btn-hangup" style="background:#ff4444; color:white; border:none; padding:10px 25px; border-radius:10px; cursor:pointer; font-weight:bold; margin-left:10px;">❌ วางสาย</button>
+        <button id="btn-hangup" style="background:#ff4444; color:white; border:none; padding:10px 25px; border-radius:10px; cursor:pointer; font-weight:bold; margin-left:10px;">❌ วางสาย / ปิดเสียง</button>
     </div>
-
-    <style>
-        @keyframes v-wave {{ from {{ height: 5px; opacity:0.5; }} to {{ height: 40px; opacity:1; }} }}
-    </style>
 
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
-        const peer = new Peer('{st.session_state.user}'); // ใช้ AGENT ID เป็นชื่อที่อยู่
+        const peer = new Peer('{st.session_state.user}');
+        const ringtone = document.getElementById('ringtoneAudio');
         let currentCall = null;
 
         peer.on('open', (id) => {{
             document.getElementById('call-status').innerText = "✅ ระบบออนไลน์ ID: " + id;
         }});
 
-        // ฟังการเรียกเข้า (รับสาย)
+        // --- ระบบแจ้งเตือนสายเข้าพร้อมเสียง ---
         peer.on('call', (call) => {{
+            // 1. เริ่มเล่นเสียงเพลง Synapse ทันทีที่มีสายเข้า
+            ringtone.play().catch(e => console.log("Autoplay blocked, waiting for interaction"));
+            
+            document.getElementById('call-status').innerText = "🚨 ALERT: Incoming Call...";
+            document.getElementById('call-status').style.color = "#ff4444";
+
             if(confirm("🚨 มีสายเรียกเข้าจาก AGENT อื่น! คุณจะรับหรือไม่?")) {{
+                ringtone.pause(); // หยุดเสียงเรียกเข้าเมื่อกดรับ
+                ringtone.currentTime = 0;
+                
                 navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then((stream) => {{
-                    call.answer(stream); // ตอบรับการโทรพร้อมส่งเสียงเราไป
+                    call.answer(stream);
                     document.getElementById('call-status').innerText = "🎙️ กำลังสนทนา...";
+                    document.getElementById('call-status').style.color = "#00ff41";
                     call.on('stream', (remoteStream) => {{
                         document.getElementById('remoteAudio').srcObject = remoteStream;
                     }});
                     currentCall = call;
                 }});
+            }} else {{
+                ringtone.pause(); // หยุดเสียงถ้ากดปฏิเสธ
+                call.close();
             }}
         }});
 
-        // ฟังก์ชันโทรออก
         document.getElementById('btn-call').onclick = () => {{
             const targetId = "{target}";
             if(!targetId) return;
-            
-            document.getElementById('call-status').innerText = "🛰️ กำลังเรียกไปยัง " + targetId + "...";
             navigator.mediaDevices.getUserMedia({{audio: true, video: false}}).then((stream) => {{
                 const call = peer.call(targetId, stream);
+                document.getElementById('call-status').innerText = "🛰️ กำลังเรียก...";
                 call.on('stream', (remoteStream) => {{
                     document.getElementById('call-status').innerText = "🎙️ เชื่อมต่อสำเร็จ!";
                     document.getElementById('remoteAudio').srcObject = remoteStream;
@@ -425,12 +349,14 @@ def room_audio_call():
         }};
 
         document.getElementById('btn-hangup').onclick = () => {{
+            ringtone.pause();
             if(currentCall) currentCall.close();
             location.reload();
         }};
     </script>
     """
-    components.html(call_js_logic, height=350)
+    components.html(call_js_logic, height=400)
+
 
 def room_music():
     st.subheader("🎧 SYNAPSE MUSIC STATION")
