@@ -15,216 +15,103 @@ from datetime import datetime, date
 import math
 import random
 from streamlit_js_eval import get_geolocation 
-
 import streamlit as st
 
-# 1. ตั้งค่า Page เบื้องต้น
+# 1. ซ่อนติ่งบน-ล่างให้กริบ (รวมถึงตัว "สร้างด้วย Streamlit" ข้างล่างด้วย)
 st.set_page_config(layout="wide")
-
-# 2. สร้าง Session State เพื่อเก็บสีที่เลือก (และค่าเริ่มต้น)
-if 'main_color' not in st.session_state:
-    st.session_state.main_color = '#620909' # สีแดงตามรูป
-
-# 3. HTML/CSS เพื่อสร้าง Custom UI แบบในรูป
-custom_ui_html = f"""
+hide_style = """
     <style>
-    /* ซ่อนติ่งบน-ล่าง */
-    header, footer, .stAppToolbar {{visibility: hidden; display: none;}}
-    button[title="Manage app"] {{display: none;}}
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stAppToolbar {display: none;}
+    #MainMenu {visibility: hidden;}
+    </style>
+"""
+st.markdown(hide_style, unsafe_allow_html=True)
 
-    /* สไตล์ของหน้าต่าง Custom Picker (กล่องเทา) */
-    .theme-picker-panel {{
-        background-color: #2D333B; /* สีพื้นเทาแบบในรูป */
-        border-radius: 12px;
+# 2. ตัวเก็บสถานะสี
+if 'main_color' not in st.session_state:
+    st.session_state.main_color = '#620909'
+
+# 3. ส่วนโค้ด HTML/CSS (อันนี้แหละที่ต้องใช้ st.markdown)
+# ผมรวมส่วน AGENT และส่วนเลือกสีไว้ในก้อนเดียวกันให้เลยครับ
+custom_ui = f"""
+<style>
+    .main-panel {{
+        background-color: #1A1D21;
+        border-radius: 15px;
         padding: 20px;
-        color: #E6EDF3; /* สีตัวหนังสือขาวเทา */
-        font-family: sans-serif;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: white;
+        max-width: 400px;
+        margin: auto;
     }}
-
-    .user-info {{
-        margin-bottom: 20px;
-    }}
-
-    .agent-header {{
-        font-size: 18px;
-        font-weight: bold;
-        color: #FFFFFF;
+    .agent-box {{
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 15px;
+        margin-bottom: 5px;
     }}
-
-    .authenticated-status {{
-        font-size: 14px;
+    .status-text {{
         color: #8C959F;
-    }}
-
-    .authenticated-circle {{
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background-color: #31363C; /* สีเทาในรูป */
-        display: inline-block;
-        margin-left: 10px;
-    }}
-
-    /* สไตล์ของส่วนเลือกสี (จำลองแบบในรูป) */
-    .color-section {{
+        font-size: 14px;
+        margin-left: 45px;
         margin-bottom: 20px;
     }}
-
+    .color-section {{
+        background-color: #262B30;
+        border-radius: 10px;
+        padding: 15px;
+    }}
     .system-theme-text {{
-        font-size: 16px;
-        color: #FFFFFF;
+        font-size: 14px;
+        margin-bottom: 10px;
     }}
-
     .color-square {{
-        width: 50px;
-        height: 50px;
-        background-color: {st.session_state.main_color}; /* สีที่เลือกจะโชว์ที่นี่ */
-        border-radius: 4px;
-        margin-top: 10px;
+        width: 45px;
+        height: 45px;
+        background-color: {st.session_state.main_color};
+        border-radius: 8px;
+        margin-bottom: 15px;
     }}
-
     .color-gradient-mock {{
         width: 100%;
         height: 150px;
-        background: linear-gradient(to bottom, #FFFFFF 0%, rgba(255,255,255,0) 100%), linear-gradient(to right, {st.session_state.main_color} 0%, rgba({int(st.session_state.main_color[1:3],16)},{int(st.session_state.main_color[3:5],16)},{int(st.session_state.main_color[5:],16)},0.1) 100%);
-        /* การไล่สีแบบขาวไปโปร่งแสง และสีที่เลือกไปโปร่งแสง (นี่คือการจำลองแบบง่าย) */
-        border-radius: 8px;
-        margin-top: 10px;
-        position: relative;
-    }}
-
-    .color-pointer {{
-        width: 16px;
-        height: 16px;
-        border-radius: 50%;
-        border: 2px solid white;
+        background: linear-gradient(to bottom, white, transparent, black), 
+                    linear-gradient(to right, transparent, {st.session_state.main_color});
         background-color: {st.session_state.main_color};
-        position: absolute;
-        top: 60%; /* จำลองตำแหน่ง */
-        left: 80%; /* จำลองตำแหน่ง */
-    }}
-
-    .hex-display {{
-        background-color: #1A1D21;
-        border-radius: 8px;
-        padding: 10px 15px;
-        font-size: 20px;
-        color: #FFFFFF;
-        font-family: monospace;
-        margin-top: 20px;
-        text-align: center;
-    }}
-    </style>
-
-    <div class="theme-picker-panel">
-        <div class="user-info">
-            <div class="agent-header">
-                <img src="https://img.icons8.com/ios-glyphs/30/FFFFFF/user--v1.png" style="width:24px;height:24px;"/>
-                AGENT: Ta103
-            </div>
-            <div class="authenticated-status">
-                Status: AUTHENTICATED
-                <span class="authenticated-circle"></span>
-            </div>
-        </div>
-
-        <div class="color-section">
-            <div class="system-theme-text">🎨 SYSTEM THEME (Neon)</div>
-            <div class="color-square"></div>
-            <div class="color-gradient-mock">
-                <div class="color-pointer"></div>
-            </div>
-        </div>
-
-    </div>
-"""
-
-st.markdown(custom_ui_html, unsafe_allow_html=True)
-
-# 4. ใช้ st.color_picker ของ Streamlit เพื่อการเลือกสีจริง (และฝังไว้ใน UI)
-with st.sidebar: # เพื่อไม่ให้ไปกวน UI หลัก
-    st.write("### 🎛️ แผงควบคุมสีหลัก")
-    chosen_color = st.color_picker('', st.session_state.main_color)
-    st.session_state.main_color = chosen_color
-
-# HTML สำหรับแสดงรหัสสี (Hex Code) ข้างล่าง
-st.markdown(f'<div class="hex-display">{st.session_state.main_color}</div>', unsafe_allow_html=True)
-
-# 5. ใช้สีที่เลือกเพื่อเปลี่ยนสีทั้งแอป (ซ่อนติ่ง+เปลี่ยนสี)
-st.markdown(f"""
-    <style>
-    .stApp {{
-        background-color: {st.session_state.main_color} !important;
-    }}
-    html, body, [data-testid="stWidgetLabel"], p, h1, h2, h3 {{
-        color: #FFFFFF !important; /* บังคับตัวหนังสือขาวเพื่อไม่ให้มองไม่เห็นเมื่อสีพื้นหลังเปลี่ยน */
-    }}
-    </style>
-""", unsafe_allow_html=True)
-
-# ส่วนแสดงผลเนื้อหาอื่นๆ (ถ้ามี)
-# st.write("## ระบบ SYNAPSE: พร้อมใช้งาน")
-import streamlit as st
-
-# 1. ตั้งค่าพื้นฐาน (ถ้ายังไม่ได้ตั้ง)
-# st.set_page_config(layout="wide")
-
-# 2. ตัวเก็บสถานะสี
-if 'my_color' not in st.session_state:
-    st.session_state.my_color = '#620909' # สีเริ่มต้นแดงเข้มแบบในรูป
-
-# 3. ส่วนโค้ดที่รวม HTML/CSS และปุ่มเลือกสีจริงเข้าด้วยกัน
-# ผมปรับให้ .color-gradient-mock เป็นปุ่มที่กดได้จริง
-
-st.markdown(f"""
-    <style>
-    /* สไตล์ของแผงเลือกสี */
-    .color-section {{
-        background-color: #2D333B;
-        padding: 15px;
         border-radius: 10px;
-        width: 300px;
-    }}
-    .system-theme-text {{
-        color: white;
-        font-size: 14px;
-        margin-bottom: 10px;
-    }}
-    .color-square {{
-        width: 40px;
-        height: 40px;
-        background-color: {st.session_state.my_color};
-        border-radius: 5px;
-        margin-bottom: 10px;
-    }}
-    .color-gradient-mock {{
-        width: 100%;
-        height: 120px;
-        /* ไล่สีจากขาวไปใส และ ดำไปใส ซ้อนบนสีหลัก */
-        background: 
-            linear-gradient(to bottom, white 0%, transparent 50%, black 100%),
-            linear-gradient(to right, transparent, {st.session_state.my_color});
-        background-color: {st.session_state.my_color};
-        border-radius: 8px;
         position: relative;
-        cursor: pointer;
     }}
     .color-pointer {{
-        width: 15px;
-        height: 15px;
+        width: 18px;
+        height: 18px;
         border: 2px solid white;
         border-radius: 50%;
         position: absolute;
-        top: 50%;
-        left: 70%;
-        background-color: {st.session_state.my_color};
+        top: 40%;
+        left: 80%;
+        background-color: {st.session_state.main_color};
     }}
-    </style>
-    
+    .hex-box {{
+        background-color: #0D1117;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        font-family: monospace;
+        font-size: 24px;
+        margin-top: 15px;
+        letter-spacing: 2px;
+    }}
+</style>
+
+<div class="main-panel">
+    <div class="agent-box">
+        <img src="https://img.icons8.com/ios-glyphs/60/FFFFFF/user-male-circle.png" width="35"/>
+        <span style="font-size: 20px; font-weight: bold;">AGENT: Ta103</span>
+    </div>
+    <div class="status-text">Status: AUTHENTICATED</div>
+
     <div class="color-section">
         <div class="system-theme-text">🎨 SYSTEM THEME (Neon)</div>
         <div class="color-square"></div>
@@ -232,18 +119,25 @@ st.markdown(f"""
             <div class="color-pointer"></div>
         </div>
     </div>
-""", unsafe_allow_html=True)
 
-# 4. ปุ่มเลือกสีจริง (วางไว้ใต้แผงเพื่อให้กดเปลี่ยนค่าได้)
-new_color = st.color_picker("จิ้มตรงนี้เพื่อเปลี่ยนสีในแผงข้างบน", st.session_state.my_color)
+    <div class="hex-box">{st.session_state.main_color}</div>
+</div>
+"""
 
-# ถ้ามีการเปลี่ยนสี ให้จดจำค่าและ Refresh หน้าจอ
-if new_color != st.session_state.my_color:
-    st.session_state.my_color = new_color
+# แสดงผล UI ที่เราสร้างขึ้น
+st.markdown(custom_ui, unsafe_allow_html=True)
+
+# 4. ปุ่มสำหรับจิ้มเปลี่ยนสีจริง
+st.write("") # เว้นวรรคนิดหน่อย
+new_color = st.color_picker("🎨 จิ้มตรงนี้เพื่อเปลี่ยนสีระบบ", st.session_state.main_color)
+
+# ถ้ามีการเปลี่ยนสี ให้จดจำและ Refresh
+if new_color != st.session_state.my_color if 'my_color' in st.session_state else False or new_color != st.session_state.main_color:
+    st.session_state.main_color = new_color
     st.rerun()
 
-# 5. แสดงรหัสสี (Hex Code) แบบเท่ๆ
-st.code(f"COLOR CODE: {st.session_state.my_color}")
+# 5. เปลี่ยนสีพื้นหลังทั้งแอปตามสีที่เลือก
+st.markdown(f"<style>.stApp {{background-color: {st.session_state.main_color} !important;}}</style>", unsafe_allow_html=True)
 
 
 def apply_custom_background():
