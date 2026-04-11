@@ -16,57 +16,6 @@ import math
 import random
 from streamlit_js_eval import get_geolocation 
 
-# --- 1. SETTING & CUSTOM NEON UI ---
-st.set_page_config(page_title="SYNAPSE - Ultra Control", layout="wide")
-
-    
-        background: radial-gradient(circle at top right, #0a2342, #0e1117);
-        color: #ffffff;
-    }
-    
-    /* กล่อง Glassmorphism */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.03);
-        backdrop-filter: blur(15px);
-        border-radius: 20px;
-        border: 1px solid rgba(0, 242, 254, 0.2);
-        padding: 25px;
-        margin-bottom: 20px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-
-    /* ปุ่มกดสไตล์ Neon Glow */
-    .stButton>button {
-        width: 100%;
-        border-radius: 50px;
-        background: transparent;
-        color: #00f2fe;
-        border: 2px solid #00f2fe;
-        font-weight: bold;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        padding: 12px 20px;
-        transition: all 0.4s ease;
-        box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
-    }
-    
-    .stButton>button:hover {
-        background: #00f2fe;
-        color: #0e1117;
-        box-shadow: 0 0 30px rgba(0, 242, 254, 0.6);
-        transform: scale(1.02);
-    }
-
-    /* ตกแต่ง Chat Bubble */
-    .chat-bubble {
-        padding: 12px 18px;
-        border-radius: 20px;
-        margin-bottom: 10px;
-        max-width: 85%;
-        line-height: 1.4;
-    }
-    </style>
-    """, unsafe_allow_html=True
 # ==========================================
 # 0. CONFIG & CSS STYLING (Matrix & Neon Style)
 # ==========================================
