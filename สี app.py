@@ -18,78 +18,157 @@ from streamlit_js_eval import get_geolocation
 
 import streamlit as st
 
-# 1. ตั้งค่าหน้าจอ
+# 1. ตั้งค่า Page เบื้องต้น
 st.set_page_config(layout="wide")
 
-# 2. สร้างส่วนเลือกสี (Color Pickers)
-st.sidebar.header("🎨 ปรับแต่งสีด้วยตัวเอง")
+# 2. สร้าง Session State เพื่อเก็บสีที่เลือก (และค่าเริ่มต้น)
+if 'main_color' not in st.session_state:
+    st.session_state.main_color = '#620909' # สีแดงตามรูป
 
-# ตัวเลือกที่ 1: เลือกสีพื้นหลัง
-bg_input = st.sidebar.color_picker('1. เลือกสีพื้นหลัง', '#0E1117')
-
-# ตัวเลือกที่ 2: เลือกสีตัวหนังสือ
-text_input = st.sidebar.color_picker('2. เลือกสีตัวหนังสือ', '#00FF00')
-
-# ตัวเลือกที่ 3: เลือกสีขอบเมนู
-border_input = st.sidebar.color_picker('3. เลือกสีขอบเมนู', '#FF00FF')
-
-# 3. แสดงรหัสสีให้คุณก๊อปปี้ไปใช้ในโค้ด (ตามที่คุณต้องการ)
-st.write("### 📋 รหัสสีที่คุณเลือก (ก๊อปปี้ไปใช้ได้เลย)")
-col1, col2, col3 = st.columns(3)
-col1.code(f"พื้นหลัง: {bg_input}")
-col2.code(f"ตัวหนังสือ: {text_input}")
-col3.code(f"ขอบเมนู: {border_input}")
-
-# 4. ใช้ CSS นำค่าจาก Color Picker มาใช้งานจริง
-custom_style = f"""
+# 3. HTML/CSS เพื่อสร้าง Custom UI แบบในรูป
+custom_ui_html = f"""
     <style>
     /* ซ่อนติ่งบน-ล่าง */
     header, footer, .stAppToolbar {{visibility: hidden; display: none;}}
     button[title="Manage app"] {{display: none;}}
 
-    /* ใช้สีที่เลือกจาก Color Picker */
-    .stApp {{
-        background-color: {bg_input} !important;
+    /* สไตล์ของหน้าต่าง Custom Picker (กล่องเทา) */
+    .theme-picker-panel {{
+        background-color: #2D333B; /* สีพื้นเทาแบบในรูป */
+        border-radius: 12px;
+        padding: 20px;
+        color: #E6EDF3; /* สีตัวหนังสือขาวเทา */
+        font-family: sans-serif;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.5);
     }}
 
-    html, body, [data-testid="stWidgetLabel"], p, h1, h2, h3 {{
-        color: {text_input} !important;
+    .user-info {{
+        margin-bottom: 20px;
     }}
 
-    /* แถบเมนู 5 ข้อด้านบน */
-    .custom-nav {{
-        background-color: {bg_input};
-        padding: 10px;
-        position: fixed;
-        top: 0; left: 0; width: 100%;
-        z-index: 9999;
+    .agent-header {{
+        font-size: 18px;
+        font-weight: bold;
+        color: #FFFFFF;
         display: flex;
-        justify-content: space-around;
-        border-bottom: 3px solid {border_input};
+        align-items: center;
+        gap: 10px;
     }}
-    .nav-link {{
-        color: {text_input};
-        font-size: 12px; font-weight: bold; text-align: center;
+
+    .authenticated-status {{
+        font-size: 14px;
+        color: #8C959F;
     }}
-    .main-content {{ margin-top: 100px; }}
+
+    .authenticated-circle {{
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: #31363C; /* สีเทาในรูป */
+        display: inline-block;
+        margin-left: 10px;
+    }}
+
+    /* สไตล์ของส่วนเลือกสี (จำลองแบบในรูป) */
+    .color-section {{
+        margin-bottom: 20px;
+    }}
+
+    .system-theme-text {{
+        font-size: 16px;
+        color: #FFFFFF;
+    }}
+
+    .color-square {{
+        width: 50px;
+        height: 50px;
+        background-color: {st.session_state.main_color}; /* สีที่เลือกจะโชว์ที่นี่ */
+        border-radius: 4px;
+        margin-top: 10px;
+    }}
+
+    .color-gradient-mock {{
+        width: 100%;
+        height: 150px;
+        background: linear-gradient(to bottom, #FFFFFF 0%, rgba(255,255,255,0) 100%), linear-gradient(to right, {st.session_state.main_color} 0%, rgba({int(st.session_state.main_color[1:3],16)},{int(st.session_state.main_color[3:5],16)},{int(st.session_state.main_color[5:],16)},0.1) 100%);
+        /* การไล่สีแบบขาวไปโปร่งแสง และสีที่เลือกไปโปร่งแสง (นี่คือการจำลองแบบง่าย) */
+        border-radius: 8px;
+        margin-top: 10px;
+        position: relative;
+    }}
+
+    .color-pointer {{
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid white;
+        background-color: {st.session_state.main_color};
+        position: absolute;
+        top: 60%; /* จำลองตำแหน่ง */
+        left: 80%; /* จำลองตำแหน่ง */
+    }}
+
+    .hex-display {{
+        background-color: #1A1D21;
+        border-radius: 8px;
+        padding: 10px 15px;
+        font-size: 20px;
+        color: #FFFFFF;
+        font-family: monospace;
+        margin-top: 20px;
+        text-align: center;
+    }}
     </style>
-    
-    <div class="custom-nav">
-        <div class="nav-link">📍 GPS<br>ตำแหน่ง</div>
-        <div class="nav-link">💬 แชต<br>ส่วนตัว</div>
-        <div class="nav-link">🎥 วีดีโอ<br>คอล</div>
-        <div class="nav-link">🔢 เลข<br>ของวัน</div>
-        <div class="nav-link">🎵 เพลง<br>mp3</div>
+
+    <div class="theme-picker-panel">
+        <div class="user-info">
+            <div class="agent-header">
+                <img src="https://img.icons8.com/ios-glyphs/30/FFFFFF/user--v1.png" style="width:24px;height:24px;"/>
+                AGENT: Ta103
+            </div>
+            <div class="authenticated-status">
+                Status: AUTHENTICATED
+                <span class="authenticated-circle"></span>
+            </div>
+        </div>
+
+        <div class="color-section">
+            <div class="system-theme-text">🎨 SYSTEM THEME (Neon)</div>
+            <div class="color-square"></div>
+            <div class="color-gradient-mock">
+                <div class="color-pointer"></div>
+            </div>
+        </div>
+
     </div>
 """
 
-st.markdown(custom_style, unsafe_allow_html=True)
+st.markdown(custom_ui_html, unsafe_allow_html=True)
 
-# 5. เนื้อหาแอป
-st.markdown('<div class="main-content">', unsafe_allow_html=True)
-st.title("ระบบ SYNAPSE: ปรับสีอิสระ")
-st.write("ลองเลื่อนเลือกสีที่แถบด้านข้าง (Sidebar) ดูครับ สีจะเปลี่ยนทันที!")
-st.markdown('</div>', unsafe_allow_html=True)
+# 4. ใช้ st.color_picker ของ Streamlit เพื่อการเลือกสีจริง (และฝังไว้ใน UI)
+with st.sidebar: # เพื่อไม่ให้ไปกวน UI หลัก
+    st.write("### 🎛️ แผงควบคุมสีหลัก")
+    chosen_color = st.color_picker('', st.session_state.main_color)
+    st.session_state.main_color = chosen_color
+
+# HTML สำหรับแสดงรหัสสี (Hex Code) ข้างล่าง
+st.markdown(f'<div class="hex-display">{st.session_state.main_color}</div>', unsafe_allow_html=True)
+
+# 5. ใช้สีที่เลือกเพื่อเปลี่ยนสีทั้งแอป (ซ่อนติ่ง+เปลี่ยนสี)
+st.markdown(f"""
+    <style>
+    .stApp {{
+        background-color: {st.session_state.main_color} !important;
+    }}
+    html, body, [data-testid="stWidgetLabel"], p, h1, h2, h3 {{
+        color: #FFFFFF !important; /* บังคับตัวหนังสือขาวเพื่อไม่ให้มองไม่เห็นเมื่อสีพื้นหลังเปลี่ยน */
+    }}
+    </style>
+""", unsafe_allow_html=True)
+
+# ส่วนแสดงผลเนื้อหาอื่นๆ (ถ้ามี)
+# st.write("## ระบบ SYNAPSE: พร้อมใช้งาน")
+
 
 def apply_custom_background():
     theme = st.session_state.get('theme_color', "#1408BF")
