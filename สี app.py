@@ -419,42 +419,36 @@ def room_music():
         st.session_state.song_index = (st.session_state.song_index + 1) % len(files)
         st.rerun()
   
-    with tabs[6]:
-        st.markdown(f"""
-            <div style='background: rgba(0,0,0,0.6); padding: 25px; border-radius: 20px; border: 2px solid {st.session_state.theme_color}; box-shadow: 0 0 20px {st.session_state.theme_color};'>
-                <h2 style='color: white; margin-top: 0;'>🎨 SYSTEM COLOR CONTROL</h2>
-                <p style='color: #8C959F;'>ปรับแต่งโทนสีหลักของระบบ SYNAPSE ทั้งหมดได้ที่นี่</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        st.write("")
-        # ตัวเลือกสีในห้องที่ 6
-        new_color = st.color_picker("จิ้มเพื่อเปลี่ยนสีระบบ (Background & UI)", st.session_state.theme_color)
-        
-        if new_color != st.session_state.theme_color:
-            st.session_state.theme_color = new_color
-            st.rerun()
-            
-        # พรีวิวหน้าต่าง AGENT CARD แบบที่คุณชอบ
-        st.markdown(f"""
-            <div style="background-color: #1A1D21; border-radius: 15px; padding: 20px; color: white; border: 1px solid #333; max-width: 350px; margin-top: 20px;">
-                <div style="font-weight: bold; font-size: 18px;">👤 AGENT: {st.session_state.user}</div>
-                <div style="background-color: #262B30; border-radius: 10px; padding: 15px; margin-top: 10px;">
-                    <div style="font-size:11px; margin-bottom: 8px;">🎨 CURRENT THEME PREVIEW</div>
-                    <div style="width: 100%; height: 60px; background: linear-gradient(to right, {new_color}, transparent); background-color: {new_color}; border-radius: 8px;"></div>
-                </div>
-                <div style="background-color: #0D1117; padding: 8px; border-radius: 5px; text-align: center; font-family: monospace; margin-top: 15px; border: 1px solid #444;">
-                    {new_color}
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+def room_music():
+    st.subheader("🎧 SYNAPSE MUSIC STATION")
+    files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+    if not files:
+        st.warning("⚠️ No MP3 files detected.")
+        return
+
+    song = files[st.session_state.song_index]
+    st.info(f"🎶 NOW STREAMING: {song}")
+    
+    with open(song, "rb") as f:
+        st.audio(f.read(), format="audio/mp3")
+
+    c1, c2, c3 = st.columns(3)
+    if c1.button("⏮️ PREVIOUS"):
+        st.session_state.song_index = (st.session_state.song_index - 1) % len(files)
+        st.rerun()
+    if c2.button("🔄 REFRESH"): st.rerun()
+    if c3.button("⏭️ NEXT"):
+        st.session_state.song_index = (st.session_state.song_index + 1) % len(files)
+        st.rerun()
+# จบแค่นี้ครับ ห้ามมี with tabs[6] ต่อท้ายตรงนี้
+    
 # ==========================================
 # 3. MAIN CONTROLLER
 # ==========================================
 def main():
     init_system()
     
-    # 1. ลบติ่งส่วนเกิน (Header, Footer, Menu) ออกให้หมด
+    # ลบติ่งกริบๆ
     st.markdown("""
         <style>
         header {visibility: hidden;}
@@ -466,15 +460,8 @@ def main():
         </style>
     """, unsafe_allow_html=True)
     
-    # 2. บังคับสีพื้นหลังแอปตามที่เลือก
-    st.markdown(f"""
-        <style>
-        .stApp {{
-            background-color: {st.session_state.get('theme_color', '#620909')} !important;
-            transition: background-color 0.5s ease;
-        }}
-        </style>
-    """, unsafe_allow_html=True)
+    # บังคับสีพื้นหลังตามที่เราเลือก
+    st.markdown(f"<style>.stApp {{background-color: {st.session_state.theme_color} !important;}}</style>", unsafe_allow_html=True)
 
     if not st.session_state.get('logged_in', False):
         room_login()
@@ -483,18 +470,14 @@ def main():
     loc = get_geolocation()
     show_logo()
 
-    # Sidebar Settings (เก็บไว้เฉพาะข้อมูล Agent)
     with st.sidebar:
         st.markdown(f"### 👤 AGENT: {st.session_state.user}")
-        st.caption("Status: AUTHENTICATED")
-        st.write("---")
         if st.button("🚪 LOGOUT SYSTEM", use_container_width=True):
             st.session_state.logged_in = False
             st.rerun()
-        st.write("---")
         st.write("'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-    # 3. Main Navigation - เพิ่มห้องที่ 6 (🎨 THEME)
+    # สร้าง 7 ห้อง (0-6)
     tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "🧬 SCANNER", "💬 CHAT", "📞 VOICE", "🎧 MUSIC", "🎨 THEME"])
     
     with tabs[0]: room_core(loc)
@@ -503,6 +486,23 @@ def main():
     with tabs[3]: room_secure_chat()
     with tabs[4]: room_audio_call()
     with tabs[5]: room_music()
-    with tabs[6]: room_theme()
+    
+    # ห้องที่ 6 (ห้องใหม่สำหรับเปลี่ยนสี)
+    with tabs[6]:
+        st.markdown(f"### 🎨 SYSTEM THEME CONTROL")
+        new_color = st.color_picker("เลือกสีหลักของระบบ", st.session_state.theme_color)
+        if new_color != st.session_state.theme_color:
+            st.session_state.theme_color = new_color
+            st.rerun()
+            
+        # โชว์ Agent Card Preview เท่ๆ
+        st.markdown(f"""
+            <div style="background:#1A1D21; padding:20px; border-radius:15px; border:1px solid {new_color}; margin-top:10px;">
+                <div style="font-weight:bold;">AGENT: {st.session_state.user}</div>
+                <div style="width:100%; height:10px; background:{new_color}; margin-top:10px; border-radius:5px;"></div>
+                <div style="text-align:center; font-family:monospace; margin-top:10px;">{new_color}</div>
+            </div>
+        """, unsafe_allow_html=True)
+
 if __name__ == "__main__":
     main()
