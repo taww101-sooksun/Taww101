@@ -146,14 +146,7 @@ def apply_custom_background():
         }}
         </style>
     """, unsafe_allow_html=True)
-def apply_custom_background():
-    
-        <style>
-        /* จัดการพื้นหลังหลักของแอป */
-        .stApp {{
-            background: linear-gradient(270deg, #AFEEEE, #FF7F50, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-            background-size: 1600% 1600%;
-            animation: RainbowFlow 60s ease infinite;
+
         }}
 
         /* ตัวคุมการวิ่งของสี */
