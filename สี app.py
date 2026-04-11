@@ -8,196 +8,186 @@ import streamlit.components.v1 as components
 import folium
 from folium.features import DivIcon
 from streamlit_folium import st_folium
+import math
 from math import radians, cos, sin, asin, sqrt
 import pytz
 from timezonefinder import TimezoneFinder
-from datetime import datetime, date
-import math
+from datetime import datetime, date, timedelta
 import random
+import pandas as pd
+import json
 from streamlit_js_eval import get_geolocation 
 
-# ==========================================
-# 0. CONFIG & NEON CSS (ขอบหนา ไฟฟุ้ง ตามสั่ง)
-# ==========================================
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", initial_sidebar_state="collapsed")
+# ==============================================================================
+# 🎨 SECTION 1: GLOBAL STYLING & DESIGN ENGINE
+# ==============================================================================
 
-def apply_custom_background():
+def apply_global_styles():
+    """
+    ระบบควบคุม Visual Identity ของ SYNAPSE OS
+    เน้นขอบหนา ไฟฟุ้ง และความเป็น Matrix Neon
+    """
     theme = st.session_state.get('theme_color', "#1408BF")
+    secondary = "#00FF41" # Matrix Green
+    
     st.markdown(f"""
         <style>
-        .stApp {{ background-color: #000000; color: white; }}
-        
-        /* Tabs - ขอบหนา ไฟฟุ้ง */
-        .stTabs [data-baseweb="tab-list"] {{
-            background-color: rgba(0, 0, 0, 0.9) !important;
-            border-radius: 25px !important;
-            padding: 12px !important;
-            border: 6px solid {theme} !important;
-            box-shadow: 0 0 40px {theme};
-            margin: 15px 0px !important;
-        }}
-        .stTabs [data-baseweb="tab"] {{ color: white !important; font-weight: bold; }}
-        .stTabs [aria-selected="true"] {{ background-color: {theme}44 !important; }}
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
 
-        /* ปุ่ม - ขอบหนา ไฟนูน */
-        div.stButton > button {{
-            background: linear-gradient(145deg, #000, #222) !important;
+        /* ปรับแต่งโครงสร้างพื้นฐาน */
+        .stApp {{
+            background-color: #000000 !important;
             color: white !important;
-            border: 5px solid {theme} !important;
-            border-radius: 20px !important;
-            filter: drop-shadow(0 0 15px {theme});
-            transition: all 0.3s ease;
-            width: 100%; height: 50px; font-weight: bold;
+            font-family: 'JetBrains Mono', monospace !important;
         }}
-        div.stButton > button:hover {{ transform: scale(1.02); filter: drop-shadow(0 0 25px {theme}); }}
 
-        /* Logic Box - ขอบเขียวหนา Matrix */
-        .logic-box {{
-            background: rgba(0, 10, 0, 0.95);
-            border: 5px solid #00ff41;
-            border-radius: 20px;
-            padding: 25px;
-            box-shadow: 0 0 30px rgba(0, 255, 65, 0.6);
-            margin-bottom: 20px;
+        /* ซ่อนส่วนเกินที่ไม่จำเป็น */
+        header, footer, .stAppToolbar {{ visibility: hidden !important; }}
+        .block-container {{ padding: 2rem 5rem !important; }}
+
+        /* ระบบ TABS - ขอบหนาพิเศษและไฟเรืองแสง */
+        .stTabs [data-baseweb="tab-list"] {{
+            background-color: rgba(5, 5, 5, 0.9) !important;
+            border-radius: 30px !important;
+            padding: 15px !important;
+            border: 8px solid {theme} !important;
+            box-shadow: 0 0 50px {theme}66, inset 0 0 20px {theme}33;
+            margin: 20px 0px 40px 0px !important;
         }}
-        header, footer {{visibility: hidden !important;}}
+        .stTabs [data-baseweb="tab"] {{
+            color: #AAAAAA !important;
+            font-size: 1.1em !important;
+            font-weight: 700 !important;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            padding: 10px 25px !important;
+        }}
+        .stTabs [aria-selected="true"] {{
+            color: white !important;
+            background-color: {theme}33 !important;
+            border-radius: 15px;
+            text-shadow: 0 0 15px white;
+            transform: translateY(-2px);
+        }}
+
+        /* ปุ่มกด - NEON TRIGGER PRO */
+        div.stButton > button {{
+            background: linear-gradient(135deg, #000000 0%, #111111 100%) !important;
+            color: {theme} !important;
+            border: 6px solid {theme} !important;
+            border-radius: 25px !important;
+            font-weight: 900 !important;
+            letter-spacing: 3px !important;
+            text-transform: uppercase !important;
+            padding: 20px !important;
+            box-shadow: 0 0 20px {theme}44;
+            transition: 0.3s all ease-in-out;
+            margin-top: 10px;
+        }}
+        div.stButton > button:hover {{
+            background: {theme} !important;
+            color: white !important;
+            box-shadow: 0 0 40px {theme};
+            transform: scale(1.03) translateY(-3px);
+        }}
+
+        /* LOGIC BOX - ขอบหนาสีเขียว Matrix */
+        .logic-box {{
+            background: rgba(0, 15, 0, 0.92);
+            border: 6px solid {secondary} !important;
+            border-radius: 25px;
+            padding: 35px;
+            box-shadow: 0 0 35px rgba(0, 255, 65, 0.4);
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+        }}
+        .logic-box::after {{
+            content: "SECURE DATA";
+            position: absolute;
+            top: 10px; right: 20px;
+            font-size: 0.6em; color: {secondary};
+            opacity: 0.5; letter-spacing: 2px;
+        }}
+
+        /* ปรับแต่ง INPUT / DATE INPUT */
+        .stDateInput input, .stTextInput input {{
+            background-color: #000 !important;
+            color: {secondary} !important;
+            border: 2px solid {secondary}55 !important;
+            border-radius: 10px !important;
+        }}
+
+        /* Scrollbar Style */
+        ::-webkit-scrollbar {{ width: 8px; }}
+        ::-webkit-scrollbar-track {{ background: #000; }}
+        ::-webkit-scrollbar-thumb {{ background: {theme}; border-radius: 10px; }}
         </style>
     """, unsafe_allow_html=True)
 
-# ==========================================
-# 1. UTILS (คำนวณรหัสคู่ขนาน)
-# ==========================================
-def get_reality_logic(dt):
-    ref_date = date(1900, 1, 1)
-    diff = (dt - ref_date).days
-    lunar_cycle = 29.530589
-    pos = (diff - 0.5) % lunar_cycle
-    day_val = dt.weekday() + 1
-    if pos <= 14.765:
-        m_num = int(pos) + 1
-        res = math.sqrt((day_val**2) + (m_num**2))
-        phase = f"ขึ้น {m_num} ค่ำ"
-    else:
-        m_num = int(pos - 14.765) + 1
-        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
-        phase = f"แรม {m_num} ค่ำ"
-    return {"res": round(res, 4), "phase": phase}
+# ==============================================================================
+# ⚙️ SECTION 2: SYSTEM KERNEL & INITIALIZATION
+# ==============================================================================
 
-def init_system():
+def init_synapse_core():
+    """ตั้งค่าตัวแปรระบบเริ่มต้น (Session States)"""
+    if 'system_ready' not in st.session_state: st.session_state.system_ready = True
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#1408BF"
     if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+    if 'user' not in st.session_state: st.session_state.user = "GUEST"
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    if 'logs' not in st.session_state: st.session_state.logs = []
+    
+    # เชื่อมต่อ Database
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
             cred = credentials.Certificate(fb_creds)
             firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
-        except: pass
+            add_system_log("DATABASE CONNECTION: ESTABLISHED")
+        except Exception as e:
+            st.error(f"FATAL ERROR: FIREBASE FAIL -> {e}")
 
-# ==========================================
-# 2. MODULES (แก้ไข Duplicate ID ด้วย Unique Key)
-# ==========================================
+def add_system_log(msg):
+    """ฟังก์ชันบันทึกกิจกรรมเข้าระบบ"""
+    ts = datetime.now().strftime("%H:%M:%S")
+    st.session_state.logs.append(f"[{ts}] {msg}")
+    if len(st.session_state.logs) > 50: st.session_state.logs.pop(0)
 
-def room_reality_scanner(suffix="main"):
-    """ใส่ suffix เพื่อป้องกัน Duplicate ID"""
-    st.subheader("🧬 Reality Extractor & Code Scanner")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('<div class="logic-box">', unsafe_allow_html=True)
-        st.write("### 🔍 สแกนส่วนบุคคล")
-        # ใส่ key เฉพาะตัวเพื่อแก้ Error
-        dob = st.date_input("เลือกวันเกิด", value=date(1970, 1, 1), min_value=date(1900,1,1), key=f"dob_{suffix}")
-        res = get_reality_logic(dob)
-        st.metric("REALITY CODE", res['res'])
-        st.info(f"สภาวะ: {res['phase']}")
-        st.markdown('</div>', unsafe_allow_html=True)
-    with col2:
-        st.markdown('<div class="logic-box" style="border-color:#1408BF;">', unsafe_allow_html=True)
-        st.write("### 🛰️ ตรวจสอบรหัสคู่ขนาน")
-        u1 = st.date_input("AGENT 1", value=date(1996, 8, 17), key=f"ag1_{suffix}")
-        u2 = st.date_input("AGENT 2", value=date.today(), key=f"ag2_{suffix}")
-        if st.button("COMPUTE GAP", key=f"btn_{suffix}"):
-            r1, r2 = get_reality_logic(u1)['res'], get_reality_logic(u2)['res']
-            gap = abs(r1-r2)
-            st.write(f"CODE 1: `{r1}` | CODE 2: `{r2}`")
-            st.subheader(f"GAP: {gap:.4f}")
-            if gap <= 1.5: st.success("MATCH: OPTIMAL")
-            else: st.warning("MATCH: STABLE")
-        st.markdown('</div>', unsafe_allow_html=True)
+# ==============================================================================
+# 🧠 SECTION 3: CORE CALCULATIONS (REALITY & GEODESY)
+# ==============================================================================
 
-def room_audio_call():
-    theme = st.session_state.theme_color
-    st.markdown(f'<div class="logic-box" style="border-color:{theme}; text-align:center;"><h2>📞 SYNAPSE VOICE</h2></div>', unsafe_allow_html=True)
-    users = db.reference('users').get()
-    friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    target = st.selectbox("🎯 TARGET ID:", friends, key="call_target")
+def calculate_haversine_distance(lat1, lon1, lat2, lon2):
+    """คำนวณระยะห่างระหว่างจุด 2 จุดบนผิวโลก"""
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    dlon, dlat = lon2 - lon1, lat2 - lat1 
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))
+    return c * 6371 # กิโลเมตร
 
-    call_html = f"""
-    <div style="background:#000; padding:20px; border:3px solid {theme}; border-radius:15px; text-align:center;">
-        <h4 id="status" style="color:#00ff41;">📡 พร้อมเชื่อมต่อ...</h4>
-        <audio id="remoteAudio" autoplay></audio>
-        <div style="margin:20px 0;">
-            <button id="callBtn" style="padding:15px; background:{theme}; color:white; border:none; border-radius:10px; cursor:pointer; width:45%;">📞 CALL</button>
-            <button id="hangBtn" style="padding:15px; background:#f44; color:white; border:none; border-radius:10px; cursor:pointer; width:45%;">❌ END</button>
-        </div>
-    </div>
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <script>
-        const peer = new Peer('{st.session_state.user}');
-        let currentCall = null;
-        peer.on('call', (call) => {{
-            if(confirm("🚨 Incoming Call! Accept?")) {{
-                navigator.mediaDevices.getUserMedia({{audio:true}}).then(stream => {{
-                    call.answer(stream);
-                    call.on('stream', rem => {{ document.getElementById('remoteAudio').srcObject = rem; }});
-                    currentCall = call;
-                    document.getElementById('status').innerText = "🎙️ ON CALL";
-                }});
-            }}
-        }});
-        document.getElementById('callBtn').onclick = () => {{
-            const tid = "{target}";
-            navigator.mediaDevices.getUserMedia({{audio:true}}).then(stream => {{
-                const call = peer.call(tid, stream);
-                document.getElementById('status').innerText = "🛰️ CALLING...";
-                call.on('stream', rem => {{ document.getElementById('remoteAudio').srcObject = rem; }});
-                currentCall = call;
-            }});
-        }};
-        document.getElementById('btn-hangup').onclick = () => {{ location.reload(); }};
-    </script>
+def get_reality_fingerprint(target_date):
     """
-    components.html(call_html, height=280)
-
-# ==========================================
-# 3. MAIN
-# ==========================================
-def main():
-    init_system()
-    apply_custom_background()
-    loc = get_geolocation()
-
-    if not st.session_state.logged_in:
-        # ส่วน Login (ข้ามไปก่อน)
-        st.session_state.logged_in = True # Test
-        st.session_state.user = "Ta103"
-        st.rerun()
-
-    with st.sidebar:
-        st.write(f"### 👤 {st.session_state.user}")
-        st.session_state.theme_color = st.color_picker("THEME", st.session_state.theme_color)
-        if st.button("LOGOUT"): st.session_state.logged_in = False; st.rerun()
-
-    tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "🧬 SCANNER", "💬 CHAT", "📞 VOICE", "🎧 MUSIC"])
+    สูตรคำนวณรหัสคลื่นความถี่ (Reality Code)
+    ขยายความซับซ้อนเพื่อให้ข้อมูลมีความลึกขึ้น
+    """
+    anchor = date(1900, 1, 1)
+    delta = (target_date - anchor).days
+    lunar_cycle = 29.530588853
+    position = (delta - 0.5) % lunar_cycle
+    day_idx = target_date.weekday() + 1 # 1=Mon...7=Sun
     
-    with tabs[0]: 
-        st.subheader("🏠 DASHBOARD")
-        # ใช้ suffix="dash" เพื่อไม่ให้ซ้ำกับหน้า Scanner
-        room_reality_scanner(suffix="dash") 
+    # Advanced Reality Formula
+    if position <= 14.765:
+        age = int(position) + 1
+        code = math.sqrt((day_idx ** 2.5) + (age ** 2.2)) / 1.618
+        status = f"ข้างขึ้น {age} ค่ำ (Waxing)"
+    else:
+        age = int(position - 14.765) + 1
+        code = (day_idx * 3.14159) / (age if age != 0 else 1)
+        status = f"ข้างแรม {age} ค่ำ (Waning)"
         
-    with tabs[2]: 
-        # ใช้ suffix="scanner" ป้องกัน Duplicate ID
-        room_reality_scanner(suffix="scanner") 
-
-if __name__ == "__main__":
-    main()
+    return {
+        "code": round(code, 4),
+        "status": status,
+        "lunar_pos": round(position, 2),
+        "entropy": round(math.sin
