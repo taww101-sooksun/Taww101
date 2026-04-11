@@ -200,7 +200,6 @@ else:
     st.info("🛰️ ระบบ Standby... กรุณากรอกข้อมูลวันเกิดเพื่อเริ่มการสแกนรหัสชีวิต")
 
 st.divider()
-st.caption(f"สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE CORE v20.2 | {date.today().year}")"):
     st.video("import streamlit as st
 
 
