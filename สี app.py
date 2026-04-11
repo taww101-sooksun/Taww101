@@ -15,6 +15,44 @@ from datetime import datetime, date
 import math
 import random
 from streamlit_js_eval import get_geolocation 
+import streamlit as st
+
+# 1. ตั้งค่าหน้าจอ (ต้องอยู่บนสุดเสมอ)
+st.set_page_config(layout="wide", page_title="SYNAPSE")
+
+# 2. โค้ดสำหรับ "ลบติ่ง" และส่วนเกินทั้งหมด
+st.markdown("""
+    <style>
+    /* ซ่อน Header (แถบด้านบน) */
+    header {visibility: hidden;}
+    
+    /* ซ่อน Footer (ที่เขียนว่า Made with Streamlit) */
+    footer {visibility: hidden;}
+    
+    /* ซ่อนแถบ Toolbar ของ Streamlit */
+    .stAppToolbar {display: none;}
+    
+    /* ซ่อนปุ่ม MainMenu (สามขีด) */
+    #MainMenu {visibility: hidden;}
+    
+    /* ซ่อนปุ่ม Manage app (สำหรับตอนรันบน Cloud) */
+    button[title="Manage app"] {display: none;}
+    
+    /* ดันเนื้อหาขึ้นไปข้างบนสุด ไม่ให้เหลือช่องว่าง */
+    .block-container {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    /* ซ่อนขอบขาวๆ ตอน Hover บนรูปภาพหรือองค์ประกอบต่างๆ */
+    .stDeployButton {display:none;}
+    </style>
+""", unsafe_allow_html=True)
+
+# --- หลังจากนี้คือโค้ดส่วนที่เหลือของคุณ ---
+st.write("ระบบ SYNAPSE พร้อมใช้งาน (ไม่มีติ่งกวนใจแล้วครับ)")
 
 # ==========================================
 # 0. CONFIG & CSS STYLING (Matrix & Neon Style)
