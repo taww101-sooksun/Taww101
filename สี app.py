@@ -239,12 +239,24 @@ def room_radar(loc):
         st.toast("SIGNAL BROADCASTED TO NETWORK")
 
 def room_reality_scanner():
+    # กำหนดช่วงวันที่ให้เลือกได้กว้างๆ (ตั้งแต่ปี 1900 ถึงปัจจุบัน)
+    min_d = datetime.date(1900, 1, 1)
+    max_d = datetime.date.today()
+    
     st.subheader("🧬 Reality Extractor & Code Scanner")
     col1, col2 = st.columns(2)
+    
     with col1:
         st.markdown('<div class="logic-box">', unsafe_allow_html=True)
         st.write("### 🔍 สแกนรหัสส่วนบุคคล")
-        dob = st.date_input("เลือกวันเกิด / วันเหตุการณ์", value=date.today())
+        # เพิ่ม min_value และ max_value เพื่อให้เลือกปีเก่าๆ ได้
+        dob = st.date_input(
+            "เลือกวันเกิด / วันเหตุการณ์", 
+            value=datetime.date(1970, 1, 1), # ตั้งค่าเริ่มต้นเป็น 1970 ตามที่คุณต้องการ
+            min_value=min_d,
+            max_value=max_d,
+            key="scanner_dob"
+        )
         if dob:
             logic = get_reality_logic(dob)
             st.metric("REALITY CODE", logic['res'])
@@ -252,11 +264,26 @@ def room_reality_scanner():
         st.markdown('</div>', unsafe_allow_html=True)
         
     with col2:
-        st.markdown('<div class="logic-box" style="border-color:#1408BF;">', unsafe_allow_html=True)
+        st.markdown(f'<div class="logic-box" style="border-color:{st.session_state.border_color};">', unsafe_allow_html=True)
         st.write("### 🛰️ ตรวจสอบพิกัดรหัสคู่ขนาน")
-        u1_date = st.date_input("AGENT 1 (วันเกิด)", value=date(1996, 8, 17))
-        u2_date = st.date_input("AGENT 2 (วันเกิด)", value=date.today())
-        if st.button("COMPUTE GAP"):
+        # AGENT 1: แก้ให้เลือกปีเก่าได้เช่นกัน
+        u1_date = st.date_input(
+            "AGENT 1 (วันเกิด)", 
+            value=datetime.date(1996, 8, 17), 
+            min_value=min_d,
+            max_value=max_d,
+            key="agent1_dob"
+        )
+        # AGENT 2: 
+        u2_date = st.date_input(
+            "AGENT 2 (วันเกิด)", 
+            value=max_d,
+            min_value=min_d,
+            max_value=max_d,
+            key="agent2_dob"
+        )
+        
+        if st.button("COMPUTE GAP", use_container_width=True):
             r1 = get_reality_logic(u1_date)['res']
             r2 = get_reality_logic(u2_date)['res']
             gap = abs(r1 - r2)
@@ -265,7 +292,7 @@ def room_reality_scanner():
             if gap <= 1.0: st.success("ระดับความสัมพันธ์: แนบแน่นพิเศษ")
             elif gap <= 4.0: st.warning("ระดับความสัมพันธ์: รหัสสะท้อน (คู่ขนาน)")
             else: st.error("ระดับความสัมพันธ์: แรงผลักดัน")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)    
 
 def room_secure_chat():
     st.subheader("💬 SECURE REAL-TIME MESSENGER")
