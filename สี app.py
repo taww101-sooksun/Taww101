@@ -200,7 +200,7 @@ else:
     st.info("🛰️ ระบบ Standby... กรุณากรอกข้อมูลวันเกิดเพื่อเริ่มการสแกนรหัสชีวิต")
 
 st.divider()
-    st.video("import streamlit as st
+    st.video("
 
 
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", initial_sidebar_state="collapsed")
