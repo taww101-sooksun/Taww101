@@ -51,6 +51,57 @@ def apply_custom_background():
         """,
         unsafe_allow_html=True
     )
+
+def lobby_music():  # เปลี่ยนจาก room_music เป็น lobby_music (เพลงหน้าล็อบบี้)
+    st.subheader("🎧 พักฟังเพลงก่อนลุยต่อ (Lobby Station)")
+    
+    # 1. ตรวจสอบไฟล์เพลงในโฟลเดอร์
+    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+    
+    if not music_files:
+        st.warning("⚠️ คลังเพลงยังว่างอยู่ เดี๋ยวมาเติมให้ครับ")
+        return
+
+    # 2. เลือกเพลงปัจจุบัน
+    current_song = music_files[st.session_state.song_index]
+    # ปรับข้อความให้นุ่มนวลขึ้น
+    st.caption(f"กำลังเล่นเพลงลำดับที่ {st.session_state.song_index + 1} จาก {len(music_files)}")
+    st.info(f"🎶 {current_song}")
+
+    # 3. ใช้ HTML5 Audio + JS (เหมือนเดิม)
+    with open(current_song, "rb") as f:
+        data = f.read()
+        b64 = base64.b64encode(data).decode()
+        mime = "audio/mp3"
+        audio_url = f"data:{mime};base64,{b64}"
+
+    audio_html = f"""
+        <audio id="audio-player" controls autoplay style="width: 100%;">
+            <source src="{audio_url}" type="{mime}">
+        </audio>
+        <script>
+            var audio = document.getElementById('audio-player');
+            audio.onended = function() {{
+                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*');
+            }};
+        </script>
+    """
+    
+    result = components.html(audio_html, height=100)
+
+    # 4. ส่วนควบคุม (ปรับข้อความปุ่ม)
+    col1, col2, col3 = st.columns(3)
+    if col1.button("⏮️ เพลงก่อนหน้า"):
+        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
+        st.rerun()
+    
+    if col2.button("🔄 ฟังซ้ำ"):
+        st.rerun()
+
+    if col3.button("⏭️ เพลงถัดไป") or result == 'next':
+        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+        st.rerun()
+
 # ==========================================
 # 0. CONFIG & CSS STYLING (Matrix & Neon Style)
 # ==========================================
