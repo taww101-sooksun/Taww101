@@ -147,8 +147,7 @@ def apply_custom_background():
         </style>
     """, unsafe_allow_html=True)
 def apply_custom_background():
-    st.markdown(
-        f"""
+    st.markdown(f"""
         <style>
         /* จัดการพื้นหลังหลักของแอป */
         .stApp {{
