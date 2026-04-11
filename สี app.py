@@ -72,9 +72,6 @@ def show_logo():
         else:
             st.markdown(f"<h1 style='text-align:center; color:{theme}; text-shadow: 0 0 15px {theme};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
 if os.path.exists("import streamlit as st
-import pandas as pd
-from datetime import datetime, date
-import math
 
 # --- CONFIG & UI ---
 st.set_page_config(page_title="SYNAPSE: THE COMPLETE TRUTH", layout="wide")
@@ -206,26 +203,8 @@ else:
 st.divider()
 st.caption(f"สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE CORE v20.2 | {date.today().year}")"):
     st.video("import streamlit as st
-import os 
-import time
-import base64
-import firebase_admin
-from firebase_admin import credentials, db
-import streamlit.components.v1 as components
-import folium
-from folium.features import DivIcon
-from streamlit_folium import st_folium
-from math import radians, cos, sin, asin, sqrt
-import pytz
-from timezonefinder import TimezoneFinder
-from datetime import datetime, date
-import math
-import random
-from streamlit_js_eval import get_geolocation 
 
-# ==========================================
-# 0. CONFIG & CSS STYLING (Matrix & Neon Style)
-# ==========================================
+
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", initial_sidebar_state="collapsed")
 
 def apply_custom_background():
