@@ -17,127 +17,120 @@ import random
 from streamlit_js_eval import get_geolocation 
 import streamlit as st
 
-# 1. ซ่อนติ่งบน-ล่างให้กริบ (รวมถึงตัว "สร้างด้วย Streamlit" ข้างล่างด้วย)
-st.set_page_config(layout="wide")
-hide_style = """
+# 1. ตั้งค่าหน้าจอและซ่อนติ่งทุกอย่าง (บน-ล่าง-ปุ่มจัดการ)
+st.set_page_config(layout="wide", page_title="SYNAPSE")
+
+hide_all_style = """
     <style>
+    /* ซ่อน Header, Footer และ Toolbar ทั้งหมด */
     header {visibility: hidden;}
     footer {visibility: hidden;}
     .stAppToolbar {display: none;}
     #MainMenu {visibility: hidden;}
+    button[title="Manage app"] {display: none;}
+    
+    /* ดันเนื้อหาขึ้นไปให้สุด */
+    .block-container {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
+    }
     </style>
 """
-st.markdown(hide_style, unsafe_allow_html=True)
+st.markdown(hide_all_style, unsafe_allow_html=True)
 
 # 2. ตัวเก็บสถานะสี
 if 'main_color' not in st.session_state:
     st.session_state.main_color = '#620909'
 
-# 3. ส่วนโค้ด HTML/CSS (อันนี้แหละที่ต้องใช้ st.markdown)
-# ผมรวมส่วน AGENT และส่วนเลือกสีไว้ในก้อนเดียวกันให้เลยครับ
-custom_ui = f"""
+# 3. โค้ดสร้างหน้าต่าง AGENT (ต้องใส่ใน st.markdown เท่านั้นถึงจะสวย)
+agent_ui = f"""
 <style>
-    .main-panel {{
+    .agent-card {{
         background-color: #1A1D21;
         border-radius: 15px;
         padding: 20px;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-family: sans-serif;
         color: white;
-        max-width: 400px;
-        margin: auto;
+        max-width: 350px;
+        margin: 20px auto;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
     }}
-    .agent-box {{
+    .agent-header {{
         display: flex;
         align-items: center;
-        gap: 15px;
-        margin-bottom: 5px;
+        font-size: 20px;
+        font-weight: bold;
+        gap: 10px;
     }}
-    .status-text {{
+    .status-sub {{
         color: #8C959F;
         font-size: 14px;
-        margin-left: 45px;
+        margin-left: 34px;
         margin-bottom: 20px;
     }}
-    .color-section {{
+    .color-preview-box {{
         background-color: #262B30;
         border-radius: 10px;
         padding: 15px;
     }}
-    .system-theme-text {{
-        font-size: 14px;
-        margin-bottom: 10px;
-    }}
-    .color-square {{
-        width: 45px;
-        height: 45px;
+    .square-display {{
+        width: 40px;
+        height: 40px;
         background-color: {st.session_state.main_color};
-        border-radius: 8px;
-        margin-bottom: 15px;
+        border-radius: 5px;
+        margin: 10px 0;
     }}
-    .color-gradient-mock {{
+    .gradient-box {{
         width: 100%;
-        height: 150px;
+        height: 100px;
         background: linear-gradient(to bottom, white, transparent, black), 
                     linear-gradient(to right, transparent, {st.session_state.main_color});
         background-color: {st.session_state.main_color};
-        border-radius: 10px;
-        position: relative;
-    }}
-    .color-pointer {{
-        width: 18px;
-        height: 18px;
-        border: 2px solid white;
-        border-radius: 50%;
-        position: absolute;
-        top: 40%;
-        left: 80%;
-        background-color: {st.session_state.main_color};
-    }}
-    .hex-box {{
-        background-color: #0D1117;
-        padding: 15px;
         border-radius: 8px;
+    }}
+    .hex-label {{
+        background-color: #0D1117;
+        padding: 10px;
+        border-radius: 5px;
         text-align: center;
         font-family: monospace;
-        font-size: 24px;
+        font-size: 20px;
         margin-top: 15px;
-        letter-spacing: 2px;
     }}
 </style>
 
-<div class="main-panel">
-    <div class="agent-box">
-        <img src="https://img.icons8.com/ios-glyphs/60/FFFFFF/user-male-circle.png" width="35"/>
-        <span style="font-size: 20px; font-weight: bold;">AGENT: Ta103</span>
+<div class="agent-card">
+    <div class="agent-header">👤 AGENT: Ta103</div>
+    <div class="status-sub">Status: AUTHENTICATED</div>
+    
+    <div class="color-preview-box">
+        <div style="font-size:12px;">🎨 SYSTEM THEME (Neon)</div>
+        <div class="square-display"></div>
+        <div class="gradient-box"></div>
     </div>
-    <div class="status-text">Status: AUTHENTICATED</div>
-
-    <div class="color-section">
-        <div class="system-theme-text">🎨 SYSTEM THEME (Neon)</div>
-        <div class="color-square"></div>
-        <div class="color-gradient-mock">
-            <div class="color-pointer"></div>
-        </div>
-    </div>
-
-    <div class="hex-box">{st.session_state.main_color}</div>
+    
+    <div class="hex-label">{st.session_state.main_color}</div>
 </div>
 """
 
-# แสดงผล UI ที่เราสร้างขึ้น
-st.markdown(custom_ui, unsafe_allow_html=True)
+# แสดงผล UI
+st.markdown(agent_ui, unsafe_allow_html=True)
 
-# 4. ปุ่มสำหรับจิ้มเปลี่ยนสีจริง
-st.write("") # เว้นวรรคนิดหน่อย
+# 4. ตัวเลือกสีจริง (วางไว้ข้างล่างเพื่อให้จิ้มเปลี่ยนได้)
 new_color = st.color_picker("🎨 จิ้มตรงนี้เพื่อเปลี่ยนสีระบบ", st.session_state.main_color)
 
-# ถ้ามีการเปลี่ยนสี ให้จดจำและ Refresh
-if new_color != st.session_state.my_color if 'my_color' in st.session_state else False or new_color != st.session_state.main_color:
+if new_color != st.session_state.main_color:
     st.session_state.main_color = new_color
     st.rerun()
 
-# 5. เปลี่ยนสีพื้นหลังทั้งแอปตามสีที่เลือก
-st.markdown(f"<style>.stApp {{background-color: {st.session_state.main_color} !important;}}</style>", unsafe_allow_html=True)
+# 5. สั่งเปลี่ยนสีพื้นหลังแอปทั้งหมด
+st.markdown(f"""
+    <style>
+    .stApp {{
+        background-color: {st.session_state.main_color} !important;
+    }}
+    </style>
+""", unsafe_allow_html=True)
 
 
 def apply_custom_background():
