@@ -17,8 +17,6 @@ import random
 from streamlit_js_eval import get_geolocation 
 import streamlit as st
 
-import streamlit as st
-
 # 1. ตั้งค่าหน้าจอ
 st.set_page_config(layout="wide", page_title="SYNAPSE")
 
