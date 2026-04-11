@@ -15,21 +15,26 @@ from datetime import datetime, date
 import math
 import random
 from streamlit_js_eval import get_geolocation 
-import streamlit as st
 
-# 1. ตั้งค่าหน้าจอและซ่อนติ่งทุกอย่าง (บน-ล่าง-ปุ่มจัดการ)
+def apply_custom_background():
+    theme = st.session_state.get('theme_color', "#1408BF")
+    st.markdown(f"""
+        <style>
+        /* ส่วนของ Tabs - ขอบใหญ่ขึ้นไฟฟุ้import streamlit as st
+
+# 1. ตั้งค่าหน้าจอและซ่อนติ่งทุกอย่าง (รวมถึงปุ่มจัดการแอปด้านล่าง)
 st.set_page_config(layout="wide", page_title="SYNAPSE")
 
 hide_all_style = """
     <style>
-    /* ซ่อน Header, Footer และ Toolbar ทั้งหมด */
+    /* ซ่อน Header และ Footer ของ Streamlit */
     header {visibility: hidden;}
     footer {visibility: hidden;}
     .stAppToolbar {display: none;}
     #MainMenu {visibility: hidden;}
     button[title="Manage app"] {display: none;}
     
-    /* ดันเนื้อหาขึ้นไปให้สุด */
+    /* ดันเนื้อหาขึ้นไปให้สุดหน้าจอ */
     .block-container {
         padding-top: 0rem;
         padding-bottom: 0rem;
@@ -38,92 +43,72 @@ hide_all_style = """
 """
 st.markdown(hide_all_style, unsafe_allow_html=True)
 
-# 2. ตัวเก็บสถานะสี
+# 2. ตัวเก็บสถานะสีในระบบ
 if 'main_color' not in st.session_state:
     st.session_state.main_color = '#620909'
 
-# 3. โค้ดสร้างหน้าต่าง AGENT (ต้องใส่ใน st.markdown เท่านั้นถึงจะสวย)
-agent_ui = f"""
-<style>
-    .agent-card {{
-        background-color: #1A1D21;
-        border-radius: 15px;
-        padding: 20px;
-        font-family: sans-serif;
-        color: white;
-        max-width: 350px;
-        margin: 20px auto;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-    }}
-    .agent-header {{
-        display: flex;
-        align-items: center;
-        font-size: 20px;
-        font-weight: bold;
-        gap: 10px;
-    }}
-    .status-sub {{
-        color: #8C959F;
-        font-size: 14px;
-        margin-left: 34px;
-        margin-bottom: 20px;
-    }}
-    .color-preview-box {{
-        background-color: #262B30;
-        border-radius: 10px;
-        padding: 15px;
-    }}
-    .square-display {{
-        width: 40px;
-        height: 40px;
-        background-color: {st.session_state.main_color};
-        border-radius: 5px;
-        margin: 10px 0;
-    }}
-    .gradient-box {{
-        width: 100%;
-        height: 100px;
-        background: linear-gradient(to bottom, white, transparent, black), 
-                    linear-gradient(to right, transparent, {st.session_state.main_color});
-        background-color: {st.session_state.main_color};
-        border-radius: 8px;
-    }}
-    .hex-label {{
-        background-color: #0D1117;
-        padding: 10px;
-        border-radius: 5px;
-        text-align: center;
-        font-family: monospace;
-        font-size: 20px;
-        margin-top: 15px;
-    }}
-</style>
-
-<div class="agent-card">
-    <div class="agent-header">👤 AGENT: Ta103</div>
-    <div class="status-sub">Status: AUTHENTICATED</div>
-    
-    <div class="color-preview-box">
-        <div style="font-size:12px;">🎨 SYSTEM THEME (Neon)</div>
-        <div class="square-display"></div>
-        <div class="gradient-box"></div>
+# 3. ส่วนประกอบหน้าต่าง AGENT (สร้างเป็นตัวแปรไว้)
+# สำคัญ: ต้องใช้ st.markdown และระบุ unsafe_allow_html=True ถึงจะโชว์เป็นรูปภาพสวยๆ
+agent_card_html = f"""
+<div style="
+    background-color: #1A1D21;
+    border-radius: 15px;
+    padding: 20px;
+    font-family: sans-serif;
+    color: white;
+    max-width: 350px;
+    margin: 10px auto;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+    border: 1px solid #333;
+">
+    <div style="display: flex; align-items: center; font-size: 20px; font-weight: bold; gap: 10px;">
+        👤 AGENT: Ta103
+    </div>
+    <div style="color: #8C959F; font-size: 14px; margin-left: 34px; margin-bottom: 20px;">
+        Status: AUTHENTICATED
     </div>
     
-    <div class="hex-label">{st.session_state.main_color}</div>
+    <div style="background-color: #262B30; border-radius: 10px; padding: 15px;">
+        <div style="font-size:12px; margin-bottom: 10px;">🎨 SYSTEM THEME (Neon)</div>
+        <div style="width: 45px; height: 45px; background-color: {st.session_state.main_color}; border-radius: 5px; margin-bottom: 10px;"></div>
+        <div style="
+            width: 100%; 
+            height: 100px; 
+            background: linear-gradient(to bottom, white, transparent, black), 
+                        linear-gradient(to right, transparent, {st.session_state.main_color});
+            background-color: {st.session_state.main_color};
+            border-radius: 8px;
+        "></div>
+    </div>
+    
+    <div style="
+        background-color: #0D1117; 
+        padding: 10px; 
+        border-radius: 5px; 
+        text-align: center; 
+        font-family: monospace; 
+        font-size: 22px; 
+        margin-top: 15px;
+        border: 1px solid #444;
+    ">
+        {st.session_state.main_color}
+    </div>
 </div>
 """
 
-# แสดงผล UI
-st.markdown(agent_ui, unsafe_allow_html=True)
+# สั่งให้ Streamlit วาดหน้าต่าง AGENT ออกมา (ไม่ใช่แค่โชว์ตัวหนังสือ)
+st.markdown(agent_card_html, unsafe_allow_html=True)
 
-# 4. ตัวเลือกสีจริง (วางไว้ข้างล่างเพื่อให้จิ้มเปลี่ยนได้)
+# 4. ปุ่มเลือกสีจริง
+st.write("---")
 new_color = st.color_picker("🎨 จิ้มตรงนี้เพื่อเปลี่ยนสีระบบ", st.session_state.main_color)
 
+# ถ้าสีเปลี่ยน ให้จดจำและโหลดหน้าใหม่ทันที
 if new_color != st.session_state.main_color:
     st.session_state.main_color = new_color
     st.rerun()
 
-# 5. สั่งเปลี่ยนสีพื้นหลังแอปทั้งหมด
+# 5. เปลี่ยนสีพื้นหลังของแอปทั้งหมดตามสีที่เลือก
 st.markdown(f"""
     <style>
     .stApp {{
@@ -131,13 +116,7 @@ st.markdown(f"""
     }}
     </style>
 """, unsafe_allow_html=True)
-
-
-def apply_custom_background():
-    theme = st.session_state.get('theme_color', "#1408BF")
-    st.markdown(f"""
-        <style>
-        /* ส่วนของ Tabs - ขอบใหญ่ขึ้นไฟฟุ้งขึ้น */
+งขึ้น */
         .stTabs [data-baseweb="tab-list"] {{
             background-color: rgba(0, 0, 0, 0.8) !important;
             border-radius: 25px !important;
