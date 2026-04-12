@@ -283,7 +283,7 @@ def lobby_music():  # เปลี่ยนจาก room_music เป็น lob
     if col3.button("⏭️ เพลงถัดไป") or result == 'next':
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
-       st.markdown('</div>', unsafe_allow_html=True)
+     st.markdown('</div>', unsafe_allow_html=True)
 
 def room_core(loc):
     st.subheader("🏠 CORE CONTROL - อยู่นิ่งๆไม่เจ็บตัว")
