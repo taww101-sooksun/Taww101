@@ -233,7 +233,8 @@ def room_login():
                 if st.form_submit_button("REGISTER", use_container_width=True):
                     db.reference(f'users/{new_id}').set({'pw': new_pw, 'ts': time.time()})
                     st.success("AGENT REGISTERED!")
- def lobby_music():  # เปลี่ยนจาก room_music เป็น lobby_music (เพลงหน้าล็อบบี้)
+
+def lobby_music():  # เปลี่ยนจาก room_music เป็น lobby_music (เพลงหน้าล็อบบี้)
     st.subheader("🎧 พักฟังเพลงก่อนลุยต่อ (Lobby Station)")
     
     # 1. ตรวจสอบไฟล์เพลงในโฟลเดอร์
