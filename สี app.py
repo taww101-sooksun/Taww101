@@ -333,9 +333,30 @@ def room_radar(loc):
                                   tooltip=f"AGENT: {uid} | DIST: {dist:.2f} km").add_to(m)
                     folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
     
-        if st.button("📡 BROADCAST MY SIGNAL", use_container_width=True): 
-        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-        st.toast("SIGNAL BROADCASTED TO NETWORK")
+       # สมมติว่า db คือ firebase_admin.db ที่คุณตั้งค่าไว้แล้ว
+
+if st.button("📡 BROADCAST MY SIGNAL", use_container_width=True):
+    # 1. เช็คก่อนว่ามีข้อมูล User ไหม
+    if 'user' not in st.session_state or not st.session_state.user:
+        st.error("ไม่พบข้อมูลผู้ใช้งาน กรุณาเข้าสู่ระบบก่อน")
+    else:
+        try:
+            # 2. เตรียมข้อมูล
+            data_to_update = {
+                'lat': my_lat, 
+                'lon': my_lon, 
+                'ts': time.time()
+            }
+            
+            # 3. อัปเดตไปยัง Firebase
+            db.reference(f'users/{st.session_state.user}').update(data_to_update)
+            
+            # 4. แจ้งเตือนเมื่อสำเร็จ
+            st.toast("SIGNAL BROADCASTED TO NETWORK", icon="✅")
+            
+        except Exception as e:
+            # กรณีเกิดปัญหาเน็ตหรือ Database
+            st.error(f"เกิดข้อผิดพลาดในการส่งสัญญาณ: {e}")
 
 def room_reality_scanner():
     st.subheader("🧬 Reality Extractor & Code Scanner")
