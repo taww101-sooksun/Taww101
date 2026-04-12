@@ -333,8 +333,16 @@ def room_radar(loc):
                                   tooltip=f"AGENT: {uid} | DIST: {dist:.2f} km").add_to(m)
                     folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
     
+      
        # สมมติว่า db คือ firebase_admin.db ที่คุณตั้งค่าไว้แล้ว
 
+try:
+            # 2. เตรียมข้อมูล
+            data_to_update = {
+                'lat': my_lat, 
+                'lon': my_lon, 
+                'ts': time.time()
+ }
 if st.button("📡 BROADCAST MY SIGNAL", use_container_width=True):
     # 1. เช็คก่อนว่ามีข้อมูล User ไหม
     if 'user' not in st.session_state or not st.session_state.user:
