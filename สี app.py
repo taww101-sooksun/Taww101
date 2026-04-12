@@ -1,5 +1,29 @@
 import streamlit as st
 import time
+import base64  # เพิ่มอันนี้ที่บนสุดของไฟล์
+
+# --- ส่วนแสดงวิดีโอแบบ Overlay ที่แก้ไขแล้ว ---
+try:
+    with open('วันที่ขอบคุณไม่มีใคร 4-1 ปล่อยวาง.mp4', 'rb') as v_file:
+        video_bytes = v_file.read()
+        
+        # แปลงไฟล์วิดีโอเป็น Base64
+        base64_video = base64.b64encode(video_bytes).decode()
+        
+        st.markdown(f"""
+            <div class="video-container">
+                <div class="marquee-overlay">
+                    <marquee scrollamount="8" style="color: #FF4B4B; font-size: 18px; font-weight: bold; font-family: 'Kanit', sans-serif;">
+                        {mega_lyrics}
+                    </marquee>
+                </div>
+                <video autoplay loop muted playsinline style="width: 100%;">
+                    <source src="data:video/mp4;base64,{base64_video}" type="video/mp4">
+                </video>
+            </div>
+            """, unsafe_allow_html=True)
+except FileNotFoundError:
+    st.info("💡 รอไฟล์มหากาพย์: วันที่ขอบคุณไม่มีใคร 4-1 ปล่อยวาง.mp4")
 
 # --- 1. SET PAGE CONFIG (อันดับแรก) ---
 st.set_page_config(
