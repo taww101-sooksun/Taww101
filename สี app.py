@@ -19,17 +19,43 @@ hide_st_style = """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # --- ต่อจากตรงนี้คือโค้ดหน้าจอแอปของคุณ ---
-st.title("หน้าแอปที่คลีนแล้ว")
+st.title("SYNAPSE อยู่นิ้งๆไม่เจ็บตัว")
 
 # --- การตั้งค่าเบื้องต้น ---
 st.set_page_config(page_title="My Signal App", layout="centered")
 
 # --- 1. ส่วนเนื้อเพลงวิ่ง (Marquee) ---
-lyrics = "[Verse 1] ขอบคุณถ้อยคำที่เคยทำฉันร้าว... [Chorus] ขอบคุณทุกคำที่เคยทำให้ฉันเจ็บ... มันปลุกคนใหม่ให้ลุกขึ้นเดินไป... ไม่กลัวอีกต่อไป..."
+lyrics = "[Verse 1]
+ขอบคุณถ้อยคำที่เคยทำฉันร้าว
+คำที่ทำให้ใจฉันแทบไม่เหลืออะไร
+คืนที่ร้องไห้จนไม่รู้จะไปทางไหน
+กลับกลายเป็นทางให้ฉันหันมาเจอแสงในตัวเอง
+
+[Chorus]
+ขอบคุณทุกคำที่เคยทำให้ฉันเจ็บ
+คงไม่รู้เลยว่าฉันเข้มแข็งแค่ไหน
+มันปลุกคนใหม่ให้ลุกขึ้นเดินไป
+ถึงเดินไปเพียงลำพัง
+ก็มีฉันคนนี้
+ที่ไม่กลัวอีกต่อไป (โอ้ฮู้)
+
+[Verse 2]
+ขอบคุณรอยช้ำที่เคยทำให้ฉันท้อ
+มันสอนให้ฉันกอดตัวเองแน่นกว่าเดิม
+วันที่ไม่มีใครอยู่ข้างกันเหมือนก่อน
+ฉันได้ยินเสียงหัวใจตัวเองดังชัดกว่าครั้งไหน
+
+[Chorus]
+ขอบคุณทุกคำที่เคยทำให้ฉันเจ็บ
+คงไม่รู้เลยว่าฉันเข้มแข็งแค่ไหน
+มันปลุกคนใหม่ให้ลุกขึ้นเดินไป
+ถึงเดินไปเพียงลำพัง
+ก็มีฉันคนนี้
+ที่ไม่กลัวอีกต่อไป (ไม่กลัวอีกต่อไป)"
 
 st.markdown(
     f"""
-    <div style="background-color: #1E1E1E; padding: 15px; border-radius: 10px; border: 2px solid #FF4B4B; margin-bottom: 25px;">
+    <div style="background-color: #1E1E1E; padding: 15px; border-radius: 10px; border: 2px solid #FF4B4B; margin-bottom: 20px;">
         <marquee behavior="scroll" direction="left" scrollamount="8" style="color: #FF4B4B; font-size: 20px; font-weight: bold; font-family: 'Kanit', sans-serif;">
             {lyrics}
         </marquee>
