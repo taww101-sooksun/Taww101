@@ -331,9 +331,6 @@ def room_radar(loc):
                                   icon=folium.Icon(color='blue', icon='user', prefix='fa'),
                                   tooltip=f"AGENT: {uid} | DIST: {dist:.2f} km").add_to(m)
                     folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
-    except: pass
-
-    st_folium(m, width="100%", height=300)
     
     if st.button("📡 BROADCAST MY SIGNAL", use_container_width=True):
         db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
