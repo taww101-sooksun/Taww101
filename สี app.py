@@ -1,6 +1,19 @@
 import streamlit as st
 import time
 import base64
+import streamlit as st
+
+# --- ส่วนค้นหารูปภาพอัตโนมัติ ---
+st.markdown("### 🔍 ค้นหาภาพพื้นหลัง")
+search_query = st.text_input("พิมพ์แนวภาพที่ต้องการ (ภาษาอังกฤษ):", "abstract dark red")
+
+if search_query:
+    # สร้าง URL สำหรับดึงรูปจาก Unsplash แบบสุ่มตามคำค้นหา
+    # ขนาด 800x400 เพื่อให้เหมาะกับแอป
+    image_url = f"https://source.unsplash.com/featured/800x400?{search_query.replace(' ', ',')}"
+    
+    st.image(image_url, caption=f"ภาพแนว {search_query}", use_column_width=True)
+    st.info("💡 ถ้าไม่ชอบรูปนี้ ให้ลองกดลบตัวอักษรแล้วพิมพ์ใหม่ รูปจะเปลี่ยนไปเรื่อยๆ ครับ")
 
 # --- 1. SET PAGE CONFIG ---
 st.set_page_config(page_title="SYNAPSE 4-1", layout="centered", initial_sidebar_state="collapsed")
