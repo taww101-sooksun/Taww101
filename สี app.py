@@ -1,5 +1,25 @@
 import streamlit as st
 import time
+import streamlit as st
+
+# โค้ดสำหรับซ่อนส่วนประกอบของ Streamlit
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;} /* ซ่อนเมนูขวาบน (Hamburger Menu) */
+            footer {visibility: hidden;}    /* ซ่อนคำว่า "Made with Streamlit" ด้านล่าง */
+            header {visibility: hidden;}    /* ซ่อนแถบ Header ด้านบนสุด */
+            
+            /* กรณีต้องการให้ระยะขอบด้านบนหายไปด้วย (ทำให้หน้าแอปชิดขอบบน) */
+            .block-container {
+                padding-top: 1rem;
+                padding-bottom: 1rem;
+            }
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
+# --- ต่อจากตรงนี้คือโค้ดหน้าจอแอปของคุณ ---
+st.title("หน้าแอปที่คลีนแล้ว")
 
 # --- การตั้งค่าเบื้องต้น ---
 st.set_page_config(page_title="My Signal App", layout="centered")
