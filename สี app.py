@@ -1,106 +1,111 @@
 import streamlit as st
 import time
-import streamlit as st
 
-# โค้ดสำหรับซ่อนส่วนประกอบของ Streamlit
-hide_st_style = """
-            <style>
-            #MainMenu {visibility: hidden;} /* ซ่อนเมนูขวาบน (Hamburger Menu) */
-            footer {visibility: hidden;}    /* ซ่อนคำว่า "Made with Streamlit" ด้านล่าง */
-            header {visibility: hidden;}    /* ซ่อนแถบ Header ด้านบนสุด */
-            
-            /* กรณีต้องการให้ระยะขอบด้านบนหายไปด้วย (ทำให้หน้าแอปชิดขอบบน) */
-            .block-container {
-                padding-top: 1rem;
-                padding-bottom: 1rem;
-            }
-            </style>
-            """
-st.markdown(hide_st_style, unsafe_allow_html=True)
+# --- 1. SET PAGE CONFIG (ต้องอยู่อันดับแรกเสมอ) ---
+st.set_page_config(
+    page_title="SYNAPSE - BROADCAST",
+    page_icon="📡",
+    layout="wide", # ใช้แบบกว้างจะดูเต็มตาเวลาลง YouTube
+    initial_sidebar_state="collapsed"
+)
 
-# --- ต่อจากตรงนี้คือโค้ดหน้าจอแอปของคุณ ---
-st.title("SYNAPSE อยู่นิ้งๆไม่เจ็บตัว")
+# --- 2. CUSTOM CSS (จัดเต็มแสงสีและซ่อนเมนู) ---
+st.markdown("""
+    <style>
+    /* ซ่อนส่วนประกอบ Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* ปรับพื้นหลังและสี Font */
+    [data-testid="stAppViewContainer"] {
+        background-color: #000000;
+        color: #FF4B4B;
+    }
+    
+    /* ปรับแต่งปุ่มให้ดูมีแสงนีออน */
+    .stButton>button {
+        background-color: #1E1E1E;
+        color: #FF4B4B;
+        border: 2px solid #FF4B4B;
+        border-radius: 20px;
+        box-shadow: 0 0 10px #FF4B4B;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #FF4B4B;
+        color: white;
+        box-shadow: 0 0 25px #FF4B4B;
+    }
 
-# --- การตั้งค่าเบื้องต้น ---
-st.set_page_config(page_title="My Signal App", layout="centered")
+    /* ตกแต่ง Marquee */
+    .marquee-container {
+        background: rgba(255, 75, 75, 0.1);
+        border-top: 2px solid #FF4B4B;
+        border-bottom: 2px solid #FF4B4B;
+        padding: 10px 0;
+        margin: 20px 0;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-# --- 1. ส่วนเนื้อเพลงวิ่ง (Marquee) ---
-lyrics = "[Verse 1]
-ขอบคุณถ้อยคำที่เคยทำฉันร้าว
-คำที่ทำให้ใจฉันแทบไม่เหลืออะไร
-คืนที่ร้องไห้จนไม่รู้จะไปทางไหน
-กลับกลายเป็นทางให้ฉันหันมาเจอแสงในตัวเอง
+# --- 3. เนื้อเพลง (จัดรูปแบบเป็นบรรทัดเดียวเพื่อให้วิ่งยาวๆ) ---
+lyrics = " [Verse 1] ขอบคุณถ้อยคำที่เคยทำฉันร้าว... [Chorus] ขอบคุณทุกคำที่เคยทำให้ฉันเจ็บ... คงไม่รู้เลยว่าฉันเข้มแข็งแค่ไหน... มันปลุกคนใหม่ให้ลุกขึ้นเดินไป... ถึงเดินไปเพียงลำพัง... ก็มีฉันคนนี้... ที่ไม่กลัวอีกต่อไป... (โอ้ฮู้) [Verse 2] ขอบคุณรอยช้ำที่เคยทำให้ฉันท้อ... มันสอนให้ฉันกอดตัวเองแน่นกว่าเดิม... ฉันได้ยินเสียงหัวใจตัวเองดังชัดกว่าครั้งไหน..."
 
-[Chorus]
-ขอบคุณทุกคำที่เคยทำให้ฉันเจ็บ
-คงไม่รู้เลยว่าฉันเข้มแข็งแค่ไหน
-มันปลุกคนใหม่ให้ลุกขึ้นเดินไป
-ถึงเดินไปเพียงลำพัง
-ก็มีฉันคนนี้
-ที่ไม่กลัวอีกต่อไป (โอ้ฮู้)
+# --- 4. การแสดงผลหน้าจอ ---
 
-[Verse 2]
-ขอบคุณรอยช้ำที่เคยทำให้ฉันท้อ
-มันสอนให้ฉันกอดตัวเองแน่นกว่าเดิม
-วันที่ไม่มีใครอยู่ข้างกันเหมือนก่อน
-ฉันได้ยินเสียงหัวใจตัวเองดังชัดกว่าครั้งไหน
+# หัวข้อหลัก
+st.markdown("<h1 style='text-align: center; color: #FF4B4B; text-shadow: 2px 2px 10px #FF4B4B;'>📡 SYNAPSE</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: gray;'>สโลแกน: อยู่นิ่งๆ ไม่เจ็บตัว</p>", unsafe_allow_html=True)
 
-[Chorus]
-ขอบคุณทุกคำที่เคยทำให้ฉันเจ็บ
-คงไม่รู้เลยว่าฉันเข้มแข็งแค่ไหน
-มันปลุกคนใหม่ให้ลุกขึ้นเดินไป
-ถึงเดินไปเพียงลำพัง
-ก็มีฉันคนนี้
-ที่ไม่กลัวอีกต่อไป (ไม่กลัวอีกต่อไป)"
-
-st.markdown(
-    f"""
-    <div style="background-color: #1E1E1E; padding: 15px; border-radius: 10px; border: 2px solid #FF4B4B; margin-bottom: 20px;">
-        <marquee behavior="scroll" direction="left" scrollamount="8" style="color: #FF4B4B; font-size: 20px; font-weight: bold; font-family: 'Kanit', sans-serif;">
+# ตัวหนังสือวิ่ง
+st.markdown(f"""
+    <div class="marquee-container">
+        <marquee scrollamount="10" style="font-size: 24px; font-weight: bold;">
             {lyrics}
         </marquee>
     </div>
-    """,
-    unsafe_allow_html=True
-)
+    """, unsafe_allow_html=True)
 
-# --- 2. ส่วนวิดีโอและเสียง (Media) ---
-col1, col2 = st.columns(2)
+# จัดการ Media (Video & Audio)
+# ใช้ columns 5 ช่อง เพื่อบีบช่องกลางให้วิดีโอเล็กลงและดูเด่น (Ratio: 1:1:2:1:1)
+empty1, empty2, main_col, empty3, empty4 = st.columns([1, 0.5, 2, 0.5, 1])
 
-with col1:
-    st.markdown("### 🎥 Video")
-    # ใส่ชื่อไฟล์ .mp4 ของคุณตรงนี้
+with main_col:
+    # ส่วนวิดีโอ
     try:
-        video_file = open('video.mp4', 'rb')
-        st.video(video_file.read())
+        with open('video.mp4', 'rb') as v_file:
+            st.video(v_file.read())
     except FileNotFoundError:
-        st.warning("ไม่พบไฟล์ video.mp4")
+        st.info("📍 ระบบพร้อมใช้งาน: รอการเชื่อมต่อไฟล์วิดีโอ (video.mp4)")
 
-with col2:
-    st.markdown("### 🎵 Audio")
-    # ใส่ชื่อไฟล์ .mp3 ของคุณตรงนี้
+    # ส่วนเสียง
     try:
-        audio_file = open('music.mp3', 'rb')
-        st.audio(audio_file.read(), format='audio/mp3')
+        with open('music.mp3', 'rb') as a_file:
+            st.audio(a_file.read(), format='audio/mp3')
     except FileNotFoundError:
-        st.warning("ไม่พบไฟล์ music.mp3")
+        st.info("📍 ระบบพร้อมใช้งาน: รอการเชื่อมต่อไฟล์เสียง (music.mp3)")
 
-st.divider() # เส้นคั่นกลางหน้า
+st.write("") # เว้นวรรค
 
-# --- 3. ส่วนปุ่ม BROADCAST (อันที่คุณเขียนตอนแรก) ---
-# ผมใส่ try...except เพื่อป้องกันแอปพังถ้ายังไม่ได้ต่อ Firebase
-if st.button("📡 BROADCAST MY SIGNAL", use_container_width=True):
-    try:
-        # สมมติว่าตั้งค่า db และตัวแปรตำแหน่งไว้แล้ว
-        # my_lat, my_lon = 13.75, 100.50 
-        
-        if 'user' in st.session_state:
-            # db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-            st.toast("SIGNAL BROADCASTED TO NETWORK", icon="🛰️")
-        else:
-            st.error("กรุณาระบุตัวตนใน session_state ก่อน")
+# --- 5. ปุ่ม BROADCAST ---
+# ใช้ columns เพื่อบีบปุ่มให้ขนาดพอดี ไม่ยาวเกินไป
+b_col1, b_col2, b_col3 = st.columns([1, 2, 1])
+with b_col2:
+    if st.button("📡 BROADCAST MY SIGNAL", use_container_width=True):
+        try:
+            # จำลองการทำงาน (ใส่ logic Firebase ของคุณที่นี่)
+            progress_bar = st.progress(0)
+            for percent_complete in range(100):
+                time.sleep(0.01)
+                progress_bar.progress(percent_complete + 1)
             
-    except NameError:
-        st.error("ตัวแปร db หรือตำแหน่ง ยังไม่ได้ถูกกำหนดค่า")
-    except Exception as e:
-        st.error(f"เกิดข้อผิดพลาด: {e}")
+            st.toast("SIGNAL BROADCASTED TO NETWORK", icon="🛰️")
+            st.success("DATA TRANSMISSION COMPLETE")
+            
+        except Exception as e:
+            st.error(f"SYSTEM ERROR: {e}")
+
+# --- 6. เพิ่มลูกเล่นด้านล่าง ---
+st.markdown("<br><br><p style='text-align: center; color: #333;'>SECURE CONNECTION ACTIVE | SYSTEM v3.0</p>", unsafe_allow_html=True)
