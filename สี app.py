@@ -13,7 +13,7 @@ st.markdown("""
     .marquee-box {
         background: rgba(255, 75, 75, 0.05);
         border: 2px solid #FF4B4B;
-        border-radius: 10px;
+        border-radius: px;
         padding: 15px;
         margin: 20px 0;
         box-shadow: 0 0 20px rgba(255, 75, 75, 0.2);
