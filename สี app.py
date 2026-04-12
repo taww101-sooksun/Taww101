@@ -334,7 +334,7 @@ def room_radar(loc):
                     folium.PolyLine([[my_lat, my_lon], [u_lat, u_lon]], color=st.session_state.theme_color, weight=1, dash_array='5').add_to(m)
     
         if st.button("📡 BROADCAST MY SIGNAL", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
+    db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
         st.toast("SIGNAL BROADCASTED TO NETWORK")
 
 def room_reality_scanner():
