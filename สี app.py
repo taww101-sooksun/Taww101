@@ -164,9 +164,11 @@ elif st.session_state.page == "1":
     st.markdown("<h2 class='neon-text'>🎵 SYNAPSE AUDIO PRO</h2>", unsafe_allow_html=True)
     st.info("💡 ระบบรองรับ Crossfade 10 วินาที, ตัดเสียงร้อง (Karaoke) และ Visualizer")
 
-    # --- ดึงโค้ด HTML ที่เพี้ยนส่งมาใส่ในตัวแปร ---
-    # ผมย่อโค้ดให้เหลือส่วนสำคัญเพื่อให้เพี้ยนเห็นภาพการเชื่อมต่อ
+    # --- ก๊อป HTML ทั้งหมดที่เพี้ยนส่งมา ใส่ในเครื่องหมายคำพูด 3 อัน ---
     player_html = """
+    # ตรงนี้คือที่วาง HTML ยาวๆ ทั้งหมดที่เพี้ยนส่งมาให้ผมครับ 
+    # ก๊อปมาวางตั้งแต่ <!DOCTYPE html> จนถึง </html> เลย
+    """
     <!DOCTYPE html>
     <html>
     <head>
