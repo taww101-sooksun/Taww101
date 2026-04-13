@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st  # แก้จาก Import เป็น import
 import streamlit.components.v1 as components
 import os
 import random
@@ -69,7 +69,6 @@ html_code = f"""
 
         async function decode(filename) {{
             try {{
-                // แก้จุดตาย: แปลงชื่อภาษาไทยให้เบราว์เซอร์อ่านออก
                 const safePath = "./" + encodeURIComponent(filename);
                 const res = await fetch(safePath);
                 if(!res.ok) throw new Error("404");
@@ -110,7 +109,6 @@ html_code = f"""
                 let rem = deckA.buffer.duration - (ctx.currentTime - deckA.startTime);
                 if(rem > 0) {{
                     let m = Math.floor(rem/60); let s = Math.floor(rem%60);
-                    // แก้จุดตายเลขซ้อน: บังคับรูปแบบ 00:00 ชัดๆ
                     document.getElementById('timerA').innerText = 
                         (m < 10 ? '0' : '') + m + ":" + (s < 10 ? '0' : '') + s;
                 }}
