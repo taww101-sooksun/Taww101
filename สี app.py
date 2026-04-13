@@ -14,19 +14,19 @@ ui_code = """
             display: flex; 
             justify-content: center; 
             align-items: center; 
-            height: 150vh; 
+            height: 100vh; 
             margin: 0; 
         }
         
         .synapse-frame {
-            width: 300px;
-            height: 400px;
-            background-color: rgba(#f0f0f0);
-            border: 10px solid;
+            width: 400px;
+            height: 500px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 4px solid;
             /* เส้นขอบไล่สีม่วงไปแดง */
             border-image: linear-gradient(to bottom right, #8b00ff, #ff0000) 1;
             border-radius: 0px; /* ทรงเหลี่ยมตามสั่ง */
-            box-shadow: 0 0 10px #00f2fe; /* นีออนฟ้า */
+            box-shadow: 0 0 15px #00f2fe; /* นีออนฟ้า */
             padding: 10px;
             color: #f0f0f0; /* ขาวสว่างมุก */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -40,12 +40,12 @@ ui_code = """
             font-size: 20px;
             margin-bottom: 20px;
             text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
-            border-bottom: 4px solid rgba(0, 242, 254, 0.3);
+            border-bottom: 1px solid rgba(0, 242, 254, 0.3);
             padding-bottom: 10px;
         }
 
         .status-box {
-            border: 4px solid #00f2fe;
+            border: 1px solid #00f2fe;
             height: 100px;
             margin-bottom: 20px;
             background: rgba(0, 242, 254, 0.1);
@@ -76,10 +76,10 @@ ui_code = """
         
         <div class="label">SYSTEM STATUS</div>
         <div style="font-size: 13px; line-height: 1.6;">
-            > Width: 300px<br>
-            > Height: 400px<br>
-            > Border: 10px (Purple-Red)<br>
-            > Neon: 25px (#00f2fe)<br>
+            > Width: 400px<br>
+            > Height: 500px<br>
+            > Border: 4px (Purple-Red)<br>
+            > Neon: 15px (#00f2fe)<br>
             > Mode: Stay Still, No Pain
         </div>
 
