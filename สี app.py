@@ -116,8 +116,7 @@ if st.session_state.page == "HOME":
     with c1:
         if st.button("🎵 1. MUSIC PLAYER\nฟังเพลง MP3 จากคลังข้อมูล", use_container_width=True):
 
-    import streamlit.components.v1 as components
-
+    
     st.markdown("<h2 class='neon-text'>🎵 SYNAPSE AUDIO PRO</h2>", unsafe_allow_html=True)
     st.info("💡 ระบบรองรับ Crossfade 10 วินาที, ตัดเสียงร้อง (Karaoke) และ Visualizer")
 
