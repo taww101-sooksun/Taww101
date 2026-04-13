@@ -6,18 +6,40 @@ st.set_page_config(page_title="SYNAPSE 4-1", layout="wide")
 
 def setup_ui():
     st.markdown("""
+        def setup_ui():
+    st.markdown("""
         <style>
-        /* ลบส่วนเกิน Streamlit */
         header, footer, #MainMenu {visibility: hidden;}
-        .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; }
+        .stApp { background: #000; color: #00f2fe; }
+
+        /* ตัวหนังสือวิ้งแบบ Animation */
         .neon-text { 
-            text-align: center; color: #fff; 
-            text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe;
-            font-size: 24px; font-weight: bold;
+            text-align: center; 
+            color: #fff; 
+            font-size: 30px; 
+            font-weight: bold;
+            text-transform: uppercase;
+            /* เพิ่มเงาหลายชั้นเพื่อให้มันฟุ้ง */
+            text-shadow: 
+                0 0 5px #fff, 
+                0 0 10px #fff, 
+                0 0 20px #00f2fe, 
+                0 0 40px #00f2fe, 
+                0 0 80px #00f2fe;
+            /* ทำให้มันกระพริบเบาๆ เหมือนไฟนีออน */
+            animation: flicker 1.5s infinite alternate;
         }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+            10% { text-shadow: 0 0 5px #fff, 0 0 20px #ff1744; } /* แอบมีแสงสีแดงแทรก */
+        }
+        
         .stButton>button { border-radius: 10px; border: 1px solid #ff1744; background: rgba(0,0,0,0.5); color: white; }
         </style>
     """, unsafe_allow_html=True)
+
 
 def display_logo(path):
     try:
