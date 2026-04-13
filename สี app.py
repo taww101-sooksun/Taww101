@@ -115,5 +115,43 @@ elif st.session_state.page == "1":
     st.header("🎵 MUSIC PLAYER")
     if os.path.exists("1.mp3"): st.audio("1.mp3")
     else: st.warning("หาไฟล์เพลงไม่เจอ")
+elif st.session_state.page == "5":
+    st.header("✨ NEON GENERATOR")
+    
+    # 1. ส่วนรับข้อมูลจากผู้ใช้
+    user_text = st.text_input("พิมพ์ข้อความที่ต้องการให้วิ้ง:", "SYNAPSE HUB")
+    glow_color = st.color_picker("เลือกสีนีออน", "#00f2fe")
+    
+    # 2. ใส่ CSS Animation สำหรับการ "วิ้ง"
+    st.markdown(f"""
+        <style>
+        @keyframes glow {{
+            from {{
+                text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px {glow_color}, 0 0 20px {glow_color};
+            }}
+            to {{
+                text-shadow: 0 0 10px #fff, 0 0 20px {glow_color}, 0 0 30px {glow_color}, 0 0 40px {glow_color}, 0 0 50px {glow_color};
+            }}
+        }}
+        .neon-display {{
+            font-size: 60px;
+            color: #fff;
+            text-align: center;
+            font-family: 'Courier New', Courier, monospace;
+            animation: glow 1.5s ease-in-out infinite alternate;
+            padding: 50px;
+            background: #000;
+            border-radius: 20px;
+            border: 2px solid {glow_color};
+            margin-top: 20px;
+        }}
+        </style>
+        
+        <div class="neon-display">
+            {user_text}
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.caption("เทคนิค: ใช้ CSS Keyframes ทำให้เกิดการกระพริบของแสงเงา (Text Shadow)")
 
 # (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
