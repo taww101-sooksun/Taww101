@@ -147,7 +147,7 @@ with st.sidebar:
 # --- 3. เนื้อหาแต่ละหน้า ---
 
 # [ หน้าแรก: CENTRAL HUB ]
-if st.session_state.page == "HOME":
+    if st.session_state.page == "HOME":
     st.markdown("<h1 class='neon-text'>CENTRAL HUB</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center;'>เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
     st.divider()
