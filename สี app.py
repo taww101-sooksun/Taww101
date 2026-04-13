@@ -1,9 +1,38 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import base64
 import os
-import base64
-import streamlit as st
-import base64
+
+def room_music_surround():
+    # สแกนเพลง 70 เพลงในโฟลเดอร์
+    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+    
+    if not music_files:
+        st.warning("⚠️ ไม่พบไฟล์เพลงในโฟลเดอร์เดียวกับ .py")
+        return
+
+    # สร้าง Layout แบบ 2 คอลัมน์ (หรือจะใช้ Sidebar ก็ได้ถ้าถนัด)
+    col_list, col_player = st.columns([1, 2])
+
+    with col_list:
+        st.markdown("<h4 style='color: #00f2fe;'>คลังเพลง (70)</h4>", unsafe_allow_html=True)
+        # ทำพื้นที่ให้เลื่อนได้ (Scroll Container) สำหรับรายชื่อเพลง
+        with st.container(height=500): 
+            for i, song in enumerate(music_files):
+                # ตรวจสอบว่าเพลงไหนกำลังเล่นอยู่
+                is_active = i == st.session_state.get('song_index', 0)
+                btn_label = f"🎵 {song}" if not is_active else f"🔥 {song}"
+                
+                if st.button(btn_label, key=f"side_{i}", use_container_width=True):
+                    st.session_state.song_index = i
+                    st.rerun()
+
+    with col_player:
+        # ใส่ตัวเครื่องเล่นเพลง SYNAPSE ที่เราทำไว้ก่อนหน้านี้ตรงนี้
+        # (กว้าง 400 สูง 500 ตามสเปกของคุณ)
+        st.markdown("<div style='text-align:center;'>เครื่องเล่นหลัก</div>", unsafe_allow_html=True)
+        # เรียกฟังก์ชันแสดงผล UI ที่เราคุยกันก่อนหน้า
+        # show_neon_player() 
 
 # สร้างปุ่มเลือกไฟล์จากมือถือ
 uploaded_file = st.file_uploader("เลือกเพลงจากเครื่องของคุณ", type=["mp3"])
