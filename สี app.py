@@ -35,7 +35,6 @@ with st.sidebar:
     
     st.divider()
     
-    # --- เครื่องเล่นเพลงชุดใหญ่ (ย้ายมานี่เพื่อความต่อเนื่อง) ---
     st.markdown("### 🎧 SYNAPSE GLOBAL PLAYER")
     player_sidebar_html = """
     <div style="background:#111; padding:15px; border-radius:15px; border:1px solid #00f2fe; text-align:center;">
@@ -49,13 +48,11 @@ with st.sidebar:
             <label style="font-size:10px; color:#00f2fe;">KARAOKE CUT (NOTCH)</label>
             <input type="range" min="0" max="100" value="0" style="width:100%; accent-color:#00f2fe;" oninput="updateK(this.value)">
         </div>
-        <div style="font-size:9px; color:#555; margin-top:5px;">CROSSFADE 10S ACTIVE</div>
     </div>
 
     <script>
         let ctx, anl, src, flt, aud = new Audio(), list = [], idx = 0;
         aud.crossOrigin = "anonymous";
-
         function init() {
             if(!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -67,7 +64,6 @@ with st.sidebar:
                 draw();
             }
         }
-
         function hLoad(f) { init(); list = Array.from(f); if(list.length>0) play(0); }
         function play(i) {
             idx = i; const file = list[idx];
@@ -75,15 +71,12 @@ with st.sidebar:
             document.getElementById('side-track').innerText = file.name;
             aud.play();
         }
-
         function updateK(v) { if(flt) flt.Q.value = v / 5; }
-
         aud.ontimeupdate = () => {
             let left = aud.duration - aud.currentTime;
             if(left <= 10 && left > 0) aud.volume = left / 10; else aud.volume = 1;
         };
         aud.onended = () => { idx = (idx+1)%list.length; play(idx); };
-
         function draw() {
             const canv = document.getElementById('side-vis'), c = canv.getContext('2d');
             const data = new Uint8Array(anl.frequencyBinCount);
@@ -107,6 +100,7 @@ with st.sidebar:
     st.markdown("<p style='text-align:center;font-size:10px;'>อยู่นิ่งๆ ไม่เจ็บตัว</p>", unsafe_allow_html=True)
 
 # --- 3. เนื้อหาแต่ละหน้า (MAIN CONTENT) ---
+# บรรทัดข้างล่างนี้ต้อง "ไม่เยื้อง" เข้าไปใน with st.sidebar แล้วครับ
 if st.session_state.page == "HOME":
     st.markdown("<h1 class='neon-text'>CENTRAL HUB</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align: center;'>เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
@@ -114,7 +108,7 @@ if st.session_state.page == "HOME":
 
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("🎵 1. MUSIC PLAYER\nStatus: Sidebar Active", use_container_width=True):
+        if st.button("🎵 1. MUSIC PLAYER", use_container_width=True):
             st.session_state.page = "1"; st.rerun()
         if st.button("🖼️ 3. IMAGE SEARCH", use_container_width=True):
             st.session_state.page = "3"; st.rerun()
@@ -138,7 +132,7 @@ if st.session_state.page == "HOME":
 
 elif st.session_state.page == "1":
     st.markdown("<h2 class='neon-text'>🎵 AUDIO CONTROL CENTER</h2>", unsafe_allow_html=True)
-    st.info("ขณะนี้เครื่องเล่นทำงานอยู่ในเมนูแถบข้าง (Sidebar) เพื่อให้คุณสลับไปใช้แอปอื่นๆ ได้โดยเพลงไม่ดับครับ")
+    st.info("ขณะนี้เครื่องเล่นทำงานอยู่ใน Sidebar เพลงจะไม่ดับแม้คุณจะเปลี่ยนหน้า")
     if st.button("⬅️ ย้อนกลับ"):
         st.session_state.page = "HOME"; st.rerun()
 
