@@ -1,120 +1,123 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import os
+import base64
 
-# ซ่อน UI ของ Streamlit เพื่อความสมจริง
-st.markdown("""
-    <style>
-    .stApp { background: #000; }
-    header, footer { visibility: hidden; }
-    </style>
-""", unsafe_allow_html=True)
+def room_music():
+    # --- เริ่มต้นการตั้งค่า Session State ---
+    if 'song_index' not in st.session_state:
+        st.session_state.song_index = 0
 
-# โค้ดหน้าตาแอปแบบในรูปภาพ
-app_ui = """
-<!DOCTYPE html>
-<html>
-<head>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        body { 
-            margin: 0; padding: 0; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(180deg, #2c1a4d 0%, #000 100%);
-            color: white; overflow: hidden; height: 100vh;
-        }
-        
-        /* พื้นหลังเบลอแบบในรูป */
-        .bg-blur {
-            position: absolute; width: 100%; height: 100%;
-            background: url('https://img5.pic.in.th/file/secure-sv1/1000014503.jpg'); /* ใช้รูปปกของคุณ */
-            background-size: cover; background-position: center;
-            filter: blur(40px) brightness(0.5); z-index: -1;
-        }
+    # 1. โหลดรายชื่อเพลง
+    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+    
+    if not music_files:
+        st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ")
+        return
 
-        .container {
-            display: flex; flex-direction: column; align-items: center;
-            padding: 20px; height: 100vh; box-sizing: border-box;
-        }
+    # 2. เตรียมข้อมูลเพลงปัจจุบัน
+    current_song = music_files[st.session_state.song_index]
+    with open(current_song, "rb") as f:
+        audio_url = f"data:audio/mp3;base64,{base64.b64encode(f.read()).decode()}"
 
-        /* หน้าปกเพลงทรงกลม/เหลี่ยมมน */
-        .album-art {
-            width: 300px; height: 300px;
-            border-radius: 20px;
-            box-shadow: 0 10px 50px rgba(0,0,0,0.8);
-            margin: 40px 0;
-            background-image: url('https://img5.pic.in.th/file/secure-sv1/1000014503.jpg');
-            background-size: cover; border: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .song-details { text-align: left; width: 100%; padding-left: 20px; }
-        .title { font-size: 24px; font-weight: bold; margin: 0; }
-        .artist { color: rgba(255,255,255,0.6); font-size: 16px; margin-top: 5px; }
-
-        /* แถบเล่นเพลง */
-        .progress-container { width: 100%; margin: 30px 0; }
-        .progress-bar {
-            width: 100%; height: 4px; background: rgba(255,255,255,0.2);
-            border-radius: 2px; position: relative;
-        }
-        .progress-fill { width: 35%; height: 100%; background: white; border-radius: 2px; }
-        .time { display: flex; justify-content: space-between; font-size: 12px; margin-top: 8px; opacity: 0.6; }
-
-        /* ปุ่มควบคุมสไตล์ Apple/Spotify */
-        .controls {
-            display: flex; justify-content: space-between; align-items: center;
-            width: 100%; max-width: 350px; margin-top: 20px;
-        }
-        .btn-main { font-size: 25px; cursor: pointer; opacity: 0.8; transition: 0.2s; }
-        .btn-main:hover { opacity: 1; transform: scale(1.1); }
-        .play-pause {
-            width: 70px; height: 70px; background: white; color: black;
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-size: 30px;
-        }
-
-        /* เมนูด้านล่างสุด */
-        .bottom-nav {
-            margin-top: auto; width: 100%;
-            display: flex; justify-content: space-around;
-            padding-bottom: 20px; font-size: 18px; color: rgba(255,255,255,0.5);
-        }
-        .bottom-nav i:hover { color: white; }
-    </style>
-</head>
-<body>
-    <div class="bg-blur"></div>
-    <div class="container">
-        <div style="width: 40px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px;"></div>
-        
-        <div class="album-art"></div>
-
-        <div class="song-details">
-            <div class="title">สักวันหนึ่ง</div>
-            <div class="artist">อยู่นิ่งๆ ไม่เจ็บตัว - SYNAPSE</div>
+    # 3. สร้าง UI สไตล์ SYNAPSE (เลียนแบบรูปภาพที่คุณส่งมา)
+    # เราจะใส่ Logic การเล่นต่อเนื่องไว้ใน JavaScript นี้เลย
+    ui_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        <style>
+            body {{ margin: 0; font-family: sans-serif; color: white; background: transparent; }}
+            .player-card {{
+                background: linear-gradient(180deg, rgba(139, 0, 255, 0.2) 0%, rgba(0, 0, 0, 0.8) 100%);
+                border: 2px solid rgba(0, 242, 254, 0.5);
+                border-radius: 20px; padding: 20px; width: 360px;
+                box-shadow: 0 0 20px rgba(0, 242, 254, 0.3); text-align: center;
+            }}
+            .album-art {{
+                width: 200px; height: 200px; margin: 0 auto 20px;
+                background: #111; border-radius: 15px;
+                border: 2px solid #ff007f; box-shadow: 0 0 15px #ff007f;
+                display: flex; align-items: center; justify-content: center;
+                overflow: hidden;
+            }}
+            .album-art img {{ width: 100%; height: 100%; object-fit: cover; }}
+            .title {{ font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #f0f0f0; }}
+            .artist {{ font-size: 13px; color: #00f2fe; margin-bottom: 20px; }}
+            .controls {{ display: flex; justify-content: space-around; align-items: center; margin-top: 20px; }}
+            .btn {{ font-size: 24px; cursor: pointer; color: white; opacity: 0.8; transition: 0.2s; }}
+            .btn:hover {{ opacity: 1; transform: scale(1.1); color: #00f2fe; }}
+            .play-pause {{ font-size: 45px; }}
+            
+            /* แถบเล่นเพลง */
+            #progress-bar {{ width: 100%; height: 4px; background: #333; margin: 15px 0; border-radius: 2px; }}
+            #progress-fill {{ width: 0%; height: 100%; background: #00f2fe; border-radius: 2px; box-shadow: 0 0 10px #00f2fe; }}
+        </style>
+    </head>
+    <body>
+        <div class="player-card">
+            <div class="album-art">
+                <i class="fas fa-music fa-5x" style="color: #333;"></i>
+            </div>
+            <div class="title">{current_song}</div>
+            <div class="artist">SYNAPSE | อยู่นิ่งๆ ไม่เจ็บตัว</div>
+            
+            <div id="progress-bar"><div id="progress-fill"></div></div>
+            
+            <div class="controls">
+                <i class="fas fa-step-backward btn" onclick="send('prev')"></i>
+                <i class="fas fa-play-circle btn play-pause" id="playIcon" onclick="togglePlay()"></i>
+                <i class="fas fa-step-forward btn" onclick="send('next')"></i>
+            </div>
         </div>
 
-        <div class="progress-container">
-            <div class="progress-bar"><div class="progress-fill"></div></div>
-            <div class="time"><span>0:05</span><span>2:49</span></div>
-        </div>
+        <audio id="main-audio" src="{audio_url}" autoplay></audio>
 
-        <div class="controls">
-            <i class="fas fa-random btn-main" style="font-size: 18px;"></i>
-            <i class="fas fa-step-backward btn-main"></i>
-            <div class="play-pause btn-main"><i class="fas fa-pause"></i></div>
-            <i class="fas fa-step-forward btn-main"></i>
-            <i class="fas fa-redo btn-main" style="font-size: 18px;"></i>
-        </div>
+        <script>
+            const audio = document.getElementById('main-audio');
+            const playIcon = document.getElementById('playIcon');
+            const fill = document.getElementById('progress-fill');
 
-        <div class="bottom-nav">
-            <i class="fas fa-sliders-h"></i>
-            <i class="far fa-comment-dots"></i>
-            <i class="fas fa-list"></i>
-        </div>
-    </div>
-</body>
-</html>
-"""
+            // ส่งคำสั่งกลับไปที่ Streamlit
+            function send(cmd) {{
+                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: cmd}}, '*');
+            }}
 
-# แสดงผลใน Streamlit (กว้าง 400 สูง 750 ให้เหมือนขนาดมือถือ)
-components.html(app_ui, width=400, height=750)
+            function togglePlay() {{
+                if(audio.paused) {{ audio.play(); playIcon.className = 'fas fa-pause-circle btn play-pause'; }}
+                else {{ audio.pause(); playIcon.className = 'fas fa-play-circle btn play-pause'; }}
+            }}
+
+            audio.onended = () => send('next'); // จบแล้วไปเพลงถัดไป
+
+            audio.ontimeupdate = () => {{
+                const pct = (audio.currentTime / audio.duration) * 100;
+                fill.style.width = pct + "%";
+            }};
+        </script>
+    </body>
+    </html>
+    """
+
+    # 4. แสดงผล UI และรับค่าการสั่งงาน
+    # เราใช้ key เพื่อให้ค่ามันอัปเดต และรับผลจาก postMessage
+    cmd = components.html(ui_html, height=450, key=f"player_{st.session_state.song_index}")
+
+    # 5. Logic การเปลี่ยนเพลง (ฝั่ง Streamlit)
+    # หมายเหตุ: ใน Streamlit version ใหม่ การเช็คค่าจาก components อาจต้องรันผ่าน Session State
+    if cmd == 'next':
+        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+        st.rerun()
+    elif cmd == 'prev':
+        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
+        st.rerun()
+
+    # ส่วนของรายชื่อเพลง (เลือกได้เหมือนเดิม)
+    st.write("---")
+    with st.expander("📂 คลังเพลง SYNAPSE"):
+        for i, f in enumerate(music_files):
+            active = "🔹" if i == st.session_state.song_index else ""
+            if st.button(f"{active} {f}", key=f"list_{i}", use_container_width=True):
+                st.session_state.song_index = i
+                st.rerun()
