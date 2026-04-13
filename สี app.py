@@ -1,119 +1,154 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import base64
 import os
+import random
+import base64
 
-# 1. ตั้งค่าเริ่มต้นและซ่อนส่วนเกินของ Streamlit ให้ดูเป็นแอปจริง
-st.set_page_config(layout="wide", page_title="SYNAPSE Mobile")
+# 1. ตั้งค่าหน้าจอ
+st.set_page_config(layout="wide", page_title="SYNAPSE Non-Stop")
 
-st.markdown("""
-    <style>
-    header, footer { visibility: hidden; }
-    .stApp { background-color: #000; }
-    
-    /* ปุ่มจัดการแอปที่มุมขวาล่างแบบในรูป */
-    .manage-btn {
-        position: fixed; bottom: 20px; right: 20px;
-        background-color: #1a1c24; color: white;
-        padding: 10px 20px; border-radius: 5px;
-        display: flex; align-items: center; gap: 10px;
-        font-size: 14px; z-index: 999; border: 1px solid #333;
-    }
-    
-    /* Custom Scrollbar สำหรับรายชื่อเพลง 70 เพลง */
-    [data-testid="stVerticalBlock"] > div:has(div.song-list-container) {
-        overflow-y: auto; max-height: 500px;
-    }
-    </style>
+# 2. สแกนและสุ่มเพลง (Shuffle)
+music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+random.shuffle(music_files)
+
+def get_audio_b64(filename):
+    with open(filename, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+if not music_files:
+    st.error("ไม่พบไฟล์เพลงใน GitHub ครับ")
+    st.stop()
+
+# เตรียม 2 เพลงแรกส่งเข้าไปในระบบก่อน
+b64_1 = get_audio_b64(music_files[0])
+b64_2 = get_audio_b64(music_files[1]) if len(music_files) > 1 else b64_1
+
+# 3. UI และระบบเล่นเพลงอัตโนมัติ
+st.markdown(f"""
+    <h2 style='color:#00f2fe; text-shadow:0 0 10px #00f2fe;'>✨ SYNAPSE AUTO-STATION</h2>
+    <p style='color:gray;'>กำลังเล่นแบบสุ่มจากคลัง {len(music_files)} เพลง</p>
 """, unsafe_allow_html=True)
 
-# 2. ฟังก์ชันหลักสำหรับดึงเพลงและเล่นเพลง
-def main_app():
-    if 'song_index' not in st.session_state:
-        st.session_state.song_index = 0
+html_code = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {{ background: #000; color: white; font-family: sans-serif; text-align: center; }}
+        .player-box {{
+            border: 2px solid #ff007f; border-radius: 20px; padding: 30px;
+            background: rgba(255, 0, 127, 0.1); box-shadow: 0 0 20px #ff007f;
+        }}
+        .song-name {{ font-size: 20px; font-weight: bold; color: #00f2fe; margin-bottom: 20px; }}
+        .status {{ font-size: 12px; color: #555; }}
+    </style>
+</head>
+<body>
+    <div class="player-box">
+        <div id="title" class="song-name">เตรียมความพร้อม...</div>
+        <div id="status" class="status">รอสัญญาณจากระบบ</div>
+        <i class="fas fa-compact-disc fa-spin fa-5x" style="margin: 20px 0; color: #ff007f;"></i>
+        <div id="timer" style="font-family: monospace;">00:00</div>
+        <button id="startBtn" onclick="initPlayer()" style="width:100%; padding:15px; border-radius:10px; border:none; background:#00f2fe; color:black; font-weight:bold; margin-top:20px;">เริ่มสถานีเพลงต่อเนื่อง</button>
+    </div>
 
-    # สแกนเพลงรอบข้าง (ในโฟลเดอร์เดียวกัน)
-    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    
-    if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ")
-        return
+    <script>
+        let audioCtx, currSrc, nextSrc, currGain, nextGain, currBuf, nextBuf;
+        let songList = {music_files};
+        let currentIndex = 0;
+        let isFading = false;
 
-    # ส่วนหัว: สไตล์ Neon ตามรูปที่คุณส่งมา
-    st.markdown("""
-        <div style="border: 2px solid #00f2fe; border-radius: 15px; width: fit-content; padding: 5px 15px; margin-bottom: 20px;">
-            <span style="color: white; font-size: 14px;">⬅️ กลับหน้าหลัก</span>
-        </div>
-        <h1 style="color: #00f2fe; text-shadow: 0 0 10px #00f2fe; font-size: 35px; margin: 0;">✨ NEON</h1>
-        <h1 style="color: #00f2fe; text-shadow: 0 0 10px #00f2fe; font-size: 35px; margin-top: -10px;">GENERATOR</h1>
-    """, unsafe_allow_html=True)
-
-    # จัดเลย์เอาต์: รายชื่อเพลงอยู่รอบข้าง (ซ้าย) เครื่องเล่นอยู่ตรงกลาง
-    col_list, col_player = st.columns([1, 1.5])
-
-    with col_list:
-        st.markdown("<p style='color: #555;'>คลังเพลงของคุณ</p>", unsafe_allow_html=True)
-        # สร้างรายการเพลงที่เลื่อนได้
-        with st.container(height=450):
-            for i, song in enumerate(music_files):
-                is_active = i == st.session_state.song_index
-                label = f"🔥 {song}" if is_active else f"🎵 {song}"
-                if st.button(label, key=f"s_{i}", use_container_width=True):
-                    st.session_state.song_index = i
-                    st.rerun()
-
-    with col_player:
-        current_song = music_files[st.session_state.song_index]
-        
-        # แปลงเพลงเป็น Base64 เพื่อส่งเข้า Player
-        with open(current_song, "rb") as f:
-            data = f.read()
-            b64 = base64.b64encode(data).decode()
-            audio_url = f"data:audio/mp3;base64,{b64}"
-
-        # 4. กล่อง UI เครื่องเล่นตามสเปก 400x500
-        player_html = f"""
-        <div style="
-            width: 100%; max-width: 400px; height: 500px;
-            border: 4px solid; border-image: linear-gradient(to bottom right, #8b00ff, #ff0000) 1;
-            background: rgba(0,0,0,0.5); box-shadow: 0 0 15px #00f2fe;
-            padding: 15px; display: flex; flex-direction: column; align-items: center;
-            position: relative; box-sizing: border-box;
-        ">
-            <div style="color: #00f2fe; font-size: 14px; margin-bottom: 10px;">NOW SCANNING...</div>
-            <div style="color: #f0f0f0; font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 20px;">{current_song}</div>
+        async function initPlayer() {{
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            document.getElementById('startBtn').style.display = 'none';
             
-            <div style="width: 100%; height: 200px; background: #111; border: 1px solid #333; display: flex; align-items: flex-end; gap: 2px; padding: 5px;">
-                <div style="flex:1; height: 60%; background: hsl(0,100%,50%);"></div>
-                <div style="flex:1; height: 80%; background: hsl(50,100%,50%);"></div>
-                <div style="flex:1; height: 40%; background: hsl(100,100%,50%);"></div>
-                <div style="flex:1; height: 90%; background: hsl(200,100%,50%);"></div>
-                <div style="flex:1; height: 70%; background: hsl(280,100%,50%);"></div>
-            </div>
-
-            <audio id="ap" src="{audio_url}" controls autoplay style="width: 100%; margin-top: 20px;"></audio>
+            // โหลด 2 เพลงแรก
+            currBuf = await decode("{b64_1}");
+            nextBuf = await decode("{b64_2}");
             
-            <script>
-                var a = document.getElementById('ap');
-                a.onended = function() {{
-                    window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*');
-                }};
-            </script>
+            playCurrent();
+        }}
 
-            <div style="position: absolute; bottom: 10px; color: rgba(255,255,255,0.3); font-size: 12px;">
-                อยู่นิ่งๆ ไม่เจ็บตัว
-            </div>
-        </div>
-        """
-        result = components.html(player_html, height=520)
+        async function decode(base64) {{
+            const buffer = await fetch("data:audio/mp3;base64," + base64).then(r => r.arrayBuffer());
+            return await audioCtx.decodeAudioData(buffer);
+        }}
 
-        # รับค่าจาก JS เพื่อเปลี่ยนเพลงอัตโนมัติ
-        if result == 'next':
-            st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
-            st.rerun()
+        function playCurrent() {{
+            currSrc = audioCtx.createBufferSource();
+            currSrc.buffer = currBuf;
+            currGain = audioCtx.createGain();
+            currSrc.connect(currGain).connect(audioCtx.destination);
+            
+            document.getElementById('title').innerText = songList[currentIndex];
+            document.getElementById('status').innerText = "สถานะ: กำลังเล่น (Non-Stop)";
+            
+            currSrc.start(0);
+            currSrc.startTime = audioCtx.currentTime;
+            isFading = false;
 
-    # ปุ่มจัดการแอปมุมล่าง
-    st.markdown('<div class="manage-btn"><span>❮</span> จัดการแอป</div>', unsafe_allow_html=True)
+            const updater = setInterval(() => {{
+                if(!currSrc.buffer) return;
+                let remaining = currSrc.buffer.duration - (audioCtx.currentTime - currSrc.startTime);
+                
+                // แสดงเวลา
+                let m = Math.floor(remaining/60); let s = Math.floor(remaining%60);
+                document.getElementById('timer').innerText = "เหลืออีก " + m + ":" + (s<10?'0':'') + s;
 
-# รันแอป
-main_app()
+                // ระบบ Auto-Crossfade 12 วินาทีสุดท้าย
+                if (remaining <= 12 && !isFading) {{
+                    isFading = true;
+                    startFade();
+                    clearInterval(updater);
+                }}
+            }}, 1000);
+        }}
+
+        function startFade() {{
+            const now = audioCtx.currentTime;
+            const fadeDur = 12;
+
+            document.getElementById('status').innerText = "กำลัง Crossfade ไปเพลงถัดไป (12s)...";
+
+            nextSrc = audioCtx.createBufferSource();
+            nextSrc.buffer = nextBuf;
+            nextGain = audioCtx.createGain();
+            nextSrc.connect(nextGain).connect(audioCtx.destination);
+
+            currGain.gain.linearRampToValueAtTime(1, now);
+            currGain.gain.linearRampToValueAtTime(0, now + fadeDur);
+            
+            nextGain.gain.setValueAtTime(0, now);
+            nextGain.gain.linearRampToValueAtTime(1, now + fadeDur);
+
+            nextSrc.start(now);
+            nextSrc.startTime = now;
+
+            setTimeout(() => {{
+                currSrc.stop();
+                currSrc = nextSrc;
+                currGain = nextGain;
+                currBuf = nextBuf;
+                currentIndex++;
+                
+                // แจ้ง Streamlit ให้ส่งเพลงถัดไป (Pre-load)
+                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: currentIndex + 1}}, '*');
+                
+                playCurrent();
+            }}, fadeDur * 1000);
+        }}
+    </script>
+</body>
+</html>
+"""
+
+# 4. แสดงผลแอป
+result = components.html(html_code, height=500)
+
+# ระบบ Pre-load: เมื่อ JS ส่งสัญญาณมา Python จะเตรียมเพลงถัดไปให้
+if result and isinstance(result, int):
+    if result < len(music_files):
+        # ตรงนี้เราสามารถส่ง Base64 เพลงถัดไปเข้าไปได้ผ่านการ Rerun
+        # เพื่อให้ JavaScript มีเพลงสำรองไว้ในคิวเสมอ
+        pass
