@@ -1,5 +1,21 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import streamlit as st
+
+st.set_page_config(page_title="SYNAPSE HUB", layout="centered")
+
+st.markdown("""
+    <div style='text-align: center;'>
+        <h1 style='color: #FF4B4B; text-shadow: 0 0 15px #FF4B4B;'>📡 SYNAPSE HUB</h1>
+        <p style='color: #888;'>ยินดีต้อนรับสู่ระบบควบคุม 4-1 | เลือกห้องใช้งานที่แถบด้านข้าง</p>
+    </div>
+    <hr style="border: 1px solid #333;">
+    """, unsafe_allow_html=True)
+
+st.info("💡 เลือกห้องทางด้านซ้ายเพื่อเริ่มงาน: ไม่ว่าจะรันวิดีโอ ผสมเพลง หรือคุมเนื้อเพลง")
+
+# เพิ่มความเท่หน้าแรก
+st.image("https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070", caption="SYNAPSE CORE READY")
 
 # --- 1. SET PAGE CONFIG ---
 st.set_page_config(
