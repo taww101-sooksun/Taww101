@@ -159,8 +159,36 @@ if st.session_state.page == "HOME":
 
 # --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
 elif st.session_state.page == "1":
-    st.header("🎵 MUSIC PLAYER")
-    if os.path.exists("1.mp3"): st.audio("1.mp3")
-    else: st.warning("หาไฟล์เพลงไม่เจอ")
+    import streamlit.components.v1 as components
+
+    st.markdown("<h2 class='neon-text'>🎵 SYNAPSE AUDIO PRO</h2>", unsafe_allow_html=True)
+    st.info("💡 ระบบรองรับ Crossfade 10 วินาที, ตัดเสียงร้อง (Karaoke) และ Visualizer")
+
+    # --- ดึงโค้ด HTML ที่เพี้ยนส่งมาใส่ในตัวแปร ---
+    # ผมย่อโค้ดให้เหลือส่วนสำคัญเพื่อให้เพี้ยนเห็นภาพการเชื่อมต่อ
+    player_html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            body { background: transparent; color: #00f2fe; font-family: sans-serif; }
+            /* ใส่ CSS ที่เพี้ยนส่งมาทั้งหมดที่นี่ */
+        </style>
+    </head>
+    <body>
+        <div class="p-4 bg-gray-900 rounded-xl border border-cyan-500">
+             </div>
+
+        <script>
+            // ... (ก๊อปปี้ส่วน <script> จากไฟล์ HTML ของเพี้ยนมาใส่ที่นี่) ...
+        </script>
+    </body>
+    </html>
+    """
+
+    # --- แสดงผลหน้าจอ HTML ใน Streamlit ---
+    components.html(player_html, height=800, scrolling=True)
+
 
 # (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
