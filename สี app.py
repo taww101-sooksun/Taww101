@@ -1,4 +1,50 @@
 import streamlit as st
+import streamlit as st
+import base64
+
+# --- 1. ตั้งค่าหน้าเว็บและลบติ่ง Streamlit (Footer/Header/Menu) ---
+st.set_page_config(page_title="SYNAPSE 4-1", layout="wide")
+
+def hide_streamlit_style():
+    st.markdown("""
+        <style>
+        /* ลบแถบเมนูข้างบน และเครดิตข้างล่าง */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        
+        /* ปรับพื้นหลังให้ดำสนิทแบบระบบ Command */
+        .stApp { background-color: #000000; }
+        </style>
+        """, unsafe_allow_html=True)
+
+hide_streamlit_style()
+
+# --- 2. ฟังก์ชันดึงรูป logo1.png มาแสดงแบบไร้กรอบ ---
+def get_base64_of_bin_file(bin_file):
+    with open(bin_file, 'rb') as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+def display_logo(file_path):
+    try:
+        bin_str = get_base64_of_bin_file(file_path)
+        # ปรับ CSS ให้โลโก้มีเงาสีแดงจางๆ (Neon) จะได้ดูเท่ๆ
+        st.markdown(f"""
+            <div style="text-align: center;">
+                <img src="data:image/png;base64,{bin_str}" style="width: 120px; filter: drop-shadow(0 0 10px #ff1744);">
+            </div>
+        """, unsafe_allow_html=True)
+    except:
+        # ถ้าหาไฟล์ไม่เจอ ให้โชว์เป็นข้อความแทน (ป้องกัน Error)
+        st.markdown("<h2 style='text-align: center; color: #ff1744;'>SYNAPSE 4-1</h2>", unsafe_allow_html=True)
+
+# เรียกใช้โลโก้ (ดึงจากโฟลเดอร์ static ที่เพี้ยนทำไว้)
+display_logo("static/logo1.png")
+
+# --- หลังจากนี้ก็ใส่โค้ด Hierarchy (ระบบคุมชั้น) ของเพี้ยนต่อได้เลย ---
+st.markdown("<h3 style='text-align: center; color: #00f2fe;'>อยู่นิ่งๆ ไม่เจ็บตัว</h3>", unsafe_allow_html=True)
+st.write("---")
 
 # --- 1. นิยามฟังก์ชันทั้งหมดก่อน (ประกาศตัวตน) ---
 
