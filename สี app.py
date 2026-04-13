@@ -13,13 +13,14 @@ if 'shuffled_list' not in st.session_state:
 music_files = st.session_state.shuffled_list
 idx = st.session_state.current_idx
 
+# ชื่อเพลงที่จะไปโชว์ในแถบวิ่ง
 current_song_name = music_files[idx]
 next_song_name = music_files[(idx + 1) % len(music_files)]
 
-# 2. UI ด้านบน
-st.markdown(f"<h2 style='text-align:center; color:#00f2fe;'>🎧 SYNAPSE DJ STATION</h2>", unsafe_allow_html=True)
+# 2. UI หัวข้อ
+st.markdown(f"<h3 style='text-align:center; color:#00f2fe;'>🎧 SYNAPSE DJ STATION</h3>", unsafe_allow_html=True)
 
-# 3. HTML/JS (แก้จุดปีกกาที่เป็น CSS ให้เป็น {{ }})
+# 3. HTML/JS (แก้ปีกกาคู่ {{ }} เพื่อไม่ให้ Python Error)
 html_code = f"""
 <!DOCTYPE html>
 <html>
@@ -59,7 +60,7 @@ html_code = f"""
         
         #startBtn {{ 
             width: 100%; padding: 12px; background: #00f2fe; border: none; 
-            border-radius: 8px; font-weight: bold; margin-top: 15px; color: #000;
+            border-radius: 8px; font-weight: bold; margin-top: 15px; color: #000; cursor: pointer;
         }}
     </style>
 </head>
@@ -84,16 +85,14 @@ html_code = f"""
     <button id="startBtn" onclick="initDJ()">TAP TO START SYSTEM</button>
 
     <script>
-        // ใส่ Logic การเล่นเพลงและ Fetch ไฟล์ที่คุณมีอยู่ตรงนี้
-        // อย่าลืมเปลี่ยนจาก Base64 เป็น Fetch ตามที่คุยกันเพื่อความลื่นไหล
         function initDJ() {{
-            alert("ระบบ SYNAPSE พร้อมรันเพลง: {current_song_name}");
-            // โค้ดเล่นเพลงของคุณ...
+            alert("ระบบพร้อมรัน: {current_song_name}");
+            // ตรงนี้ใส่ Logic การเล่นเพลงที่คุณมีได้เลย
         }}
     </script>
 </body>
 </html>
 """
 
-# 4. แสดงผลแอป
-result = components.html(html_code, height=350)
+# 4. แสดงผล
+components.html(html_code, height=350)
