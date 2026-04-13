@@ -1,26 +1,4 @@
 import streamlit as st
-import base64
-
-# ฟังก์ชันสำหรับแปลงรูปภาพเป็นรหัส Base64
-def get_base64_img(img_path):
-    try:
-        with open(img_path, "rb") as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    except:
-        return None
-
-# เรียกใช้งาน: ดึงรูปจากโฟลเดอร์ static
-img_base64 = get_base64_img("static/logo1.png")
-
-if img_base64:
-    # แสดงโลโก้ตรงกลางหน้าจอ พร้อมใส่เงาเรืองแสง (Neon Drop Shadow)
-    st.markdown(f"""
-        <div style="text-align: center; margin-top: -20px; margin-bottom: 20px;">
-            <img src="data:image/png;base64,{img_base64}" 
-                 style="width: 150px; filter: drop-shadow(0 0 10px #ff1744);">
-        </div>
-    """, unsafe_allow_html=True)
 
 # --- 1. นิยามฟังก์ชันทั้งหมดก่อน (ประกาศตัวตน) ---
 
@@ -67,28 +45,6 @@ st.markdown("""
     }
     </style>
     """, unsafe_allow_html=True)
-import base64
-
-# ฟังก์ชันสำหรับแปลงรูปภาพเป็นรหัส Base64
-def get_base64_img(img_path):
-    try:
-        with open(img_path, "rb") as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    except:
-        return None
-
-# เรียกใช้งาน: ดึงรูปจากโฟลเดอร์ static
-img_base64 = get_base64_img("static/logo1.png")
-
-if img_base64:
-    # แสดงโลโก้ตรงกลางหน้าจอ พร้อมใส่เงาเรืองแสง (Neon Drop Shadow)
-    st.markdown(f"""
-        <div style="text-align: center; margin-top: -20px; margin-bottom: 20px;">
-            <img src="data:image/png;base64,{img_base64}" 
-                 style="width: 150px; filter: drop-shadow(0 0 10px #ff1744);">
-        </div>
-    """, unsafe_allow_html=True)
 
 st.title("📡 SYNAPSE HIERARCHY")
 
@@ -100,6 +56,19 @@ if st.session_state.nav_level != "HOME":
         else:
             st.session_state.nav_level = "HOME"
         st.rerun()
+elif st.session_state.nav_level == "1.1.1":
+    st.subheader("🔐 1.1.1 ความลับสูงสุด (VDO & AUDIO)")
+    
+    # ใส่เพลง
+    st.audio("static/secret_track.mp3")
+    
+    # ใส่เนื้อเพลงวิ้งๆ
+    st.markdown("<p style='text-shadow: 0 0 10px #ff1744;'>ตัวหนังสือวิ้งสีแดง...</p>", unsafe_allow_html=True)
+    
+    # ใส่ VDO
+    st.video("https://youtu.be/example")
+    
+    st.success("โหลดข้อมูลลับสำเร็จ!")
 
 st.write(f"STATUS: **ONLINE** | LOCATION: **{st.session_state.nav_level}**")
 st.markdown("---")
