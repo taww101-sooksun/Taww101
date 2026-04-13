@@ -26,3 +26,5 @@ folium
 streamlit-folium
 osmnx
 networkx
+streamlit
+replicate
