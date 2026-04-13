@@ -1,154 +1,177 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 import random
-import streamlit.components.v1 as components
 
 # --- 1. SET UP & THEME ---
-st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
+st.set_page_config(page_title="SYNAPSE DJ ROOMS", layout="wide")
 
-# ระบบจำค่าสี
 if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#39FF14" 
 if 'bg_color' not in st.session_state:
     st.session_state.bg_color = "#121212" 
 
-with st.sidebar:
-    if os.path.exists("logo2.jpg"):
-        st.image("logo2.jpg", use_container_width=True)
-    st.markdown("### 🎨 ปรับแต่งสีระบบ")
-    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
-    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
-    st.write("---")
-    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
+# ดึงไฟล์เพลง
+music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
 
-# --- 2. CSS DYNAMIC THEME ---
+if not music_files:
+    st.error("ไม่พบไฟล์เพลง .mp3 ในเครื่องครับเพื่อน")
+    st.stop()
+
+if 'song_index' not in st.session_state:
+    st.session_state.song_index = 0
+
+current_song = music_files[st.session_state.song_index]
+next_song = music_files[(st.session_state.song_index + 1) % len(music_files)]
+
+# --- 2. SIDEBAR & CUSTOM CSS ---
+with st.sidebar:
+    st.markdown(f"### 🎨 SYNAPSE CONTROL")
+    st.session_state.theme_color = st.color_picker("สีนีออน", st.session_state.theme_color)
+    st.session_state.bg_color = st.color_picker("สีพื้นหลัง", st.session_state.bg_color)
+    st.write("---")
+    st.markdown('*สโลแกน: "อยู่นิ่งๆ ไม่เจ็บตัว"*')
+
 st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
     .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.theme_color} !important; }}
     .marquee {{
-        width: 100%; overflow: hidden; white-space: nowrap; background: rgba(0,0,0,0.6);
-        padding: 15px 0; border-radius: 12px; margin-bottom: 15px; border: 2px solid {st.session_state.theme_color};
+        width: 100%; overflow: hidden; white-space: nowrap; background: rgba(0,0,0,0.4);
+        padding: 10px 0; border: 1px solid {st.session_state.theme_color}; border-radius: 10px; margin-bottom: 20px;
     }}
     .marquee p {{
-        display: inline-block; padding-left: 100%; animation: marquee 20s linear infinite;
-        font-family: 'Orbitron', sans-serif; font-size: 22px; color: {st.session_state.theme_color};
-        text-shadow: 0px 0px 10px {st.session_state.theme_color}; margin: 0;
+        display: inline-block; padding-left: 100%; animation: marquee 15s linear infinite;
+        font-size: 18px; color: {st.session_state.theme_color}; margin: 0;
     }}
     @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
-    .stButton>button {{
-        width: 100%; background-color: transparent !important; color: {st.session_state.theme_color} !important;
-        border-radius: 10px !important; border: 1px solid {st.session_state.theme_color} !important;
-    }}
-    .stTextArea textarea {{ background-color: rgba(0,0,0,0.5) !important; color: {st.session_state.theme_color} !important; border: 1px solid {st.session_state.theme_color} !important; }}
-    h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. ระบบจัดการเพลง ---
-music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+# --- 3. MAIN PLAYER INTERFACE ---
+st.title("🎸 SYNAPSE DJ ROOMS")
+st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT: {next_song} </p></div>', unsafe_allow_html=True)
 
-if music_files:
-    if 'song_index' not in st.session_state:
-        st.session_state.song_index = 0
-    
-    current_song = music_files[st.session_state.song_index]
+# ส่วนของเครื่องเล่น DJ (HTML/JS)
+html_code = f"""
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ background: transparent; color: {st.session_state.theme_color}; font-family: sans-serif; text-align: center; margin: 0; }}
+        .dj-grid {{ display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 10px; }}
+        .deck {{ border: 2px solid #333; border-radius: 20px; padding: 20px; background: rgba(0,0,0,0.6); transition: 0.5s; }}
+        .active {{ border-color: {st.session_state.theme_color}; box-shadow: 0 0 20px {st.session_state.theme_color}66; }}
+        .timer {{ font-size: 32px; font-family: monospace; margin: 10px 0; color: #ff007f; }}
+        .song-info {{ font-size: 12px; opacity: 0.7; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }}
+        #startBtn {{ 
+            width: 100%; padding: 20px; background: transparent; border: 2px solid {st.session_state.theme_color}; 
+            color: {st.session_state.theme_color}; border-radius: 15px; font-weight: bold; cursor: pointer; font-size: 18px;
+        }}
+    </style>
+</head>
+<body>
+    <div class="dj-grid">
+        <div id="deckA" class="deck active">
+            <div class="song-info">DECK A (LIVE)</div>
+            <div class="song-info">{current_song}</div>
+            <div id="timerA" class="timer">00:00</div>
+        </div>
+        <div id="deckB" class="deck" style="opacity: 0.3;">
+            <div class="song-info">DECK B (STANDBY)</div>
+            <div class="song-info">{next_song}</div>
+            <div id="timerB" class="timer">--:--</div>
+        </div>
+    </div>
+    <button id="startBtn" onclick="initDJ()">TAP TO START SYNAPSE SYSTEM</button>
 
-    col_l, col_r = st.columns([1, 5])
-    with col_l:
-        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=500)
-    with col_r:
-        st.title("🎸 SYNAPSE ROOMS 🎼 MUSIC")
-
-    st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
-
-    base_name = os.path.splitext(current_song)[0]
-    if os.path.exists(base_name + ".mp4"):
-        st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
-    elif os.path.exists(base_name + ".jpg"):
-        st.image(base_name + ".jpg", use_container_width=True)
-    
-    st.audio(current_song)
-
-    # --- 4. ระบบแชตสาธารณะ & Playlist ---
-    st.markdown("---")
-    col_chat, col_list = st.columns([2, 1])
-
-    with col_chat:
-        st.subheader("🌐 PUBLIC LOBBY")
-        CHAT_FILE = "public_chat.txt"
-        
-        # ดึงข้อมูลแชต
-        if os.path.exists(CHAT_FILE):
-            with open(CHAT_FILE, "r", encoding="utf-8") as f:
-                chat_data = "".join(f.readlines()[-10:]) # โชว์ 10 บรรทัดล่าสุด
-        else:
-            chat_data = "ยังไม่มีข้อความ..."
-
-        st.text_area("Live Chat", value=chat_data, height=200, disabled=True, label_visibility="collapsed")
-        
-        with st.form("chat_form", clear_on_submit=True):
-            msg = st.text_input("พิมพ์ข้อความ...", key="chat_msg_input")
-            if st.form_submit_button("SEND"):
-                if msg:
-                    with open(CHAT_FILE, "a", encoding="utf-8") as f:
-                        f.write(f"> {msg}\n")
-                    st.rerun()
-
-    with col_list:
-        st.subheader("🎧 PLAYLIST")
-        with st.container(border=True, height=250):
-            for i, song in enumerate(music_files):
-                label = f"▶️ {song}" if i == st.session_state.song_index else f"{song}"
-                if st.button(label, key=f"list_{i}"):
-                    st.session_state.song_index = i
-                    st.rerun()
-
-    # ปุ่มควบคุมเพลง
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("⏭️ เพลงถัดไป"):
-            st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
-            st.rerun()
-    with c2:
-        if st.button("🎲 สุ่มเพลง"):
-            st.session_state.song_index = random.randint(0, len(music_files) - 1)
-            st.rerun()
-
-    # --- 5. JAVASCRIPT: แบบปลอดภัย 100% ---
-    js_code = """
     <script>
-    var fadeDuration = 12; 
-    function handleAudio() {
-        var audio = window.parent.document.querySelector('audio');
-        var buttons = window.parent.document.querySelectorAll('button');
-        if (audio) {
-            // ระบบเสียง Fade
-            if (audio.currentTime < fadeDuration && !audio.paused) {
-                audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
-            } else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {
-                audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
-            } else { audio.volume = 1; }
+        let ctx, deckA={{}}, deckB={{}}, isFading = false;
 
-            // ระบบเล่นเพลงถัดไป
-            audio.onended = function() {
-                for (var i = 0; i < buttons.length; i++) {
-                    if (buttons[i].textContent.includes('เพลงถัดไป')) {
-                        buttons[i].click(); break;
-                    }
-                }
-            };
-            
-            // Auto Play เบื้องต้น
-            if (audio.paused && audio.currentTime == 0) {
-                audio.play().catch(e => console.log("Interaction needed"));
-            }
-        }
-    }
-    setInterval(handleAudio, 500);
+        async function decode(filename) {{
+            try {{
+                const res = await fetch("./" + encodeURIComponent(filename));
+                const arrayBuffer = await res.arrayBuffer();
+                return await ctx.decodeAudioData(arrayBuffer);
+            }} catch(e) {{ return null; }}
+        }}
+
+        async function initDJ() {{
+            ctx = new (window.AudioContext || window.webkitAudioContext)();
+            document.getElementById('startBtn').innerText = "LOADING PEAK DATA...";
+            deckA.buffer = await decode("{current_song}");
+            deckB.buffer = await decode("{next_song}");
+            document.getElementById('startBtn').style.display = 'none';
+            play();
+        }}
+
+        function play() {{
+            if(!deckA.buffer) return;
+            deckA.src = ctx.createBufferSource();
+            deckA.src.buffer = deckA.buffer;
+            deckA.gain = ctx.createGain();
+            deckA.src.connect(deckA.gain).connect(ctx.destination);
+            deckA.src.start(0);
+            deckA.startTime = ctx.currentTime;
+
+            setInterval(() => {{
+                let rem = deckA.buffer.duration - (ctx.currentTime - deckA.startTime);
+                if(rem > 0) {{
+                    let m = Math.floor(rem/60); let s = Math.floor(rem%60);
+                    document.getElementById('timerA').innerText = String(m).padStart(2,'0')+":"+String(s).padStart(2,'0');
+                }}
+                if (rem <= 12 && !isFading) {{
+                    isFading = true;
+                    fade();
+                }}
+            }}, 1000);
+        }}
+
+        function fade() {{
+            const now = ctx.currentTime;
+            if(!deckB.buffer) return;
+            deckB.src = ctx.createBufferSource();
+            deckB.src.buffer = deckB.buffer;
+            deckB.gain = ctx.createGain();
+            deckB.src.connect(deckB.gain).connect(ctx.destination);
+            deckA.gain.gain.linearRampToValueAtTime(1, now);
+            deckA.gain.gain.linearRampToValueAtTime(0, now + 12);
+            deckB.gain.gain.setValueAtTime(0, now);
+            deckB.gain.gain.linearRampToValueAtTime(1, now + 12);
+            deckB.src.start(now);
+            document.getElementById('deckB').style.opacity = "1";
+            document.getElementById('deckB').classList.add('active');
+            setTimeout(() => {{ window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*'); }}, 12000);
+        }}
     </script>
-    """
-    components.html(js_code, height=0)
+</body>
+</html>
+"""
 
-else:
-    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์ครับ")
+components.html(html_code, height=350)
+
+# --- 4. CHAT & PLAYLIST ---
+st.write("---")
+c_chat, c_list = st.columns([2, 1])
+
+with c_chat:
+    st.subheader("🌐 PUBLIC LOBBY")
+    if not os.path.exists("chat.txt"): open("chat.txt", "w").close()
+    with open("chat.txt", "r", encoding="utf-8") as f:
+        msgs = f.readlines()[-10:]
+    st.text_area("Chat", value="".join(msgs), height=150, disabled=True)
+    with st.form("chat", clear_on_submit=True):
+        u_msg = st.text_input("พิมพ์ข้อความ...")
+        if st.form_submit_button("SEND"):
+            with open("chat.txt", "a", encoding="utf-8") as f: f.write(f"> {u_msg}\n")
+            st.rerun()
+
+with c_list:
+    st.subheader("🎧 PLAYLIST")
+    for i, song in enumerate(music_files[:10]): # โชว์แค่ 10 เพลงกันรก
+        if st.button(f"{'▶️' if i==st.session_state.song_index else '🎵'} {song}", key=f"s_{i}"):
+            st.session_state.song_index = i
+            st.rerun()
+
+# รับค่าจาก JS เพื่อเปลี่ยนเพลง
+if 'next' in str(st.session_state): # เช็กค่าจากการส่ง Message
+    st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
