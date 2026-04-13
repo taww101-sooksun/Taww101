@@ -112,9 +112,90 @@ if st.session_state.page == "HOME":
 
 # --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
 elif st.session_state.page == "1":
-    st.header("🎵 MUSIC PLAYER")
-    if os.path.exists("1.mp3"): st.audio("1.mp3")
-    else: st.warning("หาไฟล์เพลงไม่เจอ")
+    import os
+    import base64
+    import json
+    import streamlit.components.v1 as components
+
+    st.markdown("<h2 class='neon-text'>🎵 SYNAPSE AUTOMATIC PLAYER</h2>", unsafe_allow_html=True)
+
+    # 1. กวาดไฟล์ .mp3 ทุกไฟล์ที่อยู่ในโฟลเดอร์เดียวกับไฟล์ .py
+    music_folder = "." # หรือใส่พาธโฟลเดอร์เพลงของคุณ
+    song_list = [f for f in os.listdir(music_folder) if f.endswith('.mp3')]
+
+    if not song_list:
+        st.error("❌ ไม่เจอไฟล์เพลงในโฟลเดอร์เลยครับเพื่อน")
+    else:
+        # 2. เตรียมข้อมูลเพลงส่งให้ JavaScript
+        # เราส่งเป็นชื่อไฟล์ไปก่อน แล้วให้ JS เรียกดึงผ่าน URL (วิธีนี้จะเร็วกว่า Base64 มาก)
+        st.write(f"พบทั้งหมด {len(song_list)} เพลง พร้อมรันระบบ...")
+
+        # สุ่มลำดับเพลง (Shuffle) ตั้งแต่เริ่มถ้าต้องการ
+        # import random; random.shuffle(song_list)
+
+        # 3. HTML/JS เครื่องเล่นเพลง (ดึงความสามารถจากโค้ดที่คุณมี)
+        player_html = f"""
+        <style>
+            .player-container {{
+                background: rgba(0,0,0,0.8);
+                border: 2px solid #00f2fe;
+                border-radius: 20px;
+                padding: 20px;
+                text-align: center;
+                color: #fff;
+                box-shadow: 0 0 20px #00f2fe;
+            }}
+            .neon-txt {{ color: #00f2fe; text-shadow: 0 0 10px #00f2fe; font-weight: bold; }}
+            .btn {{ 
+                background: #00f2fe; color: #000; border: none; padding: 15px; 
+                border-radius: 10px; font-weight: bold; cursor: pointer; width: 100%;
+                margin-top: 10px;
+            }}
+        </style>
+
+        <div class="player-container">
+            <div id="status" class="neon-txt">พร้อมเล่น {len(song_list)} เพลง</div>
+            <div id="track-name" style="margin: 15px 0; font-size: 1.2rem;">กดปุ่มเพื่อเริ่มฟัง</div>
+            <button class="btn" id="playBtn" onclick="initPlayer()">▶️ เริ่มเดินเครื่อง (START ENGINE)</button>
+            
+            <audio id="mainAudio"></audio>
+            </div>
+
+        <script>
+            const playlist = {json.dumps(song_list)};
+            let currentIdx = 0;
+            const audio = document.getElementById('mainAudio');
+            const trackDisplay = document.getElementById('track-name');
+            const statusDisplay = document.getElementById('status');
+
+            function initPlayer() {{
+                playTrack(0);
+                document.getElementById('playBtn').style.display = 'none';
+            }}
+
+            function playTrack(idx) {{
+                if (idx >= playlist.length) idx = 0;
+                currentIdx = idx;
+                
+                const fileName = playlist[idx];
+                trackDisplay.innerText = "กำลังเล่น: " + fileName;
+                statusDisplay.innerText = "เพลงที่ " + (idx + 1) + " จาก " + playlist.length;
+                
+                // ใน Streamlit การดึงไฟล์ตรงๆ ต้องใช้เทคนิค static หรือส่งเป็น blob
+                // แต่ถ้าคุณรัน local ปกติ วิธีที่ง่ายที่สุดคือส่ง path 
+                audio.src = fileName; 
+                audio.play();
+
+                audio.onended = () => {{
+                    playTrack(currentIdx + 1);
+                }};
+            }}
+        </script>
+        """
+        components.html(player_html, height=400)
+
+    st.info("💡 ความจริง: เพื่อไม่ให้เพลงดับเวลาสลับห้อง แนะนำให้ย้ายโค้ดชุดนี้ไปไว้ใน st.sidebar ครับ")
+
 elif st.session_state.page == "5":
     st.header("✨ NEON LYRICS")
     
