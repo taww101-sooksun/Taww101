@@ -28,33 +28,25 @@ if 'page' not in st.session_state:
     st.session_state.page = "HOME"
 
 with st.sidebar:
-    # ... ส่วนโลโก้เดิม ...
+    if os.path.exists("logo1.png"):
+        st.image("logo1.png") 
+    else:
+        st.markdown("<h2 class='neon-text'>SYNAPSE</h2>", unsafe_allow_html=True)
     
-    st.markdown("### 🎤 KARAOKE CONTROL")
-    # สร้าง HTML เฉพาะ Slider เพื่อส่งค่าไปคุม Audio Context
-    slider_html = """
-    <div style="background:#111; padding:15px; border-radius:10px; border:1px solid #00f2fe;">
-        <label style="font-size:12px; color:#00f2fe;">ระดับการตัดเสียงร้อง</label>
-        <input type="range" min="0" max="100" value="0" style="width:100%; accent-color:#00f2fe;" 
-               oninput="window.parent.postMessage({type: 'update_karaoke', value: this.value}, '*')">
-    </div>
-    """
-    components.html(slider_html, height=100)
+    st.divider()
     
-    # ... ส่วนปุ่มกลับหน้าหลักเดิม ...
-
-    
-    st.markdown("### 🎧 SYNAPSE GLOBAL PLAYER")
-    player_sidebar_html = """
+    # --- เครื่องเล่นเพลงชุดรวมร่าง (มีทั้ง Slider และปุ่มโหลด) ---
+    st.markdown("### 🎧 GLOBAL PLAYER")
+    player_combined_html = """
     <div style="background:#111; padding:15px; border-radius:15px; border:1px solid #00f2fe; text-align:center;">
         <canvas id="side-vis" style="width:100%; height:60px; background:#000; border-radius:5px;"></canvas>
         <div id="side-track" style="font-size:11px; color:#fff; margin:10px 0; overflow:hidden; white-space:nowrap;">Ready to scan...</div>
         
         <input type="file" id="up" multiple accept="audio/*" style="display:none" onchange="hLoad(this.files)">
-        <button onclick="document.getElementById('up').click()" style="width:100%; background:#00f2fe; color:#000; border:none; padding:8px; border-radius:20px; font-weight:bold; cursor:pointer;">➕ LOAD MUSIC</button>
+        <button onclick="document.getElementById('up').click()" style="width:100%; background:#00f2fe; color:#000; border:none; padding:8px; border-radius:20px; font-weight:bold; cursor:pointer; margin-bottom:10px;">➕ LOAD MUSIC</button>
         
-        <div style="margin-top:15px; border-top:1px solid #333; pt-10px;">
-            <label style="font-size:10px; color:#00f2fe;">KARAOKE CUT (NOTCH)</label>
+        <div style="margin-top:10px; border-top:1px solid #333; padding-top:10px;">
+            <label style="font-size:11px; color:#00f2fe;">🎤 KARAOKE CUT (NOTCH)</label>
             <input type="range" min="0" max="100" value="0" style="width:100%; accent-color:#00f2fe;" oninput="updateK(this.value)">
         </div>
     </div>
@@ -62,6 +54,7 @@ with st.sidebar:
     <script>
         let ctx, anl, src, flt, aud = new Audio(), list = [], idx = 0;
         aud.crossOrigin = "anonymous";
+
         function init() {
             if(!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -73,6 +66,7 @@ with st.sidebar:
                 draw();
             }
         }
+
         function hLoad(f) { init(); list = Array.from(f); if(list.length>0) play(0); }
         function play(i) {
             idx = i; const file = list[idx];
@@ -80,12 +74,16 @@ with st.sidebar:
             document.getElementById('side-track').innerText = file.name;
             aud.play();
         }
+
+        // ฟังก์ชันสั่งงาน Slider
         function updateK(v) { if(flt) flt.Q.value = v / 5; }
+
         aud.ontimeupdate = () => {
             let left = aud.duration - aud.currentTime;
             if(left <= 10 && left > 0) aud.volume = left / 10; else aud.volume = 1;
         };
         aud.onended = () => { idx = (idx+1)%list.length; play(idx); };
+
         function draw() {
             const canv = document.getElementById('side-vis'), c = canv.getContext('2d');
             const data = new Uint8Array(anl.frequencyBinCount);
@@ -101,51 +99,9 @@ with st.sidebar:
         }
     </script>
     """
-    components.html(player_sidebar_html, height=280)
+    components.html(player_combined_html, height=280)
 
     st.divider()
     if st.button("🏠 Home / กลับหน้าหลัก", use_container_width=True):
         st.session_state.page = "HOME"; st.rerun()
     st.markdown("<p style='text-align:center;font-size:10px;'>อยู่นิ่งๆ ไม่เจ็บตัว</p>", unsafe_allow_html=True)
-
-# --- 3. เนื้อหาแต่ละหน้า (MAIN CONTENT) ---
-# บรรทัดข้างล่างนี้ต้อง "ไม่เยื้อง" เข้าไปใน with st.sidebar แล้วครับ
-if st.session_state.page == "HOME":
-    st.markdown("<h1 class='neon-text'>CENTRAL HUB</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center;'>เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
-    st.divider()
-
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("🎵 1. MUSIC PLAYER", use_container_width=True):
-            st.session_state.page = "1"; st.rerun()
-        if st.button("🖼️ 3. IMAGE SEARCH", use_container_width=True):
-            st.session_state.page = "3"; st.rerun()
-        if st.button("✨ 5. NEON GENERATOR", use_container_width=True):
-            st.session_state.page = "5"; st.rerun()
-        if st.button("💖 7. DESTINY CHECK", use_container_width=True):
-            st.session_state.page = "7"; st.rerun()
-        if st.button("📝 9. SYSTEM LOG", use_container_width=True):
-            st.session_state.page = "9"; st.rerun()
-    with c2:
-        if st.button("💬 2. CHAT SYSTEM", use_container_width=True):
-            st.session_state.page = "2"; st.rerun()
-        if st.button("🎬 4. VIDEO HUB", use_container_width=True):
-            st.session_state.page = "4"; st.rerun()
-        if st.button("🌍 6. WORLD CLOCK", use_container_width=True):
-            st.session_state.page = "6"; st.rerun()
-        if st.button("🔢 8. DAILY CODE", use_container_width=True):
-            st.session_state.page = "8"; st.rerun()
-        if st.button("🎨 10. COLOR MASTER", use_container_width=True):
-            st.session_state.page = "10"; st.rerun()
-
-elif st.session_state.page == "1":
-    st.markdown("<h2 class='neon-text'>🎵 AUDIO CONTROL CENTER</h2>", unsafe_allow_html=True)
-    st.info("ขณะนี้เครื่องเล่นทำงานอยู่ใน Sidebar เพลงจะไม่ดับแม้คุณจะเปลี่ยนหน้า")
-    if st.button("⬅️ ย้อนกลับ"):
-        st.session_state.page = "HOME"; st.rerun()
-
-else:
-    st.write(f"กำลังพัฒนาหน้า {st.session_state.page} ...")
-    if st.button("กลับ"):
-        st.session_state.page = "HOME"; st.rerun()
