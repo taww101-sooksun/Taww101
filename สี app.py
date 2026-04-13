@@ -1,45 +1,44 @@
 import streamlit as st
 import base64
+import os
 
-# --- 1. ตั้งค่าหน้าเว็บ & ลบติ่ง (อยู่นิ่งๆ ไม่เจ็บตัว) ---
+# --- 1. Setup UI & Neon Style ---
 st.set_page_config(page_title="SYNAPSE 4-1", layout="wide")
 
 def setup_ui():
     st.markdown("""
         <style>
-        /* ลบส่วนเกิน Streamlit */
         header, footer, #MainMenu {visibility: hidden;}
-        .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; }
+        .stApp { background: #000; color: #00f2fe; }
         .neon-text { 
-            text-align: center; color: #fff; 
-            text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe;
-            font-size: 24px; font-weight: bold;
+            text-align: center; color: #fff; font-size: 30px; font-weight: bold;
+            text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe, 0 0 40px #00f2fe;
+            animation: flicker 2s infinite alternate;
         }
+        @keyframes flicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
         .stButton>button { border-radius: 10px; border: 1px solid #ff1744; background: rgba(0,0,0,0.5); color: white; }
         </style>
     """, unsafe_allow_html=True)
 
-def display_logo(path):
-    try:
-        with open(path, "rb") as f:
-            data = base64.b64encode(f.read()).decode()
-        st.markdown(f'<div style="text-align: center;"><img src="data:image/png;base64,{data}" style="width: 140px; filter: drop-shadow(0 0 10px #ff1744);"></div>', unsafe_allow_html=True)
-    except:
-        st.markdown("<h1 style='text-align: center; color: #ff1744;'>SYNAPSE</h1>", unsafe_allow_html=True)
+# --- 2. ฟังก์ชันดึงไฟล์ MP3 แบบปลอดภัย ---
+def play_audio(file_name):
+    # เช็คว่าไฟล์มีอยู่จริงไหมในโฟลเดอร์ปัจจุบัน
+    if os.path.exists(file_name):
+        try:
+            with open(file_name, "rb") as f:
+                audio_bytes = f.read()
+            st.audio(audio_bytes, format="audio/mp3")
+        except Exception as e:
+            st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
+    else:
+        # ถ้าหาไฟล์ไม่เจอ ให้โชว์คำเตือนแทนการ Error พังทั้งหน้า
+        st.warning(f"⚠️ ไม่พบไฟล์ {file_name} ใน GitHub ของคุณ (เช็คชื่อไฟล์อีกรอบนะเพี้ยน)")
 
-def draw_box(title, target_level):
-    if st.button(title, key=target_level, use_container_width=True):
-        st.session_state.nav_level = target_level
-        st.rerun()
-
-# --- 2. เริ่มระบบ ---
+# --- 3. เริ่มรันระบบ ---
 if 'nav_level' not in st.session_state:
     st.session_state.nav_level = "HOME"
 
 setup_ui()
-
-# เรียกใช้โลโก้ (ดึงไฟล์จากหน้าแรก ไม่ต้องมีคำว่า static/)
-display_logo("logo1.png") 
 
 # ปุ่มย้อนกลับ
 if st.session_state.nav_level != "HOME":
@@ -50,36 +49,17 @@ if st.session_state.nav_level != "HOME":
             st.session_state.nav_level = "HOME"
         st.rerun()
 
-st.write(f"LOCATION: **{st.session_state.nav_level}**")
-st.markdown("---")
-
-# --- 3. เนื้อหาแต่ละชั้น ---
-
+# --- 4. Logic หน้าจอ ---
 if st.session_state.nav_level == "HOME":
-    c1, c2 = st.columns(2)
-    with c1: draw_box("🚀 CORE (MUSIC/LYRICS)", "1")
-    with c2: draw_box("📺 MEDIA (VIDEO)", "2")
+    st.markdown("<div class='neon-text'>SYNAPSE COMMAND</div>", unsafe_allow_html=True)
+    if st.button("🚀 เข้าสู่ระบบ CORE", use_container_width=True):
+        st.session_state.nav_level = "1"
+        st.rerun()
 
 elif st.session_state.nav_level == "1":
-    st.subheader("🚀 CORE SYSTEM: AUDIO & LYRICS")
+    st.markdown("<div class='neon-text'>🎵 AUDIO SYSTEM</div>", unsafe_allow_html=True)
     
-    # ดึงไฟล์เพลงจากหน้าแรก (ชื่อไฟล์ต้องตรงกับใน GitHub นะเพี้ยน)
-    try:
-        st.audio("1.mp3") 
-    except:
-        st.error("หาไฟล์ 1.mp3 ไม่เจอ ตรวจสอบชื่อไฟล์ใน GitHub อีกรอบนะ")
+    # สั่งเล่นไฟล์ 1.mp3 ที่วางอยู่หน้าเดียวกับ app.py
+    play_audio("1.mp3") 
     
-    # เนื้อเพลงวิ้งๆ
-    st.markdown("""
-        <div class="neon-text">
-            <br>✨ อยู่นิ่งๆ ไม่เจ็บตัว... ✨<br>
-            ✨ ระบบกำลังรันเสียงและเนื้อเพลง ✨
-        </div>
-    """, unsafe_allow_html=True)
-
-elif st.session_state.nav_level == "2":
-    st.subheader("📺 MEDIA SYSTEM")
-    st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-
-else:
-    st.warning(f"⚠️ พิกัด {st.session_state.nav_level} กำลังพัฒนา...")
+    st.markdown("<div class='neon-text' style='font-size:20px;'>✨ อยู่นิ่งๆ ไม่เจ็บตัว ✨</div>", unsafe_allow_html=True)
