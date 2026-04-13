@@ -29,7 +29,7 @@ player_ui = """
 
         /* กรอบในสำหรับกราฟเสียง */
         .inner-panel {
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.9);
             border: 1px solid #8b00ff;
             box-shadow: inset 0 0 10px #00f2fe;
             padding: 5px; margin-bottom: 15px;
