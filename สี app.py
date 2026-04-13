@@ -115,7 +115,7 @@ if st.session_state.page == "HOME":
 
     with c1:
         if st.button("🎵 1. MUSIC PLAYER\nฟังเพลง MP3 จากคลังข้อมูล", use_container_width=True):
-            elif st.session_state.page == "1":
+elif st.session_state.page == "1":
     import streamlit.components.v1 as components
 
     st.markdown("<h2 class='neon-text'>🎵 SYNAPSE AUDIO PRO</h2>", unsafe_allow_html=True)
