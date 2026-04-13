@@ -1,1 +1,16 @@
+import streamlit as st
+import streamlit.components.v1 as components
+
+# ใส่โลโก้และลบติ่ง Streamlit
+st.markdown("""
+    <style> #MainMenu, footer, header {visibility: hidden;} </style>
+    <div style='text-align: center;'>
+        <img src="app/static/logo1.png" style="width:100px;" onerror="this.src='https://via.placeholder.com/100?text=SYNAPSE'">
+        <h2 style='color: #FF4B4B;'>📡 AUDIO ENGINE</h2>
+    </div>
+""", unsafe_allow_html=True)
+
+# ก๊อปโค้ด HTML ส่วน Audio Engine (ที่เคยส่งให้ก่อนหน้า) มาวางตรงนี้
+audio_engine_html = """ ...โค้ดผสมเพลง... """
+components.html(audio_engine_html, height=600)
 
