@@ -85,7 +85,7 @@ if music_files:
         else:
             chat_data = "ยังไม่มีข้อความ..."
 
-        st.text_area("Live Chat", value=chat_data, height=200, disabled=True, label_visibility="collapsed")
+        st.text_area("Live Chat", value=chat_data, height=100, disabled=True, label_visibility="collapsed")
         
         with st.form("chat_form", clear_on_submit=True):
             msg = st.text_input("พิมพ์ข้อความ...", key="chat_msg_input")
