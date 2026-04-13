@@ -1,45 +1,6 @@
 import streamlit as st
 import replicate
 import os
-import streamlit as st
-import replicate
-import os
-
-# 1. บังคับให้ Streamlit รู้จัก UTF-8 (สากล)
-# ปกติ Streamlit จัดการให้ แต่ถ้า Error ให้ลองเขียนครอบไว้แบบนี้
-
-def run_video_gen(prompt_text, api_token):
-    try:
-        os.environ["REPLICATE_API_TOKEN"] = api_token
-        
-        # ตรวจสอบว่าข้อความเป็น String ที่สะอาด
-        clean_prompt = str(prompt_text).strip()
-        
-        output = replicate.run(
-            "anotherjesse/zeroscope-v2-xl:9f747895e5b2828a90827106604565195444e7975850b864f5ad67a2d2958742",
-            input={"prompt": clean_prompt}
-        )
-        return output
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-# --- ส่วนของการกดปุ่มในแอป ---
-if st.button("🚀 เริ่มสร้างวิดีโอ"):
-    if not REPLICATE_API_TOKEN:
-        st.error("กรุณาใส่ API Token ก่อนครับ")
-    else:
-        with st.spinner("กำลังประมวลผล..."):
-            result = run_video_gen(prompt, REPLICATE_API_TOKEN)
-            
-            if isinstance(result, list):
-                st.success("สำเร็จ!")
-                st.video(result[0])
-            else:
-                # ถ้าเจอ Error เรื่อง ASCII ให้แจ้งเตือนแบบเข้าใจง่าย
-                if "ascii" in result.lower():
-                    st.error("⚠️ ระบบตรวจพบตัวอักษรที่ไม่รองรับ โปรดตรวจสอบว่าในโค้ดไม่มีภาษาไทยหลุดไปในส่วนประมวลผล AI ครับ")
-                else:
-                    st.error(result)
 
 # --- 1. SET UP THEME ---
 st.set_page_config(page_title="SYNAPSE AI VIDEO", layout="wide")
@@ -48,7 +9,6 @@ theme_color = "#39FF14"
 st.markdown(f"""
     <style>
     .stApp {{ background-color: #000 !important; color: {theme_color} !important; }}
-    .stTextInput>div>div>input {{ background-color: #111 !important; color: {theme_color} !important; border: 1px solid {theme_color} !important; }}
     h1 {{ text-align: center; text-shadow: 0 0 10px {theme_color}; }}
     </style>
 """, unsafe_allow_html=True)
@@ -56,36 +16,33 @@ st.markdown(f"""
 st.title("🎬 SYNAPSE AI VIDEO")
 st.markdown(f"<p style='text-align:center;'><i>'อยู่นิ่งๆ ไม่เจ็บตัว'</i></p>", unsafe_allow_html=True)
 
-# --- 2. CONFIG API (ต้องมี API TOKEN ของ Replicate) ---
-# เพื่อนต้องไปสมัครที่ replicate.com แล้วเอา API Token มาใส่ครับ
-REPLICATE_API_TOKEN = st.text_input("ใส่ Replicate API Token ของคุณ", type="password")
-os.environ["REPLICATE_API_TOKEN"] = REPLICATE_API_TOKEN
+# --- 2. INPUT ---
+REPLICATE_API_TOKEN = st.text_input("ใส่ Replicate API Token ของคุณ", type="password", key="token_input")
+prompt = st.text_input("พิมพ์ข้อความที่ต้องการสร้างเป็นวิดีโอ (ภาษาอังกฤษ)", key="prompt_input")
 
-# --- 3. INPUT PROMPT ---
-prompt = st.text_input("พิมพ์ข้อความที่ต้องการสร้างเป็นวิดีโอ (ภาษาอังกฤษ)", placeholder="เช่น: A futuristic neon city, 4k, cinematic")
-
-if st.button("🚀 เริ่มสร้างวิดีโอ"):
+# --- 3. แก้ไขปัญหา Duplicate ID โดยการใส่ key เฉพาะตัว ---
+if st.button("🚀 เริ่มสร้างวิดีโอ", key="main_gen_button"):
     if not REPLICATE_API_TOKEN:
-        st.error("กรุณาใส่ API Token ก่อนครับเพื่อน!")
+        st.error("กรุณาใส่ API Token ก่อนครับ!")
     elif not prompt:
         st.warning("พิมพ์ข้อความก่อนนะ!")
     else:
-        with st.spinner("AI กำลังวาดวิดีโอให้คุณ... (อาจใช้เวลา 1-2 นาที)"):
+        with st.spinner("กำลังประมวลผล..."):
             try:
-                # ใช้ Model 'zeroscope-v2-xl' ซึ่งเป็นรุ่นที่ใช้งานได้ดีและเร็ว
+                os.environ["REPLICATE_API_TOKEN"] = REPLICATE_API_TOKEN
+                # บังคับให้เป็นข้อความที่สะอาดเพื่อเลี่ยง ASCII error
+                clean_prompt = str(prompt).strip()
+                
                 output = replicate.run(
                     "anotherjesse/zeroscope-v2-xl:9f747895e5b2828a90827106604565195444e7975850b864f5ad67a2d2958742",
-                    input={"prompt": prompt}
+                    input={"prompt": clean_prompt}
                 )
                 
-                # แสดงผลวิดีโอ
                 if output:
-                    st.success("สร้างสำเร็จแล้ว!")
+                    st.success("สำเร็จ!")
                     st.video(output[0])
-                    st.markdown(f"[📥 ดาวน์โหลดวิดีโอ]({output[0]})")
-            
             except Exception as e:
                 st.error(f"เกิดข้อผิดพลาด: {e}")
 
 st.write("---")
-st.caption("SYNAPSE PROJECT | พัฒนาโดย Ta/Bas 2026")
+st.caption("SYNAPSE PROJECT | Ta/Bas 2026")
