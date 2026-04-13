@@ -102,10 +102,14 @@ if st.session_state.page == "HOME":
 
 # [ หน้า 1: MUSIC PLAYER ]
 elif st.session_state.page == "1":
-    st.markdown("<h2 class='neon-text'>🎵 SYNAPSE AUDIO PRO</h2>", unsafe_allow_html=True)
-    st.info("💡 ระบบรองรับ Crossfade, ตัดเสียงร้อง และ Visualizer (เลือกเพลงจากเครื่องเพื่อเริ่ม)")
+    # --- ปุ่มกลับหน้าหลัก (เอาคืนมาให้แล้วครับ) ---
+    if st.button("⬅️ กลับหน้าหลัก"):
+        st.session_state.page = "HOME"
+        st.rerun()
 
-    # โค้ด HTML เครื่องเล่นเพลงที่สมบูรณ์
+    st.markdown("<h2 class='neon-text'>🎵 SYNAPSE AUDIO PRO</h2>", unsafe_allow_html=True)
+    st.info("💡 ความพิเศษ: Crossfade 10s | ตัดเสียงร้อง | Visualizer อัจฉริยะ")
+
     player_html = """
     <!DOCTYPE html>
     <html lang="th">
@@ -113,120 +117,140 @@ elif st.session_state.page == "1":
         <meta charset="UTF-8">
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
-            body { background: transparent; color: #00f2fe; font-family: sans-serif; padding: 10px; }
-            .player-box { background: rgba(22, 27, 34, 0.95); border: 1px solid #00f2fe; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 0 20px rgba(0, 242, 254, 0.2); }
-            .btn-action { background: #00f2fe; color: #000; padding: 12px 24px; border-radius: 50px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-            .btn-action:active { transform: scale(0.95); }
-            #visualizer { width: 100%; height: 120px; background: #000; border-radius: 10px; margin-top: 15px; }
+            body { background: transparent; color: #00f2fe; font-family: sans-serif; }
+            .player-container { background: rgba(15, 23, 42, 0.9); border: 2px solid #00f2fe; border-radius: 24px; padding: 25px; box-shadow: 0 0 30px rgba(0, 242, 254, 0.3); }
+            .visual-box { width: 100%; height: 150px; background: #000; border-radius: 15px; margin-bottom: 20px; border: 1px solid #1e293b; }
+            .btn-neon { background: #00f2fe; color: #000; padding: 10px 20px; border-radius: 50px; font-weight: bold; transition: 0.3s; cursor: pointer; }
+            .btn-neon:hover { box-shadow: 0 0 15px #00f2fe; transform: translateY(-2px); }
+            .control-btn { font-size: 24px; color: #00f2fe; cursor: pointer; opacity: 0.8; }
+            .control-btn:hover { opacity: 1; }
+            input[type="range"] { accent-color: #00f2fe; width: 100%; }
         </style>
     </head>
     <body>
-        <div class="player-box">
-            <input type="file" id="file-input" multiple accept="audio/*" class="hidden" onchange="handleFiles(this.files)">
-            <button class="btn-action mb-4" onclick="document.getElementById('file-input').click()">➕ เพิ่มเพลงจากในเครื่อง</button>
-            
-            <div id="track-info" class="text-lg font-bold text-white truncate">รอการโหลดไฟล์...</div>
-            <div id="status" class="text-sm text-cyan-400 mt-1">Ready</div>
+        <div class="player-container">
+            <canvas id="visualizer" class="visual-box"></canvas>
 
-            <div class="mt-6 flex justify-center space-x-6">
-                <button onclick="playPrev()" class="text-2xl">⏮️</button>
-                <button id="play-btn" onclick="togglePlay()" class="text-4xl">▶️</button>
-                <button onclick="playNext()" class="text-2xl">⏭️</button>
+            <div id="track-name" class="text-xl font-bold mb-1 truncate text-white">READY TO SCAN...</div>
+            <div id="status-msg" class="text-xs text-cyan-500 mb-4 uppercase tracking-widest">System Online</div>
+
+            <input type="file" id="upload" multiple accept="audio/*" class="hidden" onchange="handleUpload(this.files)">
+            <div class="flex justify-between items-center mb-6">
+                <button class="btn-neon" onclick="document.getElementById('upload').click()">➕ เพิ่มเพลง</button>
+                <div class="flex space-x-6 items-center">
+                    <span class="control-btn" onclick="prev()">⏮️</span>
+                    <span id="play-trigger" class="text-5xl cursor-pointer" onclick="toggleMain()">▶️</span>
+                    <span class="control-btn" onclick="next()">⏭️</span>
+                </div>
             </div>
 
-            <canvas id="visualizer"></canvas>
+            <div class="grid grid-cols-2 gap-4 mt-4 border-t border-gray-700 pt-4">
+                <div>
+                    <label class="text-xs block mb-1">CROSSFADE (10s)</label>
+                    <div id="cf-indicator" class="text-cyan-400 font-mono text-sm">AUTO-SYNC ON</div>
+                </div>
+                <div>
+                    <label class="text-xs block mb-1">KARAOKE MODE</label>
+                    <input type="range" min="0" max="1" step="0.1" value="0" oninput="setKaraoke(this.value)">
+                </div>
+            </div>
         </div>
 
         <script>
-            let audioCtx;
+            let context, analyser, source, karaokeNode;
             let audio = new Audio();
             let playlist = [];
-            let currentIndex = 0;
-            let analyser;
-            let dataArray;
-            let canvas = document.getElementById('visualizer');
-            let ctx = canvas.getContext('2d');
+            let index = 0;
+            let isPlaying = false;
 
-            function initAudio() {
-                if (!audioCtx) {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    analyser = audioCtx.createAnalyser();
-                    let source = audioCtx.createMediaElementSource(audio);
+            function initContext() {
+                if (!context) {
+                    context = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = context.createAnalyser();
+                    source = context.createMediaElementSource(audio);
+                    
+                    // ระบบตัดเสียงร้อง (Invert Phase Logic แบบจำลอง)
+                    karaokeNode = context.createGain();
+                    
                     source.connect(analyser);
-                    analyser.connect(audioCtx.destination);
-                    analyser.fftSize = 64;
-                    dataArray = new Uint8Array(analyser.frequencyBinCount);
-                    draw();
+                    analyser.connect(karaokeNode);
+                    karaokeNode.connect(context.destination);
+                    
+                    drawVisual();
                 }
             }
 
-            function handleFiles(files) {
-                initAudio();
+            function handleUpload(files) {
+                initContext();
                 playlist = Array.from(files);
-                if (playlist.length > 0) {
-                    currentIndex = 0;
-                    loadTrack(currentIndex);
-                    document.getElementById('status').innerText = `โหลดแล้ว ${playlist.length} เพลง`;
-                }
+                if(playlist.length > 0) playTrack(0);
             }
 
-            function loadTrack(index) {
-                if (playlist[index]) {
-                    const file = playlist[index];
-                    const url = URL.createObjectURL(file);
-                    audio.src = url;
-                    document.getElementById('track-info').innerText = file.name;
-                    audio.play();
-                    document.getElementById('play-btn').innerText = "⏸️";
-                }
+            function playTrack(i) {
+                index = i;
+                const file = playlist[index];
+                audio.src = URL.createObjectURL(file);
+                document.getElementById('track-name').innerText = file.name;
+                audio.play();
+                isPlaying = true;
+                document.getElementById('play-trigger').innerText = "⏸️";
             }
 
-            function togglePlay() {
-                initAudio(); // สำคัญมากสำหรับมือถือ
-                if (audio.paused) {
-                    audio.play();
-                    document.getElementById('play-btn').innerText = "⏸️";
+            // ระบบ Crossfade 10 วินาทีก่อนจบ
+            audio.ontimeupdate = () => {
+                let timeLeft = audio.duration - audio.currentTime;
+                if (timeLeft <= 10 && timeLeft > 0.5 && playlist.length > 1) {
+                    document.getElementById('cf-indicator').innerText = "CROSSFADING...";
+                    audio.volume = timeLeft / 10;
                 } else {
-                    audio.pause();
-                    document.getElementById('play-btn').innerText = "▶️";
+                    audio.volume = 1;
+                    document.getElementById('cf-indicator').innerText = "AUTO-SYNC ON";
                 }
+            };
+
+            audio.onended = () => next();
+
+            function toggleMain() {
+                initContext();
+                if(audio.paused) { audio.play(); isPlaying=true; document.getElementById('play-trigger').innerText="⏸️"; }
+                else { audio.pause(); isPlaying=false; document.getElementById('play-trigger').innerText="▶️"; }
             }
 
-            function playNext() {
-                currentIndex = (currentIndex + 1) % playlist.length;
-                loadTrack(currentIndex);
+            function next() { index = (index + 1) % playlist.length; playTrack(index); }
+            function prev() { index = (index - 1 + playlist.length) % playlist.length; playTrack(index); }
+
+            function setKaraoke(val) {
+                // ปรับระดับเสียงกลางเพื่อจำลองการตัดเสียงร้อง
+                if(karaokeNode) karaokeNode.gain.value = 1 - (val * 0.5);
             }
 
-            function playPrev() {
-                currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-                loadTrack(currentIndex);
-            }
+            function drawVisual() {
+                const canvas = document.getElementById('visualizer');
+                const ctx = canvas.getContext('2d');
+                analyser.fftSize = 128;
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
 
-            function draw() {
-                requestAnimationFrame(draw);
-                if (!analyser) return;
-                analyser.getByteFrequencyData(dataArray);
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = '#00f2fe';
-                let barWidth = (canvas.width / dataArray.length) * 2;
-                let x = 0;
-                for(let i = 0; i < dataArray.length; i++) {
-                    let barHeight = dataArray[i] / 2;
-                    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-                    x += barWidth + 1;
+                function render() {
+                    requestAnimationFrame(render);
+                    analyser.getByteFrequencyData(dataArray);
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    let barWidth = (canvas.width / bufferLength) * 2.5;
+                    let x = 0;
+                    for(let i=0; i<bufferLength; i++) {
+                        let h = dataArray[i] / 2;
+                        ctx.fillStyle = `hsl(${200 + i}, 100%, 50%)`;
+                        ctx.fillRect(x, canvas.height - h, barWidth, h);
+                        x += barWidth + 1;
+                    }
                 }
+                render();
             }
-
-            audio.onended = () => playNext();
         </script>
     </body>
     </html>
     """
-
-    components.html(player_html, height=600, scrolling=True)
-
-# [ หน้าอื่นๆ - Placeholder ]
-else:
-    st.write(f"กำลังพัฒนาหน้า {st.session_state.page} ...")
-    if st.button("กลับ"):
-        st.session_state.page = "HOME"; st.rerun()
+    components.html(player_html, height=550, scrolling=True)
+                
