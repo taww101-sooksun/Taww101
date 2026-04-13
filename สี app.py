@@ -14,15 +14,15 @@ ui_code = """
             display: flex; 
             justify-content: center; 
             align-items: center; 
-            height: 100vh; 
+            height: 150vh; 
             margin: 0; 
         }
         
         .synapse-frame {
-            width: 400px;
-            height: 500px;
-            background-color: rgba(0, 0, 0, 0.5);
-            border: 4px solid;
+            width: 500px;
+            height: 600px;
+            background-color: rgba(#fffff);
+            border: 10px solid;
             /* เส้นขอบไล่สีม่วงไปแดง */
             border-image: linear-gradient(to bottom right, #8b00ff, #ff0000) 1;
             border-radius: 0px; /* ทรงเหลี่ยมตามสั่ง */
@@ -45,7 +45,7 @@ ui_code = """
         }
 
         .status-box {
-            border: 1px solid #00f2fe;
+            border: 4px solid #00f2fe;
             height: 100px;
             margin-bottom: 20px;
             background: rgba(0, 242, 254, 0.1);
@@ -76,9 +76,9 @@ ui_code = """
         
         <div class="label">SYSTEM STATUS</div>
         <div style="font-size: 13px; line-height: 1.6;">
-            > Width: 400px<br>
-            > Height: 500px<br>
-            > Border: 4px (Purple-Red)<br>
+            > Width: 500px<br>
+            > Height: 600px<br>
+            > Border: 10px (Purple-Red)<br>
             > Neon: 15px (#00f2fe)<br>
             > Mode: Stay Still, No Pain
         </div>
