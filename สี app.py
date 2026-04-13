@@ -106,39 +106,123 @@ elif st.session_state.page == "1":
     st.info("💡 ระบบรองรับ Crossfade, ตัดเสียงร้อง และ Visualizer (เลือกเพลงจากเครื่องเพื่อเริ่ม)")
 
     # โค้ด HTML เครื่องเล่นเพลงที่สมบูรณ์
-    player_html = """
+        player_html = """
     <!DOCTYPE html>
-    <html>
+    <html lang="th">
     <head>
+        <meta charset="UTF-8">
         <script src="https://cdn.tailwindcss.com"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
         <style>
             body { background: transparent; color: #00f2fe; font-family: sans-serif; padding: 10px; }
-            .player-box { background: rgba(22, 27, 34, 0.9); border: 1px solid #00f2fe; border-radius: 20px; padding: 20px; text-align: center; }
-            .btn-action { background: #00f2fe; color: #000; padding: 10px 20px; border-radius: 50px; font-weight: bold; cursor: pointer; }
+            .player-box { background: rgba(22, 27, 34, 0.95); border: 1px solid #00f2fe; border-radius: 20px; padding: 20px; text-align: center; box-shadow: 0 0 20px rgba(0, 242, 254, 0.2); }
+            .btn-action { background: #00f2fe; color: #000; padding: 12px 24px; border-radius: 50px; font-weight: bold; cursor: pointer; transition: 0.3s; }
+            .btn-action:active { transform: scale(0.95); }
+            #visualizer { width: 100%; height: 120px; background: #000; border-radius: 10px; margin-top: 15px; }
         </style>
     </head>
     <body>
         <div class="player-box">
-            <input type="file" id="file-input" multiple accept="audio/*" class="hidden">
+            <input type="file" id="file-input" multiple accept="audio/*" class="hidden" onchange="handleFiles(this.files)">
             <button class="btn-action mb-4" onclick="document.getElementById('file-input').click()">➕ เพิ่มเพลงจากในเครื่อง</button>
-            <div id="track-info" class="text-lg font-bold mt-2">ยังไม่มีเพลงที่โหลด</div>
-            <div class="mt-4 flex justify-center space-x-4">
-                <button onclick="togglePlay()" class="text-cyan-400">PLAY/PAUSE</button>
+            
+            <div id="track-info" class="text-lg font-bold text-white truncate">รอการโหลดไฟล์...</div>
+            <div id="status" class="text-sm text-cyan-400 mt-1">Ready</div>
+
+            <div class="mt-6 flex justify-center space-x-6">
+                <button onclick="playPrev()" class="text-2xl">⏮️</button>
+                <button id="play-btn" onclick="togglePlay()" class="text-4xl">▶️</button>
+                <button onclick="playNext()" class="text-2xl">⏭️</button>
             </div>
-            <canvas id="visualizer" class="w-full h-32 mt-4 border border-gray-700 rounded"></canvas>
+
+            <canvas id="visualizer"></canvas>
         </div>
+
         <script>
-            // สคริปต์ควบคุมเสียงที่เพี้ยนส่งมา (ใส่ตัวอย่างการรันเบื้องต้น)
+            let audioCtx;
             let audio = new Audio();
-            function togglePlay() {
-                if (audio.paused) audio.play(); else audio.pause();
+            let playlist = [];
+            let currentIndex = 0;
+            let analyser;
+            let dataArray;
+            let canvas = document.getElementById('visualizer');
+            let ctx = canvas.getContext('2d');
+
+            function initAudio() {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioCtx.createAnalyser();
+                    let source = audioCtx.createMediaElementSource(audio);
+                    source.connect(analyser);
+                    analyser.connect(audioCtx.destination);
+                    analyser.fftSize = 64;
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    draw();
+                }
             }
-            // ... ส่วนการจัดการ Crossfade และ Visualizer ตามที่เพี้ยนมี ...
+
+            function handleFiles(files) {
+                initAudio();
+                playlist = Array.from(files);
+                if (playlist.length > 0) {
+                    currentIndex = 0;
+                    loadTrack(currentIndex);
+                    document.getElementById('status').innerText = `โหลดแล้ว ${playlist.length} เพลง`;
+                }
+            }
+
+            function loadTrack(index) {
+                if (playlist[index]) {
+                    const file = playlist[index];
+                    const url = URL.createObjectURL(file);
+                    audio.src = url;
+                    document.getElementById('track-info').innerText = file.name;
+                    audio.play();
+                    document.getElementById('play-btn').innerText = "⏸️";
+                }
+            }
+
+            function togglePlay() {
+                initAudio(); // สำคัญมากสำหรับมือถือ
+                if (audio.paused) {
+                    audio.play();
+                    document.getElementById('play-btn').innerText = "⏸️";
+                } else {
+                    audio.pause();
+                    document.getElementById('play-btn').innerText = "▶️";
+                }
+            }
+
+            function playNext() {
+                currentIndex = (currentIndex + 1) % playlist.length;
+                loadTrack(currentIndex);
+            }
+
+            function playPrev() {
+                currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+                loadTrack(currentIndex);
+            }
+
+            function draw() {
+                requestAnimationFrame(draw);
+                if (!analyser) return;
+                analyser.getByteFrequencyData(dataArray);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#00f2fe';
+                let barWidth = (canvas.width / dataArray.length) * 2;
+                let x = 0;
+                for(let i = 0; i < dataArray.length; i++) {
+                    let barHeight = dataArray[i] / 2;
+                    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                    x += barWidth + 1;
+                }
+            }
+
+            audio.onended = () => playNext();
         </script>
     </body>
     </html>
     """
+
     components.html(player_html, height=600, scrolling=True)
 
 # [ หน้าอื่นๆ - Placeholder ]
