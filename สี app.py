@@ -1,6 +1,57 @@
 import streamlit as st
 import streamlit as st
 import base64
+import streamlit as st
+import base64
+
+# --- 1. การตั้งค่าหน้าเว็บและลบส่วนเกินของ Streamlit ---
+st.set_page_config(page_title="SYNAPSE 4-1", layout="wide")
+
+def hide_st_elements():
+    st.markdown("""
+        <style>
+        /* ลบแถบ Header, Footer และปุ่มเมนูขวาบน */
+        header {visibility: hidden;}
+        footer {visibility: hidden;}
+        #MainMenu {visibility: hidden;}
+        
+        /* ปรับพื้นหลังแอปให้เป็นสีดำสนิท */
+        .stApp { background-color: #000000; }
+        
+        /* จัดการระยะห่างด้านบนให้โลโก้อยู่ในตำแหน่งที่สวยงาม */
+        .block-container { padding-top: 2rem; }
+        </style>
+    """, unsafe_allow_html=True)
+
+hide_st_elements()
+
+# --- 2. ฟังก์ชันเรียกใช้โลโก้แทนที่ติ่งเดิม ---
+def get_base64_img(img_path):
+    try:
+        with open(img_path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except:
+        return None
+
+# ดึงโลโก้จากโฟลเดอร์ static ที่เพี้ยนสร้างไว้
+img_base64 = get_base64_img("static/logo1.png")
+
+if img_base64:
+    # แสดงโลโก้ตรงกลางพร้อมเอฟเฟกต์แสงฟุ้ง (Neon Drop Shadow)
+    st.markdown(f"""
+        <div style="text-align: center;">
+            <img src="data:image/png;base64,{img_base64}" 
+                 style="width: 150px; filter: drop-shadow(0 0 15px #ff1744);">
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    # กรณีหาไฟล์ไม่เจอ ให้โชว์ Text เท่ๆ แทน
+    st.markdown("<h1 style='text-align: center; color: #ff1744;'>SYNAPSE</h1>", unsafe_allow_html=True)
+
+# --- 3. เข้าสู่ระบบ Hierarchy ของเพี้ยนต่อได้เลย ---
+st.markdown("<h3 style='text-align: center; color: #00f2fe; opacity: 0.8;'>อยู่นิ่งๆ ไม่เจ็บตัว</h3>", unsafe_allow_html=True)
+st.write("---")
 
 # --- 1. ตั้งค่าหน้าเว็บและลบติ่ง Streamlit (Footer/Header/Menu) ---
 st.set_page_config(page_title="SYNAPSE 4-1", layout="wide")
