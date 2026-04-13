@@ -1,9 +1,9 @@
 import streamlit as st
 import os
-import streamlit.components.v1 as components
+import datetime
 
-# --- 1. SETUP UI & CONFIG ---
-st.set_page_config(page_title="SYNAPSE SUPER APP", layout="wide")
+# --- 1. SETUP & ลบติ่ง (อยู่นิ่งๆ ไม่เจ็บตัว) ---
+st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
 def setup_ui():
     st.markdown("""
@@ -12,22 +12,14 @@ def setup_ui():
         header, footer, #MainMenu {visibility: hidden;}
         .stApp { background: #000; color: #00f2fe; }
         
-        /* คุมขนาดรูปใน Sidebar ให้คงที่ */
-        [data-testid="stSidebar"] img {
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-            width: 100px;
-        }
-
-        /* สไตล์ปุ่มเมนูหน้าหลัก */
+        /* สไตล์ปุ่มเมนู */
         .stButton>button {
             border-radius: 15px;
             border: 1px solid #00f2fe;
             background: rgba(0, 242, 254, 0.1);
             color: white;
-            height: 80px;
-            font-size: 16px;
+            height: 100px;
+            font-size: 18px;
             transition: 0.3s;
         }
         .stButton>button:hover {
@@ -36,6 +28,7 @@ def setup_ui():
             box-shadow: 0 0 20px #00f2fe;
         }
         
+        /* ตัวหนังสือวิ้ง */
         .neon-text {
             text-align: center;
             color: #fff;
@@ -47,287 +40,80 @@ def setup_ui():
 
 setup_ui()
 
-# --- 2. SIDEBAR (ย้ายเครื่องเล่นมาไว้ที่นี่เพื่อให้เพลงไม่ดับเวลาเปลี่ยนหน้า) ---
-with st.sidebar:
-    if os.path.exists("logo1.png"):
-        st.image("logo1.png") 
-    else:
-        st.markdown("<h2 style='text-align:center;'>SYNAPSE</h2>", unsafe_allow_html=True)
-    
-    st.divider()
-    
-    # --- เครื่องเล่นเพลงแบบ Global (เล่นต่อเนื่อง) ---
-    st.markdown("### 🎧 Global Player")
-    player_sidebar_html = """
-    <div id="mini-player" style="background:#111; padding:10px; border-radius:10px; border:1px solid #00f2fe;">
-        <input type="file" id="side-upload" multiple accept="audio/*" style="display:none" onchange="handleSideFiles(this.files)">
-        <button onclick="document.getElementById('side-upload').click()" style="width:100%; background:#00f2fe; color:#000; border:none; padding:5px; border-radius:5px; cursor:pointer; font-weight:bold;">➕ LOAD MUSIC</button>
-        <div id="side-track" style="font-size:10px; color:#fff; margin-top:5px; white-space:nowrap; overflow:hidden;">Ready...</div>
-        
-        <div style="margin-top:10px;">
-            <label style="font-size:10px;">KARAOKE STRENGTH</label>
-            <input type="range" min="0" max="100" value="0" style="width:100%" oninput="updateKaraoke(this.value)">
-        </div>
-    </div>
+# --- 2. การจัดการหน้าจอ (Navigation) ---
+if 'page' not in st.session_state:
+    st.session_state.page = "HOME"
 
-    <script>
-        let sCtx, sAnalyser, sAudio = new Audio(), sSource, sFilter;
-        let sPlaylist = [];
-        let sIndex = 0;
-
-        function initSideAudio() {
-            if (!sCtx) {
-                sCtx = new (window.AudioContext || window.webkitAudioContext)();
-                sAnalyser = sCtx.createAnalyser();
-                sSource = sCtx.createMediaElementSource(sAudio);
-                
-                // ใช้ Notch Filter เพื่อเจาะจงตัดย่านเสียงร้อง
-                sFilter = sCtx.createBiquadFilter();
-                sFilter.type = "notch"; 
-                sFilter.frequency.value = 1000; // ย่านเสียงคน
-                sFilter.Q.value = 0; // เริ่มต้นที่ 0 (ไม่ตัด)
-
-                sSource.connect(sFilter);
-                sFilter.connect(sAnalyser);
-                sAnalyser.connect(sCtx.destination);
-            }
-        }
-
-        function handleSideFiles(files) {
-            initSideAudio();
-            sPlaylist = Array.from(files);
-            if(sPlaylist.length > 0) playSide(0);
-        }
-
-        function playSide(i) {
-            sIndex = i;
-            const file = sPlaylist[sIndex];
-            sAudio.src = URL.createObjectURL(file);
-            document.getElementById('side-track').innerText = file.name;
-            sAudio.play();
-        }
-
-        function updateKaraoke(val) {
-            if(sFilter) {
-                // ยิ่งเลื่อนมาก Q ยิ่งสูง = ตัดย่านเสียงกลางแคบและแรงขึ้น
-                sFilter.Q.value = val / 10; 
-            }
-        }
-        
-        sAudio.onended = () => {
-            sIndex = (sIndex + 1) % sPlaylist.length;
-            playSide(sIndex);
-        };
-    </script>
-    """
-    components.html(player_sidebar_html, height=200)
-
-    st.divider()
-    if st.button("🏠 Home", use_container_width=True):
-        st.session_state.page = "HOME"
-        st.rerun()
-
-
-with st.sidebar:
-    # แสดงโลโก้ตลอดเวลา
-    if os.path.exists("logo1.png"):
-        st.image("logo1.png") 
-    else:
-        st.markdown("<h2 style='text-align:center;'>SYNAPSE</h2>", unsafe_allow_html=True)
-    
-    st.divider()
-    
-    # ปุ่มกลับหน้าหลักใน Sidebar
-    if st.button("🏠 กลับหน้าหลัก", use_container_width=True):
-        st.session_state.page = "HOME"
-        st.rerun()
-    
-    st.markdown("<p style='text-align:center;font-size:10px;'>อยู่นิ่งๆ ไม่เจ็บตัว</p>", unsafe_allow_html=True)
-
-# --- 3. เนื้อหาแต่ละหน้า ---
-
-# [ หน้าแรก: CENTRAL HUB ]
-    if st.session_state.page == "HOME":
-       st.markdown("<h1 class='neon-text'>CENTRAL HUB</h1>", unsafe_allow_html=True)
-       st.markdown("<h3 style='text-align: center;'>เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
-       st.divider()
-
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("🎵 1. MUSIC PLAYER\nCrossfade & Karaoke", use_container_width=True):
-            st.session_state.page = "1"; st.rerun()
-        if st.button("🖼️ 3. IMAGE SEARCH", use_container_width=True):
-            st.session_state.page = "3"; st.rerun()
-        if st.button("✨ 5. NEON GENERATOR", use_container_width=True):
-            st.session_state.page = "5"; st.rerun()
-        if st.button("💖 7. DESTINY CHECK", use_container_width=True):
-            st.session_state.page = "7"; st.rerun()
-        if st.button("📝 9. SYSTEM LOG", use_container_width=True):
-            st.session_state.page = "9"; st.rerun()
-
-    with c2:
-        if st.button("💬 2. CHAT SYSTEM", use_container_width=True):
-            st.session_state.page = "2"; st.rerun()
-        if st.button("🎬 4. VIDEO HUB", use_container_width=True):
-            st.session_state.page = "4"; st.rerun()
-        if st.button("🌍 6. WORLD CLOCK", use_container_width=True):
-            st.session_state.page = "6"; st.rerun()
-        if st.button("🔢 8. DAILY CODE", use_container_width=True):
-            st.session_state.page = "8"; st.rerun()
-        if st.button("🎨 10. COLOR MASTER", use_container_width=True):
-            st.session_state.page = "10"; st.rerun()
-
-# [ หน้า 1: MUSIC PLAYER ]
-elif st.session_state.page == "1":
-    # --- ปุ่มกลับหน้าหลัก (เอาคืนมาให้แล้วครับ) ---
+# ฟังก์ชันย้อนกลับ
+if st.session_state.page != "HOME":
     if st.button("⬅️ กลับหน้าหลัก"):
         st.session_state.page = "HOME"
         st.rerun()
 
-    st.markdown("<h2 class='neon-text'>🎵 SYNAPSE AUDIO PRO</h2>", unsafe_allow_html=True)
-    st.info("💡 ความพิเศษ: Crossfade 10s | ตัดเสียงร้อง | Visualizer อัจฉริยะ")
+# --- 3. เนื้อหาแต่ละหน้า ---
 
-    player_html = """
-    <!DOCTYPE html>
-    <html lang="th">
-    <head>
-        <meta charset="UTF-8">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-            body { background: transparent; color: #00f2fe; font-family: sans-serif; }
-            .player-container { background: rgba(15, 23, 42, 0.9); border: 2px solid #00f2fe; border-radius: 24px; padding: 25px; box-shadow: 0 0 30px rgba(0, 242, 254, 0.3); }
-            .visual-box { width: 100%; height: 150px; background: #000; border-radius: 15px; margin-bottom: 20px; border: 1px solid #1e293b; }
-            .btn-neon { background: #00f2fe; color: #000; padding: 10px 20px; border-radius: 50px; font-weight: bold; transition: 0.3s; cursor: pointer; }
-            .btn-neon:hover { box-shadow: 0 0 15px #00f2fe; transform: translateY(-2px); }
-            .control-btn { font-size: 24px; color: #00f2fe; cursor: pointer; opacity: 0.8; }
-            .control-btn:hover { opacity: 1; }
-            input[type="range"] { accent-color: #00f2fe; width: 100%; }
-        </style>
-    </head>
-    <body>
-        <div class="player-container">
-            <canvas id="visualizer" class="visual-box"></canvas>
+# [ หน้าแรก: ศูนย์รวม 10 แอป ]
+if st.session_state.page == "HOME":
+    # วาง LOGO แทนที่ติ่ง
+    col_l, col_m, col_r = st.columns([1, 2, 1])
+    with col_m:
+        if os.path.exists("logo1.png"):
+            st.image("logo1.png", use_container_width=True)
+        else:
+            st.markdown("<h1 class='neon-text'>SYNAPSE</h1>", unsafe_allow_html=True)
+    
+    st.markdown("<h3 style='text-align: center;'>ศูนย์ควบคุมระบบ: เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
+    st.divider()
 
-            <div id="track-name" class="text-xl font-bold mb-1 truncate text-white">READY TO SCAN...</div>
-            <div id="status-msg" class="text-xs text-cyan-500 mb-4 uppercase tracking-widest">System Online</div>
+    # สร้าง Grid 10 แอป (แบ่งเป็น 2 คอลัมน์)
+    c1, c2 = st.columns(2)
 
-            <input type="file" id="upload" multiple accept="audio/*" class="hidden" onchange="handleUpload(this.files)">
-            <div class="flex justify-between items-center mb-6">
-                <button class="btn-neon" onclick="document.getElementById('upload').click()">➕ เพิ่มเพลง</button>
-                <div class="flex space-x-6 items-center">
-                    <span class="control-btn" onclick="prev()">⏮️</span>
-                    <span id="play-trigger" class="text-5xl cursor-pointer" onclick="toggleMain()">▶️</span>
-                    <span class="control-btn" onclick="next()">⏭️</span>
-                </div>
-            </div>
+    with c1:
+        if st.button("🎵 1. MUSIC PLAYER\nฟังเพลง MP3 จากคลังข้อมูล", use_container_width=True):
+            st.session_state.page = "1"; st.rerun()
+        st.caption("ความสามารถ: เล่นไฟล์เสียง 1.mp3 และระบบควบคุมเสียงผ่านหน้าเว็บ")
 
-            <div class="grid grid-cols-2 gap-4 mt-4 border-t border-gray-700 pt-4">
-                <div>
-                    <label class="text-xs block mb-1">CROSSFADE (10s)</label>
-                    <div id="cf-indicator" class="text-cyan-400 font-mono text-sm">AUTO-SYNC ON</div>
-                </div>
-                <div>
-                    <label class="text-xs block mb-1">KARAOKE MODE</label>
-                    <input type="range" min="0" max="1" step="0.1" value="0" oninput="setKaraoke(this.value)">
-                </div>
-            </div>
-        </div>
+        if st.button("🖼️ 3. IMAGE SEARCH\nค้นหาภาพจากดาวเทียม", use_container_width=True):
+            st.session_state.page = "3"; st.rerun()
+        st.caption("ความสามารถ: ดึงรูปภาพจากคลัง Unsplash ตามคำค้นหาที่ต้องการ")
 
-        <script>
-            let context, analyser, source, karaokeNode;
-            let audio = new Audio();
-            let playlist = [];
-            let index = 0;
-            let isPlaying = false;
+        if st.button("✨ 5. NEON GENERATOR\nสร้างตัวอักษรเรืองแสง", use_container_width=True):
+            st.session_state.page = "5"; st.rerun()
+        st.caption("ความสามารถ: แปลงข้อความธรรมดาให้เป็นศิลปะนีออนวิ้งๆ")
 
-            function initContext() {
-                if (!context) {
-                    context = new (window.AudioContext || window.webkitAudioContext)();
-                    analyser = context.createAnalyser();
-                    source = context.createMediaElementSource(audio);
-                    
-                    // ระบบตัดเสียงร้อง (Invert Phase Logic แบบจำลอง)
-                    karaokeNode = context.createGain();
-                    
-                    source.connect(analyser);
-                    analyser.connect(karaokeNode);
-                    karaokeNode.connect(context.destination);
-                    
-                    drawVisual();
-                }
-            }
+        if st.button("💖 7. DESTINY CHECK\nตรวจดวงชะตาคู่ขนาน", use_container_width=True):
+            st.session_state.page = "7"; st.rerun()
+        st.caption("ความสามารถ: วิเคราะห์ดวงชะตาในมิติที่ 4 ผ่านระบบฐานข้อมูลชื่อ")
 
-            function handleUpload(files) {
-                initContext();
-                playlist = Array.from(files);
-                if(playlist.length > 0) playTrack(0);
-            }
+        if st.button("📝 9. SYSTEM LOG\nบันทึกข้อมูลการใช้งาน", use_container_width=True):
+            st.session_state.page = "9"; st.rerun()
+        st.caption("ความสามารถ: จดบันทึกข้อความและเหตุการณ์สำคัญลงในหน่วยความจำ")
 
-            function playTrack(i) {
-                index = i;
-                const file = playlist[index];
-                audio.src = URL.createObjectURL(file);
-                document.getElementById('track-name').innerText = file.name;
-                audio.play();
-                isPlaying = true;
-                document.getElementById('play-trigger').innerText = "⏸️";
-            }
+    with c2:
+        if st.button("💬 2. CHAT SYSTEM\nระบบสื่อสารอัจฉริยะ", use_container_width=True):
+            st.session_state.page = "2"; st.rerun()
+        st.caption("ความสามารถ: โต้ตอบผ่านข้อความกับระบบจัดการ AI")
 
-            // ระบบ Crossfade 10 วินาทีก่อนจบ
-            audio.ontimeupdate = () => {
-                let timeLeft = audio.duration - audio.currentTime;
-                if (timeLeft <= 10 && timeLeft > 0.5 && playlist.length > 1) {
-                    document.getElementById('cf-indicator').innerText = "CROSSFADING...";
-                    audio.volume = timeLeft / 10;
-                } else {
-                    audio.volume = 1;
-                    document.getElementById('cf-indicator').innerText = "AUTO-SYNC ON";
-                }
-            };
+        if st.button("🎬 4. VIDEO HUB\nศูนย์รวมวิดีโอวงจรปิด", use_container_width=True):
+            st.session_state.page = "4"; st.rerun()
+        st.caption("ความสามารถ: เชื่อมต่อและฉายภาพวิดีโอจาก YouTube หรือ Link ตรง")
 
-            audio.onended = () => next();
+        if st.button("🌍 6. WORLD CLOCK\nเวลาโลกแบบเรียลไทม์", use_container_width=True):
+            st.session_state.page = "6"; st.rerun()
+        st.caption("ความสามารถ: ตรวจสอบเวลาปัจจุบันในโซนต่างๆ ทั่วโลก")
 
-            function toggleMain() {
-                initContext();
-                if(audio.paused) { audio.play(); isPlaying=true; document.getElementById('play-trigger').innerText="⏸️"; }
-                else { audio.pause(); isPlaying=false; document.getElementById('play-trigger').innerText="▶️"; }
-            }
+        if st.button("🔢 8. DAILY CODE\nรหัสลับประจำวัน", use_container_width=True):
+            st.session_state.page = "8"; st.rerun()
+        st.caption("ความสามารถ: เจนรหัสตัวเลขนำโชคและรหัสรักษาความปลอดภัยรายวัน")
 
-            function next() { index = (index + 1) % playlist.length; playTrack(index); }
-            function prev() { index = (index - 1 + playlist.length) % playlist.length; playTrack(index); }
+        if st.button("🎨 10. COLOR MASTER\nปรับแต่งธีมสีระบบ", use_container_width=True):
+            st.session_state.page = "10"; st.rerun()
+        st.caption("ความสามารถ: เปลี่ยนสีสันของ Interface เพื่อความสวยงามตามใจชอบ")
 
-            function setKaraoke(val) {
-                // ปรับระดับเสียงกลางเพื่อจำลองการตัดเสียงร้อง
-                if(karaokeNode) karaokeNode.gain.value = 1 - (val * 0.5);
-            }
+# --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
+elif st.session_state.page == "1":
+    st.header("🎵 MUSIC PLAYER")
+    if os.path.exists("1.mp3"): st.audio("1.mp3")
+    else: st.warning("หาไฟล์เพลงไม่เจอ")
 
-            function drawVisual() {
-                const canvas = document.getElementById('visualizer');
-                const ctx = canvas.getContext('2d');
-                analyser.fftSize = 128;
-                const bufferLength = analyser.frequencyBinCount;
-                const dataArray = new Uint8Array(bufferLength);
-
-                function render() {
-                    requestAnimationFrame(render);
-                    analyser.getByteFrequencyData(dataArray);
-                    ctx.fillStyle = '#000';
-                    ctx.fillRect(0, 0, canvas.width, canvas.height);
-                    
-                    let barWidth = (canvas.width / bufferLength) * 2.5;
-                    let x = 0;
-                    for(let i=0; i<bufferLength; i++) {
-                        let h = dataArray[i] / 2;
-                        ctx.fillStyle = `hsl(${200 + i}, 100%, 50%)`;
-                        ctx.fillRect(x, canvas.height - h, barWidth, h);
-                        x += barWidth + 1;
-                    }
-                }
-                render();
-            }
-        </script>
-    </body>
-    </html>
-    """
-    components.html(player_html, height=550, scrolling=True)
-                
+# (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
