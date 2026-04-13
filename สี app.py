@@ -1,6 +1,45 @@
 import streamlit as st
 import replicate
 import os
+import streamlit as st
+import replicate
+import os
+
+# 1. บังคับให้ Streamlit รู้จัก UTF-8 (สากล)
+# ปกติ Streamlit จัดการให้ แต่ถ้า Error ให้ลองเขียนครอบไว้แบบนี้
+
+def run_video_gen(prompt_text, api_token):
+    try:
+        os.environ["REPLICATE_API_TOKEN"] = api_token
+        
+        # ตรวจสอบว่าข้อความเป็น String ที่สะอาด
+        clean_prompt = str(prompt_text).strip()
+        
+        output = replicate.run(
+            "anotherjesse/zeroscope-v2-xl:9f747895e5b2828a90827106604565195444e7975850b864f5ad67a2d2958742",
+            input={"prompt": clean_prompt}
+        )
+        return output
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+# --- ส่วนของการกดปุ่มในแอป ---
+if st.button("🚀 เริ่มสร้างวิดีโอ"):
+    if not REPLICATE_API_TOKEN:
+        st.error("กรุณาใส่ API Token ก่อนครับ")
+    else:
+        with st.spinner("กำลังประมวลผล..."):
+            result = run_video_gen(prompt, REPLICATE_API_TOKEN)
+            
+            if isinstance(result, list):
+                st.success("สำเร็จ!")
+                st.video(result[0])
+            else:
+                # ถ้าเจอ Error เรื่อง ASCII ให้แจ้งเตือนแบบเข้าใจง่าย
+                if "ascii" in result.lower():
+                    st.error("⚠️ ระบบตรวจพบตัวอักษรที่ไม่รองรับ โปรดตรวจสอบว่าในโค้ดไม่มีภาษาไทยหลุดไปในส่วนประมวลผล AI ครับ")
+                else:
+                    st.error(result)
 
 # --- 1. SET UP THEME ---
 st.set_page_config(page_title="SYNAPSE AI VIDEO", layout="wide")
