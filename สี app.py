@@ -47,9 +47,86 @@ def setup_ui():
 
 setup_ui()
 
-# --- 2. SIDEBAR (เมนูที่โชว์ตลอดเวลา) ---
-if 'page' not in st.session_state:
-    st.session_state.page = "HOME"
+# --- 2. SIDEBAR (ย้ายเครื่องเล่นมาไว้ที่นี่เพื่อให้เพลงไม่ดับเวลาเปลี่ยนหน้า) ---
+with st.sidebar:
+    if os.path.exists("logo1.png"):
+        st.image("logo1.png") 
+    else:
+        st.markdown("<h2 style='text-align:center;'>SYNAPSE</h2>", unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # --- เครื่องเล่นเพลงแบบ Global (เล่นต่อเนื่อง) ---
+    st.markdown("### 🎧 Global Player")
+    player_sidebar_html = """
+    <div id="mini-player" style="background:#111; padding:10px; border-radius:10px; border:1px solid #00f2fe;">
+        <input type="file" id="side-upload" multiple accept="audio/*" style="display:none" onchange="handleSideFiles(this.files)">
+        <button onclick="document.getElementById('side-upload').click()" style="width:100%; background:#00f2fe; color:#000; border:none; padding:5px; border-radius:5px; cursor:pointer; font-weight:bold;">➕ LOAD MUSIC</button>
+        <div id="side-track" style="font-size:10px; color:#fff; margin-top:5px; white-space:nowrap; overflow:hidden;">Ready...</div>
+        
+        <div style="margin-top:10px;">
+            <label style="font-size:10px;">KARAOKE STRENGTH</label>
+            <input type="range" min="0" max="100" value="0" style="width:100%" oninput="updateKaraoke(this.value)">
+        </div>
+    </div>
+
+    <script>
+        let sCtx, sAnalyser, sAudio = new Audio(), sSource, sFilter;
+        let sPlaylist = [];
+        let sIndex = 0;
+
+        function initSideAudio() {
+            if (!sCtx) {
+                sCtx = new (window.AudioContext || window.webkitAudioContext)();
+                sAnalyser = sCtx.createAnalyser();
+                sSource = sCtx.createMediaElementSource(sAudio);
+                
+                // ใช้ Notch Filter เพื่อเจาะจงตัดย่านเสียงร้อง
+                sFilter = sCtx.createBiquadFilter();
+                sFilter.type = "notch"; 
+                sFilter.frequency.value = 1000; // ย่านเสียงคน
+                sFilter.Q.value = 0; // เริ่มต้นที่ 0 (ไม่ตัด)
+
+                sSource.connect(sFilter);
+                sFilter.connect(sAnalyser);
+                sAnalyser.connect(sCtx.destination);
+            }
+        }
+
+        function handleSideFiles(files) {
+            initSideAudio();
+            sPlaylist = Array.from(files);
+            if(sPlaylist.length > 0) playSide(0);
+        }
+
+        function playSide(i) {
+            sIndex = i;
+            const file = sPlaylist[sIndex];
+            sAudio.src = URL.createObjectURL(file);
+            document.getElementById('side-track').innerText = file.name;
+            sAudio.play();
+        }
+
+        function updateKaraoke(val) {
+            if(sFilter) {
+                // ยิ่งเลื่อนมาก Q ยิ่งสูง = ตัดย่านเสียงกลางแคบและแรงขึ้น
+                sFilter.Q.value = val / 10; 
+            }
+        }
+        
+        sAudio.onended = () => {
+            sIndex = (sIndex + 1) % sPlaylist.length;
+            playSide(sIndex);
+        };
+    </script>
+    """
+    components.html(player_sidebar_html, height=200)
+
+    st.divider()
+    if st.button("🏠 Home", use_container_width=True):
+        st.session_state.page = "HOME"
+        st.rerun()
+
 
 with st.sidebar:
     # แสดงโลโก้ตลอดเวลา
