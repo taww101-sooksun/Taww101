@@ -1,54 +1,44 @@
 import streamlit as st
+import base64
 
-# --- 1. นิยามฟังก์ชันทั้งหมดก่อน (ประกาศตัวตน) ---
+# --- 1. ตั้งค่าหน้าเว็บ & ลบติ่ง (อยู่นิ่งๆ ไม่เจ็บตัว) ---
+st.set_page_config(page_title="SYNAPSE 4-1", layout="wide")
 
 def setup_ui():
     st.markdown("""
         <style>
+        header, footer, #MainMenu {visibility: hidden;}
         .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; }
-        .neon-header { 
-            font-size: 40px; font-weight: 900; text-align: center;
-            color: #fff; text-shadow: 0 0 15px #ff1744, 0 0 20px #00f2fe;
-            border: 10px double #ff1744; padding: 20px; border-radius: 20px;
+        .neon-text { 
+            text-align: center; color: #fff; 
+            text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe;
+            font-size: 20px; font-weight: bold;
         }
         .stButton>button { border-radius: 10px; border: 1px solid #ff1744; background: rgba(0,0,0,0.5); color: white; }
         </style>
     """, unsafe_allow_html=True)
+
+def display_logo(path):
+    try:
+        with open(path, "rb") as f:
+            data = base64.b64encode(f.read()).decode()
+        st.markdown(f'<div style="text-align: center;"><img src="data:image/png;base64,{data}" style="width: 120px; filter: drop-shadow(0 0 10px #ff1744);"></div>', unsafe_allow_html=True)
+    except:
+        st.markdown("<h1 style='text-align: center; color: #ff1744;'>SYNAPSE</h1>", unsafe_allow_html=True)
 
 def draw_box(title, target_level):
     if st.button(title, key=target_level, use_container_width=True):
         st.session_state.nav_level = target_level
         st.rerun()
 
-# --- 2. เริ่มรันระบบ ---
-
-# ตรวจสอบสถานะหน้าปัจจุบัน
+# --- 2. เริ่มระบบ ---
 if 'nav_level' not in st.session_state:
     st.session_state.nav_level = "HOME"
 
 setup_ui()
-st.markdown("""
-    <style>
-    /* 1. ซ่อนแถบ Header ด้านบนทั้งหมด (รวมถึงติ่งเมนูขวาบน) */
-    header {visibility: hidden;}
-    
-    /* 2. ซ่อนแถบ Footer ด้านล่าง (Made with Streamlit) */
-    footer {visibility: hidden;}
-    
-    /* 3. ซ่อนปุ่มเมนูหลัก (แฮมเบอร์เกอร์เมนู) */
-    #MainMenu {visibility: hidden;}
-    
-    /* 4. (แถม) ดันเนื้อหาขึ้นไปให้สุด ไม่ให้เหลือที่ว่างด้านบน */
-    .block-container {
-        padding-top: 0rem;
-        padding-bottom: 0rem;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+display_logo("static/logo1.png")
 
-st.title("📡 SYNAPSE HIERARCHY")
-
-# ปุ่มย้อนกลับแบบฉลาดที่เพี้ยนเขียนไว้
+# ปุ่มย้อนกลับ
 if st.session_state.nav_level != "HOME":
     if st.button("⬅️ BACK"):
         if "." in st.session_state.nav_level:
@@ -56,40 +46,43 @@ if st.session_state.nav_level != "HOME":
         else:
             st.session_state.nav_level = "HOME"
         st.rerun()
-elif st.session_state.nav_level == "1.1.1":
-    st.subheader("🔐 1.1.1 ความลับสูงสุด (VDO & AUDIO)")
-    
-    # ใส่เพลง
-    st.audio("static/secret_track.mp3")
-    
-    # ใส่เนื้อเพลงวิ้งๆ
-    st.markdown("<p style='text-shadow: 0 0 10px #ff1744;'>ตัวหนังสือวิ้งสีแดง...</p>", unsafe_allow_html=True)
-    
-    # ใส่ VDO
-    st.video("https://youtu.be/example")
-    
-    st.success("โหลดข้อมูลลับสำเร็จ!")
 
-st.write(f"STATUS: **ONLINE** | LOCATION: **{st.session_state.nav_level}**")
+st.write(f"LOCATION: **{st.session_state.nav_level}**")
 st.markdown("---")
 
-# --- 3. ระบบ Navigation Logic (ตามที่เพี้ยนออกแบบ) ---
+# --- 3. เนื้อหาแต่ละชั้น (Hierarchy Logic) ---
 
+# หน้าแรก
 if st.session_state.nav_level == "HOME":
     c1, c2 = st.columns(2)
-    with c1: draw_box("📦 กรอบที่ 1 (MAIN)", "1")
-    with c2: draw_box("📦 กรอบที่ 2 (SUB)", "2")
+    with c1: draw_box("🚀 CORE (MUSIC/LYRICS)", "1")
+    with c2: draw_box("📺 MEDIA (VIDEO)", "2")
 
+# ชั้นที่ 1: หน้าเล่นเพลงและเนื้อเพลง
 elif st.session_state.nav_level == "1":
-    st.subheader("ชั้นที่ 1: ระบบหลัก")
-    c1, c2 = st.columns(2)
-    with c1: draw_box("📂 1.1 เจาะลึก", "1.1")
-    with c2: draw_box("📂 1.2 รายงาน", "1.2")
+    st.subheader("🚀 CORE SYSTEM: AUDIO & LYRICS")
+    
+    # --- ส่วนของ MP3 ---
+    st.write("🎵 Now Playing: *Secret Track*")
+    st.audio("static/1.mp3") # อย่าลืมเอาไฟล์ 1.mp3 ใส่ในโฟลเดอร์ static นะเพี้ยน
+    
+    # --- ส่วนของเนื้อเพลงวิ้งๆ ---
+    st.markdown("""
+        <div class="neon-text">
+            <br>✨ เนื้อเพลงบรรทัดที่ 1... ✨<br>
+            ✨ เนื้อเพลงบรรทัดที่ 2... ✨<br>
+            ✨ อยู่นิ่งๆ ไม่เจ็บตัว... ✨
+        </div>
+    """, unsafe_allow_html=True)
 
-elif st.session_state.nav_level == "1.1":
-    st.subheader("ชั้นที่ 2: ข้อมูลภายใน 1.1")
-    st.info("อยู่นิ่งๆ ไม่เจ็บตัว - ข้อมูลถูกเข้ารหัสไว้แล้ว")
-    draw_box("🔐 1.1.1 ความลับสูงสุด", "1.1.1")
+# ชั้นที่ 2: หน้าวีดีโอ
+elif st.session_state.nav_level == "2":
+    st.subheader("📺 MEDIA SYSTEM: VIDEO FEED")
+    
+    # --- ส่วนของ VDO (ตัวอย่างจาก YouTube) ---
+    st.video("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    
+    st.info("กำลังรับสัญญาณจากดาวเทียม...")
 
 else:
-    st.warning(f"⚠️ พิกัด {st.session_state.nav_level} ยังไม่เปิดใช้งาน")
+    st.warning(f"⚠️ พิกัด {st.session_state.nav_level} ยังไม่ได้ติดตั้งอุปกรณ์")
