@@ -28,12 +28,21 @@ if 'page' not in st.session_state:
     st.session_state.page = "HOME"
 
 with st.sidebar:
-    if os.path.exists("logo1.png"):
-        st.image("logo1.png") 
-    else:
-        st.markdown("<h2 class='neon-text'>SYNAPSE</h2>", unsafe_allow_html=True)
+    # ... ส่วนโลโก้เดิม ...
     
-    st.divider()
+    st.markdown("### 🎤 KARAOKE CONTROL")
+    # สร้าง HTML เฉพาะ Slider เพื่อส่งค่าไปคุม Audio Context
+    slider_html = """
+    <div style="background:#111; padding:15px; border-radius:10px; border:1px solid #00f2fe;">
+        <label style="font-size:12px; color:#00f2fe;">ระดับการตัดเสียงร้อง</label>
+        <input type="range" min="0" max="100" value="0" style="width:100%; accent-color:#00f2fe;" 
+               oninput="window.parent.postMessage({type: 'update_karaoke', value: this.value}, '*')">
+    </div>
+    """
+    components.html(slider_html, height=100)
+    
+    # ... ส่วนปุ่มกลับหน้าหลักเดิม ...
+
     
     st.markdown("### 🎧 SYNAPSE GLOBAL PLAYER")
     player_sidebar_html = """
