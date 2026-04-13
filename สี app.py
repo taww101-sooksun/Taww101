@@ -186,7 +186,7 @@ elif st.session_state.page == "1":
             // ... (ก๊อปปี้ส่วน <script> จากไฟล์ HTML ของเพี้ยนมาใส่ที่นี่) ...
         </script>
     </body>
-    </html>"""
+    </html>
 
     # --- แสดงผลหน้าจอ HTML ใน Streamlit ---
     components.html(player_html, height=800, scrolling=True)
