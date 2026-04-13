@@ -1,4 +1,22 @@
 import streamlit as st
+import base64
+
+# ฟังก์ชันอ่านรูปภาพเป็น Base64 (ช่วยให้รูปขึ้น 100% ไม่ต้องสน Path)
+def get_base64_img(img_path):
+    try:
+        with open(img_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except:
+        return ""
+
+# เรียกใช้รูปจากโฟลเดอร์ static/logo1.png
+img_data = get_base64_img("static/logo1.png")
+
+st.markdown(f"""
+    <div style='text-align: center;'>
+        <img src='data:image/png;base64,{img_data}' style='width:120px; border:none; background:transparent; filter: drop-shadow(0 0 10px rgba(255, 75, 75, 0.5));' onerror="this.src='https://via.placeholder.com/120?text=SYNAPSE'">
+    </div>
+""", unsafe_allow_html=True)
 
 # ตั้งค่าหน้าเดียวจบที่ไฟล์หลัก
 st.set_page_config(page_title="SYNAPSE HUB", layout="centered")
