@@ -68,7 +68,7 @@ elif st.session_state.nav_level == "1":
     try:
         st.audio("วันที่ขอบคุณไม่มีใคร 4-1 ปล่อยวาง.mp3")
     except:
-        st.warning("วันที่ขอบคุณไม่มีใคร 4-1 ปล่อยวาง.mp4")
+        st.warning("วันที่ขอบคุณไม่มีใคร 4-1 ปล่อยวาง.mp3")
     st.markdown("<div class='neon-text'>✨ อยู่นิ่งๆ ไม่เจ็บตัว ✨</div>", unsafe_allow_html=True)
 
 else:
