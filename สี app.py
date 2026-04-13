@@ -148,9 +148,9 @@ with st.sidebar:
 
 # [ หน้าแรก: CENTRAL HUB ]
     if st.session_state.page == "HOME":
-    st.markdown("<h1 class='neon-text'>CENTRAL HUB</h1>", unsafe_allow_html=True)
-    st.markdown("<h3 style='text-align: center;'>เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
-    st.divider()
+       st.markdown("<h1 class='neon-text'>CENTRAL HUB</h1>", unsafe_allow_html=True)
+       st.markdown("<h3 style='text-align: center;'>เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
+       st.divider()
 
     c1, c2 = st.columns(2)
     with c1:
