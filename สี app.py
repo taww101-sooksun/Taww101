@@ -1,33 +1,64 @@
 import streamlit as st
-import base64
 
-# ต้องเริ่มด้วย set_page_config เสมอ
-st.set_page_config(page_title="SYNAPSE 4-1", layout="centered")
+# --- 1. นิยามฟังก์ชันทั้งหมดก่อน (ประกาศตัวตน) ---
 
-# ฟังก์ชันดึงรูปจากโฟลเดอร์ static (ห้ามเปลี่ยนชื่อฟังก์ชันเป็นไทย)
-def get_base64_img(img_path):
-    try:
-        with open(img_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-    except:
-        return ""
-
-# ดึงรูป "โลโก้1.png" จากโฟลเดอร์ static
-img_data = get_base64_img("static/โลโก้1.png")
-
-st.markdown(f"""
-    <style>
-    /* ซ่อนแถบด้านบนและล่าง */
-    #MainMenu, footer, header {{visibility: hidden;}}
-    [data-testid="stAppViewContainer"] {{background-color: #000000;}}
-    </style>
-    
-    <div style='text-align: center;'>
-        <img src='data:image/png;base64,{img_data}' style='width:120px; filter: drop-shadow(0 0 10px rgba(255, 75, 75, 0.5));'>
-        <h1 style='color: #FF4B4B; text-shadow: 0 0 15px #FF4B4B; margin-top:10px;'>SYNAPSE 4-1</h1>
-        <p style='color: #888;'>อยู่นิ่งๆ ไม่เจ็บตัว</p>
-    </div>
-    <hr style="border: 1px solid #333;">
+def setup_ui():
+    st.markdown("""
+        <style>
+        .stApp { background: radial-gradient(circle, #001 0%, #000 100%); color: #00f2fe; }
+        .neon-header { 
+            font-size: 40px; font-weight: 900; text-align: center;
+            color: #fff; text-shadow: 0 0 15px #ff1744, 0 0 20px #00f2fe;
+            border: 10px double #ff1744; padding: 20px; border-radius: 20px;
+        }
+        .stButton>button { border-radius: 10px; border: 1px solid #ff1744; background: rgba(0,0,0,0.5); color: white; }
+        </style>
     """, unsafe_allow_html=True)
 
-st.info("💡 เลือกเมนูที่แถบด้านข้าง (Sidebar) เพื่อสลับหน้า")
+def draw_box(title, target_level):
+    if st.button(title, key=target_level, use_container_width=True):
+        st.session_state.nav_level = target_level
+        st.rerun()
+
+# --- 2. เริ่มรันระบบ ---
+
+# ตรวจสอบสถานะหน้าปัจจุบัน
+if 'nav_level' not in st.session_state:
+    st.session_state.nav_level = "HOME"
+
+setup_ui()
+
+st.title("📡 SYNAPSE HIERARCHY")
+
+# ปุ่มย้อนกลับแบบฉลาดที่เพี้ยนเขียนไว้
+if st.session_state.nav_level != "HOME":
+    if st.button("⬅️ BACK"):
+        if "." in st.session_state.nav_level:
+            st.session_state.nav_level = ".".join(st.session_state.nav_level.split(".")[:-1])
+        else:
+            st.session_state.nav_level = "HOME"
+        st.rerun()
+
+st.write(f"STATUS: **ONLINE** | LOCATION: **{st.session_state.nav_level}**")
+st.markdown("---")
+
+# --- 3. ระบบ Navigation Logic (ตามที่เพี้ยนออกแบบ) ---
+
+if st.session_state.nav_level == "HOME":
+    c1, c2 = st.columns(2)
+    with c1: draw_box("📦 กรอบที่ 1 (MAIN)", "1")
+    with c2: draw_box("📦 กรอบที่ 2 (SUB)", "2")
+
+elif st.session_state.nav_level == "1":
+    st.subheader("ชั้นที่ 1: ระบบหลัก")
+    c1, c2 = st.columns(2)
+    with c1: draw_box("📂 1.1 เจาะลึก", "1.1")
+    with c2: draw_box("📂 1.2 รายงาน", "1.2")
+
+elif st.session_state.nav_level == "1.1":
+    st.subheader("ชั้นที่ 2: ข้อมูลภายใน 1.1")
+    st.info("อยู่นิ่งๆ ไม่เจ็บตัว - ข้อมูลถูกเข้ารหัสไว้แล้ว")
+    draw_box("🔐 1.1.1 ความลับสูงสุด", "1.1.1")
+
+else:
+    st.warning(f"⚠️ พิกัด {st.session_state.nav_level} ยังไม่เปิดใช้งาน")
