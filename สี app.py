@@ -21,7 +21,7 @@ ui_code = """
         .synapse-frame {
             width: 400px;
             height: 500px;
-            background-color: rgba(#f0f0f0);
+            background-color: rgba(#f5f5f5);
             border: 4px solid;
             /* เส้นขอบไล่สีม่วงไปแดง */
             border-image: linear-gradient(to bottom right, #8b00ff, #ff0000) 1;
