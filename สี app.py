@@ -15,7 +15,7 @@ player_ui = """
         /* กรอบหลักตามสเปก */
         .main-frame {
             width: 400px; height: 500px;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.7);
             border: 4px solid;
             border-image: linear-gradient(to bottom right, #8b00ff, #ff0000) 1;
             border-radius: 0px;
