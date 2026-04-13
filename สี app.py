@@ -2,6 +2,24 @@ import streamlit as st
 import os
 import random
 import streamlit.components.v1 as components
+st.markdown("""
+    <style>
+    /* 1. ซ่อนแถบ Header ด้านบนทั้งหมด (รวมถึงติ่งเมนูขวาบน) */
+    header {visibility: hidden;}
+    
+    /* 2. ซ่อนแถบ Footer ด้านล่าง (Made with Streamlit) */
+    footer {visibility: hidden;}
+    
+    /* 3. ซ่อนปุ่มเมนูหลัก (แฮมเบอร์เกอร์เมนู) */
+    #MainMenu {visibility: hidden;}
+    
+    /* 4. (แถม) ดันเนื้อหาขึ้นไปให้สุด ไม่ให้เหลือที่ว่างด้านบน */
+    .block-container {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # --- 1. SET UP & THEME ---
 st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
