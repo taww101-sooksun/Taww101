@@ -1,64 +1,47 @@
 import streamlit as st
-import os
-import base64
+import random
 
-# --- ตั้งค่าธีมและหน้าจอ ---
-st.set_page_config(page_title="SYNAPSE STATION", layout="wide")
-theme_color = "#00f2fe"
+# --- 1. SET UPธีมนีออน ---
+st.set_page_config(page_title="SYNAPSE IMAGE HUB", layout="wide")
+theme_color = "#39FF14" 
 
 st.markdown(f"""
     <style>
-    .stApp {{ background-color: #121212 !important; color: {theme_color} !important; }}
-    .player-card {{
-        background: #000; padding: 30px; border-radius: 20px;
-        border: 2px solid {theme_color}; text-align: center;
-        box-shadow: 0 0 15px {theme_color}55;
-    }}
+    .stApp {{ background-color: #000 !important; color: {theme_color} !important; }}
+    .img-box {{ border: 2px solid {theme_color}; border-radius: 15px; margin-bottom: 10px; padding: 5px; }}
+    h1 {{ text-align: center; text-shadow: 0 0 15px {theme_color}; }}
     </style>
 """, unsafe_allow_html=True)
 
-# ฟังก์ชันแปลงไฟล์เพลงเป็นข้อมูล (Base64)
-def get_audio_bytes(file_path):
-    with open(file_path, "rb") as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
+st.title("🔍 SYNAPSE IMAGE FINDER")
+st.markdown(f"<p style='text-align:center;'><i>'อยู่นิ่งๆ ไม่เจ็บตัว'</i></p>", unsafe_allow_html=True)
 
-# --- ระบบจัดการไฟล์ ---
-music_files = [f for f in os.listdir('.') if f.lower().endswith(".mp3")]
+# --- 2. INPUT ---
+query = st.text_input("ค้นหาสิ่งที่ต้องการ (เช่น: Nature, Space, Art)", placeholder="พิมพ์ชื่อรูปภาษาอังกฤษที่นี่...")
 
-if music_files:
-    if 'idx' not in st.session_state: st.session_state.idx = 0
-    current_song = music_files[st.session_state.idx]
+if query:
+    st.write(f"### 🚀 ค้นพบผลลัพธ์สำหรับ: {query}")
     
-    # ดึงข้อมูลเพลงมาเตรียมไว้
-    audio_base64 = get_audio_bytes(current_song)
-    audio_link = f"data:audio/mpeg;base64,{audio_base64}"
+    # --- 3. 5-LINK SOURCES (ดึงจาก 5 แหล่ง) ---
+    sources = [
+        f"https://source.unsplash.com/featured/800x600?{query}&1",
+        f"https://source.unsplash.com/featured/800x600?{query}&2",
+        f"https://source.unsplash.com/featured/800x600?{query}&3",
+        f"https://loremflickr.com/800/600/{query}",
+        f"https://picsum.photos/seed/{query}/800/600"
+    ]
 
-    st.title("🎧 SYNAPSE DJ STATION")
-    
-    st.markdown(f"""
-        <div class="player-card">
-            <h2 style="color:{theme_color};">เพลง: {current_song}</h2>
-            <br>
-            <audio controls autoplay style="width: 100%;">
-                <source src="{audio_link}" type="audio/mpeg">
-            </audio>
-            <p style="margin-top: 20px; opacity: 0.6; color:{theme_color};">"อยู่นิ่งๆ ไม่เจ็บตัว"</p>
-        </div>
-    """, unsafe_allow_html=True)
+    # แสดงผลแบบ Grid
+    cols = st.columns(2)
+    for i, link in enumerate(sources):
+        with cols[i % 2]:
+            st.markdown(f'<div class="img-box">', unsafe_allow_html=True)
+            st.image(link, caption=f"Source {i+1}", use_container_width=True)
+            st.markdown(f"🔗 [เปิดลิงก์รูปภาพ]({link})")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- ปุ่มควบคุม ---
-    st.write("---")
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        if st.button("⏮️ เพลงก่อนหน้า"):
-            st.session_state.idx = (st.session_state.idx - 1) % len(music_files)
-            st.rerun()
-    with c2:
-        st.write(f"เพลงที่ {st.session_state.idx + 1} / {len(music_files)}")
-    with c3:
-        if st.button("⏭️ เพลงถัดไป"):
-            st.session_state.idx = (st.session_state.idx + 1) % len(music_files)
-            st.rerun()
 else:
-    st.error("ไม่พบไฟล์เพลงในระบบครับ")
+    st.info("ลองใส่คำค้นหาดูครับ แล้วแอปจะไปดึงรูปจาก 5 แหล่งมาให้ทันที!")
+
+st.write("---")
+st.caption("พัฒนาโดย Ta/Bas • SYNAPSE 2026")
