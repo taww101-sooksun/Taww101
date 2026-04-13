@@ -4,34 +4,36 @@ import os
 
 # --- 1. SET UP THEME ---
 st.set_page_config(page_title="SYNAPSE AI VIDEO", layout="wide")
-theme_color = "#39FF14" 
 
-st.markdown(f"""
+# ใช้ CSS แบบปลอดภัย ไม่ให้มีภาษาไทยหลุดไปในจุดเสี่ยง
+st.markdown("""
     <style>
-    .stApp {{ background-color: #000 !important; color: {theme_color} !important; }}
-    h1 {{ text-align: center; text-shadow: 0 0 10px {theme_color}; }}
+    .stApp { background-color: #000 !important; color: #39FF14 !important; }
+    h1 { text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("🎬 SYNAPSE AI VIDEO")
-st.markdown(f"<p style='text-align:center;'><i>'อยู่นิ่งๆ ไม่เจ็บตัว'</i></p>", unsafe_allow_html=True)
+# แสดงภาษาไทยแค่ใน UI เท่านั้น ไม่ส่งเข้าฟังก์ชัน
+st.write("'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
 # --- 2. INPUT ---
-REPLICATE_API_TOKEN = st.text_input("ใส่ Replicate API Token ของคุณ", type="password", key="token_input")
-prompt = st.text_input("พิมพ์ข้อความที่ต้องการสร้างเป็นวิดีโอ (ภาษาอังกฤษ)", key="prompt_input")
+api_token = st.text_input("Replicate API Token", type="password", key="tk_in")
+user_prompt = st.text_input("Prompt (English Only)", key="pr_in")
 
-# --- 3. แก้ไขปัญหา Duplicate ID โดยการใส่ key เฉพาะตัว ---
-if st.button("🚀 เริ่มสร้างวิดีโอ", key="main_gen_button"):
-    if not REPLICATE_API_TOKEN:
-        st.error("กรุณาใส่ API Token ก่อนครับ!")
-    elif not prompt:
-        st.warning("พิมพ์ข้อความก่อนนะ!")
+# --- 3. ฟังก์ชันประมวลผลแบบคลีน ---
+if st.button("🚀 เริ่มสร้างวิดีโอ", key="gen_btn"):
+    if not api_token:
+        st.error("ใส่ Token ก่อนครับ")
+    elif not user_prompt:
+        st.warning("พิมพ์ข้อความก่อนนะ")
     else:
-        with st.spinner("กำลังประมวลผล..."):
+        with st.spinner("Processing..."):
             try:
-                os.environ["REPLICATE_API_TOKEN"] = REPLICATE_API_TOKEN
-                # บังคับให้เป็นข้อความที่สะอาดเพื่อเลี่ยง ASCII error
-                clean_prompt = str(prompt).strip()
+                os.environ["REPLICATE_API_TOKEN"] = api_token
+                
+                # *** จุดสำคัญ: ล้างค่าให้เหลือแค่ตัวอักษรที่ระบบรองรับ (ASCII) ***
+                clean_prompt = user_prompt.encode("ascii", "ignore").decode("ascii")
                 
                 output = replicate.run(
                     "anotherjesse/zeroscope-v2-xl:9f747895e5b2828a90827106604565195444e7975850b864f5ad67a2d2958742",
@@ -39,10 +41,11 @@ if st.button("🚀 เริ่มสร้างวิดีโอ", key="main_
                 )
                 
                 if output:
-                    st.success("สำเร็จ!")
+                    st.success("Success!")
                     st.video(output[0])
             except Exception as e:
-                st.error(f"เกิดข้อผิดพลาด: {e}")
+                # ถ้า Error ให้โชว์ออกมาดูชัดๆ
+                st.error(f"Error detail: {str(e)}")
 
 st.write("---")
-st.caption("SYNAPSE PROJECT | Ta/Bas 2026")
+st.caption("SYNAPSE PROJECT 2026")
