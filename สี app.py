@@ -118,38 +118,52 @@ elif st.session_state.page == "1":
 elif st.session_state.page == "5":
     st.header("✨ NEON LYRICS")
     
-    # 1. เปลี่ยนเป็น text_area เพื่อให้ใส่เนื้อเพลงได้หลายบรรทัด
     user_text = st.text_area("วางเนื้อเพลงที่นี่:", "อยู่นิ่งๆ\nไม่เจ็บตัว", height=150)
-    glow_color = st.color_picker("เลือกสีนีออน", "#ff007f") # เปลี่ยนสีเริ่มต้นเป็นสีชมพูตามรูปคุณ
+    glow_color = st.color_picker("เลือกสีนีออน", "#FF007F") 
     
-    # 2. ปรับ CSS ให้รองรับเนื้อเพลงและการแสดงผล
     st.markdown(f"""
         <style>
-        @keyframes glow {{
-            from {{
-                text-shadow: 0 0 5px #fff, 0 0 10px {glow_color}, 0 0 20px {glow_color};
+        /* สร้าง Animation แบบสั่นไหวและเรืองแสง */
+        @keyframes neon-flicker {{
+            0%, 18%, 22%, 25%, 53%, 57%, 100% {{
+                text-shadow: 
+                    0 0 4px #fff,
+                    0 0 11px #fff,
+                    0 0 19px #fff,
+                    0 0 40px {glow_color},
+                    0 0 80px {glow_color},
+                    0 0 90px {glow_color},
+                    0 0 100px {glow_color},
+                    0 0 150px {glow_color};
             }}
-            to {{
-                text-shadow: 0 0 10px #fff, 0 0 20px {glow_color}, 0 0 30px {glow_color}, 0 0 40px {glow_color};
+            20%, 24%, 55% {{        
+                text-shadow: none; /* จังหวะนี้จะทำให้มันเหมือนไฟกระพริบ */
             }}
         }}
-        .neon-box {{
-            font-size: 32px; /* ปรับขนาดเล็กลงหน่อยเพื่อให้ใส่เนื้อเพลงได้สวย */
-            color: #fff;
+
+        .neon-wrapper {{
+            background-color: #000;
+            padding: 50px 20px;
+            border-radius: 20px;
+            border: 3px solid {glow_color};
+            box-shadow: 0 0 15px {glow_color}, inset 0 0 15px {glow_color};
             text-align: center;
-            font-family: 'Kanit', sans-serif;
-            animation: glow 1.2s ease-in-out infinite alternate;
-            padding: 30px;
-            background: #000;
-            border-radius: 15px;
-            border: 2px solid {glow_color};
             margin-top: 20px;
-            white-space: pre-wrap; /* สำคัญ: ทำให้ขึ้นบรรทัดใหม่ตามที่เราพิมพ์ */
-            line-height: 1.5;
+        }}
+
+        .neon-text-blink {{
+            font-size: 35px;
+            font-weight: bold;
+            color: #fff;
+            font-family: 'Kanit', sans-serif;
+            white-space: pre-wrap;
+            line-height: 1.6;
+            /* สั่งให้มันเล่น animation neon-flicker */
+            animation: neon-flicker 2s infinite alternate;
         }}
         </style>
         
-        <div class="neon-box">
-            {user_text}
+        <div class="neon-wrapper">
+            <div class="neon-text-blink">{user_text}</div>
         </div>
     """, unsafe_allow_html=True)
