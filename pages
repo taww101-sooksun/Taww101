@@ -14,3 +14,18 @@ st.markdown("""
 audio_engine_html = """ ...โค้ดผสมเพลง... """
 components.html(audio_engine_html, height=600)
 
+import streamlit as st
+import streamlit.components.v1 as components
+
+# ใส่โลโก้และลบติ่ง Streamlit
+st.markdown("""
+    <style> #MainMenu, footer, header {visibility: hidden;} </style>
+    <div style='text-align: center;'>
+        <img src="app/static/logo1.png" style="width:100px;" onerror="this.src='https://via.placeholder.com/100?text=SYNAPSE'">
+        <h2 style='color: #FF4B4B;'>📡 LYRIC SYNC</h2>
+    </div>
+""", unsafe_allow_html=True)
+
+# ก๊อปโค้ด HTML ส่วนเนื้อเพลงวิ่ง 3:39 นาทีมาวางตรงนี้
+sync_lyrics_html = """ ...โค้ดเนื้อเพลงวิ่ง... """
+components.html(sync_lyrics_html, height=600)
