@@ -3,322 +3,159 @@ import streamlit.components.v1 as components
 
 st.set_page_config(layout="centered")
 
-# โค้ด HTML/JS/CSS ที่ปรับตามสั่งเป๊ะๆ
-ui_code = """
+# --- UI สเปกตามสั่ง + กราฟ 7 สี ---
+player_ui = """
 <!DOCTYPE html>
 <html>
 <head>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-    /* 1. กรอบย่อยด้านใน (เช่น ช่องใส่กราฟ หรือช่องชื่อเพลง) */
-    .inner-panel {
-        background: rgba(0, 0, 0, 0.7);
-        border: 1px solid #8b00ff; /* ขอบม่วงบางๆ */
-        box-shadow: inset 0 0 10px #00f2fe; /* ไฟนีออนฟ้าสะท้อนด้านใน */
-        padding: 10px;
-        margin-bottom: 15px;
-        color: #f0f0f0;
-        text-transform: uppercase;
-        font-size: 11px;
-        letter-spacing: 1px;
-    }
-
-    /* 2. ปุ่มกดสไตล์ SYNAPSE */
-    .synapse-btn {
-        width: 100%;
-        background: transparent;
-        border: 2px solid #ff0000; /* ขอบแดง */
-        color: #f0f0f0; /* ขาวมุก */
-        padding: 12px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-        margin-top: 10px;
-        box-shadow: 0 0 5px #ff0000;
-    }
-
-    /* เอฟเฟกต์ตอนเอาเมาส์วางปุ่ม */
-    .synapse-btn:hover {
-        background: #00f2fe; /* เปลี่ยนพื้นหลังเป็นนีออนฟ้า */
-        color: #000; /* ตัวหนังสือดำตัด */
-        box-shadow: 0 0 20px #00f2fe; /* ไฟฟ้าสว่างวาบ */
-        border-color: #00f2fe;
-    }
-
-    /* 3. แถบเลื่อน (Slider) ทุ้ม-กลาง-แหลม */
-    input[type=range] {
-        -webkit-appearance: none;
-        width: 100%;
-        background: transparent;
-    }
-
-    input[type=range]::-webkit-slider-runnable-track {
-        height: 4px;
-        background: #8b00ff; /* รางม่วง */
-    }
-
-    input[type=range]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        height: 15px;
-        width: 15px;
-        background: #00f2fe; /* หัวลากฟ้า */
-        margin-top: -5px;
-        box-shadow: 0 0 10px #00f2fe;
-        cursor: pointer;
-    }
-</style>
-<style>
-    /* 1. กรอบย่อยด้านใน (เช่น ช่องใส่กราฟ หรือช่องชื่อเพลง) */
-    .inner-panel {
-        background: rgba(0, 0, 0, 0.7);
-        border: 1px solid #8b00ff; /* ขอบม่วงบางๆ */
-        box-shadow: inset 0 0 10px #00f2fe; /* ไฟนีออนฟ้าสะท้อนด้านใน */
-        padding: 10px;
-        margin-bottom: 15px;
-        color: #f0f0f0;
-        text-transform: uppercase;
-        font-size: 11px;
-        letter-spacing: 1px;
-    }
-
-    /* 2. ปุ่มกดสไตล์ SYNAPSE */
-    .synapse-btn {
-        width: 100%;
-        background: transparent;
-        border: 2px solid #ff0000; /* ขอบแดง */
-        color: #f0f0f0; /* ขาวมุก */
-        padding: 12px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-        margin-top: 10px;
-        box-shadow: 0 0 5px #ff0000;
-    }
-
-    /* เอฟเฟกต์ตอนเอาเมาส์วางปุ่ม */
-    .synapse-btn:hover {
-        background: #00f2fe; /* เปลี่ยนพื้นหลังเป็นนีออนฟ้า */
-        color: #000; /* ตัวหนังสือดำตัด */
-        box-shadow: 0 0 20px #00f2fe; /* ไฟฟ้าสว่างวาบ */
-        border-color: #00f2fe;
-    }
-
-    /* 3. แถบเลื่อน (Slider) ทุ้ม-กลาง-แหลม */
-    input[type=range] {
-        -webkit-appearance: none;
-        width: 100%;
-        background: transparent;
-    }
-
-    input[type=range]::-webkit-slider-runnable-track {
-        height: 4px;
-        background: #8b00ff; /* รางม่วง */
-    }
-
-    input[type=range]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        height: 15px;
-        width: 15px;
-        background: #00f2fe; /* หัวลากฟ้า */
-        margin-top: -5px;
-        box-shadow: 0 0 10px #00f2fe;
-        cursor: pointer;
-    }
-</style>
-
-<div class="synapse-frame">
-    <div class="header">SYNAPSE COMMAND</div>
-    
-    <div class="inner-panel">
-        NOW PLAYING: <span style="color:#00f2fe">SYSTEM_READY.MP3</span>
-    </div>
-
-    <div style="margin-bottom: 20px;">
-        <div style="font-size: 10px; color: #ff0000;">BASS FREQUENCY</div>
-        <input type="range">
-    </div>
-
-    <button class="synapse-btn">ACTIVATE SYSTEM</button>
-    <button class="synapse-btn" style="border-color:#8b00ff; box-shadow:0 0 5px #8b00ff;">VOCAL CANCEL</button>
-
-    <div class="slogan">อยู่นิ่งๆ ไม่เจ็บตัว</div>
-</div>
-
-<div class="synapse-frame">
-    <div class="header">SYNAPSE COMMAND</div>
-    
-    <div class="inner-panel">
-        NOW PLAYING: <span style="color:#00f2fe">SYSTEM_READY.MP3</span>
-    </div>
-
-    <div style="margin-bottom: 20px;">
-        <div style="font-size: 10px; color: #ff0000;">BASS FREQUENCY</div>
-        <input type="range">
-    </div>
-
-    <button class="synapse-btn">ACTIVATE SYSTEM</button>
-    <button class="synapse-btn" style="border-color:#8b00ff; box-shadow:0 0 5px #8b00ff;">VOCAL CANCEL</button>
-
-    <div class="slogan">อยู่นิ่งๆ ไม่เจ็บตัว</div>
-</div>
-<style>
-    /* 1. กรอบย่อยด้านใน (เช่น ช่องใส่กราฟ หรือช่องชื่อเพลง) */
-    .inner-panel {
-        background: rgba(0, 0, 0, 0.7);
-        border: 1px solid #8b00ff; /* ขอบม่วงบางๆ */
-        box-shadow: inset 0 0 10px #00f2fe; /* ไฟนีออนฟ้าสะท้อนด้านใน */
-        padding: 10px;
-        margin-bottom: 15px;
-        color: #f0f0f0;
-        text-transform: uppercase;
-        font-size: 11px;
-        letter-spacing: 1px;
-    }
-
-    /* 2. ปุ่มกดสไตล์ SYNAPSE */
-    .synapse-btn {
-        width: 100%;
-        background: transparent;
-        border: 2px solid #ff0000; /* ขอบแดง */
-        color: #f0f0f0; /* ขาวมุก */
-        padding: 12px;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        text-transform: uppercase;
-        margin-top: 10px;
-        box-shadow: 0 0 5px #ff0000;
-    }
-
-    /* เอฟเฟกต์ตอนเอาเมาส์วางปุ่ม */
-    .synapse-btn:hover {
-        background: #00f2fe; /* เปลี่ยนพื้นหลังเป็นนีออนฟ้า */
-        color: #000; /* ตัวหนังสือดำตัด */
-        box-shadow: 0 0 20px #00f2fe; /* ไฟฟ้าสว่างวาบ */
-        border-color: #00f2fe;
-    }
-
-    /* 3. แถบเลื่อน (Slider) ทุ้ม-กลาง-แหลม */
-    input[type=range] {
-        -webkit-appearance: none;
-        width: 100%;
-        background: transparent;
-    }
-
-    input[type=range]::-webkit-slider-runnable-track {
-        height: 4px;
-        background: #8b00ff; /* รางม่วง */
-    }
-
-    input[type=range]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        height: 15px;
-        width: 15px;
-        background: #00f2fe; /* หัวลากฟ้า */
-        margin-top: -5px;
-        box-shadow: 0 0 10px #00f2fe;
-        cursor: pointer;
-    }
-</style>
-
-<div class="synapse-frame">
-    <div class="header">SYNAPSE COMMAND</div>
-    
-    <div class="inner-panel">
-        NOW PLAYING: <span style="color:#00f2fe">SYSTEM_READY.MP3</span>
-    </div>
-
-    <div style="margin-bottom: 20px;">
-        <div style="font-size: 10px; color: #ff0000;">BASS FREQUENCY</div>
-        <input type="range">
-    </div>
-
-    <button class="synapse-btn">ACTIVATE SYSTEM</button>
-    <button class="synapse-btn" style="border-color:#8b00ff; box-shadow:0 0 5px #8b00ff;">VOCAL CANCEL</button>
-
-    <div class="slogan">อยู่นิ่งๆ ไม่เจ็บตัว</div>
-</div>
-
-        body { 
-            background: transparent; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            height: 100vh; 
-            margin: 0; 
-        }
+        body { background: transparent; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         
-        .synapse-frame {
-            width: 400px;
-            height: 500px;
-            background-color: rgba(0,0,0,0.5);
+        /* กรอบหลักตามสเปก */
+        .main-frame {
+            width: 400px; height: 500px;
+            background-color: rgba(0, 0, 0, 0.5);
             border: 4px solid;
-            /* เส้นขอบไล่สีม่วงไปแดง */
             border-image: linear-gradient(to bottom right, #8b00ff, #ff0000) 1;
-            border-radius: 0px; /* ทรงเหลี่ยมตามสั่ง */
-            box-shadow: 0 0 15px #00f2fe; /* นีออนฟ้า */
+            border-radius: 0px;
+            box-shadow: 0 0 15px #00f2fe;
             padding: 10px;
-            color: #f0f0f0; /* ขาวสว่างมุก */
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #f0f0f0;
+            font-family: sans-serif;
             box-sizing: border-box;
-            position: relative;
+            display: flex; flex-direction: column;
         }
 
-        .header {
-            text-align: center;
-            font-weight: bold;
-            font-size: 20px;
-            margin-bottom: 20px;
-            text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
-            border-bottom: 1px solid rgba(0, 242, 254, 0.3);
-            padding-bottom: 10px;
+        /* กรอบในสำหรับกราฟเสียง */
+        .inner-panel {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid #8b00ff;
+            box-shadow: inset 0 0 10px #00f2fe;
+            padding: 5px; margin-bottom: 15px;
         }
 
-        .status-box {
-            border: 1px solid #00f2fe;
-            height: 100px;
-            margin-bottom: 20px;
-            background: rgba(0, 242, 254, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-        }
+        #viz-canvas { width: 100%; height: 120px; background: #000; }
 
-        .label { color: #f0f0f0; font-size: 14px; margin-bottom: 5px; }
-        
-        .slogan {
-            position: absolute;
-            bottom: 10px;
-            width: calc(100% - 20px);
-            text-align: center;
-            font-size: 12px;
-            color: rgba(255,255,255,0.4);
+        /* ปุ่มสไตล์ Synapse */
+        .cmd-btn {
+            width: 100%; background: transparent; border: 2px solid #ff0000;
+            color: #f0f0f0; padding: 10px; font-weight: bold;
+            margin-top: 8px; cursor: pointer; transition: 0.3s;
+            box-shadow: 0 0 5px #ff0000; text-transform: uppercase;
+        }
+        .cmd-btn:hover { background: #00f2fe; color: #000; box-shadow: 0 0 20px #00f2fe; border-color: #00f2fe; }
+
+        /* แถบเลื่อน EQ */
+        .eq-label { font-size: 10px; color: #00f2fe; margin-top: 5px; }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-runnable-track { height: 3px; background: #8b00ff; }
+        input[type=range]::-webkit-slider-thumb { 
+            -webkit-appearance: none; height: 12px; width: 12px; 
+            background: #f0f0f0; border-radius: 0; margin-top: -4px; box-shadow: 0 0 8px #00f2fe;
         }
     </style>
 </head>
 <body>
-    <div class="synapse-frame">
-        <div class="header">SYNAPSE COMMAND</div>
+    <div class="main-frame">
+        <div style="text-align:center; font-weight:bold; letter-spacing:2px; margin-bottom:10px;">SYNAPSE COMMAND CENTER</div>
         
-        <div class="label">VISUALIZER SYSTEM</div>
-        <div class="status-box">READY TO SCAN...</div>
-        
-        <div class="label">SYSTEM STATUS</div>
-        <div style="font-size: 13px; line-height: 1.6;">
-            > Width: 400px<br>
-            > Height: 500px<br>
-            > Border: 4px (Purple-Red)<br>
-            > Neon: 15px (#00f2fe)<br>
-            > Mode: Stay Still, No Pain
+        <input type="file" id="file-up" class="text-[10px] mb-2 w-full text-gray-400">
+
+        <div class="inner-panel">
+            <canvas id="viz-canvas"></canvas>
         </div>
 
-        <div class="slogan">อยู่นิ่งๆ ไม่เจ็บตัว</div>
+        <div id="track-info" class="text-[12px] truncate mb-4 text-[#00f2fe]">WAITING FOR SCAN...</div>
+
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <div><div class="eq-label">BASS</div><input type="range" id="low" min="-20" max="20" value="0"></div>
+            <div><div class="eq-label">MID</div><input type="range" id="mid" min="-20" max="20" value="0"></div>
+            <div><div class="eq-label">HIGH</div><input type="range" id="high" min="-20" max="20" value="0"></div>
+        </div>
+
+        <button id="play-btn" class="cmd-btn">PLAY / PAUSE</button>
+        <button id="vocal-btn" class="cmd-btn" style="border-color:#8b00ff; box-shadow:0 0 5px #8b00ff;">VOCAL CANCEL</button>
+
+        <div style="margin-top:auto; text-align:center; font-size:10px; opacity:0.5;">อยู่นิ่งๆ ไม่เจ็บตัว</div>
     </div>
+
+    <audio id="audio" crossorigin="anonymous"></audio>
+
+    <script>
+        let aCtx, src, ana, lowF, midF, highF, split, merg, inv, isCut=false;
+        const audio = document.getElementById('audio');
+        const canvas = document.getElementById('viz-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function init() {
+            if (aCtx) return;
+            aCtx = new AudioContext();
+            src = aCtx.createMediaElementSource(audio);
+            ana = aCtx.createAnalyser();
+            ana.fftSize = 256;
+
+            lowF = aCtx.createBiquadFilter(); lowF.type = 'lowshelf'; lowF.frequency.value = 250;
+            midF = aCtx.createBiquadFilter(); midF.type = 'peaking'; midF.frequency.value = 1000;
+            highF = aCtx.createBiquadFilter(); highF.type = 'highshelf'; highF.frequency.value = 4000;
+
+            split = aCtx.createChannelSplitter(2);
+            merg = aCtx.createChannelMerger(2);
+            inv = aCtx.createGain(); inv.gain.value = -1;
+
+            route(false);
+            draw();
+        }
+
+        function route(cut) {
+            src.disconnect(); lowF.disconnect(); midF.disconnect(); highF.disconnect();
+            if(cut) {
+                src.connect(split); split.connect(merg, 0, 0); split.connect(inv, 1, 0); inv.connect(merg, 0, 0);
+                merg.connect(lowF);
+            } else { src.connect(lowF); }
+            lowF.connect(midF); midF.connect(highF); highF.connect(ana); ana.connect(aCtx.destination);
+        }
+
+        document.getElementById('file-up').onchange = (e) => {
+            init();
+            const file = e.target.files[0];
+            audio.src = URL.createObjectURL(file);
+            document.getElementById('track-info').innerText = "SCANNING: " + file.name;
+            audio.play();
+        };
+
+        document.getElementById('play-btn').onclick = () => { init(); audio.paused ? audio.play() : audio.pause(); };
+        document.getElementById('vocal-btn').onclick = (e) => {
+            isCut = !isCut; route(isCut);
+            e.target.style.background = isCut ? "#8b00ff" : "transparent";
+        };
+
+        // กราฟ 7 สี (Rainbow Visualizer)
+        function draw() {
+            requestAnimationFrame(draw);
+            const data = new Uint8Array(ana.frequencyBinCount);
+            ana.getByteFrequencyData(data);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const barWidth = (canvas.width / data.length) * 2.5;
+            let x = 0;
+
+            for(let i = 0; i < data.length; i++) {
+                let h = data[i] / 2;
+                // ใช้ HSL เพื่อไล่สีสายรุ้ง (7 สี) ตามตำแหน่งแท่งกราฟ
+                let hue = i * (360 / data.length); 
+                ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                ctx.fillRect(x, canvas.height - h, barWidth, h);
+                x += barWidth + 1;
+            }
+        }
+
+        document.getElementById('low').oninput = (e) => lowF.gain.value = e.target.value;
+        document.getElementById('mid').oninput = (e) => midF.gain.value = e.target.value;
+        document.getElementById('high').oninput = (e) => highF.gain.value = e.target.value;
+    </script>
 </body>
 </html>
 """
 
-# แสดงผลใน Streamlit (ความกว้าง 100% เพื่อให้คลุม iframe)
-components.html(ui_code, width=500, height=600)
+components.html(player_ui, height=550)
