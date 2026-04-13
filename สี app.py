@@ -116,42 +116,40 @@ elif st.session_state.page == "1":
     if os.path.exists("1.mp3"): st.audio("1.mp3")
     else: st.warning("หาไฟล์เพลงไม่เจอ")
 elif st.session_state.page == "5":
-    st.header("✨ NEON GENERATOR")
+    st.header("✨ NEON LYRICS")
     
-    # 1. ส่วนรับข้อมูลจากผู้ใช้
-    user_text = st.text_input("พิมพ์ข้อความที่ต้องการให้วิ้ง:", "SYNAPSE HUB")
-    glow_color = st.color_picker("เลือกสีนีออน", "#00f2fe")
+    # 1. เปลี่ยนเป็น text_area เพื่อให้ใส่เนื้อเพลงได้หลายบรรทัด
+    user_text = st.text_area("วางเนื้อเพลงที่นี่:", "อยู่นิ่งๆ\nไม่เจ็บตัว", height=150)
+    glow_color = st.color_picker("เลือกสีนีออน", "#ff007f") # เปลี่ยนสีเริ่มต้นเป็นสีชมพูตามรูปคุณ
     
-    # 2. ใส่ CSS Animation สำหรับการ "วิ้ง"
+    # 2. ปรับ CSS ให้รองรับเนื้อเพลงและการแสดงผล
     st.markdown(f"""
         <style>
         @keyframes glow {{
             from {{
-                text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px {glow_color}, 0 0 20px {glow_color};
+                text-shadow: 0 0 5px #fff, 0 0 10px {glow_color}, 0 0 20px {glow_color};
             }}
             to {{
-                text-shadow: 0 0 10px #fff, 0 0 20px {glow_color}, 0 0 30px {glow_color}, 0 0 40px {glow_color}, 0 0 50px {glow_color};
+                text-shadow: 0 0 10px #fff, 0 0 20px {glow_color}, 0 0 30px {glow_color}, 0 0 40px {glow_color};
             }}
         }}
-        .neon-display {{
-            font-size: 60px;
+        .neon-box {{
+            font-size: 32px; /* ปรับขนาดเล็กลงหน่อยเพื่อให้ใส่เนื้อเพลงได้สวย */
             color: #fff;
             text-align: center;
-            font-family: 'Courier New', Courier, monospace;
-            animation: glow 1.5s ease-in-out infinite alternate;
-            padding: 50px;
+            font-family: 'Kanit', sans-serif;
+            animation: glow 1.2s ease-in-out infinite alternate;
+            padding: 30px;
             background: #000;
-            border-radius: 20px;
+            border-radius: 15px;
             border: 2px solid {glow_color};
             margin-top: 20px;
+            white-space: pre-wrap; /* สำคัญ: ทำให้ขึ้นบรรทัดใหม่ตามที่เราพิมพ์ */
+            line-height: 1.5;
         }}
         </style>
         
-        <div class="neon-display">
+        <div class="neon-box">
             {user_text}
         </div>
     """, unsafe_allow_html=True)
-    
-    st.caption("เทคนิค: ใช้ CSS Keyframes ทำให้เกิดการกระพริบของแสงเงา (Text Shadow)")
-
-# (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
