@@ -24,7 +24,7 @@ setup_ui()
 
 # --- 2. SIDEBAR (ส่วนที่โชว์ตลอดเวลา) ---
 with st.sidebar:
-    # แสดงโลโก้ขนาด 100px ที่ด้านบนสุดของเมนูข้าง
+    # แสดงโลโก้ขนาด 50px ที่ด้านบนสุดของเมนูข้าง
     if os.path.exists("logo1.png"):
         st.image("logo1.png") 
     else:
