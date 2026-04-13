@@ -2,6 +2,20 @@ import streamlit as st
 import streamlit.components.v1 as components
 import os
 import base64
+import streamlit as st
+import base64
+
+# สร้างปุ่มเลือกไฟล์จากมือถือ
+uploaded_file = st.file_uploader("เลือกเพลงจากเครื่องของคุณ", type=["mp3"])
+
+if uploaded_file is not None:
+    # อ่านไฟล์เพลงและแปลงเป็น Base64 เพื่อให้ Player เล่นได้
+    file_bytes = uploaded_file.read()
+    b64_audio = base64.b64encode(file_bytes).decode()
+    audio_url = f"data:audio/mp3;base64,{b64_audio}"
+    
+    # ส่ง audio_url เข้าไปใน UI Player ที่เราทำไว้
+    st.success(f"โหลดเพลง {uploaded_file.name} สำเร็จ!")
 
 # ซ่อนส่วนประกอบดั้งเดิมของ Streamlit เพื่อให้ดูเป็นแอปจริง
 st.markdown("""
