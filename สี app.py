@@ -106,7 +106,7 @@ elif st.session_state.page == "1":
     st.info("💡 ระบบรองรับ Crossfade, ตัดเสียงร้อง และ Visualizer (เลือกเพลงจากเครื่องเพื่อเริ่ม)")
 
     # โค้ด HTML เครื่องเล่นเพลงที่สมบูรณ์
-        player_html = """
+    player_html = """
     <!DOCTYPE html>
     <html lang="th">
     <head>
