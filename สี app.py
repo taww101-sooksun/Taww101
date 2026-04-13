@@ -3,135 +3,117 @@ import streamlit.components.v1 as components
 import base64
 import os
 
-def room_music_surround():
-    # สแกนเพลง 70 เพลงในโฟลเดอร์
-    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    
-    if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลงในโฟลเดอร์เดียวกับ .py")
-        return
+# 1. ตั้งค่าเริ่มต้นและซ่อนส่วนเกินของ Streamlit ให้ดูเป็นแอปจริง
+st.set_page_config(layout="wide", page_title="SYNAPSE Mobile")
 
-    # สร้าง Layout แบบ 2 คอลัมน์ (หรือจะใช้ Sidebar ก็ได้ถ้าถนัด)
-    col_list, col_player = st.columns([1, 2])
-
-    with col_list:
-        st.markdown("<h4 style='color: #00f2fe;'>คลังเพลง (70)</h4>", unsafe_allow_html=True)
-        # ทำพื้นที่ให้เลื่อนได้ (Scroll Container) สำหรับรายชื่อเพลง
-        with st.container(height=500): 
-            for i, song in enumerate(music_files):
-                # ตรวจสอบว่าเพลงไหนกำลังเล่นอยู่
-                is_active = i == st.session_state.get('song_index', 0)
-                btn_label = f"🎵 {song}" if not is_active else f"🔥 {song}"
-                
-                if st.button(btn_label, key=f"side_{i}", use_container_width=True):
-                    st.session_state.song_index = i
-                    st.rerun()
-
-    with col_player:
-        # ใส่ตัวเครื่องเล่นเพลง SYNAPSE ที่เราทำไว้ก่อนหน้านี้ตรงนี้
-        # (กว้าง 400 สูง 500 ตามสเปกของคุณ)
-        st.markdown("<div style='text-align:center;'>เครื่องเล่นหลัก</div>", unsafe_allow_html=True)
-        # เรียกฟังก์ชันแสดงผล UI ที่เราคุยกันก่อนหน้า
-        # show_neon_player() 
-
-# สร้างปุ่มเลือกไฟล์จากมือถือ
-uploaded_file = st.file_uploader("เลือกเพลงจากเครื่องของคุณ", type=["mp3"])
-
-if uploaded_file is not None:
-    # อ่านไฟล์เพลงและแปลงเป็น Base64 เพื่อให้ Player เล่นได้
-    file_bytes = uploaded_file.read()
-    b64_audio = base64.b64encode(file_bytes).decode()
-    audio_url = f"data:audio/mp3;base64,{b64_audio}"
-    
-    # ส่ง audio_url เข้าไปใน UI Player ที่เราทำไว้
-    st.success(f"โหลดเพลง {uploaded_file.name} สำเร็จ!")
-
-# ซ่อนส่วนประกอบดั้งเดิมของ Streamlit เพื่อให้ดูเป็นแอปจริง
 st.markdown("""
     <style>
-    /* ซ่อน Header และ Footer ของ Streamlit */
     header, footer { visibility: hidden; }
     .stApp { background-color: #000; }
     
-    /* สไตล์ปุ่ม "จัดการแอป" ที่มุมขวาล่าง */
+    /* ปุ่มจัดการแอปที่มุมขวาล่างแบบในรูป */
     .manage-btn {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background-color: #1a1c24;
-        color: white;
-        padding: 10px 20px;
-        border-radius: 5px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 14px;
-        z-index: 999;
-        border: 1px solid #333;
+        position: fixed; bottom: 20px; right: 20px;
+        background-color: #1a1c24; color: white;
+        padding: 10px 20px; border-radius: 5px;
+        display: flex; align-items: center; gap: 10px;
+        font-size: 14px; z-index: 999; border: 1px solid #333;
+    }
+    
+    /* Custom Scrollbar สำหรับรายชื่อเพลง 70 เพลง */
+    [data-testid="stVerticalBlock"] > div:has(div.song-list-container) {
+        overflow-y: auto; max-height: 500px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# ฟังก์ชันแสดงหน้าตา UI แบบมือถือ
-def mobile_player_ui():
-    # 1. โหลดรายชื่อเพลง (โค้ดเดิมของคุณ)
+# 2. ฟังก์ชันหลักสำหรับดึงเพลงและเล่นเพลง
+def main_app():
+    if 'song_index' not in st.session_state:
+        st.session_state.song_index = 0
+
+    # สแกนเพลงรอบข้าง (ในโฟลเดอร์เดียวกัน)
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+    
     if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลง")
+        st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ")
         return
 
-    # 2. ส่วนหัวแอป (ปุ่มกลับหน้าหลัก)
+    # ส่วนหัว: สไตล์ Neon ตามรูปที่คุณส่งมา
     st.markdown("""
-        <div style="border: 2px solid #00f2fe; border-radius: 15px; width: fit-content; padding: 10px 20px; margin-bottom: 30px;">
-            <span style="color: white; font-size: 18px;">⬅️ กลับหน้าหลัก</span>
+        <div style="border: 2px solid #00f2fe; border-radius: 15px; width: fit-content; padding: 5px 15px; margin-bottom: 20px;">
+            <span style="color: white; font-size: 14px;">⬅️ กลับหน้าหลัก</span>
         </div>
+        <h1 style="color: #00f2fe; text-shadow: 0 0 10px #00f2fe; font-size: 35px; margin: 0;">✨ NEON</h1>
+        <h1 style="color: #00f2fe; text-shadow: 0 0 10px #00f2fe; font-size: 35px; margin-top: -10px;">GENERATOR</h1>
     """, unsafe_allow_html=True)
 
-    # 3. ชื่อแอปและสโลแกน (Neon Style)
-    st.markdown("""
-        <h1 style="color: #00f2fe; text-shadow: 0 0 10px #00f2fe; font-size: 40px; margin-bottom: 0;">✨ NEON</h1>
-        <h1 style="color: #00f2fe; text-shadow: 0 0 10px #00f2fe; font-size: 40px; margin-top: 0;">GENERATOR</h1>
-        <p style="color: #555; font-size: 14px;">พิมพ์ข้อความที่ต้องการให้วิ่ง:</p>
-    """, unsafe_allow_html=True)
+    # จัดเลย์เอาต์: รายชื่อเพลงอยู่รอบข้าง (ซ้าย) เครื่องเล่นอยู่ตรงกลาง
+    col_list, col_player = st.columns([1, 1.5])
 
-    # 4. กล่อง UI ของ Music Player (ปรับจากสเปกที่คุณให้มาก่อนหน้า)
-    current_song = music_files[st.session_state.get('song_index', 0)]
-    
-    # ดึงรูปปกหรือใช้ Default
-    # ในกรณีนี้เราใช้ CSS สร้างกรอบ 400x500 ตามที่คุณสั่งไว้
-    player_html = f"""
-    <div style="
-        width: 100%; 
-        max-width: 400px; 
-        height: 500px; 
-        border: 4px solid; 
-        border-image: linear-gradient(to bottom right, #8b00ff, #ff0000) 1;
-        background: rgba(0,0,0,0.5);
-        box-shadow: 0 0 15px #00f2fe;
-        padding: 10px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        position: relative;
-    ">
-        <div style="color: #f0f0f0; font-size: 18px; font-weight: bold; margin-bottom: 20px;">{current_song}</div>
-        <div style="width: 250px; height: 250px; background: #222; border-radius: 0px; border: 1px solid #00f2fe; box-shadow: inset 0 0 10px #00f2fe;">
+    with col_list:
+        st.markdown("<p style='color: #555;'>คลังเพลงของคุณ</p>", unsafe_allow_html=True)
+        # สร้างรายการเพลงที่เลื่อนได้
+        with st.container(height=450):
+            for i, song in enumerate(music_files):
+                is_active = i == st.session_state.song_index
+                label = f"🔥 {song}" if is_active else f"🎵 {song}"
+                if st.button(label, key=f"s_{i}", use_container_width=True):
+                    st.session_state.song_index = i
+                    st.rerun()
+
+    with col_player:
+        current_song = music_files[st.session_state.song_index]
+        
+        # แปลงเพลงเป็น Base64 เพื่อส่งเข้า Player
+        with open(current_song, "rb") as f:
+            data = f.read()
+            b64 = base64.b64encode(data).decode()
+            audio_url = f"data:audio/mp3;base64,{b64}"
+
+        # 4. กล่อง UI เครื่องเล่นตามสเปก 400x500
+        player_html = f"""
+        <div style="
+            width: 100%; max-width: 400px; height: 500px;
+            border: 4px solid; border-image: linear-gradient(to bottom right, #8b00ff, #ff0000) 1;
+            background: rgba(0,0,0,0.5); box-shadow: 0 0 15px #00f2fe;
+            padding: 15px; display: flex; flex-direction: column; align-items: center;
+            position: relative; box-sizing: border-box;
+        ">
+            <div style="color: #00f2fe; font-size: 14px; margin-bottom: 10px;">NOW SCANNING...</div>
+            <div style="color: #f0f0f0; font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 20px;">{current_song}</div>
+            
+            <div style="width: 100%; height: 200px; background: #111; border: 1px solid #333; display: flex; align-items: flex-end; gap: 2px; padding: 5px;">
+                <div style="flex:1; height: 60%; background: hsl(0,100%,50%);"></div>
+                <div style="flex:1; height: 80%; background: hsl(50,100%,50%);"></div>
+                <div style="flex:1; height: 40%; background: hsl(100,100%,50%);"></div>
+                <div style="flex:1; height: 90%; background: hsl(200,100%,50%);"></div>
+                <div style="flex:1; height: 70%; background: hsl(280,100%,50%);"></div>
             </div>
-        <div style="position: absolute; bottom: 10px; color: rgba(255,255,255,0.3); font-size: 12px;">อยู่นิ่งๆ ไม่เจ็บตัว</div>
-    </div>
-    """
-    st.write(player_html, unsafe_allow_html=True)
 
-    # 5. ปุ่มจัดการแอป (เลียนแบบ Floating Button ในรูป)
-    st.markdown("""
-        <div class="manage-btn">
-            <span>❮</span> จัดการแอป
+            <audio id="ap" src="{audio_url}" controls autoplay style="width: 100%; margin-top: 20px;"></audio>
+            
+            <script>
+                var a = document.getElementById('ap');
+                a.onended = function() {{
+                    window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*');
+                }};
+            </script>
+
+            <div style="position: absolute; bottom: 10px; color: rgba(255,255,255,0.3); font-size: 12px;">
+                อยู่นิ่งๆ ไม่เจ็บตัว
+            </div>
         </div>
-    """, unsafe_allow_html=True)
+        """
+        result = components.html(player_html, height=520)
+
+        # รับค่าจาก JS เพื่อเปลี่ยนเพลงอัตโนมัติ
+        if result == 'next':
+            st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+            st.rerun()
+
+    # ปุ่มจัดการแอปมุมล่าง
+    st.markdown('<div class="manage-btn"><span>❮</span> จัดการแอป</div>', unsafe_allow_html=True)
 
 # รันแอป
-if 'song_index' not in st.session_state:
-    st.session_state.song_index = 0
-
-mobile_player_ui()
+main_app()
