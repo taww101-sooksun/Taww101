@@ -27,6 +27,24 @@ if 'nav_level' not in st.session_state:
     st.session_state.nav_level = "HOME"
 
 setup_ui()
+st.markdown("""
+    <style>
+    /* 1. ซ่อนแถบ Header ด้านบนทั้งหมด (รวมถึงติ่งเมนูขวาบน) */
+    header {visibility: hidden;}
+    
+    /* 2. ซ่อนแถบ Footer ด้านล่าง (Made with Streamlit) */
+    footer {visibility: hidden;}
+    
+    /* 3. ซ่อนปุ่มเมนูหลัก (แฮมเบอร์เกอร์เมนู) */
+    #MainMenu {visibility: hidden;}
+    
+    /* 4. (แถม) ดันเนื้อหาขึ้นไปให้สุด ไม่ให้เหลือที่ว่างด้านบน */
+    .block-container {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 st.title("📡 SYNAPSE HIERARCHY")
 
