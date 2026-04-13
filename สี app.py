@@ -53,6 +53,32 @@ if st.session_state.nav_level == "HOME":
         if st.button("🛰️ RADAR", key="b2", use_container_width=True):
             st.session_state.nav_level = "2"
             st.rerun()
+# --- 3. เนื้อหาภายในแต่ละชั้น (Logic ต่อจากเดิม) ---
+if st.session_state.nav_level == "HOME":
+    st.markdown("<div class='neon-header'>MAIN CENTER</div>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1: draw_box("🚀 CORE SYSTEM", "1")
+    with c2: draw_box("🛰️ RADAR CONTROL", "2")
+
+elif st.session_state.nav_level == "1":
+    st.subheader("🚀 CORE SYSTEM (ระบบประมวลผลหลัก)")
+    # ลองใส่ปุ่มย่อยลงไปอีกชั้น
+    c1, c2 = st.columns(2)
+    with c1: draw_box("📁 1.1 DATABASE", "1.1")
+    with c2: draw_box("📁 1.2 SETTINGS", "1.2")
+    st.info("เลือกหัวข้อเพื่อจัดการระบบภายใน")
+
+elif st.session_state.nav_level == "1.1":
+    st.subheader("📁 DATABASE 1.1")
+    st.write("สถานะ: **กำลังเชื่อมต่อกับไฟล์ 1.mp3...**")
+    # เพี้ยนสามารถเอาโค้ดเล่นเพลงมาใส่ตรงนี้ได้เลย
+    st.audio("1.mp3") 
+
+elif st.session_state.nav_level == "2":
+    st.subheader("🛰️ RADAR CONTROL")
+    st.warning("กำลังค้นหาสัญญาณดาวเทียม...")
+    # ใส่ลูกเล่นอื่นๆ เช่น สแกนหาพิกัด
+    st.progress(75, text="SCANNING...")
+
 else:
-    st.write(f"LOCATION: {st.session_state.nav_level}")
-    st.info("กำลังโหลดข้อมูล...")
+    st.error(f"⚠️ ไม่พบพิกัด {st.session_state.nav_level} ในระบบ")
