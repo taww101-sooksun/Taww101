@@ -1,119 +1,93 @@
 import streamlit as st
 import streamlit.components.v1 as components
 
-st.set_page_config(page_title="SYNAPSE PRO PLAYER", layout="centered")
+st.set_page_config(layout="centered")
 
-# --- สไตล์นีออน (อยู่นิ่งๆ ไม่เจ็บตัว) ---
-st.markdown("""
-    <style>
-    .stApp { background-color: #000; color: #00f2fe; }
-    header, footer { visibility: hidden; }
-    </style>
-""", unsafe_allow_html=True)
-
-st.markdown("<h1 style='text-align:center; text-shadow: 0 0 10px #00f2fe;'>SYNAPSE PRO</h1>", unsafe_allow_html=True)
-
-# --- 🧪 ส่วนของ HTML + JavaScript (ใส่ความสามารถทั้งหมดที่คุณต้องการ) ---
-player_code = """
+# โค้ด HTML/JS/CSS ที่ปรับตามสั่งเป๊ะๆ
+ui_code = """
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: transparent; color: #00f2fe; overflow: hidden; }
-        .neon-box { border: 1px solid #00f2fe; box-shadow: 0 0 10px #00f2fe; border-radius: 20px; padding: 20px; }
-        .slider { -webkit-appearance: none; width: 100%; height: 4px; background: #333; outline: none; border-radius: 10px; }
-        .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #00f2fe; border-radius: 50%; cursor: pointer; }
-        canvas { width: 100%; height: 80px; background: #111; border-radius: 10px; }
+        body { 
+            background: transparent; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        
+        .synapse-frame {
+            width: 400px;
+            height: 500px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 4px solid;
+            /* เส้นขอบไล่สีม่วงไปแดง */
+            border-image: linear-gradient(to bottom right, #8b00ff, #ff0000) 1;
+            border-radius: 0px; /* ทรงเหลี่ยมตามสั่ง */
+            box-shadow: 0 0 15px #00f2fe; /* นีออนฟ้า */
+            padding: 10px;
+            color: #f0f0f0; /* ขาวสว่างมุก */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+            border-bottom: 1px solid rgba(0, 242, 254, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .status-box {
+            border: 1px solid #00f2fe;
+            height: 100px;
+            margin-bottom: 20px;
+            background: rgba(0, 242, 254, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .label { color: #f0f0f0; font-size: 14px; margin-bottom: 5px; }
+        
+        .slogan {
+            position: absolute;
+            bottom: 10px;
+            width: calc(100% - 20px);
+            text-align: center;
+            font-size: 12px;
+            color: rgba(255,255,255,0.4);
+        }
     </style>
 </head>
 <body>
-    <div class="neon-box">
-        <input type="file" id="upload" accept="audio/*" class="text-xs mb-4 w-full">
-        <canvas id="viz"></canvas>
-        <div id="name" class="text-center font-bold my-2 truncate">รอยืนยันไฟล์...</div>
+    <div class="synapse-frame">
+        <div class="header">SYNAPSE COMMAND</div>
         
-        <div class="grid grid-cols-3 gap-2 text-[10px] text-center mb-4">
-            <div>BASS<br><input type="range" id="b" min="-20" max="20" value="0" class="slider"></div>
-            <div>MID<br><input type="range" id="m" min="-20" max="20" value="0" class="slider"></div>
-            <div>TREBLE<br><input type="range" id="h" min="-20" max="20" value="0" class="slider"></div>
+        <div class="label">VISUALIZER SYSTEM</div>
+        <div class="status-box">READY TO SCAN...</div>
+        
+        <div class="label">SYSTEM STATUS</div>
+        <div style="font-size: 13px; line-height: 1.6;">
+            > Width: 400px<br>
+            > Height: 500px<br>
+            > Border: 4px (Purple-Red)<br>
+            > Neon: 15px (#00f2fe)<br>
+            > Mode: Stay Still, No Pain
         </div>
 
-        <div class="flex gap-2">
-            <button id="p" class="flex-1 bg-[#00f2fe] text-black font-bold py-2 rounded-lg text-sm">PLAY/PAUSE</button>
-            <button id="v" class="flex-1 border border-[#ff007f] text-[#ff007f] font-bold py-2 rounded-lg text-sm">VOCAL CUT</button>
-        </div>
+        <div class="slogan">อยู่นิ่งๆ ไม่เจ็บตัว</div>
     </div>
-
-    <audio id="a" crossorigin="anonymous"></audio>
-
-    <script>
-        let ctx, src, ana, g, l, m, h, spl, mer, inv, isCut = false;
-        const a = document.getElementById('a');
-        const canvas = document.getElementById('viz');
-        const ctxt = canvas.getContext('2d');
-
-        function setup() {
-            if (ctx) return;
-            ctx = new AudioContext();
-            src = ctx.createMediaElementSource(a);
-            ana = ctx.createAnalyser();
-            ana.fftSize = 128;
-            l = ctx.createBiquadFilter(); l.type = 'lowshelf'; l.frequency.value = 250;
-            m = ctx.createBiquadFilter(); m.type = 'peaking'; m.frequency.value = 1000;
-            h = ctx.createBiquadFilter(); h.type = 'highshelf'; h.frequency.value = 4000;
-            g = ctx.createGain();
-            spl = ctx.createChannelSplitter(2);
-            mer = ctx.createChannelMerger(2);
-            inv = ctx.createGain(); inv.gain.value = -1;
-            connect(false);
-            draw();
-        }
-
-        function connect(cut) {
-            src.disconnect(); l.disconnect(); m.disconnect(); h.disconnect(); g.disconnect();
-            if(cut) {
-                src.connect(spl); spl.connect(mer, 0, 0); spl.connect(inv, 1, 0); inv.connect(mer, 0, 0);
-                mer.connect(l);
-            } else { src.connect(l); }
-            l.connect(m); m.connect(h); h.connect(g); g.connect(ana); ana.connect(ctx.destination);
-        }
-
-        document.getElementById('upload').onchange = (e) => {
-            setup();
-            const file = e.target.files[0];
-            a.src = URL.createObjectURL(file);
-            document.getElementById('name').innerText = file.name;
-            a.play();
-        };
-
-        document.getElementById('p').onclick = () => { setup(); if(a.paused) a.play(); else a.pause(); };
-        document.getElementById('v').onclick = (e) => { 
-            isCut = !isCut; connect(isCut);
-            e.target.style.background = isCut ? "#ff007f" : "transparent";
-            e.target.style.color = isCut ? "#fff" : "#ff007f";
-        };
-
-        document.getElementById('b').oninput = (e) => l.gain.value = e.target.value;
-        document.getElementById('m').oninput = (e) => m.gain.value = e.target.value;
-        document.getElementById('h').oninput = (e) => h.gain.value = e.target.value;
-
-        function draw() {
-            requestAnimationFrame(draw);
-            const data = new Uint8Array(ana.frequencyBinCount);
-            ana.getByteFrequencyData(data);
-            ctxt.clearRect(0,0,canvas.width,canvas.height);
-            data.forEach((v, i) => {
-                ctxt.fillStyle = '#00f2fe';
-                ctxt.fillRect(i*3, canvas.height - v/3, 2, v/3);
-            });
-        }
-    </script>
 </body>
 </html>
 """
 
-# แสดงผลเครื่องเล่นเพลงใน Streamlit
-components.html(player_code, height=450)
-
-st.info("💡 คำแนะนำ: เมื่อรันใน Streamlit ต้องกด 'PLAY' หรือ 'เลือกไฟล์' ก่อนเพื่อให้ Browser ยอมให้ระบบเสียงทำงานครับ")
+# แสดงผลใน Streamlit (ความกว้าง 100% เพื่อให้คลุม iframe)
+components.html(ui_code, width=500, height=600)
