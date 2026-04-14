@@ -1,112 +1,233 @@
 import streamlit as st
+import os
+import random
 import streamlit.components.v1 as components
-import base64
 
-st.set_page_config(page_title="Music Video Player Pro", layout="wide")
+# --- 1. SET UP & THEME SELECTOR ---
+st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
 
-# CSS จัดการหน้าจอให้เหมาะกับการแคปวิดีโอ
-st.markdown("""
+# ระบบจำค่าสี (ถ้ายังไม่มีให้ตั้งค่าเริ่มต้น)
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#39FF14" # เขียวนีออน
+if 'bg_color' not in st.session_state:
+    st.session_state.bg_color = "#121212" # ดำเทาเข้ม
+
+with st.sidebar:
+    # ส่วนของ Logo
+    if os.path.exists("logo2.jpg"):
+        st.image("logo2.jpg", use_container_width=True)
+    else:
+        st.write("📌 [ยังไม่มีไฟล์ logo2.jpg]")
+        
+    st.markdown("### 🎨 ปรับแต่งสีระบบ")
+    # เลือกสีนีออน (เส้นขอบ/ตัวอักษร)
+    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
+    # เลือกสีพื้นหลัง
+    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
+    
+    st.write("---")
+    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
+
+# --- 2. CSS DYNAMIC THEME (ดึงสีจาก Picker) ---
+st.markdown(f"""
     <style>
-    .stApp {
-        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-        background-size: 1200% 1200%;
-        animation: RainbowFlow 10s ease infinite;
-    }
-    @keyframes RainbowFlow {
-        0%{background-position:0% 50%}
-        50%{background-position:100% 50%}
-        100%{background-position:0% 50%}
-    }
-    #MainMenu, footer, header {visibility: hidden;}
-    .stFileUploader {background: rgba(255,255,255,0.2); border-radius: 15px; padding: 20px; color: white;}
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+    
+    .stApp {{
+        background-color: {st.session_state.bg_color} !important;
+        color: {st.session_state.theme_color} !important;
+    }}
+
+    /* ปรับปรุงขอบกล่องรายการเพลง */
+    [data-testid="stVVerticalBlock"] > div > div > [data-testid="stVerticalBlockBorderWrapper"] {{
+        border: 2px solid {st.session_state.theme_color} !important;
+        border-radius: 15px !important;
+        background: rgba(0, 0, 0, 0.4) !important;
+        box-shadow: 0px 0px 15px {st.session_state.theme_color}44;
+        padding: 15px;
+    }}
+
+    .marquee {{
+        width: 100%;
+        overflow: hidden;
+        white-space: nowrap;
+        background: rgba(0,0,0,0.6);
+        padding: 15px 0;
+        border-radius: 12px;
+        margin-bottom: 15px;
+        border: 2px solid {st.session_state.theme_color};
+    }}
+    .marquee p {{
+        display: inline-block;
+        padding-left: 100%;
+        animation: marquee 20s linear infinite;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 22px;
+        color: {st.session_state.theme_color};
+        text-shadow: 0px 0px 10px {st.session_state.theme_color};
+        margin: 0;
+    }}
+    @keyframes marquee {{
+        0% {{ transform: translate(0, 0); }}
+        100% {{ transform: translate(-100%, 0); }}
+    }}
+
+    .stButton>button {{
+        width: 100%;
+        text-align: left;
+        background-color: transparent !important;
+        color: {st.session_state.theme_color} !important;
+        border-radius: 10px !important;
+        font-weight: bold;
+        border: 1px solid {st.session_state.theme_color} !important;
+        margin-bottom: 5px;
+        transition: 0.3s;
+    }}
+    .stButton>button:hover {{
+        background-color: {st.session_state.theme_color} !important;
+        color: {st.session_state.bg_color} !important;
+        box-shadow: 0px 0px 15px {st.session_state.theme_color};
+    }}
+    
+    h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🎬 Music & Video Crossfader")
+# --- 3. ระบบจัดการเพลง ---
+music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
 
-# ช่องอัปโหลดไฟล์ (เลือกทั้งเพลงและรูปพร้อมกันได้เลย)
-uploaded_files = st.file_uploader("เลือกไฟล์เพลง (MP3) และไฟล์รูปปก (JPG/PNG)", type=["mp3", "jpg", "png"], accept_multiple_files=True)
-
-if uploaded_files:
-    songs = []
-    images = []
+if music_files:
+    if 'song_index' not in st.session_state:
+        st.session_state.song_index = 0
     
-    for f in uploaded_files:
-        b64 = base64.b64encode(f.read()).decode()
-        if f.type.startswith("audio"):
-            songs.append({"name": f.name, "data": f"data:audio/mp3;base64,{b64}"})
-        else:
-            images.append(f"data:image/jpeg;base64,{b64}")
+    current_song = music_files[st.session_state.song_index]
 
-    # ถ้าไม่มีรูป ให้ใช้สีพื้นฐาน
-    if not images:
-        images = ["https://via.placeholder.com/500/AFEEEE/000000?text=Enjoy+Music"]
+    # ส่วนหัวและโลโก้
+    col_l, col_r = st.columns([1, 5])
+    with col_l:
+        if os.path.exists("logo2.jpg"):
+            st.image("logo2.jpg", width=500)
+    with col_r:
+        st.title("🎸 อยู่นิ่งๆไม่เจ็บตัว 🎼 MUSIC")
 
-    player_html = f"""
-    <div id="display-container" style="position: relative; width: 100%; height: 500px; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); background: #000;">
-        <div id="visualizer" style="position: absolute; width: 100%; height: 100%; opacity: 0.4;">
-             <div style="width:100%;height:100%; background: radial-gradient(circle, #FF7F50, transparent);"></div>
-        </div>
+    # 1. ชื่อเพลงวิ่ง
+    st.markdown(f'<div class="marquee"><p>NOW.0.10 - 0.10   วันหนึ่งถ้าเธอมองย้อนกลับมา
+              อาจจะเห็นสิ่งที่เคยทำพังลงไป
 
-        <div style="position: absolute; top: 0; width: 100%; background: rgba(0,0,0,0.6); color: #AFEEEE; padding: 15px; z-index: 10;">
-            <marquee id="marquee" style="font-size: 24px; font-weight: bold;">กรุณากดปุ่มเพื่อเริ่มรายการ...</marquee>
-        </div>
+0.13 - 0.23   แต่ถึงตอนนั้น ฉันคงเดินไกล
+              ทิ้งเรื่องของเราไว้ในอดีตคำที่เธอเคยให้
 
-        <div id="album-cover" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; border: 10px solid #FF7F50; border-radius: 20px; background-size: cover; background-position: center; transition: all 1s ease-in-out; z-index: 5;"></div>
-        
-        <button id="start-btn" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 15px 40px; font-size: 20px; background: #FF7F50; color: white; border: none; border-radius: 50px; cursor: pointer; z-index: 20;">START SESSION</button>
-    </div>
+0.26 - 1.00   ขอบคุณถ้อยคำที่เคยทำฉันร้าว
+              คำที่ทำให้ใจฉันแทบไม่เหลืออะไร
+              คืนที่ร้องไห้จนไม่รู้จะไปทางไหน
+              กลับกลายเป็นทางให้ฉันหันมาเจอแสงในตัวเอง
+              เคยนอนบนกองน้ำตาเป็นเดือนเป็นปีไม่มีใครรู้
+              หัวใจข้างในมันพังยับ มากแค่ไหนใครเลยจะมารู้
+              ยิ้มทั้งที่แผลยังสด
+              กอดตัวเองเพราะไม่มีใครอยู่
+              ถ้าเธอได้เห็นข้างในฉัน
+              จะยังกล้ารักคนอย่างฉันไหม (บอกฉันที)
 
-    <script>
-        const playlist = {songs};
-        const covers = {images};
-        let currentIndex = 0;
-        const fadeTime = 15;
+1.04 - 1.14   ปล่อยวางความโกรธที่เผาใจ... 
+1.17 - 1.25   ทิ้งความโลภที่ไม่มีวันพอ
 
-        const btn = document.getElementById('start-btn');
-        const marquee = document.getElementById('marquee');
-        const albumCover = document.getElementById('album-cover');
+1.41 - 1.51   วันหนึ่งถ้าเธอมองย้อนกลับมา
+              อาจจะเห็นสิ่งที่เคยทำพังลงไป
 
-        function playTrack(index) {{
-            if (index >= playlist.length) index = 0;
-            const track = playlist[index];
-            const audio = new Audio(track.data);
-            audio.volume = 0;
+1.54 - 2.04   แต่ถึงตอนนั้น ฉันคงเดินไกล
+              ทิ้งเรื่องของเราไว้ในอดีตคำที่เธอเคยให้
+
+2.07 - 2.43   ขอบคุณถ้อยคำที่เคยทำฉันร้าว
+              คำที่ทำให้ใจฉันแทบไม่เหลืออะไร
+              คืนที่ร้องไห้จนไม่รู้จะไปทางไหน
+              กลับกลายเป็นทางให้ฉันหันมาเจอแสงในตัวเอง
+              เคยนอนบนกองน้ำตาเป็นเดือนเป็นปีไม่มีใครรู้
+              หัวใจข้างในมันพังยับ มากแค่ไหนใครเลยจะมารู้
+              ยิ้มทั้งที่แผลยังสด
+              กอดตัวเองเพราะไม่มีใครอยู่
+              ถ้าเธอได้เห็นข้างในฉัน
+              จะยังกล้ารักคนอย่างฉันไหม (บอกฉันที)
+
+2.48 - 2.58   ปล่อยวางความโกรธที่เผาใจ... ทิ้งความโลภที่ไม่มีวันพอ
+
+คำที่ทำให้ใจฉันแทบไม่เหลืออะไร
+คืนที่ร้องไห้จนไม่รู้จะไปทางไหน
+กลับกลายเป็นทางให้ฉันหันมาเจอแสงในตัวเอง: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
+
+    # 2. ปก
+    base_name = os.path.splitext(current_song)[0]
+    if os.path.exists(base_name + ".mp4"):
+        st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
+    elif os.path.exists(base_name + ".jpg"):
+        st.image(base_name + ".jpg", use_container_width=True)
+    
+    # 3. เครื่องเล่นเพลง
+    st.audio(current_song)
+
+    st.markdown("---")
+
+    # 4. กล่องรายชื่อเพลง
+    st.subheader("🎧 รายชื่อเพลง🎸")
+    with st.container(border=True, height=250):
+        for i, song in enumerate(music_files):
+            label = f"▶️ {i+1}. {song}" if i == st.session_state.song_index else f"{i+1}. {song}"
+            if st.button(label, key=f"box_{i}"):
+                st.session_state.song_index = i
+                st.rerun()
+
+    # 5. ปุ่มควบคุม
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("⏭️ เพลงถัดไป"):
+            st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+            st.rerun()
+    with col2:
+        if st.button("🎲 สุ่มเพลง"):
+            st.session_state.song_index = random.randint(0, len(music_files) - 1)
+            st.rerun()
+
+    # 6. JavaScript: ใช้ตัวที่คุณยืนยันว่าเวิร์ค (Fade + Auto Play + Auto Next)
+    components.html(
+        """
+        <script>
+        var fadeDuration = 12; 
+
+        function handleAudioSync() {
+            var audio = window.parent.document.querySelector('audio');
+            var buttons = window.parent.document.querySelectorAll('button');
             
-            // เปลี่ยนรูปปก (วนลูปรูปที่มี)
-            albumCover.style.backgroundImage = "url('" + covers[index % covers.length] + "')";
-            marquee.innerText = "NOW PLAYING: " + track.name + " --- NEXT: " + (playlist[index+1] ? playlist[index+1].name : playlist[0].name);
-            
-            audio.play();
-            fadeIn(audio);
+            if (audio) {
+                // ระบบ Fade In
+                if (audio.currentTime < fadeDuration && !audio.paused) {
+                    audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
+                } 
+                // ระบบ Fade Out
+                else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {
+                    audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
+                } 
+                else {
+                    audio.volume = 1;
+                }
 
-            audio.ontimeupdate = function() {{
-                const timeLeft = audio.duration - audio.currentTime;
-                if (timeLeft <= fadeTime && !audio.isFadingOut) {{
-                    audio.isFadingOut = true;
-                    fadeOut(audio);
-                    playTrack(index + 1);
-                }}
-            }};
-        }}
+                // ระบบ Auto-Next เมื่อเพลงจบ
+                audio.onended = function() {
+                    for (var i = 0; i < buttons.length; i++) {
+                        if (buttons[i].textContent.includes('เพลงถัดไป')) {
+                            buttons[i].click();
+                            break;
+                        }
+                    }
+                };
 
-        function fadeIn(a) {{
-            let v = 0;
-            const itv = setInterval(() => {{ if(v<1) {{v+=0.02; a.volume=v;}} else clearInterval(itv); }}, (fadeTime*1000)/50);
-        }}
-
-        function fadeOut(a) {{
-            let v = 1;
-            const itv = setInterval(() => {{ if(v>0) {{v-=0.02; a.volume=v;}} else {{clearInterval(itv); a.pause();}} }}, (fadeTime*1000)/50);
-        }}
-
-        btn.onclick = () => {{
-            btn.style.display = 'none';
-            playTrack(0);
-        }};
-    </script>
-    """
-    components.html(player_html, height=550)
-
+                // บังคับ Play เมื่อโหลดใหม่
+                if (audio.paused && audio.currentTime == 0) {
+                    audio.play().catch(e => console.log("User interaction needed"));
+                }
+            }
+        }
+        setInterval(handleAudioSync, 500);
+        </script>
+        """, height=0
+    )
 else:
-    st.info("💡 วิธีใช้: เลือกไฟล์เพลง (.mp3) และไฟล์รูป (.jpg/.png) พร้อมกันหลายๆ ไฟล์ได้เลยครับ")
+    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์ครับ")
