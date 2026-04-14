@@ -29,3 +29,4 @@ networkx
 streamlit
 replicate
 moviepy
+imagemagick
