@@ -21,12 +21,7 @@ streamlit-google-auth
 Authlib
 psutil
 matplotlib
-streamlit
-folium
-streamlit-folium
 osmnx
 networkx
-streamlit
 replicate
 moviepy
-imagemagick
