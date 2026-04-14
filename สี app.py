@@ -1,49 +1,48 @@
 import streamlit as st
 import os
-# ใช้การ Import แบบใหม่ที่รองรับ MoviePy 2.0+
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip
 
 def make_video():
-    # 1. เช็กไฟล์ต้นฉบับ
-    video_path = "ta101.mp4"
-    if not os.path.exists(video_path):
-        st.error(f"ไม่พบไฟล์ {video_path} ในโฟลเดอร์ครับเพื่อน!")
+    # ระบุชื่อไฟล์ให้ตรงตามที่เพื่อนบอก
+    target_file = "ta101.mp4" 
+    
+    if not os.path.exists(target_file):
+        st.error(f"หาไฟล์ {target_file} ไม่เจอในโฟลเดอร์ครับ! ลองเช็กชื่อไฟล์บน GitHub ดูนะ")
         return None
 
     try:
-        # 2. โหลดวิดีโอ
-        base_video = VideoFileClip(video_path)
+        # 1. โหลดวิดีโอ ta101.mp4
+        base_video = VideoFileClip(target_file)
         
-        # 3. สร้างข้อความ (ตรงนี้แหละที่ต้องใช้ ImageMagick)
+        # 2. ตั้งค่าเนื้อเพลง (ใส่ท่อนที่เพื่อนอยากให้วิ้ง)
         txt = TextClip(
             text="วันหนึ่งถ้าเธอมองย้อนกลับมา",
-            font_size=70,
+            font_size=60,
             color='yellow',
             duration=5
         ).with_position(('center', 'center')).with_start(1)
         
-        # 4. รวมร่างและประมวลผล
+        # 3. รวมร่าง
         final = CompositeVideoClip([base_video, txt])
-        output_file = "result.mp4"
         
-        # ใช้ logger=None เพื่อให้หน้าจอ streamlit ไม่ค้าง
-        final.write_videofile(output_file, fps=24, codec="libx264")
-        return output_file
+        # 4. เขียนไฟล์ใหม่
+        output_name = "synapse_final.mp4"
+        final.write_videofile(output_name, fps=24, codec="libx264")
+        
+        # คืนหน่วยความจำ
+        base_video.close()
+        final.close()
+        
+        return output_name
 
     except Exception as e:
-        st.error(f"❌ เกิดข้อผิดพลาด: {e}")
-        st.info("💡 คำแนะนำ: ตรวจสอบว่าสร้างไฟล์ 'packages.txt' และใส่คำว่า 'imagemagick' หรือยังครับ?")
+        st.error(f"ติดปัญหาตอนประมวลผล: {e}")
         return None
 
-# --- ส่วนแสดงผลหน้าเว็บ ---
-st.title("🎬 SYNAPSE Video Maker")
-st.markdown("---")
-
-if st.button("🚀 เสกตัวหนังสือวิ้ง"):
-    with st.spinner("กำลังประมวลผลวิดีโอ... อาจใช้เวลาสักครู่นะครับ"):
+st.title("🎬 SYNAPSE Video Maker (ta101)")
+if st.button("🚀 เริ่มเสกตัวหนังสือวิ้ง"):
+    with st.spinner("กำลังทำวิดีโอจากไฟล์ ta101.mp4..."):
         res = make_video()
         if res:
             st.video(res)
-            st.success("ทำสำเร็จแล้วครับเพื่อน!")
-
-st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE PROJECT 2026")
+            st.success("เสร็จแล้วครับเพื่อน!")
