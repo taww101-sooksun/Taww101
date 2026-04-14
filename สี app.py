@@ -5,59 +5,53 @@ from moviepy import VideoFileClip, TextClip, CompositeVideoClip
 def make_video():
     video_file = "ta101.mp4"
     
+    # 1. เช็กว่าเจอวิดีโอไหม
     if not os.path.exists(video_file):
-        st.error(f"❌ หาไฟล์ {video_file} ไม่เจอใน GitHub ครับ")
+        st.error(f"❌ ไม่พบไฟล์วิดีโอ {video_file} ใน GitHub")
         return None
 
     try:
-        # 1. โหลดวิดีโอ (ลดคุณภาพลงนิดเพื่อไม่ให้ RAM เต็ม)
-        clip = VideoFileClip(video_file).with_effects([])
+        # 2. โหลดวิดีโอ (ลดขนาดการประมวลผลเพื่อ RAM)
+        clip = VideoFileClip(video_file)
         
-        # 2. ใส่เนื้อเพลงภาษาอังกฤษ (ใช้ฟอนต์มาตรฐานของระบบ)
-        lyrics_data = [
-            (1.0, 5.0, "One day if you look back..."),
-            (6.0, 10.0, "You might see what was broken.")
-        ]
-        
-        txt_clips = [clip]
-        for start, end, text in lyrics_data:
-            txt = (TextClip(
-                text=text, 
-                font_size=50, 
+        # 3. ใส่เนื้อเพลงภาษาอังกฤษ (ใช้ฟอนต์มาตรฐานของระบบ)
+        txt = (TextClip(
+                text="STAY STILL, NO PAIN", 
+                font_size=80, 
                 color='yellow', 
-                font='Arial', # ใช้ฟอนต์มาตรฐานภาษาอังกฤษ
-                duration=(end - start)
-            ).with_start(start).with_position(('center', 0.8 * clip.h)))
-            txt_clips.append(txt)
+                font='Arial', 
+                duration=5
+            ).with_start(1).with_position(('center', 'center')))
         
-        # 3. รวมร่าง
-        final = CompositeVideoClip(txt_clips)
-        output = "synapse_en_version.mp4"
+        # 4. รวมร่าง
+        final = CompositeVideoClip([clip, txt])
+        output = "test_english.mp4"
         
-        # 4. เขียนไฟล์แบบ "ประหยัดพลังงาน"
+        # 5. สั่งเขียนไฟล์แบบประหยัดพลังงานที่สุด
         final.write_videofile(
             output, 
-            fps=12,             # ลด FPS ลงเพื่อให้เครื่องไม่ค้าง
+            fps=12,             # ลดเฟรมเรตลงเพื่อให้มือถือ/Cloud รับไหว
             codec="libx264", 
             audio_codec="aac",
-            threads=1,          # ใช้แค่ 1 thread เพื่อความนิ่ง
+            threads=1,
             logger=None
         )
         
         clip.close()
+        final.close()
         return output
 
     except Exception as e:
-        st.error(f"❌ เกิดข้อผิดพลาด: {e}")
+        st.error(f"❌ ติดปัญหาตอนรัน: {e}")
         return None
 
-# --- ส่วนหน้าจอแอป ---
-st.title("🎬 SYNAPSE Video Test")
-st.write("โหมดทดสอบ: ภาษาอังกฤษ (English Mode)")
+# --- หน้าจอหลัก ---
+st.title("🎬 SYNAPSE System Test")
+st.write("กำลังทดสอบระบบด้วยภาษาอังกฤษ (English Test Mode)")
 
-if st.button("🚀 เริ่มสร้างวิดีโอ (ภาษาอังกฤษ)"):
-    with st.spinner("กำลังประมวลผล... กรุณารอสักครู่ (ประมาณ 1-2 นาที)"):
+if st.button("🚀 เริ่มทดสอบรันวิดีโอ"):
+    with st.spinner("ระบบกำลังประมวลผล... กรุณารอสักครู่"):
         res = make_video()
         if res:
             st.video(res)
-            st.success("ภาษาอังกฤษรันผ่านแล้วครับเพื่อน!")
+            st.success("ภาษาอังกฤษผ่านแล้ว! ระบบ MoviePy ทำงานได้ปกติครับ")
