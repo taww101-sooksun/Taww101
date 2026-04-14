@@ -3,6 +3,10 @@ import os
 from moviepy.video.io.VideoFileClip import VideoFileClip
 from moviepy.video.VideoClip import TextClip
 from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
+import streamlit as st
+import os
+# เปลี่ยนจาก from moviepy.video... เป็นการ import ตรงๆ จาก moviepy
+from moviepy import VideoFileClip, TextClip, CompositeVideoClip
 
 def make_video():
     if not os.path.exists("ta101.mp4"):
