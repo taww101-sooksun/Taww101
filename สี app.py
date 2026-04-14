@@ -21,9 +21,8 @@ def init_system():
     if 'theme_set' not in st.session_state: st.session_state.theme_set = "Matrix"
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
     if 'vdo_index' not in st.session_state: st.session_state.vdo_index = 0
-    if 'auth_status' not in st.session_state: st.session_state.auth_status = False
+    if 'auth_status' not in st.session_state: st.session_status = False
     if 'user' not in st.session_state: st.session_state.user = None
-    if 'active_target' not in st.session_state: st.session_state.active_target = None 
 
     if not firebase_admin._apps:
         try:
@@ -45,9 +44,6 @@ def apply_theme():
     }
     t = themes.get(st.session_state.theme_set, themes["Matrix"])
     bg_style = f"background-color: {t['bg']} !important;"
-    if st.session_state.theme_set == "Rainbow":
-        bg_style = "background: linear-gradient(135deg, #FF99CC, #99CCFF, #99FFCC) !important;"
-
     st.markdown(f"""
         <style>
         .stApp {{ {bg_style} color: {t['text']} !important; }}
@@ -58,40 +54,43 @@ def apply_theme():
     return t
 
 # ==========================================
-# 2. GPS RADAR
+# 2. GPS RADAR (แก้จุดตาย KeyError)
 # ==========================================
 def room_gps(theme):
     st.subheader("🛰️ SYNAPSE RADAR SYSTEM")
-    st.components.v1.html(f"""
-        <div style="background:rgba(0,0,0,0.5); padding:10px; border-radius:10px; border:1px solid {theme['main']};">
-            <h3 style="color:{theme['main']}; margin:0; font-family:monospace;">🕒 SYSTEM TIME: <span id="clock">00:00:00</span></h3>
-        </div>
-        <script>setInterval(() => {{ document.getElementById('clock').innerText = new Date().toLocaleTimeString('th-TH'); }}, 1000);</script>
-    """, height=70)
-    
     loc = get_geolocation()
-    if loc:
-        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-        db.reference(f'locations/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
-        m = folium.Map(location=[lat, lon], zoom_start=18, tiles='https://mt1.google.com/vt/lyrs=y&x={{x}}&y={{y}}&z={{z}}', attr='Google Satellite')
-        folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
-        st_folium(m, width=700, height=400)
-    else: st.warning("📡 ค้นหาสัญญาณดาวเทียม...")
+    
+    # ตรวจสอบว่ามีข้อมูลพิกัดจริงๆ ไหมก่อนเรียกใช้
+    if loc and 'coords' in loc:
+        try:
+            lat = loc['coords']['latitude']
+            lon = loc['coords']['longitude']
+            db.reference(f'locations/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
+            
+            c1, c2 = st.columns(2)
+            c1.metric("📍 LATITUDE", f"{lat:.6f}")
+            c2.metric("📍 LONGITUDE", f"{lon:.6f}")
+
+            m = folium.Map(location=[lat, lon], zoom_start=18, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google Satellite')
+            folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
+            st_folium(m, width=700, height=400)
+        except Exception as e: st.error(f"❌ GPS Error: {e}")
+    else: 
+        st.info("📡 กำลังค้นหาสัญญาณดาวเทียม... โปรดกด Allow เพื่อระบุตำแหน่ง")
 
 # ==========================================
 # 3. COMMUNICATION
 # ==========================================
 def room_comms(theme):
     st.subheader("💬 ศูนย์กลางการสื่อสาร")
-    t_lobby, t_private = st.tabs(["🌐 Lobby", "🔐 แชตส่วนตัว"])
+    m = st.text_input("พิมพ์ข้อความสาธารณะ...")
+    if st.button("📢 SEND") and m:
+        db.reference('public_chat').push({'u': st.session_state.user, 'msg': m, 'ts': time.time()})
     
-    with t_lobby:
-        m = st.text_input("พิมพ์ข้อความ...")
-        if st.button("📢 SEND") and m:
-            db.reference('public_chat').push({'u': st.session_state.user, 'msg': m, 'ts': time.time()})
-        data = db.reference('public_chat').order_by_key().limit_to_last(10).get()
-        if data:
-            for v in reversed(list(data.values())): st.write(f"🟢 **{v.get('u')}**: {v.get('msg')}")
+    data = db.reference('public_chat').order_by_key().limit_to_last(10).get()
+    if data:
+        for v in reversed(list(data.values())):
+            st.write(f"🟢 **{v.get('u')}**: {v.get('msg')}")
 
 # ==========================================
 # 4. MUSIC & VIDEO ENGINE
@@ -110,49 +109,51 @@ def room_music():
 def room_video(theme):
     st.subheader("🎬 VIDEO LYRIC ENGINE")
     videos = sorted([f for f in os.listdir('.') if f.endswith(".mp4") and not f.startswith("sync_")])
-    if not videos: return st.warning("⚠️ ไม่พบไฟล์วิดีโอ")
+    if not videos: return st.warning("⚠️ ไม่พบไฟล์วิดีโอ .mp4")
     
     current_vdo = videos[st.session_state.vdo_index]
     st.info(f"🎞️ Selected: {current_vdo}")
 
-    # Timeline ความจริงที่เพื่อนให้มา
+    # Timeline ตามที่คุณให้มาเป๊ะๆ
     lyrics = [
-        (1.0, 10.0, "วันหนึ่งถ้าเธมองย้อนกลับมา\nอาจจะเห็นสิ่งที่เคยทำพังลงไป"),
+        (1.0, 10.0, "วันหนึ่งถ้าเธอมองย้อนกลับมา\nอาจจะเห็นสิ่งที่เคยทำพังลงไป"),
         (13.0, 23.0, "แต่ถึงตอนนั้น ฉันคงเดินไกล\nทิ้งเรื่องของเราไว้ในอดีต"),
-        (26.0, 60.0, "ขอบคุณถ้อยคำที่เคยทำฉันร้าว\nกลับกลายเป็นทางให้ฉันหันมาเจอแสงในตัวเอง")
+        (26.0, 60.0, "ขอบคุณถ้อยคำที่เคยทำฉันร้าว\nหันมาเจอแสงในตัวเอง")
     ]
 
-    if st.button("🚀 PROCESS VIDEO (วิ้งๆ)"):
-        f_path = os.path.abspath("THSarabunNew.ttf")
-        with st.spinner("กำลังประกอบร่างวิดีโอ..."):
-            try:
-                base = VideoFileClip(current_vdo)
-                txt_clips = [base]
-                for s, e, txt in lyrics:
-                    t = TextClip(text=txt, font_size=50, color='yellow', font=f_path, 
-                                 duration=(e-s), method='caption', size=(base.w*0.8, None)
-                                ).with_start(s).with_position(('center', 0.8*base.h))
-                    txt_clips.append(t)
-                
-                final = CompositeVideoClip(txt_clips)
-                out = f"sync_{current_vdo}"
-                final.write_videofile(out, fps=12, codec="libx264")
-                st.video(out)
-            except Exception as e: st.error(f"❌ Error: {e}")
-    
-    if st.button("⏭️ NEXT VIDEO"):
-        st.session_state.vdo_index = (st.session_state.vdo_index + 1) % len(videos)
-        st.rerun()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🚀 PROCESS VIDEO"):
+            f_path = os.path.abspath("THSarabunNew.ttf")
+            with st.spinner("กำลังเสกตัวหนังสือวิ้งๆ..."):
+                try:
+                    base = VideoFileClip(current_vdo)
+                    txt_clips = [base]
+                    for s, e, txt in lyrics:
+                        t = TextClip(text=txt, font_size=50, color='yellow', font=f_path, 
+                                     duration=(e-s), method='caption', size=(base.w*0.8, None)
+                                    ).with_start(s).with_position(('center', 0.8*base.h))
+                        txt_clips.append(t)
+                    
+                    final = CompositeVideoClip(txt_clips)
+                    out = f"sync_{current_vdo}"
+                    final.write_videofile(out, fps=12, codec="libx264")
+                    st.video(out)
+                except Exception as e: st.error(f"❌ ระบบวิดีโอขัดข้อง: {e}")
+    with col2:
+        if st.button("⏭️ NEXT VIDEO"):
+            st.session_state.vdo_index = (st.session_state.vdo_index + 1) % len(videos)
+            st.rerun()
 
 # ==========================================
 # MAIN EXECUTION
 # ==========================================
 def main():
     init_system()
-    if not st.session_state.auth_status:
+    if not st.session_state.get('auth_status', False):
         st.title("🛡️ SYNAPSE LOGIN")
-        u = st.text_input("User")
-        p = st.text_input("Pass", type="password")
+        u = st.text_input("Username")
+        p = st.text_input("Password", type="password")
         if st.button("ENTER"):
             acc = db.reference(f'accounts/{u}').get()
             if acc and acc.get('pw') == hash_pw(p):
@@ -162,12 +163,20 @@ def main():
 
     with st.sidebar:
         st.title("⚙️ CONTROL")
-        st.write(f"👤 **{st.session_state.user}**")
+        st.write(f"👤 User: **{st.session_state.user}**")
         st.session_state.theme_set = st.radio("🎨 Theme:", ["Matrix", "Ocean", "Ember", "Rainbow"])
-        if st.button("🚪 LOGOUT"): st.session_state.auth_status = False; st.rerun()
+        if st.button("🚪 LOGOUT"): 
+            st.session_state.auth_status = False
+            st.rerun()
     
     t = apply_theme()
-    menu = {"🛰️ RADAR": lambda: room_gps(t), "💬 COMMS": lambda: room_comms(t), "🎧 MUSIC": room_music, "🎬 VIDEO": lambda: room_video(t)}
+    menu = {
+        "🛰️ RADAR": lambda: room_gps(t), 
+        "💬 COMMS": lambda: room_comms(t), 
+        "🎧 MUSIC": room_music, 
+        "🎬 VIDEO": lambda: room_video(t)
+    }
+    
     tabs = st.tabs(list(menu.keys()))
     for i, (name, func) in enumerate(menu.items()):
         with tabs[i]: func()
