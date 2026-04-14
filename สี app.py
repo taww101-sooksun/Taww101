@@ -3,45 +3,47 @@ import os
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip
 
 def make_video():
-    target_file = "ta101.mp4" 
+    target_file = "ta101.mp4"
+    # ระบุชื่อไฟล์ฟอนต์ที่เพื่อนอัปโหลดขึ้น GitHub (ตัวอย่าง: 'font.ttf')
+    font_path = "THSarabunNew.ttf" 
+
     if not os.path.exists(target_file):
         st.error(f"ไม่พบไฟล์ {target_file}")
         return None
+    
+    # ตรวจสอบว่ามีไฟล์ฟอนต์ไหม ถ้าไม่มีให้ใช้ฟอนต์ระบบ (ป้องกันแอปค้าง)
+    if not os.path.exists(font_path):
+        st.warning("⚠️ ไม่พบไฟล์ฟอนต์ใน GitHub ระบบจะลองใช้ฟอนต์มาตรฐานแทน")
+        font_to_use = "Courier" # ฟอนต์มาตรฐานที่มักจะมีบน Linux
+    else:
+        font_to_use = font_path
 
     try:
-        # 1. โหลดวิดีโอหลัก
         base_video = VideoFileClip(target_file)
         
-        # 2. รายการเนื้อเพลงและเวลา (เพื่อนสามารถเพิ่มท่อนอื่นๆ ต่อได้ที่นี่)
         lyrics_data = [
             (1.0, 10.0, "วันหนึ่งถ้าเธอมองย้อนกลับมา\nอาจจะเห็นสิ่งที่เคยทำพังลงไป"),
             (13.0, 23.0, "แต่ถึงตอนนั้น ฉันคงเดินไกล\nทิ้งเรื่องของเราไว้ในอดีตคำที่เธอเคยให้"),
-            (26.0, 40.0, "ขอบคุณถ้อยคำที่เคยทำฉันร้าว\nคำที่ทำให้ใจฉันแทบไม่เหลืออะไร"),
-            (41.0, 55.0, "คืนที่ร้องไห้จนไม่รู้จะไปทางไหน\nกลับกลายเป็นทางให้ฉันหันมาเจอแสงในตัวเอง"),
-            (104.0, 114.0, "ปล่อยวางความโกรธที่เผาใจ..."),
-            (117.0, 125.0, "ทิ้งความโลภที่ไม่มีวันพอ")
+            (26.0, 40.0, "ขอบคุณถ้อยคำที่เคยทำฉันร้าว\nคำที่ทำให้ใจฉันแทบไม่เหลืออะไร")
         ]
         
         clips = [base_video]
 
-        # 3. ลูปสร้างตัวหนังสือวิ้งๆ ตามจังหวะ
         for start, end, text in lyrics_data:
             txt_clip = (TextClip(
                 text=text, 
-                font_size=50, 
+                font_size=60, 
                 color='yellow', 
-                font='Arial',
+                font=font_to_use, # ใช้ฟอนต์ที่เราเตรียมไว้
                 duration=(end - start)
             ).with_start(start)
-             .with_position(('center', 0.8 * base_video.h))) # วางไว้กึ่งกลางค่อนไปทางล่าง
+             .with_position(('center', 0.8 * base_video.h)))
             
             clips.append(txt_clip)
         
-        # 4. รวมร่าง
         final = CompositeVideoClip(clips)
-        output_name = "ta101_full_lyrics.mp4"
+        output_name = "ta101_lyrics_final.mp4"
         
-        # เขียนไฟล์ (ใส่ logger=None เพื่อไม่ให้หน้าเว็บค้าง)
         final.write_videofile(output_name, fps=24, codec="libx264")
         
         base_video.close()
@@ -49,13 +51,13 @@ def make_video():
         return output_name
 
     except Exception as e:
-        st.error(f"❌ Error: {e}")
+        st.error(f"❌ แก้ไข Error: {e}")
         return None
 
 st.title("🎬 SYNAPSE Lyrics Maker")
-if st.button("🚀 เริ่มใส่เนื้อเพลงลง ta101.mp4"):
-    with st.spinner("กำลังประมวลผล... ท่อนเพลงกำลังจะวิ้งขึ้นมาแล้วครับ"):
+if st.button("🚀 เริ่มใส่เนื้อเพลง (ฉบับแก้ฟอนต์)"):
+    with st.spinner("กำลังประมวลผล..."):
         res = make_video()
         if res:
             st.video(res)
-            st.success("ใส่เนื้อเพลงเรียบร้อยแล้วครับเพื่อน!")
+            st.success("เสร็จแล้วครับเพื่อน!")
