@@ -2,43 +2,25 @@ import streamlit as st
 import os
 import random
 import streamlit.components.v1 as components
-import streamlit as st
-
-# --- 1. สร้างปุ่มลอยด้านล่าง (Floating Button) ---
-# ใช้ st.markdown เพื่อสร้างปุ่มที่ตำแหน่งตายตัวด้านล่างจอ
 st.markdown("""
     <style>
-    /* ซ่อน Header เดิมทั้งหมด */
-    header[data-testid="stHeader"] {
-        display: none !important;
-    }
-
-    /* สร้างปุ่มลอยไว้ด้านล่างจอ */
-    .fixed-footer {
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        background-color: rgba(0,0,0,0.8);
-        padding: 10px;
-        text-align: center;
-        z-index: 999;
-        border-top: 2px solid #39FF14;
-    }
+    /* 1. ซ่อนแถบ Header ด้านบนทั้งหมด (รวมถึงติ่งเมนูขวาบน) */
+    header {visibility: hidden;}
     
-    .stButton>button {
-        width: 80%;
-        height: 50px;
-        border-radius: 25px;
-        border: 2px solid #39FF14;
-        background-color: #121212;
-        color: #39FF14;
-        font-weight: bold;
-        font-size: 18px;
-        box-shadow: 0px 0px 15px #39FF14;
+    /* 2. ซ่อนแถบ Footer ด้านล่าง (Made with Streamlit) */
+    footer {visibility: hidden;}
+    
+    /* 3. ซ่อนปุ่มเมนูหลัก (แฮมเบอร์เกอร์เมนู) */
+    #MainMenu {visibility: hidden;}
+    
+    /* 4. (แถม) ดันเนื้อหาขึ้นไปให้สุด ไม่ให้เหลือที่ว่างด้านบน */
+    .block-container {
+        padding-top: 0rem;
+        padding-bottom: 0rem;
     }
     </style>
     """, unsafe_allow_html=True)
+
 
 # ส่วนที่แสดงผลปุ่มด้านล่าง
 st.markdown('<div class="fixed-footer">', unsafe_allow_html=True)
