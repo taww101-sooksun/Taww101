@@ -3,52 +3,55 @@ import os
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip
 
 def make_video():
-    # 1. ตั้งชื่อให้ตรงกับที่เห็นใน Logs
     video_file = "ta101.mp4"
     font_file = "THSarabunNew.ttf" 
 
-    # เช็คไฟล์ก่อนเริ่ม (เพื่อความชัวร์)
-    if not os.path.exists(video_file):
-        st.error(f"❌ ไม่เจอวิดีโอชื่อ: {video_file}")
-        return None
-    if not os.path.exists(font_file):
-        st.error(f"❌ ไม่เจอไฟล์ฟอนต์ชื่อ: {font_file}")
+    if not os.path.exists(video_file) or not os.path.exists(font_file):
+        st.error("❌ ไฟล์ไม่ครบ! เช็คชื่อ ta101.mp4 และ THSarabunNew.ttf ใน GitHub อีกทีนะ")
         return None
 
     try:
-        # 2. โหลดวิดีโอ
-        clip = VideoFileClip(video_file)
+        # 1. โหลดวิดีโอแบบลดขนาด (เพื่อให้ RAM ไม่เต็ม)
+        clip = VideoFileClip(video_file).with_effects([]) 
         
-        # 3. ใส่เนื้อเพลง (ตัวอย่างท่อนแรก)
+        # 2. ใส่เนื้อเพลง
         txt = (TextClip(
                 text="วันหนึ่งถ้าเธอมองย้อนกลับมา", 
-                font_size=70, 
+                font_size=60, 
                 color='yellow', 
                 font=font_file, 
                 duration=5
-            ).with_start(1).with_position(('center', 0.8 * clip.h)))
+            ).with_start(1).with_position(('center', 0.7 * clip.h)))
         
-        # 4. รวมร่าง
+        # 3. รวมร่าง
         final = CompositeVideoClip([clip, txt])
-        output = "synapse_final.mp4"
+        output = "synapse_result.mp4"
         
-        # เขียนไฟล์
-        final.write_videofile(output, fps=24, codec="libx264")
+        # 4. เขียนไฟล์แบบประหยัดพลังงาน (หัวใจสำคัญตรงนี้ครับ!)
+        final.write_videofile(
+            output, 
+            fps=15,             # ลด FPS ลงนิดหน่อยเพื่อให้รันผ่าน
+            codec="libx264", 
+            audio_codec="aac",
+            bitrate="1000k",    # จำกัดคุณภาพเพื่อไม่ให้เครื่องค้าง
+            threads=1,          # ใช้ 1 thread เพื่อความนิ่ง
+            logger=None         # ปิด Log หน้าจอเพื่อลดภาระ
+        )
         
         clip.close()
+        final.close()
         return output
 
     except Exception as e:
-        st.error(f"❌ ติดปัญหา: {e}")
+        st.error(f"❌ เครื่องประมวลผลไม่ไหว: {e}")
         return None
 
 # --- หน้าจอแอป ---
-st.title("🎬 SYNAPSE Lyrics Maker")
-st.write(f"สถานะไฟล์: วิดีโอ({os.path.exists('ta101.mp4')}), ฟอนต์({os.path.exists('THSarabunNew.ttf')})")
+st.title("🎬 SYNAPSE Video Maker")
 
-if st.button("🚀 เริ่มรันวิดีโอ"):
-    with st.spinner("กำลังประมวลผล..."):
+if st.button("🚀 เริ่มเสกตัวหนังสือ (แบบประหยัด RAM)"):
+    with st.spinner("กำลังประมวลผล... ขั้นตอนนี้ใช้เวลา 1-2 นาที ห้ามปิดหน้าจอนะครับ"):
         res = make_video()
         if res:
             st.video(res)
-            st.success("สำเร็จแล้วครับเพื่อน!")
+            st.success("สำเร็จแล้ว! อยู่นิ่งๆ ไม่เจ็บตัวนะครับเพื่อน")
