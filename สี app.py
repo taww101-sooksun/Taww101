@@ -1,82 +1,258 @@
+
 import streamlit as st
-import os
-import base64
-from moviepy import VideoFileClip, TextClip, CompositeVideoClip
+import os 
+import time
+from datetime import datetime
+import firebase_admin
+from firebase_admin import credentials, db
+import streamlit.components.v1 as components
+import folium
+from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
+import hashlib
 
-def room_video_sync():
-    st.subheader("🎬 ระบบวิดีโอเนื้อเพลง (Sync Master)")
+# ==========================================
+# 1. CORE SYSTEM & AUTHENTICATION
+# ==========================================
+def init_system():
+    if 'theme_set' not in st.session_state: st.session_state.theme_set = "Matrix"
+    if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    if 'auth_status' not in st.session_state: st.session_state.auth_status = False
+    if 'user' not in st.session_state: st.session_state.user = None
+    if 'active_target' not in st.session_state: st.session_state.active_target = None 
 
-    # 1. ตรวจสอบไฟล์วิดีโอในโฟลเดอร์ (เลียนแบบ music_files)
-    video_files = sorted([f for f in os.listdir('.') if f.endswith(".mp4")])
+    if not firebase_admin._apps:
+        try:
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
+        except Exception as e:
+            st.error(f"🛰️ Firebase Connection Error: {e}")
+
+def hash_pw(password):
+    return hashlib.sha256(str.encode(password)).hexdigest()
+
+def apply_theme():
+    themes = {
+        "Matrix":  {"bg": "#000000", "main": "#39FF14", "text": "#FFFFFF", "chat_user": "#39FF14", "chat_friend": "#333"},
+        "Ocean":   {"bg": "#001219", "main": "#00A8E8", "text": "#E0FBFC", "chat_user": "#00A8E8", "chat_friend": "#005F73"},
+        "Ember":   {"bg": "#1a0000", "main": "#FF4D4D", "text": "#FFFFFF", "chat_user": "#FF4D4D", "chat_friend": "#990000"},
+        "Rainbow": {"bg": "#FFFFFF", "main": "#FF69B4", "text": "#000000", "chat_user": "#FFB6C1", "chat_friend": "#E0FFFF"}
+    }
+    t = themes.get(st.session_state.theme_set, themes["Matrix"])
+    bg_style = f"background-color: {t['bg']} !important;"
+    if st.session_state.theme_set == "Rainbow":
+        bg_style = "background: linear-gradient(135deg, #FF99CC, #99CCFF, #99FFCC) !important;"
+
+    st.markdown(f"""
+        <style>
+        .stApp {{ {bg_style} color: {t['text']} !important; }}
+        .stButton>button {{ border: 2px solid {t['main']} !important; color: {t['text']} !important; background: {t['main']} !important; border-radius: 12px; font-weight: bold; width: 100%; }}
+        h1, h2, h3, p, span, label, .stMarkdown, .stMetric {{ color: {t['text']} !important; }}
+        .stTabs [aria-selected="true"] {{ color: {t['main']} !important; border-bottom: 3px solid {t['main']} !important; font-weight: bold; }}
+        </style>
+    """, unsafe_allow_html=True)
+    return t
+
+# ==========================================
+# 2. GPS RADAR (อัปเกรดแผนที่ดาวเทียม & เวลาจริง)
+# ==========================================
+def room_gps(theme):
+    st.subheader("🛰️ SYNAPSE RADAR SYSTEM")
     
-    if not video_files:
-        st.warning("⚠️ ไม่พบไฟล์วิดีโอ .mp4 ในระบบ")
+    # ส่วนแสดงเวลาแบบ Real-time
+    t_col1, t_col2 = st.columns([2, 1])
+    with t_col1:
+        # ใช้ JavaScript เพื่อให้เวลาเดินวินาทีต่อวินาทีบนหน้าจอโดยไม่ต้อง Rerun ทั้งหน้า
+        st.components.v1.html(f"""
+            <div style="background:rgba(0,0,0,0.5); padding:10px; border-radius:10px; border:1px solid {theme['main']};">
+                <h3 style="color:{theme['main']}; margin:0; font-family:monospace;">
+                    🕒 SYSTEM TIME: <span id="clock">00:00:00</span>
+                </h3>
+            </div>
+            <script>
+                setInterval(() => {{
+                    const now = new Date();
+                    document.getElementById('clock').innerText = now.toLocaleTimeString('th-TH');
+                }}, 1000);
+            </script>
+        """, height=70)
+    
+    # ดึงพิกัดจริงจากอุปกรณ์
+    loc = get_geolocation()
+    
+    if loc:
+        try:
+            lat = loc['coords']['latitude']
+            lon = loc['coords']['longitude']
+            
+            # อัปเดตพิกัดลง Firebase เพื่อให้เพื่อนเห็นเรา
+            db.reference(f'locations/{st.session_state.user}').update({
+                'lat': lat, 'lon': lon, 
+                'ts': time.time(),
+                'last_seen': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+
+            c1, c2 = st.columns(2)
+            c1.metric("📍 LATITUDE", f"{lat:.6f}")
+            c2.metric("📍 LONGITUDE", f"{lon:.6f}")
+            
+            # --- ตั้งค่าแผนที่ดาวเทียม (Hybrid) ---
+            google_hybrid = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+            
+            m = folium.Map(
+                location=[lat, lon], 
+                zoom_start=18, # ซูมระดับ 18 เห็นหลังคาบ้านชัด
+                tiles=google_hybrid,
+                attr='Google Satellite'
+            )
+
+            # หมุดระบุตัวตนของคุณ (สีแดง)
+            folium.Marker(
+                [lat, lon], 
+                popup=f"AGENT: {st.session_state.user}", 
+                tooltip="ตำแหน่งปัจจุบันของคุณ",
+                icon=folium.Icon(color='red', icon='user', prefix='fa')
+            ).add_to(m)
+
+            # --- ระบบระบุสถานที่ใกล้เคียง (ปักหมุดสถานที่จริง) ---
+            # คุณสามารถเพิ่มชื่อสถานที่ใกล้เคียงที่ต้องการให้ระบบแจ้งเตือนได้ที่นี่
+            poi_list = [
+                {"name": "วัดกระทุ่มเสือปลา (หลวงพ่อดำ)", "pos": [13.7229, 100.6887]},
+                {"name": "วัดลานบุญ", "pos": [13.7246, 100.7195]},
+                {"name": "สน.ประเวศ", "pos": [13.7208, 100.6531]},
+                {"name": "สนามบินสุวรรณภูมิ", "pos": [13.6895, 100.7501]}
+            ]
+
+            for poi in poi_list:
+                folium.Marker(
+                    poi["pos"], 
+                    popup=poi["name"], 
+                    tooltip=poi["name"],
+                    icon=folium.Icon(color='blue', icon='location-dot', prefix='fa')
+                ).add_to(m)
+                
+            # แสดงแผนที่
+            st_folium(m, width=1000, height=500)
+            
+            st.success(f"✅ ระบุตำแหน่งสำเร็จ: กำลังติดตามสัญญาณของ {st.session_state.user}")
+
+        except Exception as e: 
+            st.error(f"❌ พิกัดขัดข้อง: {e}")
+    else: 
+        st.warning("📡 กำลังค้นหาสัญญาณจากดาวเทียม... กรุณากด 'Allow' เพื่อเข้าถึงตำแหน่ง")
+
+# ==========================================
+# 3. COMMUNICATION (Stable Chat & Video)
+# ==========================================
+def room_comms(theme):
+    st.subheader("💬 ศูนย์กลางการสื่อสาร")
+    t_lobby, t_private, t_video = st.tabs(["🌐 Lobby", "🔐 แชตส่วนตัว", "📹 วิดีโอคอล"])
+    
+    all_users = db.reference('accounts').get()
+    friends = [uid for uid in all_users.keys() if uid != st.session_state.user] if all_users else []
+
+    with t_lobby:
+        with st.form("lobby_form", clear_on_submit=True):
+            m = st.text_input("พิมพ์ข้อความสาธารณะ...")
+            if st.form_submit_button("📢 SEND") and m:
+                db.reference('public_chat').push({'u': st.session_state.user, 'msg': m, 'ts': time.time()})
+        
+        data = db.reference('public_chat').order_by_key().limit_to_last(15).get()
+        if data:
+            for v in reversed(list(data.values())):
+                st.write(f"🟢 **{v.get('u','?') }**: {v.get('msg','')}")
+
+    with t_private:
+        st.caption("📩 กล่องข้อความส่วนตัว")
+        target = st.selectbox("เลือกเพื่อน:", ["-- เลือกชื่อ --"] + friends)
+        if target != "-- เลือกชื่อ --":
+            st.session_state.active_target = target
+            rid = "_".join(sorted([st.session_state.user, target]))
+            with st.form("priv_form", clear_on_submit=True):
+                pm = st.text_input(f"ส่งข้อความถึง {target}")
+                if st.form_submit_button("🔒 SEND"):
+                    db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'msg': pm, 'ts': time.time()})
+            
+            msgs = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(10).get()
+            if msgs:
+                for v in reversed(list(msgs.values())):
+                    u_name = v.get('u', 'Unknown')
+                    side = "right" if u_name == st.session_state.user else "left"
+                    bg = theme['chat_user'] if u_name == st.session_state.user else theme['chat_friend']
+                    st.markdown(f'<div style="text-align:{side};"><div style="display:inline-block; background:{bg}; padding:10px; border-radius:15px; margin:2px; color:white;"><b>{u_name}</b>: {v.get("msg","")}</div></div>', unsafe_allow_html=True)
+
+    with t_video:
+        target_v = st.selectbox("เลือกเพื่อนที่จะคอล:", ["-- เลือกชื่อ --"] + friends, key="v_call_sel")
+        if target_v != "-- เลือกชื่อ --":
+            v_html = f"""
+            <div id="v-box" style="background:#111; padding:15px; border-radius:15px; border:2px solid {theme['main']}; text-align:center;">
+                <div style="position:relative; width:100%; height:240px; background:#000; border-radius:10px; overflow:hidden;">
+                    <video id="remote" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                    <video id="local" autoplay playsinline muted style="position:absolute; bottom:5px; right:5px; width:70px; border:1px solid white;"></video>
+                </div>
+                <div style="margin-top:10px; display:flex; gap:5px;">
+                    <button id="call" style="flex:1; padding:10px; background:{theme['main']}; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">📹 CALL</button>
+                    <button id="hangup" style="flex:1; padding:10px; background:#f44; color:white; border:none; border-radius:5px; display:none; cursor:pointer;">🔴 HANGUP</button>
+                </div>
+                <p id="peer-id" style="color:gray; font-size:10px;"></p>
+            </div>
+            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+            <script>
+                const peer = new Peer('{st.session_state.user}', {{config: {{'iceServers': [{{ 'urls': 'stun:stun.l.google.com:19302' }}]}}}});
+                let currentCall;
+                peer.on('open', id => document.getElementById('peer-id').innerText = "ID: " + id);
+                peer.on('call', c => {{ if(confirm('รับสายจาก ' + c.peer + '?')) {{ navigator.mediaDevices.getUserMedia({{video:true, audio:true}}).then(s => {{ document.getElementById('local').srcObject=s; c.answer(s); setup(c); }}); }} }});
+                function setup(c) {{ 
+                    currentCall=c; document.getElementById('call').style.display='none'; document.getElementById('hangup').style.display='inline-block';
+                    c.on('stream', rs => document.getElementById('remote').srcObject=rs);
+                }}
+                document.getElementById('call').onclick = () => {{ navigator.mediaDevices.getUserMedia({{video:true, audio:true}}).then(s => {{ document.getElementById('local').srcObject=s; const c=peer.call('{target_v}', s); setup(c); }}); }};
+                document.getElementById('hangup').onclick = () => {{ if(currentCall) currentCall.close(); location.reload(); }};
+            </script>
+            """
+            components.html(v_html, height=400)
+
+# ==========================================
+# 4. MULTIMEDIA & MAIN
+# ==========================================
+def room_music():
+    st.subheader("🎧 SYNAPSE PLAYER")
+    songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+    if songs:
+        curr = songs[st.session_state.song_index]
+        c1, c2 = st.columns([1, 1.2])
+        with c1: st.info(f"💿 Track: {curr}")
+        with c2: st.audio(curr)
+        for idx, s in enumerate(songs):
+            if st.button(f"🎶 {s}", key=f"s_{idx}"):
+                st.session_state.song_index = idx
+                st.rerun()
+
+def main():
+    init_system()
+    if not st.session_state.auth_status:
+        st.title("🛡️ SYNAPSE LOGIN")
+        u = st.text_input("Username")
+        p = st.text_input("Password", type="password")
+        if st.button("ENTER"):
+            acc = db.reference(f'accounts/{u}').get()
+            if acc and acc.get('pw') == hash_pw(p):
+                st.session_state.auth_status, st.session_state.user = True, u
+                st.rerun()
+            else: st.error("❌ Denied")
         return
 
-    # สร้าง index สำหรับวิดีโอใน session_state ถ้ายังไม่มี
-    if 'vdo_index' not in st.session_state:
-        st.session_state.vdo_index = 0
-
-    # 2. เลือกวิดีโอปัจจุบัน
-    current_vdo = video_files[st.session_state.vdo_index]
-    st.info(f"🎥 ไฟล์ที่เลือก: {current_vdo} (ลำดับที่ {st.session_state.vdo_index + 1}/{len(video_files)})")
-
-    # 3. ข้อมูล Timeline เนื้อเพลงที่เพื่อนให้มา
-    lyrics_data = [
-        (1.0, 10.0, "วันหนึ่งถ้าเธอมองย้อนกลับมา\nอาจจะเห็นสิ่งที่เคยทำพังลงไป"),
-        (13.0, 23.0, "แต่ถึงตอนนั้น ฉันคงเดินไกล\nทิ้งเรื่องของเราไว้ในอดีตคำที่เธอเคยให้"),
-        (26.0, 60.0, "ขอบคุณถ้อยคำที่เคยทำฉันร้าว\nคำที่ทำให้ใจฉันแทบไม่เหลืออะไร\nคืนที่ร้องไห้จนไม่รู้จะไปทางไหน"),
-        (64.0, 74.0, "ปล่อยวางความโกรธที่เผาใจ..."),
-        (77.0, 85.0, "ทิ้งความโลภที่ไม่มีวันพอ")
-    ]
-
-    # 4. ส่วนควบคุม (เหมือนปุ่มกดเพลงเป๊ะ)
-    col1, col2, col3 = st.columns(3)
+    with st.sidebar:
+        st.title("⚙️ CONTROL")
+        st.write(f"👤 User: **{st.session_state.user}**")
+        st.session_state.theme_set = st.radio("🎨 Theme:", ["Matrix", "Ocean", "Ember", "Rainbow"])
+        if st.button("🚪 LOGOUT"): st.session_state.auth_status = False; st.rerun()
     
-    if col1.button("⏮️ วิดีโอก่อนหน้า"):
-        st.session_state.vdo_index = (st.session_state.vdo_index - 1) % len(video_files)
-        st.rerun()
+    t = apply_theme()
+    menu = {"🛰️ เรดาร์": lambda: room_gps(t), "💬 สื่อสาร": lambda: room_comms(t), "🎧 เพลง": room_music}
+    tabs = st.tabs(list(menu.keys()))
+    for i, (name, func) in enumerate(menu.items()):
+        with tabs[i]: func()
 
-    # ปุ่ม "เริ่มเสกวิ้ง" คือหัวใจของการประกอบร่าง
-    if col2.button("🚀 เริ่มสร้างวิดีโอ"):
-        f_path = os.path.abspath("THSarabunNew.ttf") # ใช้ Path เต็มแก้ทางตัน
-        if os.path.exists(f_path):
-            with st.spinner("กำลังเสกตัวหนังสือวิ้งๆ..."):
-                try:
-                    clip = VideoFileClip(current_vdo)
-                    txt_clips = []
-                    
-                    for start, end, text in lyrics_data:
-                        t_clip = (TextClip(
-                            text=text, 
-                            font_size=55, 
-                            color='yellow', 
-                            font=f_path, 
-                            duration=(end - start),
-                            method='caption',
-                            size=(clip.w * 0.8, None)
-                        ).with_start(start).with_position(('center', 0.8 * clip.h)))
-                        txt_clips.append(t_clip)
-
-                    final = CompositeVideoClip([clip] + txt_clips)
-                    out_name = f"done_{current_vdo}"
-                    final.write_videofile(out_name, fps=12, codec="libx264")
-                    
-                    st.video(out_name)
-                    st.success("✨ วิ้งเรียบร้อยแล้วครับเพื่อน!")
-                except Exception as e:
-                    st.error(f"❌ ระบบยังดื้อ: {e}")
-        else:
-            st.error("❌ หาไฟล์ THSarabunNew.ttf ไม่เจอใน GitHub")
-
-    if col3.button("⏭️ วิดีโอถัดไป"):
-        st.session_state.vdo_index = (st.session_state.vdo_index + 1) % len(video_files)
-        st.rerun()
-
-    # 5. รายชื่อวิดีโอทั้งหมด (คลิกเลือกได้เหมือนระบบเพลง)
-    st.write("---")
-    with st.expander("📂 คลังวิดีโอในระบบ"):
-        for i, f in enumerate(video_files):
-            if st.button(f"🎞️ {f}", key=f"vdo_list_{i}", use_container_width=True):
-                st.session_state.vdo_index = i
-                st.rerun()
+if __name__ == "__main__": main()
