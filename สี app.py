@@ -4,43 +4,51 @@ import random
 import streamlit.components.v1 as components
 import streamlit as st
 
-# --- 1. สร้างฟังก์ชันเปิด Sidebar ในหน้าหลัก ---
-# เราจะใช้คำสั่ง st.button เพื่อสั่งให้ Sidebar แสดงผล
-if st.button("☰ เปิดเมนูควบคุม (Ta101)"):
-    # ใน Streamlit ปกติเราจะใช้จังหวะนี้ในการเปลี่ยนสถานะ 
-    # แต่ปุ่ม Sidebar ดั้งเดิมจะถูกซ่อนไว้ ดังนั้นเราจะใช้ปุ่มนี้เป็นจุดสนใจแทน
-    st.info("ใช้แถบด้านซ้ายในการปรับแต่งสีและเลือกเพลงครับเพื่อน")
-
-# --- 2. CSS ขั้นเด็ดขาด: ย้ายปุ่มและซ่อนติ่ง Header ---
+# --- 1. สร้างปุ่มลอยด้านล่าง (Floating Button) ---
+# ใช้ st.markdown เพื่อสร้างปุ่มที่ตำแหน่งตายตัวด้านล่างจอ
 st.markdown("""
     <style>
-    /* ซ่อน Header และติ่งขวาบนทั้งหมด */
+    /* ซ่อน Header เดิมทั้งหมด */
     header[data-testid="stHeader"] {
         display: none !important;
     }
-    
-    /* ซ่อน Footer (Made with Streamlit) */
-    footer {
-        visibility: hidden;
-    }
-    
-    /* ดันเนื้อหาขึ้นให้สุดหน้าจอ */
-    .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 0rem !important;
-    }
 
-    /* ตกแต่งปุ่มเมนูใหม่ที่เราสร้างขึ้นให้ดูเด่นขึ้น */
-    .stButton>button {
+    /* สร้างปุ่มลอยไว้ด้านล่างจอ */
+    .fixed-footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
         width: 100%;
-        border-radius: 10px;
-        border: 1px solid #39FF14;
-        background-color: rgba(0,0,0,0.5);
+        background-color: rgba(0,0,0,0.8);
+        padding: 10px;
+        text-align: center;
+        z-index: 999;
+        border-top: 2px solid #39FF14;
+    }
+    
+    .stButton>button {
+        width: 80%;
+        height: 50px;
+        border-radius: 25px;
+        border: 2px solid #39FF14;
+        background-color: #121212;
         color: #39FF14;
         font-weight: bold;
+        font-size: 18px;
+        box-shadow: 0px 0px 15px #39FF14;
     }
     </style>
     """, unsafe_allow_html=True)
+
+# ส่วนที่แสดงผลปุ่มด้านล่าง
+st.markdown('<div class="fixed-footer">', unsafe_allow_html=True)
+if st.button("☰ เปิดเมนูควบคุม (Ta101)"):
+    st.sidebar.markdown("### ⚙️ แผงควบคุม")
+    st.info("เมนูถูกเปิดแล้วที่แถบด้านซ้ายครับเพื่อน!")
+st.markdown('</div>', unsafe_allow_html=True)
+
+# เพิ่มที่ว่างด้านล่างสุดของหน้าแอปเพื่อไม่ให้ปุ่มบังเนื้อหา
+st.write("<br><br><br>", unsafe_allow_html=True)
 
 # --- ส่วนอื่นๆ ของแอป SYNAPSE ต่อจากนี้ ---
 st.write("---")
