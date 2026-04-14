@@ -1,150 +1,134 @@
 import streamlit as st
-import os 
-import time
-from datetime import datetime
-import firebase_admin
-from firebase_admin import credentials, db
-import streamlit.components.v1 as components
-import folium
-from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
-import hashlib
+import pandas as pd
+from datetime import datetime, date
+import math
 
-# นำเข้า MoviePy
-from moviepy import VideoFileClip, TextClip, CompositeVideoClip
+# --- CONFIG & UI ---
+st.set_page_config(page_title="SYNAPSE: THE COMPLETE TRUTH", layout="wide")
 
-# ==========================================
-# 1. CORE SYSTEM & THEME
-# ==========================================
-def init_system():
-    if 'theme_set' not in st.session_state: st.session_state.theme_set = "Matrix"
-    if 'song_index' not in st.session_state: st.session_state.song_index = 0
-    if 'vdo_index' not in st.session_state: st.session_state.vdo_index = 0
-    if 'auth_status' not in st.session_state: st.session_state.auth_status = False
-    if 'user' not in st.session_state: st.session_state.user = None
-
-    if not firebase_admin._apps:
-        try:
-            fb_creds = dict(st.secrets["firebase_credentials"])
-            cred = credentials.Certificate(fb_creds)
-            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
-        except Exception as e:
-            st.error(f"🛰️ Firebase Error: {e}")
-
-def hash_pw(password):
-    return hashlib.sha256(str.encode(password)).hexdigest()
-
-def apply_theme():
-    themes = {
-        "Matrix":  {"bg": "#000000", "main": "#39FF14", "text": "#FFFFFF"},
-        "Ocean":   {"bg": "#001219", "main": "#00A8E8", "text": "#E0FBFC"},
-        "Ember":   {"bg": "#1a0000", "main": "#FF4D4D", "text": "#FFFFFF"},
-        "Rainbow": {"bg": "#FFFFFF", "main": "#FF69B4", "text": "#000000"}
+st.markdown("""
+    <style>
+    .main { background-color: #050a0e; color: #00ff41; }
+    .logic-box { 
+        background-color: #101a24; 
+        padding: 15px; 
+        border-left: 5px solid #00ff41; 
+        border-radius: 10px;
+        margin-bottom: 20px;
+        color: #f0f0f0;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
     }
-    t = themes.get(st.session_state.theme_set, themes["Matrix"])
-    st.markdown(f"""
-        <style>
-        .stApp {{ background-color: {t['bg']} !important; color: {t['text']} !important; }}
-        .stButton>button {{ border: 2px solid {t['main']} !important; background: {t['main']} !important; color: {t['text']} !important; border-radius: 12px; }}
-        h1, h2, h3, p, span {{ color: {t['text']} !important; }}
-        </style>
+    .stMetric { background-color: #0e161f; border: 1px solid #00ff41; border-radius: 10px; }
+    h1, h2, h3 { color: #00ff41; font-family: 'Courier New', Courier, monospace; }
+    .guide-text { color: #a0a0a0; font-size: 0.9rem; line-height: 1.6; }
+    </style>
     """, unsafe_allow_html=True)
-    return t
 
-# ==========================================
-# 2. RADAR & COMMS (GPS ดัก Error)
-# ==========================================
-def room_gps(theme):
-    st.subheader("🛰️ SYNAPSE RADAR")
-    loc = get_geolocation()
-    if loc and 'coords' in loc:
-        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-        db.reference(f'locations/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
-        m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
-        folium.Marker([lat, lon], icon=folium.Icon(color='red')).add_to(m)
-        st_folium(m, width=700, height=400)
+def get_detailed_logic(dt):
+    # 1. ข้อมูลพื้นฐานทางดาราศาสตร์
+    ref_date = date(1900, 1, 1)
+    diff = (dt - ref_date).days
+    lunar_cycle = 29.530589
+    pos = (diff - 0.5) % lunar_cycle
+    day_val = dt.weekday() + 1
+    
+    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+    day_name = day_names[dt.weekday()]
+
+    # 2. คำนวณตาม Logic (ความจริงทางคณิตศาสตร์)
+    if pos <= 14.765:
+        m_num = int(pos) + 1
+        phase = f"ขึ้น {m_num} ค่ำ"
+        res = math.sqrt((day_val**2) + (m_num**2))
+        formula = f"√({day_val}² + {m_num}²)"
+        logic_type = "แรงผลักดัน (Vector Energy)"
     else:
-        st.info("📡 กำลังรอพิกัด... กรุณากด 'Allow' บนเบราว์เซอร์")
+        m_num = int(pos - 14.765) + 1
+        phase = f"แรม {m_num} ค่ำ"
+        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+        formula = f"({day_val} × 1.618) / {m_num}"
+        logic_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
 
-def room_comms():
-    st.subheader("💬 LOBBY CHAT")
-    msg = st.text_input("Message")
-    if st.button("SEND") and msg:
-        db.reference('public_chat').push({'u': st.session_state.user, 'msg': msg, 'ts': time.time()})
-    data = db.reference('public_chat').order_by_key().limit_to_last(10).get()
-    if data:
-        for v in reversed(list(data.values())):
-            st.write(f"🟢 **{v.get('u')}**: {v.get('msg')}")
+    return {
+        "res": round(res, 4), "phase": phase, "day_name": day_name,
+        "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type
+    }
 
-# ==========================================
-# 3. MUSIC & VIDEO (แก้ปัญหาระบบฟอนต์)
-# ==========================================
-def room_music():
-    st.subheader("🎧 MUSIC PLAYER")
-    songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-    if songs:
-        curr = songs[st.session_state.song_index]
-        st.audio(curr)
-        if st.button("⏭️ NEXT"):
-            st.session_state.song_index = (st.session_state.song_index + 1) % len(songs)
-            st.rerun()
+# --- MAIN INTERFACE ---
+st.title("🛰️ SYNAPSE: สแกนพิกัดรหัสคู่ขนาน")
+st.write("ระบบวิเคราะห์ความถี่รหัสชีวิตรายบุคคลด้วยสมการ Quantum | ID: Ta101")
 
-def room_video():
-    st.subheader("🎬 VIDEO ENGINE")
-    videos = sorted([f for f in os.listdir('.') if f.endswith(".mp4") and not f.startswith("sync_")])
-    if not videos: return st.warning("⚠️ ไม่พบไฟล์วิดีโอ")
+st.divider()
+
+# ส่วนการกรอกข้อมูล
+c1, c2 = st.columns(2)
+with c1:
+    st.subheader("👤 บุคคลที่ 1")
+    dob1 = st.date_input("เลือกวันเกิด (1)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u1")
+with c2:
+    st.subheader("👤 บุคคลที่ 2")
+    dob2 = st.date_input("เลือกวันเกิด (2)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u2")
+
+if dob1 and dob2:
+    d1 = get_detailed_logic(dob1)
+    d2 = get_detailed_logic(dob2)
+
+    # แสดงผลลัพธ์รายบุคคล
+    res_a, res_b = st.columns(2)
+    with res_a:
+        st.metric("รหัสประจำตัว (1)", d1['res'])
+        st.markdown(f"""<div class="logic-box"><b>📍 พิกัด:</b> {d1['day_name']} ({d1['phase']})<br><b>🧬 สูตร:</b> <code>{d1['formula']}</code><br><b>⚙️ ระบบ:</b> {d1['type']}</div>""", unsafe_allow_html=True)
+
+    with res_b:
+        st.metric("รหัสประจำตัว (2)", d2['res'])
+        st.markdown(f"""<div class="logic-box"><b>📍 พิกัด:</b> {d2['day_name']} ({d2['phase']})<br><b>🧬 สูตร:</b> <code>{d2['formula']}</code><br><b>⚙️ ระบบ:</b> {d2['type']}</div>""", unsafe_allow_html=True)
+
+    # --- การวิเคราะห์ Gap ---
+    st.divider()
+    gap = abs(d1['res'] - d2['res'])
+    st.subheader(f"🔍 ผลการวิเคราะห์ Gap: {gap:.4f}")
     
-    current_vdo = videos[st.session_state.vdo_index]
-    st.info(f"🎞️ Selected: {current_vdo}")
+    progress_val = min(gap / 15.0, 1.0) 
+    st.progress(progress_val)
 
-    lyrics = [(1.0, 10.0, "วันหนึ่งถ้าเธอมองย้อนกลับมา"), (13.0, 23.0, "แต่ถึงตอนนั้น ฉันคงเดินไกล")]
+    if gap < 1.0:
+        st.warning("🔮 **ระดับ: รหัสแฝด (Twin Code)**")
+        st.write("พลังงานแทบจะเป็นเนื้อเดียวกัน เหมือนกระจกเงาส่องสะท้อน มักมีความคิดและจังหวะชีวิตที่ซ้อนทับกันสูง")
+    elif 3.5 <= gap <= 4.5:
+        st.error("⚠️ **ระดับ: รหัสคู่ขนาน (Parallel Connection)**")
+        st.write("🔴 **ตรวจพบสัญญาณสะท้อน!** นี่คือระยะห่าง 'รหัสเลข 4' ที่มีความหนาแน่นของพันธะสูง")
+        st.write("มีการวนเวียนกลับมาพบกันเพื่อสะสางหรือเริ่มต้นใหม่ตามโครงสร้างพลังงานเดิมในอดีต")
+        st.balloons()
+    elif 7.0 <= gap <= 9.0:
+        st.info("🌀 **ระดับ: รหัสส่งเสริม (Supporting Code)**")
+        st.write("พลังงานมีความต่างในสัดส่วนที่เกื้อกูลกัน เป็นส่วนเติมเต็มที่ช่วยให้อีกฝ่ายก้าวหน้าได้ดี")
+    else:
+        st.success("✅ **ระดับ: รหัสอิสระ (Independent Energy)**")
+        st.write("พลังงานมีความเป็นตัวของตัวเองสูง ไม่มีพันธะผูกมัดเชิงรหัส สามารถสร้างความสัมพันธ์ใหม่ได้แบบไม่มีแรงต้าน")
 
-    if st.button("🚀 PROCESS (วิ้งๆ)"):
-        with st.spinner("กำลังเสกวิดีโอ..."):
-            try:
-                clip = VideoFileClip(current_vdo)
-                txt_clips = [clip]
-                for s, e, txt in lyrics:
-                    # แก้ปัญหา Unknown Format โดยใช้ฟอนต์ระบบ Linux แทนการดึงไฟล์ .ttf
-                    t = TextClip(text=txt, font_size=50, color='yellow', 
-                                 font='DejaVu-Sans-Bold', # ฟอนต์นี้ชัวร์ที่สุดบน Streamlit
-                                 duration=(e-s), method='caption', size=(clip.w*0.8, None)
-                                ).with_start(s).with_position(('center', 0.8*clip.h))
-                    txt_clips.append(t)
-                
-                final = CompositeVideoClip(txt_clips)
-                out = f"sync_{current_vdo}"
-                final.write_videofile(out, fps=12, codec="libx264")
-                st.video(out)
-                st.success("✅ วิ้งแล้วครับ!")
-            except Exception as e: st.error(f"❌ ระบบดื้อ: {e}")
+    # --- คัมภีร์อ่านค่า (จัดเต็มตามคำขอพี่บาส) ---
+    st.divider()
+    with st.expander("📖 คัมภีร์ถอดรหัสความจริง (The Truth Decipher) - อ่านที่นี่", expanded=True):
+        col_g1, col_g2 = st.columns(2)
+        with col_g1:
+            st.markdown("""
+            **1. ที่มาของรหัสประจำตัว**
+            * **วันเกิด (1-7):** คือค่าฐานพลังงานรายวัน
+            * **จันทรคติ (1-15):** คือค่าตัวแปรจากแรงดึงดูดของดวงจันทร์
+            * **สมการ Quantum:** เราใช้สูตรคณิตศาสตร์ชั้นสูงเพื่อเปลี่ยนวันเวลาให้เป็น 'รหัส' เพื่อตัดอคติหรือความรู้สึกส่วนตัวออก ให้เหลือเพียงตัวเลขที่เป็นความจริง
+            """)
+        with col_g2:
+            st.markdown("""
+            **2. เจาะลึกความหมายของ Gap 4**
+            * **ทำไมถึงวนเวียน?** ในเชิงสถิติ รหัสที่ห่างกัน 4 หน่วย คือจุดที่ฟันเฟืองรหัสชีวิตล็อกกันพอดี 
+            * **แรงดึงดูด:** ระยะนี้ไม่ใช่เรื่องบังเอิญ แต่มันคือพิกัดที่มีแรงดึงดูดประหลาด มักเกิดกับคู่ที่เคยมีพันธะต่อกัน
+            * **วิธีรับมือ:** ยึดหลัก 'อยู่นิ่งๆ ไม่เจ็บตัว' มีสติในการรับมือกับความรู้สึกที่คุ้นเคย
+            """)
+        st.markdown("---")
+        st.markdown("**เกร็ดความรู้:** ค่ารหัสนี้จะคงที่ตามวันเกิด แต่ผลลัพธ์การสแกนจะเปลี่ยนไปตาม 'คู่สแกน' ที่คุณเลือก เพื่อหาจุดเชื่อมโยงที่เหมาะสมที่สุดในปัจจุบัน")
 
-# ==========================================
-# 4. MAIN
-# ==========================================
-def main():
-    init_system()
-    if not st.session_state.auth_status:
-        st.title("🛡️ SYNAPSE LOGIN")
-        u = st.text_input("User")
-        p = st.text_input("Pass", type="password")
-        if st.button("ENTER"):
-            acc = db.reference(f'accounts/{u}').get()
-            if acc and acc.get('pw') == hash_pw(p):
-                st.session_state.auth_status, st.session_state.user = True, u
-                st.rerun()
-        return
+else:
+    st.info("🛰️ ระบบ Standby... กรุณากรอกข้อมูลวันเกิดเพื่อเริ่มการสแกนรหัสชีวิต")
 
-    with st.sidebar:
-        st.title("⚙️ CONTROL")
-        st.write(f"👤 **{st.session_state.user}**")
-        st.session_state.theme_set = st.radio("🎨 Theme:", ["Matrix", "Ocean", "Ember", "Rainbow"])
-        if st.button("🚪 LOGOUT"): st.session_state.auth_status = False; st.rerun()
-    
-    t = apply_theme()
-    menu = {"🛰️ RADAR": lambda: room_gps(t), "💬 COMMS": room_comms, "🎧 MUSIC": room_music, "🎬 VIDEO": room_video}
-    tabs = st.tabs(list(menu.keys()))
-    for i, (name, func) in enumerate(menu.items()):
-        with tabs[i]: func()
-
-if __name__ == "__main__": main()
+st.divider()
+st.caption(f"สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE CORE v20.2 | {date.today().year}")
