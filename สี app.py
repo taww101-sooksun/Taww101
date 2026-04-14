@@ -1,30 +1,44 @@
+import streamlit as st
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
+import os
 
-# 1. โหลดวิดีโอต้นฉบับ
-video = VideoFileClip("ta101.mp4")
+def create_lyrics_video():
+    # 1. โหลดวิดีโอจากไฟล์ ta101.mp4
+    if not os.path.exists("ta101.mp4"):
+        st.error("ไม่พบไฟล์ ta101.mp4 ในโฟลเดอร์ครับเพื่อน!")
+        return
 
-# 2. ตั้งค่าเนื้อเพลงและช่วงเวลา (เอามาจากตารางที่เราคุยกัน)
-# (เริ่มกี่วินาที, จบกี่วินาที, ข้อความ)
-lyrics_data = [
-    (1, 10, "วันหนึ่งถ้าเธอมองย้อนกลับมา\nอาจจะเห็นสิ่งที่เคยทำพังลงไป"),
-    (13, 23, "แต่ถึงตอนนั้น ฉันคงเดินไกล\nทิ้งเรื่องของเราไว้ในอดีตคำที่เธอเคยให้"),
-    (26, 35, "ขอบคุณถ้อยคำที่เคยทำฉันร้าว\nคำที่ทำให้ใจฉันแทบไม่เหลืออะไร"),
-    # ... เพื่อนสามารถเพิ่มท่อนอื่นๆ ต่อได้จนครบ 3 นาที ...
-]
+    video = VideoFileClip("ta101.mp4")
 
-# 3. สร้างรายการของข้อความที่จะไปแปะบนวิดีโอ
-clips = [video]
+    # 2. ข้อมูลเนื้อเพลงและเวลาที่คุณให้มา
+    lyrics_data = [
+        (1.0, 10.0, "วันหนึ่งถ้าเธอมองย้อนกลับมา\nอาจจะเห็นสิ่งที่เคยทำพังลงไป"),
+        (13.0, 23.0, "แต่ถึงตอนนั้น ฉันคงเดินไกล\nทิ้งเรื่องของเราไว้ในอดีตคำที่เธอเคยให้"),
+        (26.0, 35.0, "ขอบคุณถ้อยคำที่เคยทำฉันร้าว\nคำที่ทำให้ใจฉันแทบไม่เหลืออะไร")
+    ]
 
-for start, end, text in lyrics_data:
-    txt_clip = (TextClip(text, fontsize=50, color='white', font='Arial-Bold', 
-                         method='caption', size=(video.w*0.8, None))
-                .set_start(start)
-                .set_duration(end - start)
-                .set_position(('center', video.h*0.8))) # วางไว้ด้านล่าง 80% ของจอ
-    clips.append(txt_clip)
+    clips = [video]
 
-# 4. รวมร่างวิดีโอและข้อความเข้าด้วยกัน
-final_video = CompositeVideoClip(clips)
+    # 3. สร้างตัวหนังสือวิ้งๆ
+    for start, end, text in lyrics_data:
+        txt_clip = (TextClip(text, fontsize=40, color='yellow', font='Arial', 
+                             method='caption', size=(video.w*0.8, None))
+                    .set_start(start)
+                    .set_duration(end - start)
+                    .crossfadein(0.5) # เอฟเฟกต์ค่อยๆ สว่าง (วิ้ง)
+                    .set_position(('center', video.h*0.7)))
+        clips.append(txt_clip)
 
-# 5. เซฟไฟล์ออกมาเป็นวิดีโอใหม่
-final_video.write_videofile("ta101_lyrics.mp4", fps=video.fps)
+    # 4. ประมวลผล
+    final = CompositeVideoClip(clips)
+    output_file = "ta101_lyrics_final.mp4"
+    final.write_videofile(output_file, fps=24, codec="libx264")
+    return output_file
+
+st.title("🎬 SYNAPSE LYRICS MAKER")
+if st.button("🚀 เริ่มทำวิดีโอวิ้ง"):
+    with st.spinner("กำลังเสกเนื้อเพลงลงวิดีโอ..."):
+        res = create_lyrics_video()
+        if res:
+            st.video(res)
+            st.success("เสร็จแล้วครับเพื่อน!")
