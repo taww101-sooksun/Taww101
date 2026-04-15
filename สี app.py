@@ -1,42 +1,25 @@
-import streamlit as st
-import librosa
 import numpy as np
-import soundfile as sf
-from io import BytesIO
+import librosa
 
-st.title("🎙️ SYNAPSE: Real-Voice Granular Engine")
-st.write("ตัวนี้จะดึง 'ดีเอ็นเอ' จากเสียง 50 วินาทีของคุณมาสร้างคำใหม่")
-
-uploaded_file = st.file_uploader("โหลดเสียง 50 วินาทีของคุณที่นี่", type=['wav', 'mp3'])
-
-if uploaded_file:
-    # 1. โหลดเสียงจริงของคุณ (The Truth Data)
-    y, sr = librosa.load(uploaded_file)
+def dynamic_stretch_engine(file_short, file_long, target_duration):
+    # 1. โหลดข้อมูลจาก 2 ไฟล์ (สั้น และ ยาว)
+    y_short, sr = librosa.load(file_short)
+    y_long, _ = librosa.load(file_long)
     
-    # 2. คำนวณหาจุดที่เป็น "เสียงเงียบ" และ "เสียงพูด"
-    # เพื่อแยกเสียงลม (Breath) ออกจากเสียงเนื้อ (Vocal)
-    intervals = librosa.effects.split(y, top_db=20)
+    # 2. คำนวณหา "จุดเหมาะสม" (Weight)
+    # ถ้า target_duration อยู่ใกล้ไฟล์ไหนมากกว่า ระบบจะดึงเนื้อเสียงจากไฟล์นั้นมาเยอะกว่า
+    # นี่คือการ "ปรับให้พอดี" โดยไม่ฝืนคณิตศาสตร์
+    duration_short = len(y_short) / sr
+    duration_long = len(y_long) / sr
     
-    st.success(f"ตรวจพบหน่วยเสียงทั้งหมด {len(intervals)} จุดในไฟล์ของคุณ")
-
-    if st.button("🚀 สั่งให้ AI พูดด้วยเนื้อเสียงจริง"):
-        # กลยุทธ์: แทนที่จะสร้าง Sine Wave เราจะไป "หยิบ" ชิ้นส่วนเสียงคุณมาเรียง
-        # นี่คือวิธีที่ทำให้เสียงไม่กังวานเป็นหุ่นยนต์
-        output_audio = []
-        
-        for start, end in intervals[:15]: # สุ่มหยิบมา 15 ชิ้นส่วนมาเรียงใหม่
-            chunk = y[start:end]
-            # ใส่ Fade in/out เล็กๆ เพื่อไม่ให้เสียงคลิก (กังวานเหล็ก)
-            fade = int(sr * 0.01)
-            window = np.ones(len(chunk))
-            window[:fade] = np.linspace(0, 1, fade)
-            window[-fade:] = np.linspace(1, 0, fade)
-            output_audio.extend(chunk * window)
-            
-        final_y = np.array(output_audio)
-        
-        # แสดงผล
-        st.markdown("### 🔊 เสียงที่เกิดจากการเรียง 'หน่วยเสียงจริง' ของคุณ:")
-        st.audio(final_y, format='audio/wav', sample_rate=sr)
-        
-        st.warning("สังเกตไหมครับ? เสียงจะมีความเป็น 'คน' มากขึ้น เพราะมันคือเสียงคุณจริงๆ ที่ถูกตัดมาเรียงใหม่")
+    # หาค่าความต่าง (Interpolation Factor)
+    weight = (target_duration - duration_short) / (duration_long - duration_short)
+    weight = np.clip(weight, 0, 1) # ล็อคไว้ไม่ให้เกินช่วง 0-1
+    
+    # 3. ผสมเนื้อเสียง (Mixing DNA)
+    # เราไม่ได้ยืดเสียงด้วยโปรแกรม แต่เราผสม "คลื่นเสียง" เข้าด้วยกัน
+    # วิธีนี้จะลดเสียงกังวานแมลงหวี่ได้ดีที่สุด
+    min_len = min(len(y_short), len(y_long))
+    combined_vocal = (y_short[:min_len] * (1 - weight)) + (y_long[:min_len] * weight)
+    
+    return combined_vocal
