@@ -1,225 +1,83 @@
 import streamlit as st
-import os
-import random
-import streamlit.components.v1 as components
-st.markdown("""
-    <style>
-    /* 1. ซ่อนแถบ Header ด้านบนทั้งหมด (รวมถึงติ่งเมนูขวาบน) */
-    header {visibility: hidden;}
+import numpy as np
+import pandas as pd
+
+# ==========================================
+# 🧠 RBF VOCAL ENGINE (สูตรคณิตศาสตร์เพียวๆ)
+# ==========================================
+def generate_vocal_tone(valence, arousal, duration=4.0):
+    sr = 44100
+    t = np.linspace(0, duration, int(sr * duration))
     
-    /* 2. ซ่อนแถบ Footer ด้านล่าง (Made with Streamlit) */
-    footer {visibility: hidden;}
+    # 1. หาความถี่หลัก (Fundamental Frequency) 
+    # ใช้ฐานเสียง C4 (261.63 Hz) ปรับตาม Valence (ความสุข)
+    base_f0 = 261.63 * (2**(valence * 0.5)) 
     
-    /* 3. ซ่อนปุ่มเมนูหลัก (แฮมเบอร์เกอร์เมนู) */
-    #MainMenu {visibility: hidden;}
+    # 2. คำนวณ Vibrato (การสั่นของเส้นเสียง)
+    # Arousal สูง = สั่นเร็วและลึกขึ้น (คนตื่นเต้น/ร้องไห้)
+    vibrato_rate = 4.5 + (arousal * 3.5) # 4.5 - 8.0 Hz
+    vibrato_depth = arousal * 15         # ความลึกของการสั่น
+    vibrato = vibrato_depth * np.sin(2 * np.pi * vibrato_rate * t)
     
-    /* 4. (แถม) ดันเนื้อหาขึ้นไปให้สุด ไม่ให้เหลือที่ว่างด้านบน */
-    .block-container {
-        padding-top: 0rem;
-        padding-bottom: 0rem;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    # 3. Additive Synthesis (สร้างฮาร์มอนิกเลียนแบบเนื้อเสียงมนุษย์)
+    # ผสม Sine Waves หลายเลเยอร์เพื่อให้เสียงมี "ความหนา" (Timbre)
+    # f0 (เสียงหลัก) + f1 (เสียงเต็ม) + f2 (เสียงใส)
+    wave = 1.0 * np.sin(2 * np.pi * base_f0 * t + vibrato)          # Fundamental
+    wave += 0.4 * np.sin(2 * np.pi * (base_f0 * 2) * t + vibrato)    # 2nd Harmonic
+    wave += 0.2 * np.sin(2 * np.pi * (base_f0 * 3) * t)              # 3rd Harmonic
+    
+    # 4. ใส่ "เสียงลม" (Breathiness) ตามค่า Arousal
+    noise = np.random.normal(0, 0.02 * (1 - arousal), len(t))
+    wave += noise
 
+    # 5. Envelope (ADSR - ลดเสียงคลิกตอนเริ่มและจบ)
+    fade_len = int(sr * 0.3)
+    envelope = np.ones_like(t)
+    envelope[:fade_len] = np.linspace(0, 1, fade_len)
+    envelope[-fade_len:] = np.linspace(1, 0, fade_len)
+    
+    final_audio = wave * envelope
+    # Normalization (ปรับความดังให้พอดี)
+    final_audio = final_audio / np.max(np.abs(final_audio)) * 0.8
+    
+    return final_audio.astype(np.float32), sr
 
-# ส่วนที่แสดงผลปุ่มด้านล่าง
-st.markdown('<div class="fixed-footer">', unsafe_allow_html=True)
-if st.button("☰ เปิดเมนูควบคุม (Ta101)"):
-    st.sidebar.markdown("### ⚙️ แผงควบคุม")
-    st.info("เมนูถูกเปิดแล้วที่แถบด้านซ้ายครับเพื่อน!")
-st.markdown('</div>', unsafe_allow_html=True)
+# ==========================================
+# 🎨 STREAMLIT INTERFACE
+# ==========================================
+st.set_page_config(page_title="RBF Vocal Prototype", layout="centered")
 
-# เพิ่มที่ว่างด้านล่างสุดของหน้าแอปเพื่อไม่ให้ปุ่มบังเนื้อหา
-st.write("<br><br><br>", unsafe_allow_html=True)
+st.title("🎙️ RBF Vocal Synthesis Test")
+st.markdown("### สังเคราะห์เสียงร้องจากคณิตศาสตร์ (ไม่มีการใช้ไฟล์เสียงอัด)")
+st.write("ลองปรับค่า Valence (อารมณ์) และ Arousal (พลังงาน) แล้วฟังเสียงร้อง AI ดูครับ")
 
-# --- ส่วนอื่นๆ ของแอป SYNAPSE ต่อจากนี้ ---
-st.write("---")
-st.markdown("### 🛡️ SYNAPSE COMMAND CENTER")
+# ส่วนควบคุม
+col1, col2 = st.columns(2)
+with col1:
+    v = st.slider("Valence (เศร้า <---> สุข)", 0.0, 1.0, 0.7)
+with col2:
+    a = st.slider("Arousal (สงบ <---> ตื่นเต้น)", 0.0, 1.0, 0.5)
 
-# --- 1. SET UP & THEME SELECTOR ---
-st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
-
-# ระบบจำค่าสี (ถ้ายังไม่มีให้ตั้งค่าเริ่มต้น)
-if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#39FF14" # เขียวนีออน
-if 'bg_color' not in st.session_state:
-    st.session_state.bg_color = "#121212" # ดำเทาเข้ม
-
-with st.sidebar:
-    # ส่วนของ Logo
-    if os.path.exists("logo2.jpg"):
-        st.image("logo2.jpg", use_container_width=True)
-    else:
-        st.write("📌 [ยังไม่มีไฟล์ logo2.jpg]")
+if st.button("🚀 GENERATE & LISTEN", type="primary"):
+    with st.spinner("AI กำลังคำนวณคลื่นเสียง..."):
+        # รัน Engine
+        audio, sr = generate_vocal_tone(v, a)
         
-    st.markdown("### 🎨 ปรับแต่งสีระบบ")
-    # เลือกสีนีออน (เส้นขอบ/ตัวอักษร)
-    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
-    # เลือกสีพื้นหลัง
-    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
-    
-    st.write("---")
-    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
-
-# --- 2. CSS DYNAMIC THEME (ดึงสีจาก Picker) ---
-st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-    
-    .stApp {{
-        background-color: {st.session_state.bg_color} !important;
-        color: {st.session_state.theme_color} !important;
-    }}
-
-    /* ปรับปรุงขอบกล่องรายการเพลง */
-    [data-testid="stVVerticalBlock"] > div > div > [data-testid="stVerticalBlockBorderWrapper"] {{
-        border: 2px solid {st.session_state.theme_color} !important;
-        border-radius: 15px !important;
-        background: rgba(0, 0, 0, 0.4) !important;
-        box-shadow: 0px 0px 15px {st.session_state.theme_color}44;
-        padding: 15px;
-    }}
-
-    .marquee {{
-        width: 100%;
-        overflow: hidden;
-        white-space: nowrap;
-        background: rgba(0,0,0,0.6);
-        padding: 15px 0;
-        border-radius: 12px;
-        margin-bottom: 15px;
-        border: 2px solid {st.session_state.theme_color};
-    }}
-    .marquee p {{
-        display: inline-block;
-        padding-left: 100%;
-        animation: marquee 20s linear infinite;
-        font-family: 'Orbitron', sans-serif;
-        font-size: 22px;
-        color: {st.session_state.theme_color};
-        text-shadow: 0px 0px 10px {st.session_state.theme_color};
-        margin: 0;
-    }}
-    @keyframes marquee {{
-        0% {{ transform: translate(0, 0); }}
-        100% {{ transform: translate(-100%, 0); }}
-    }}
-
-    .stButton>button {{
-        width: 100%;
-        text-align: left;
-        background-color: transparent !important;
-        color: {st.session_state.theme_color} !important;
-        border-radius: 10px !important;
-        font-weight: bold;
-        border: 1px solid {st.session_state.theme_color} !important;
-        margin-bottom: 5px;
-        transition: 0.3s;
-    }}
-    .stButton>button:hover {{
-        background-color: {st.session_state.theme_color} !important;
-        color: {st.session_state.bg_color} !important;
-        box-shadow: 0px 0px 15px {st.session_state.theme_color};
-    }}
-    
-    h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 3. ระบบจัดการเพลง ---
-music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-
-if music_files:
-    if 'song_index' not in st.session_state:
-        st.session_state.song_index = 0
-    
-    current_song = music_files[st.session_state.song_index]
-
-    # ส่วนหัวและโลโก้
-    col_l, col_r = st.columns([1, 5])
-    with col_l:
-        if os.path.exists("logo2.jpg"):
-            st.image("logo2.jpg", width=500)
-    with col_r:
-        st.title("🎸 อยู่นิ่งๆไม่เจ็บตัว 🎼 MUSIC")
-
-    # 1. ชื่อเพลงวิ่ง
-    st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
-
-    # 2. ปก
-    base_name = os.path.splitext(current_song)[0]
-    if os.path.exists(base_name + ".mp4"):
-        st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
-    elif os.path.exists(base_name + ".jpg"):
-        st.image(base_name + ".jpg", use_container_width=True)
-    
-    # 3. เครื่องเล่นเพลง
-    st.audio(current_song)
-
-    st.markdown("---")
-
-    # 4. กล่องรายชื่อเพลง
-    st.subheader("🎧 รายชื่อเพลง🎸")
-    with st.container(border=True, height=250):
-        for i, song in enumerate(music_files):
-            label = f"▶️ {i+1}. {song}" if i == st.session_state.song_index else f"{i+1}. {song}"
-            if st.button(label, key=f"box_{i}"):
-                st.session_state.song_index = i
-                st.rerun()
-
-    # 5. ปุ่มควบคุม
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("⏭️ เพลงถัดไป"):
-            st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
-            st.rerun()
-    with col2:
-        if st.button("🎲 สุ่มเพลง"):
-            st.session_state.song_index = random.randint(0, len(music_files) - 1)
-            st.rerun()
-
-    # 6. JavaScript: ใช้ตัวที่คุณยืนยันว่าเวิร์ค (Fade + Auto Play + Auto Next)
-    components.html(
-        """
-        <script>
-        var fadeDuration = 12; 
-
-        function handleAudioSync() {
-            var audio = window.parent.document.querySelector('audio');
-            var buttons = window.parent.document.querySelectorAll('button');
-            
-            if (audio) {
-                // ระบบ Fade In
-                if (audio.currentTime < fadeDuration && !audio.paused) {
-                    audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
-                } 
-                // ระบบ Fade Out
-                else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {
-                    audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
-                } 
-                else {
-                    audio.volume = 1;
-                }
-
-                // ระบบ Auto-Next เมื่อเพลงจบ
-                audio.onended = function() {
-                    for (var i = 0; i < buttons.length; i++) {
-                        if (buttons[i].textContent.includes('เพลงถัดไป')) {
-                            buttons[i].click();
-                            break;
-                        }
-                    }
-                };
-
-                // บังคับ Play เมื่อโหลดใหม่
-                if (audio.paused && audio.currentTime == 0) {
-                    audio.play().catch(e => console.log("User interaction needed"));
-                }
-            }
+        # แสดงผลเสียง
+        st.audio(audio, format='audio/wav', sample_rate=sr)
+        
+        # รายงานความจริง (7 Metrics)
+        st.markdown("---")
+        st.subheader("📊 7-Metric Precision Report")
+        metrics = {
+            "Vibrato Rate": f"{4.5 + (a * 3.5):.2f} Hz",
+            "F0 Center": f"{261.63 * (2**(v * 0.5)):.2f} Hz",
+            "Timbre Complexity": "Additive (3 Harmonics)",
+            "Breathiness Index": f"{(1-a)*100:.1f}%",
+            "Dynamics": "Stabilized",
+            "Signal Purity": "High (Math-based)",
+            "Mastering": "0.8 Normalized"
         }
-        setInterval(handleAudioSync, 500);
-        </script>
-        """, height=0
-    )
-else:
-    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์ครับ")
+        st.table(pd.DataFrame(metrics.items(), columns=["Metric", "Value"]))
+        
+        st.info("💡 นี่คือเสียงร้องต้นแบบที่เกิดจาก
