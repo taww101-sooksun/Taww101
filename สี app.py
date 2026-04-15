@@ -1,115 +1,84 @@
-import numpy as np
 import streamlit as st
-import time
+import numpy as np
 import pandas as pd
+from scipy.signal import butter, lfilter
 
-# ==========================================
-# 1. RBF PRECISION ANALYZER (ระบบรายงาน 7 ค่าแม่นยำ)
-# ==========================================
-class RBFAnalyzer:
-    """วิเคราะห์ความจริงของเสียงที่สังเคราะห์ออกมา 7 ด้าน"""
+# --- 1. CORE MATH ENGINE (ฟังก์ชันจัดการเสียงแต่ละเลเยอร์) ---
+
+def apply_vocal_filter(data, cutoff, sr, btype='low'):
+    """ฟิลเตอร์จัดการความถี่เพื่อลดเสียงกังวานแมลงหวี่"""
+    nyq = 0.5 * sr
+    normal_cutoff = cutoff / nyq
+    b, a = butter(2, normal_cutoff, btype=btype, analog=False)
+    return lfilter(b, a, data)
+
+def generate_human_vocal(text_type, valence, arousal, duration=1.5):
+    sr = 44100
+    t = np.linspace(0, duration, int(sr * duration))
     
-    @staticmethod
-    def generate_report(audio_segment, label="General"):
-        # ในระบบจริง ค่าเหล่านี้จะคำนวณจาก FFT และ Waveform Analysis
-        # นี่คือ Logic การคำนวณจำลองที่อิงตามบุคลิกของเสียงแต่ละประเภท
-        
-        metrics = {
-            "Vibrato (ความสั่น/นิ่ง)": f"{np.random.uniform(10, 200):.2f} Hz",
-            "Transition (ความสมูทของการเอื้อน)": f"{np.random.uniform(1, 10):.4f}",
-            "Timbre (ความใส/Texture)": f"{np.random.uniform(500, 7000):.2f} Hz",
-            "Dynamics (น้ำหนักเสียง/Velocity)": f"{np.random.uniform(5, 50):.4f}",
-            "Timing (จังหวะคำ/BPM Accuracy)": f"{np.random.uniform(2, 4):.2f} /sec",
-            "Sibilance (เสียงแหลม/Noise Ratio)": f"{np.random.uniform(0.001, 0.3):.4f}",
-            "Silence Gate (ความเงียบพื้นหลัง)": f"{np.random.uniform(0.0, 0.0001):.6f}"
-        }
-        
-        st.sidebar.markdown(f"### 📊 รายงานผล {label}")
-        for k, v in metrics.items():
-            st.sidebar.write(f"**{k}:** {v}")
-        st.sidebar.markdown("---")
-        return metrics
+    # -- Layer 1: Fundamental Tone (เสียงร้องหลัก) --
+    # ปรับ Pitch ตามความสุข (Valence)
+    f0 = 220 * (2**(valence * 0.5)) 
+    vibrato = (arousal * 10) * np.sin(2 * np.pi * (4 + arousal * 4) * t)
+    vocal_core = np.sin(2 * np.pi * f0 * t + vibrato)
+    vocal_core += 0.5 * np.sin(2 * np.pi * (f0 * 2) * t) # Harmonic 1
+    
+    # -- Layer 2: Breath & Air (เสียงลมหายใจ) --
+    # สร้างเสียงซ่า (White Noise) แล้วกรองให้เหลือแต่เสียงลม (High Frequency Air)
+    noise = np.random.normal(0, 0.1, len(t))
+    breath_layer = apply_vocal_filter(noise, 8000, sr, btype='high') 
+    # เสียงลมจะดังขึ้นตามค่า Arousal (ตื่นเต้น/เหนื่อย)
+    breath_layer *= (0.05 + (1 - valence) * 0.1) 
 
-# ==========================================
-# 2. MULTI-LAYER SYNTHESIS ENGINE
-# ==========================================
-class RBFSynthesisEngine:
-    def __init__(self):
-        self.sr = 44100
-        
-    def synthesize_layer(self, layer_type, valence, arousal):
-        """สังเคราะห์เสียงแต่ละ Layer (ทำได้จริงด้วย Signal Processing)"""
-        t = np.linspace(0, 5, self.sr * 5)
-        
-        if layer_type == "Vocal":
-            # จำลองเสียงร้อง (V1.0) ที่เปลี่ยนตาม Vibrato Matrix
-            freq = 220 * (1 + (valence * 0.5))
-            vibrato = np.sin(2 * np.pi * 6 * t) * (arousal * 10)
-            wave = 0.5 * np.sin(2 * np.pi * freq * t + vibrato)
-            
-        elif layer_type == "Guitar":
-            # จำลองเสียงกีตาร์ (Plucked String Logic)
-            freq = 110 * (1 + valence)
-            wave = 0.4 * np.sin(2 * np.pi * freq * t) * np.exp(-t * 2)
-            
-        elif layer_type == "Drums":
-            # จำลองจังหวะกลอง (Pulse Logic)
-            wave = np.random.normal(0, 0.1, len(t)) * np.exp(-t * 10)
-            
-        return wave
+    # -- Layer 3: Mouth & Tongue Transients (เสียงริมฝีปาก/เดาะปาก) --
+    # เป็นเสียง "คลิก" สั้นๆ ตอนเริ่มคำ (Transient)
+    click_t = np.linspace(0, 0.05, int(sr * 0.05))
+    click = np.sin(2 * np.pi * 1000 * click_t) * np.exp(-100 * click_t)
+    mouth_noise = np.zeros_like(t)
+    mouth_noise[:len(click)] = click * 0.3 # ใส่ไว้ตอนเริ่มคำ
 
-# ==========================================
-# 3. STREAMLIT INTERFACE (6D PRO DESIGN)
-# ==========================================
-st.set_page_config(page_title="RBF AI v2.0", layout="wide")
-st.title("🚀 RBF AI Music Synthesis Pro")
-st.markdown("*ระบบสังเคราะห์ความจริง: ดนตรีบำบัดและเสียงร้องสมจริง*")
+    # -- การคำนวณจุดรวมเสียง (Multi-Layer Summation) --
+    # ใช้ Envelope คุมจังหวะไม่ให้เสียงตีกันจนเป็นคนละภาษา
+    envelope = np.sin(np.pi * np.linspace(0, 1, len(t))) 
+    
+    # ผสมเลเยอร์ (The Secret Formula)
+    final_audio = (vocal_core * envelope * 0.6) + (breath_layer * envelope * 0.3) + (mouth_noise * 0.1)
+    
+    # Normalize ปรับความดัง
+    final_audio = final_audio / np.max(np.abs(final_audio)) * 0.8
+    return final_audio.astype(np.float32), sr
 
-# Sidebar สำหรับผลการวิเคราะห์
-st.sidebar.title("🛠️ Precision Analyzer")
+# --- 2. STREAMLIT INTERFACE ---
 
-engine = RBFSynthesisEngine()
-analyzer = RBFAnalyzer()
+st.title("🎙️ SYNAPSE: Full Vocal Multi-Layer Engine")
+st.write("ระบบคำนวณแยก Layer: เสียงหลัก + เสียงลม + เสียงปาก")
 
-# UI ส่วนควบคุม
 col1, col2 = st.columns(2)
 with col1:
-    v = st.slider("Valence (ความรู้สึกบวก)", 0.0, 1.0, 0.7)
+    v = st.slider("ความสุข (Valence)", 0.0, 1.0, 0.5)
+    a = st.slider("พลังงาน/การสั่น (Arousal)", 0.0, 1.0, 0.5)
 with col2:
-    a = st.slider("Arousal (พลังงาน)", 0.0, 1.0, 0.5)
+    st.info("ระบบจะใช้คณิตศาสตร์คำนวณจุดที่เสียงลมและเสียงปากเข้ามารวมกับเสียงหลัก เพื่อป้องกันเสียงกังวานแบบหุ่นยนต์")
 
-target_layers = st.multiselect(
-    "เลือก Layer ที่ต้องการสังเคราะห์", 
-    ["Vocal", "Guitar", "Drums"], 
-    default=["Vocal"]
-)
+if st.button("▶️ GENERATE FULL VOICE", type="primary"):
+    with st.spinner("กำลังผสมเลเยอร์เสียง..."):
+        audio, sr = generate_human_vocal("test", v, a)
+        
+        st.audio(audio, format='audio/wav', sample_rate=sr)
+        
+        # แสดงกราฟความจริงของเสียง
+        st.subheader("📊 Signal Analysis (วิเคราะห์ 3 เลเยอร์)")
+        chart_data = pd.DataFrame({
+            "Waveform": audio[::100] # sampling มาแสดงผล
+        })
+        st.line_chart(chart_data)
+        
+        st.success("รวมเลเยอร์สำเร็จ: สังเกตช่วงเริ่มจะมีเสียง Mouth Noise และมีเสียง Breath คลุมตลอดทาง")
 
-if st.button("RUN SYNTHESIS & REPORT", type="primary"):
-    with st.spinner("กำลังประมวลผลโมเดลจริง..."):
-        combined_audio = np.zeros(engine.sr * 5)
-        
-        for layer in target_layers:
-            # 1. สังเคราะห์เสียงจริง
-            layer_wave = engine.synthesize_layer(layer, v, a)
-            combined_audio += layer_wave
-            
-            # 2. ออกรายงาน 7 ค่าแม่นยำทันที (ข้อ 14, 15, 16)
-            analyzer.generate_report(layer_wave, label=layer)
-            
-        # มาสเตอร์ริ่งขั้นสุดท้าย
-        final_audio = np.clip(combined_audio, -0.9, 0.9)
-        
-        st.success("✅ สังเคราะห์สำเร็จและตรวจสอบความถูกต้องแล้ว")
-        st.audio(final_audio, format='audio/wav', sample_rate=engine.sr)
-        
-        st.info(f"💡 'อยู่นิ่งๆ ไม่เจ็บตัว' - รายงานด้านข้างคือความจริงจาก Signal ของคุณ")
-
-# ส่วนแสดง Matrix ความเป็นจริง
-with st.expander("🔍 ข้อมูลทางเทคนิค (Internal Matrix)"):
-    st.write("ระบบนี้ใช้การ Lerp (Linear Interpolation) ระหว่างชุดข้อมูลจริงเพื่อให้เกิดความต่อเนื่องของเสียง")
-    st.json({
-        "Engine_Status": "Active",
-        "Mastering_Level": "0.95 Peak",
-        "Privacy_Filter": "Enabled",
-        "Slogan": "อยู่นิ่งๆ ไม่เจ็บตัว"
-    })
+st.markdown("""
+---
+### 🧐 ทำไมตัวนี้ถึงต่างจากเดิม?
+1. **แยก Layer ชัดเจน:** มีตัวแปร `breath_layer` และ `mouth_noise` แยกจากเสียงหลัก
+2. **คุม Noise:** ไม่ใช่แค่เสียงซ่ามั่วๆ แต่ใช้ `apply_vocal_filter` กรองความถี่ให้เป็น "ลม" จริงๆ
+3. **Envelope Tracking:** ใช้รูปคลื่นระฆังคว่ำคุมให้ลมหายใจเกิดพร้อมเสียงพูด ไม่ใช่ดังค้างยาวจนรบกวนหู
+""")
