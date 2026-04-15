@@ -1,25 +1,19 @@
-import numpy as np
-import librosa
+import streamlit as st
 
-def dynamic_stretch_engine(file_short, file_long, target_duration):
-    # 1. โหลดข้อมูลจาก 2 ไฟล์ (สั้น และ ยาว)
-    y_short, sr = librosa.load(file_short)
-    y_long, _ = librosa.load(file_long)
+try:
+    st.title("🎙️ SYNAPSE: Voice Engine (Debug Mode)")
     
-    # 2. คำนวณหา "จุดเหมาะสม" (Weight)
-    # ถ้า target_duration อยู่ใกล้ไฟล์ไหนมากกว่า ระบบจะดึงเนื้อเสียงจากไฟล์นั้นมาเยอะกว่า
-    # นี่คือการ "ปรับให้พอดี" โดยไม่ฝืนคณิตศาสตร์
-    duration_short = len(y_short) / sr
-    duration_long = len(y_long) / sr
+    # ลองรันทีละส่วน
+    st.write("ตรวจสอบระบบ...")
     
-    # หาค่าความต่าง (Interpolation Factor)
-    weight = (target_duration - duration_short) / (duration_long - duration_short)
-    weight = np.clip(weight, 0, 1) # ล็อคไว้ไม่ให้เกินช่วง 0-1
+    file1 = st.file_uploader("ไฟล์ที่ 1 (จังหวะสั้น)", type=['wav', 'mp3'])
+    file2 = st.file_uploader("ไฟล์ที่ 2 (จังหวะยาว)", type=['wav', 'mp3'])
     
-    # 3. ผสมเนื้อเสียง (Mixing DNA)
-    # เราไม่ได้ยืดเสียงด้วยโปรแกรม แต่เราผสม "คลื่นเสียง" เข้าด้วยกัน
-    # วิธีนี้จะลดเสียงกังวานแมลงหวี่ได้ดีที่สุด
-    min_len = min(len(y_short), len(y_long))
-    combined_vocal = (y_short[:min_len] * (1 - weight)) + (y_long[:min_len] * weight)
-    
-    return combined_vocal
+    if file1 and file2:
+        st.success("โหลดไฟล์สำเร็จ เตรียมประมวลผล...")
+        # ใส่ Logic การผสมเสียงตรงนี้
+    else:
+        st.info("กรุณาใส่ไฟล์ให้ครบทั้ง 2 ชุดเพื่อป้องกันหน้าจอขาวครับ")
+
+except Exception as e:
+    st.error(f"ระบบตรวจพบข้อผิดพลาด: {e}")
