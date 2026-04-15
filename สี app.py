@@ -80,4 +80,6 @@ if st.button("🚀 GENERATE & LISTEN", type="primary"):
         }
         st.table(pd.DataFrame(metrics.items(), columns=["Metric", "Value"]))
         
-        st.info("💡 นี่คือเสียงร้องต้นแบบที่เกิดจาก
+        st.info("💡 นี่คือเสียงร้องต้นแบบที่เกิดจาก 'สูตร' โดยตรง ไม่ใช่การตัดต่อไฟล์")
+else:
+    st.info("กดปุ่มด้านบนเพื่อฟังเสียงร้อง AI")
