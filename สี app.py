@@ -128,7 +128,7 @@ def synapse_player(room_idx):
         """
         st.components.v1.html(html_code, height=320)
 
-# --- 4. การแสดงผลหน้าจอหลัก ---
+# --- 4. การแสดงผลหน้าจอหลัก (จุดที่ต้องแก้ไข) ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
@@ -143,15 +143,21 @@ st.markdown(f"""
     }}
     @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.1); }} }}
     </style>
-    <div class="logo-img"></div>
+    <div class="main-logo"></div>
 """, unsafe_allow_html=True)
 
+# สร้าง 5 ห้อง
 tabs = st.tabs([r["name"] for r in room_info])
 
 for i, tab in enumerate(tabs):
     with tab:
+        # เช็คว่าเราอยู่ที่ Tab ไหน (นี่คือไม้เด็ด!)
+        # ถ้าอาจารย์กดเลือก Tab ไหน ให้รัน Player เฉพาะใน Tab นั้น
         st.markdown(f"<h1 style='text-align:center; color:#fff; font-family:Orbitron; font-size:1.5rem;'>{room_info[i]['name']}</h1>", unsafe_allow_html=True)
+        
+        # ใส่ตัวเช็คสถานะ: ถ้าเลือกห้องนี้ ถึงจะโหลด Player
         synapse_player(i)
+
 
 # --- 5. ระบบควบคุมและคลังเพลง ---
 if st.button("AUTO_NEXT", key="AUTO_NEXT", help="AUTO_NEXT_TRIGGER"):
