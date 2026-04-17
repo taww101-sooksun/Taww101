@@ -31,9 +31,9 @@ st.markdown(f"""
     .block-container::before {{
         content: "";
         position: absolute;
-        top: 10px;
-        right: 20px;
-        width: 200px;  /* ปรับขนาดความกว้าง Logo */
+        top: 100px;
+        right: 200px;
+        width: 80px;  /* ปรับขนาดความกว้าง Logo */
         height: 80px; /* ปรับขนาดความสูง Logo */
         background-image: url("{logo_html}");
         background-size: contain;
