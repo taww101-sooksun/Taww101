@@ -31,8 +31,8 @@ st.markdown(f"""
     .block-container::before {{
         content: "";
         position: absolute;
-        top: 100px;
-        right: 200px;
+        top: 10px;
+        right: 20px;
         width: 80px;  /* ปรับขนาดความกว้าง Logo */
         height: 80px; /* ปรับขนาดความสูง Logo */
         background-image: url("{logo_html}");
@@ -62,6 +62,13 @@ st.markdown("""
     </style>
     <h1 class="neon-title">SYNAPSEอยู่นิ้งๆไม่้เจ็บตัว</h1>
 """, unsafe_allow_html=True)
+        animation: neon-pulse 2s infinite alternate;
+    }
+
+    @keyframes neon-pulse {
+        from { filter: drop-shadow(0 0 5px #ff00de); transform: scale(1); }
+        to { filter: drop-shadow(0 0 15px #ff00de); transform: scale(1.05); }
+    }
 
 html_code = """
 <!DOCTYPE html>
