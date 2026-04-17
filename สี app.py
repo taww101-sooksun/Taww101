@@ -4,7 +4,7 @@ import base64
 import random
 
 # --- 1. CONFIG & SYSTEM ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.7", layout="centered")
+st.set_page_config(page_title="SYNAPSEอยู่นิ้งๆไม่เจ็บตัว COMMAND CENTER V.7", layout="centered")
 
 def get_base64(file_path):
     try:
