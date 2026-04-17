@@ -1,43 +1,50 @@
 import streamlit as st
 import librosa
 import soundfile as sf
-import numpy as np
 import io
+import numpy as np
 
-st.title("🎙️ SYNAPSE: Full Music Mold")
+st.title("🎙️ SYNAPSE: Precision R&B Mold")
 
-uploaded_file = st.file_uploader("ส่งไฟล์เสียงมาลองดู", type=['wav', 'mp3', 'm4a'])
+# ส่วนรับไฟล์ (ให้คุณต๊ะอัปโหลดทั้ง 2 ไฟล์พร้อมกันได้เลย)
+uploaded_files = st.file_uploader("อัปโหลดไฟล์ loop_r&b และ tsta เข้ามาครับ", accept_multiple_files=True)
 
-if uploaded_file is not None:
-    # 1. โหลดเสียงต้นฉบับ
-    y, sr = librosa.load(uploaded_file)
-    
-    # 2. ตั้งค่าแม่พิมพ์ (ความเร็ว และ แนวเพลง)
-    genre = st.radio("เลือกแม่พิมพ์แนวเพลง:", ["HipHop (เร็ว/หนัก)", "R&B (ช้า/นุ่ม)"])
-    rate = 1.3 if genre == "HipHop" else 0.8  # กำหนดค่าตามมาตรฐานสากลที่ผมรู้
+if uploaded_files:
+    beat_data = None
+    voice_data = None
+    sr_final = 22050
 
-    if st.button("🚀 รันแม่พิมพ์ (รวมดนตรี)"):
-        with st.spinner("กำลังประกอบร่างเสียงร้องกับดนตรี..."):
-            # --- ก. ปรับความเร็วเสียงร้อง (ที่คุณบอก) ---
-            y_stretched = librosa.effects.time_stretch(y, rate=rate)
-            
-            # --- ข. สร้างเสียงดนตรีจำลอง (กอง + กีต้าร์มาว) ---
-            # สร้างจังหวะให้ยาวเท่ากับเสียงที่ปรับแล้ว
-            duration = len(y_stretched) / sr
-            t = np.linspace(0, duration, len(y_stretched))
-            
-            # สร้างเสียง 'ตึก-โป๊ะ' (Kick/Snare) แบบคณิตศาสตร์
-            kick = np.sign(np.sin(2 * np.pi * 50 * t)) * (np.sin(2 * np.pi * 5 * t) > 0)
-            
-            # --- ค. รวมร่าง (Mix) ---
-            # เอาเสียงร้องที่ปรับความเร็วแล้ว มาผสมกับเสียงดนตรีจำลอง
-            final_mix = y_stretched + (kick * 0.1)  # ใส่ดนตรีเบาๆ ไม่ให้กลบเสียงร้อง
-            
-            # 3. ส่งไฟล์คืน
-            buffer = io.BytesIO()
-            sf.write(buffer, final_mix, sr, format='WAV')
-            buffer.seek(0)
-            
-            st.subheader(f"ผลลัพธ์แนว {genre}:")
-            st.audio(buffer, format='audio/wav')
-            st.success("นี่คือแม่พิมพ์ที่สมบูรณ์ครับ มีทั้งความเร็วที่เปลี่ยนและดนตรีประกอบ!")
+    # ระบบคัดแยกไฟล์อัตโนมัติ
+    for file in uploaded_files:
+        if "loop_r&b" in file.name.lower():
+            beat_data, sr_final = librosa.load(file, sr=None)
+            st.success(f"เจอแม่พิมพ์แล้ว: {file.name} (92 BPM)")
+        elif "tsta" in file.name.lower():
+            voice_data, _ = librosa.load(file, sr=sr_final)
+            st.success(f"เจอวัตถุดิบเสียงแล้ว: {file.name}")
+
+    if beat_data is not None and voice_data is not None:
+        if st.button("🚀 รันการรวมร่าง (Sync 92 BPM)"):
+            with st.spinner("กำลังล็อคเสียง tsta ให้เข้ากับจังหวะ R&B..."):
+                # 1. คำนวณความยาว
+                dur_beat = len(beat_data) / sr_final
+                dur_voice = len(voice_data) / sr_final
+                
+                # 2. บังคับยืดหด (The Math) 
+                # บีบเสียง tsta ให้ยาวเท่ากับบีท 92 BPM เป๊ะๆ
+                sync_rate = dur_voice / dur_beat
+                voice_synced = librosa.effects.time_stretch(voice_data, rate=sync_rate)
+                
+                # 3. รวมเสียง (Mixing)
+                # ตัดให้เท่ากันเพื่อความชัวร์
+                length = min(len(beat_data), len(voice_synced))
+                combined = beat_data[:length] + (voice_synced[:length] * 0.8) # ปรับเสียงร้องให้เบากว่าบีทนิดหน่อยเพื่อให้เนียน
+                
+                # 4. ส่งออกไฟล์ที่แก้แล้ว
+                buffer = io.BytesIO()
+                sf.write(buffer, combined, sr_final, format='WAV')
+                buffer.seek(0)
+                
+                st.subheader("🎵 ผลลัพธ์ที่รวมร่างแล้ว:")
+                st.audio(buffer, format='audio/wav')
+                st.balloons()
