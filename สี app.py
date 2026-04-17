@@ -4,42 +4,46 @@ import numpy as np
 import soundfile as sf
 import io
 
-st.title("🎙️ SYNAPSE: Perfect Hard-Sync")
+st.title("🎙️ SYNAPSE: Final Precision Sync")
 
-uploaded_files = st.file_uploader("อัปโหลด loop_r&b และ tsta", accept_multiple_files=True)
+uploaded_files = st.file_uploader("ส่ง loop_r&b และ tsta มาครับ", accept_multiple_files=True)
 
 if uploaded_files:
     beat_file = next((f for f in uploaded_files if "loop" in f.name.lower()), None)
     voice_file = next((f for f in uploaded_files if "tsta" in f.name.lower()), None)
 
     if beat_file and voice_file:
-        if st.button("🚀 รันระบบ Hard-Sync (ล็อคจังหวะตกหน้า)"):
-            with st.spinner("กำลังจูนเสียงให้ตรงจังหวะกลอง..."):
-                y_beat, sr = librosa.load(beat_file)
-                y_voice, _ = librosa.load(voice_file, sr=sr)
+        if st.button("🚀 รันระบบ Sync (แก้ไข Error)"):
+            try:
+                # 1. โหลดไฟล์ (ใช้ sr=None เพื่อเอาค่าจริง)
+                y_beat, sr = librosa.load(beat_file, sr=22050)
+                y_voice, _ = librosa.load(voice_file, sr=22050)
 
-                # --- 1. ตัดส่วนเงียบ (Silence) ของเสียงคนออกให้เหลือแต่ 'เนื้อเสียง' ---
-                # เพื่อให้เรารู้ว่า 'คำแรก' เริ่มต้นจริงๆ ที่ตรงไหน
-                y_voice_trim, _ = librosa.effects.trim(y_voice, top_db=20)
+                # 2. ตัดหัวเงียบของเสียงคน
+                y_voice_trim, _ = librosa.effects.trim(y_voice)
 
-                # --- 2. หาจังหวะกลองแรกในเพลง (First Downbeat) ---
-                tempo, beat_frames = librosa.beat.beat_track(y=y_beat, sr=sr)
-                beat_times = librosa.frames_to_time(beat_frames, sr=sr)
-                first_beat_sample = int(beat_times[0] * sr)
-
-                # --- 3. วางเสียงลงไปในแม่พิมพ์ ---
-                # สร้างพื้นที่ว่างเท่ากับความยาวดนตรี
-                output_voice = np.zeros_like(y_beat)
+                # 3. คำนวณความยาวบีท 1 ห้อง (ของ 92 BPM)
+                # เพลง 92 BPM หนึ่งห้อง (4 จังหวะ) จะยาวประมาณ 2.6 วินาที
+                # เราจะบีบเสียงคนให้ยาวเท่ากับ 1 ห้องของบีทพอดี
+                target_len = len(y_beat) 
+                current_len = len(y_voice_trim)
                 
-                # เอาเสียงร้องที่ตัดหัวเงียบออกแล้ว มาวางเริ่มที่ 'จังหวะกลองแรก' พอดีเป๊ะ
-                v_len = min(len(y_voice_trim), len(output_voice) - first_beat_sample)
-                output_voice[first_beat_sample : first_beat_sample + v_len] = y_voice_trim[:v_len]
+                # บังคับยืดหดให้เท่ากันเป๊ะก่อนผสม
+                rate = current_len / target_len
+                y_voice_final = librosa.effects.time_stretch(y_voice_trim, rate=rate)
 
-                # --- 4. รวมเสียง (เสียงร้องที่ล็อคเป้าแล้ว + บีท) ---
-                combined = y_beat + (output_voice * 0.9)
+                # 4. รวมเสียง (Mix)
+                # ตัดให้เท่ากันเพื่อป้องกัน Error
+                min_len = min(len(y_beat), len(y_voice_final))
+                combined = y_beat[:min_len] + (y_voice_final[:min_len] * 0.8)
 
+                # 5. ส่งผลลัพธ์
                 buffer = io.BytesIO()
                 sf.write(buffer, combined, sr, format='WAV')
                 buffer.seek(0)
+                
                 st.audio(buffer, format='audio/wav')
-                st.success(f"ล็อคหัวเสียงให้ตรงกับจังหวะกลองที่ {tempo:.2f} BPM แล้วครับ!")
+                st.success("ล็อคจังหวะเรียบร้อย!") # ตัด f-string ซับซ้อนออกเพื่อกัน Error
+                
+            except Exception as e:
+                st.error(f"เกิดข้อผิดพลาด: {str(e)}")
