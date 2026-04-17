@@ -6,7 +6,6 @@ import random
 # --- 1. CONFIGURATION ---
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.7", layout="centered")
 
-# ฟังก์ชันแปลงไฟล์เป็น Base64 (เพื่อให้เสียงดังชัวร์)
 def get_base64(file_path):
     try:
         if os.path.exists(file_path):
@@ -15,11 +14,9 @@ def get_base64(file_path):
     except: return None
     return None
 
-# ตรวจสอบตัวแปรระบบ
 if 'song_index' not in st.session_state:
     st.session_state.song_index = 0
 
-# ดึงโลโก้
 logo_b64 = get_base64("logo1.png")
 
 # --- 2. ข้อมูลห้องและสีสัน ---
@@ -31,10 +28,9 @@ room_info = [
     {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"}
 ]
 
-# สแกนเพลงทั้งหมดในโฟลเดอร์
 all_music = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
 
-# --- 3. ฟังก์ชันหลักสำหรับเครื่องเล่นเพลง ---
+# --- 3. ฟังก์ชันหลักสำหรับเครื่องเล่นเพลง (เวอร์ชันแก้ทาง Auto-play) ---
 def synapse_player(room_idx):
     info = room_info[room_idx]
     c1, c2 = info["color1"], info["color2"]
@@ -43,13 +39,12 @@ def synapse_player(room_idx):
         st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในคลัง")
         return
 
-    # ป้องกัน Index หลุดขอบ
     st.session_state.song_index %= len(all_music)
     current_song = all_music[st.session_state.song_index]
     song_data = get_base64(current_song)
 
     if song_data:
-        # ส่วนแสดงผล HTML5 + Visualizer + Auto-Next
+        # ส่วนผสม JavaScript ที่ทำให้เล่นต่อเนื่องได้จริง
         html_code = f"""
         <div style="margin-top:10px;">
             <canvas id="canvas-{room_idx}" style="width:100%; height:110px; background:#000; border:1px solid {c1}44; border-radius:15px;"></canvas>
@@ -68,6 +63,7 @@ def synapse_player(room_idx):
             const ctx = canvas.getContext('2d');
             let audioCtx, analyser, source, dataArray;
 
+            // ฟังก์ชันเริ่มระบบเมื่อกดปุ่ม
             btn.onclick = function() {{
                 if (!audioCtx) {{
                     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -79,8 +75,26 @@ def synapse_player(room_idx):
                     dataArray = new Uint8Array(analyser.frequencyBinCount);
                     render();
                 }}
-                if (audio.paused) {{ audio.play(); btn.innerText = "SYSTEM ONLINE 🟢"; }}
-                else {{ audio.pause(); btn.innerText = "SYSTEM PAUSED 🔴"; }}
+                if (audio.paused) {{ 
+                    audio.play(); 
+                    btn.innerText = "SYSTEM ONLINE 🟢"; 
+                    sessionStorage.setItem('synapse_autoplay', 'true'); // บันทึกว่าอนุญาตให้เล่นต่อเนื่อง
+                }} else {{ 
+                    audio.pause(); 
+                    btn.innerText = "SYSTEM PAUSED 🔴"; 
+                    sessionStorage.setItem('synapse_autoplay', 'false');
+                }}
+            }};
+
+            // ระบบเช็คและเล่นอัตโนมัติเมื่อโหลดเพลงใหม่ (ถ้าเคยอนุญาตไว้)
+            window.onload = function() {{
+                if (sessionStorage.getItem('synapse_autoplay') === 'true') {{
+                    setTimeout(() => {{
+                        audio.play().then(() => {{
+                            btn.innerText = "SYSTEM ONLINE 🟢";
+                        }}).catch(e => console.log("Auto-play wait for click"));
+                    }}, 800);
+                }}
             }};
 
             function render() {{
@@ -99,8 +113,9 @@ def synapse_player(room_idx):
                     x += bWidth;
                 }}
             }}
-            // เมื่อเพลงจบ สั่งไปกดปุ่มถัดไป
+
             audio.onended = () => {{
+                // ดีดไปเพลงถัดไปโดยกดปุ่ม NEXT ที่มี title="NEXT_TRIGGER"
                 window.parent.document.querySelector('button[title="NEXT_TRIGGER"]').click();
             }};
         </script>
@@ -108,7 +123,6 @@ def synapse_player(room_idx):
         st.components.v1.html(html_code, height=260)
 
 # --- 4. การแสดงผลหน้าจอหลัก ---
-# ส่วนหัว (Logo & Title)
 st.markdown(f"""
     <style>
     header, footer, #MainMenu {{visibility: hidden;}}
@@ -123,17 +137,16 @@ st.markdown(f"""
     <div class="main-logo"></div>
 """, unsafe_allow_html=True)
 
-# สร้าง 5 ห้อง
 tabs = st.tabs([r["name"] for r in room_info])
 
 for i, tab in enumerate(tabs):
     with tab:
-        st.markdown(f"<h2 style='text-align:center; color:#fff;'>{room_info[i]['name']}</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='text-align:center; color:#fff; font-family:sans-serif;'>{room_info[i]['name']}</h2>", unsafe_allow_html=True)
         synapse_player(i)
 
-# --- 5. ระบบควบคุมและรายชื่อเพลง (โชว์ทุกหน้า) ---
+# --- 5. ระบบควบคุมและรายชื่อเพลง ---
 st.write("---")
-st.markdown("<h3 style='color:#39FF14; text-align:center;'>🎵 GLOBAL PLAYLIST</h3>", unsafe_allow_html=True)
+st.markdown("<h3 style='color:#39FF14; text-align:center; font-family:sans-serif;'>🎵 GLOBAL PLAYLIST (52 TRACKS)</h3>", unsafe_allow_html=True)
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -145,12 +158,11 @@ with col2:
         st.session_state.song_index = random.randint(0, len(all_music)-1)
         st.rerun()
 with col3:
-    # ปุ่ม NEXT ที่มีความลับ (title="NEXT_TRIGGER")
+    # ปุ่มสวรรค์ที่ JS จะมาช่วยกดให้
     if st.button("⏭️ NEXT", help="NEXT_TRIGGER"):
         st.session_state.song_index += 1
         st.rerun()
 
-# แสดงรายชื่อเพลง 52 เพลง
 with st.expander("📂 เลือกเพลงจากคลังทั้งหมด", expanded=True):
     for idx, song in enumerate(all_music):
         is_current = (idx == st.session_state.song_index % len(all_music))
