@@ -5,6 +5,96 @@ import random
 
 # --- 1. CONFIG & SYSTEM ---
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.7", layout="centered")
+def synapse_player(room_idx):
+    info = room_info[room_idx]
+    c1, c2 = info["color1"], info["color2"]
+    
+    if not all_music:
+        st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในคลัง")
+        return
+
+    st.session_state.song_index %= len(all_music)
+    current_song = all_music[st.session_state.song_index]
+    song_data = get_base64(current_song)
+
+    if song_data:
+        # ส่วนแสดงผลที่มีเนื้อเพลง/ชื่อเพลงวิ่ง (Marquee)
+        html_code = f"""
+        <div style="margin-top:10px; font-family:sans-serif;">
+            <canvas id="canvas-{room_idx}" style="width:100%; height:110px; background:#000; border:1px solid {c1}44; border-radius:15px;"></canvas>
+            
+            <div style="background:rgba(0,0,0,0.6); border:1px solid {c1}; border-radius:5px; margin-top:10px; overflow:hidden;">
+                <marquee scrollamount="5" style="color:{c1}; font-size:16px; padding:5px; font-weight:bold; text-shadow: 0 0 5px {c1};">
+                    NOW PLAYING 🎵 {current_song} | {info['name']} | SYNAPSE COMMAND CENTER - อยู่นิ่งๆ ไม่เจ็บตัว ⚡
+                </marquee>
+            </div>
+
+            <button id="btn-{room_idx}" style="width:100%; padding:15px; margin-top:10px; background:transparent; color:{c1}; border:2px solid {c1}; cursor:pointer; border-radius:10px; font-weight:bold; box-shadow: 0 0 15px {c1}33; text-transform:uppercase;">
+                ACTIVATE {info["name"]} ⚡
+            </button>
+            <audio id="audio-{room_idx}" src="data:audio/mp3;base64,{song_data}"></audio>
+        </div>
+        <script>
+            const audio = document.getElementById('audio-{room_idx}');
+            const btn = document.getElementById('btn-{room_idx}');
+            const canvas = document.getElementById('canvas-{room_idx}');
+            const ctx = canvas.getContext('2d');
+            let audioCtx, analyser, source, dataArray;
+
+            btn.onclick = function() {{
+                if (!audioCtx) {{
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioCtx.createAnalyser();
+                    source = audioCtx.createMediaElementSource(audio);
+                    source.connect(analyser);
+                    analyser.connect(audioCtx.destination);
+                    analyser.fftSize = 256; 
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    render();
+                }}
+                if (audio.paused) {{ 
+                    audio.play(); 
+                    btn.innerText = "SYSTEM ONLINE 🟢"; 
+                    sessionStorage.setItem('synapse_autoplay', 'true');
+                }} else {{ 
+                    audio.pause(); 
+                    btn.innerText = "SYSTEM PAUSED 🔴"; 
+                    sessionStorage.setItem('synapse_autoplay', 'false');
+                }}
+            }};
+
+            window.onload = function() {{
+                if (sessionStorage.getItem('synapse_autoplay') === 'true') {{
+                    setTimeout(() => {{
+                        audio.play().then(() => {{
+                            btn.innerText = "SYSTEM ONLINE 🟢";
+                        }}).catch(e => console.log("Auto-play blocked"));
+                    }}, 800);
+                }}
+            }};
+
+            function render() {{
+                requestAnimationFrame(render);
+                analyser.getByteFrequencyData(dataArray);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const bWidth = (canvas.width / dataArray.length) * 2;
+                let x = 0;
+                for (let i = 0; i < dataArray.length; i++) {{
+                    let h = (dataArray[i] / 255) * canvas.height;
+                    let grad = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - h);
+                    grad.addColorStop(0, "{c1}"); grad.addColorStop(1, "{c2}");
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(x, canvas.height - h, bWidth - 1, h);
+                    x += bWidth;
+                }}
+            }}
+
+            audio.onended = () => {{
+                window.parent.document.querySelector('button[title="NEXT_TRIGGER"]').click();
+            }};
+        </script>
+        """
+        st.components.v1.html(html_code, height=300) # เพิ่มความสูงเผื่อแถบวิ่ง
 
 def get_base64(file_path):
     try:
