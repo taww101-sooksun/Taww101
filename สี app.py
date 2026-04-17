@@ -1,4 +1,48 @@
 import streamlit as st
+import streamlit as st
+import base64
+
+# ฟังก์ชันสำหรับแปลงรูปเป็น Base64 (เพื่อให้รูปโชว์ใน CSS ได้)
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
+
+# ตรวจสอบว่ามีไฟล์ logo1.png อยู่จริงไหม
+try:
+    logo_base64 = get_base64_image("logo1.png")
+    logo_html = f"data:image/png;base64,{logo_base64}"
+except:
+    logo_html = "" # ถ้าไม่เจอรูปจะไม่โชว์อะไร
+
+st.markdown(f"""
+    <style>
+    /* 1. ซ่อนเมนูเดิมและ Footer */
+    header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    #MainMenu {{visibility: hidden;}}
+    
+    /* 2. ดันเนื้อหาขึ้นให้สุด */
+    .block-container {{
+        padding-top: 1rem;
+        padding-bottom: 0rem;
+    }}
+
+    /* 3. สร้าง Logo ใหม่ไปแปะที่มุมขวาบน */
+    .block-container::before {{
+        content: "";
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        width: 80px;  /* ปรับขนาดความกว้าง Logo */
+        height: 80px; /* ปรับขนาดความสูง Logo */
+        background-image: url("{logo_html}");
+        background-size: contain;
+        background-repeat: no-repeat;
+        z-index: 999;
+        filter: drop-shadow(0 0 5px #ff00de); /* เพิ่มแสง Neon ให้ Logo */
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
 st.set_page_config(page_title="Neon Studio Mixer", layout="centered")
 
