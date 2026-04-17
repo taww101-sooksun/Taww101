@@ -60,7 +60,7 @@ st.markdown("""
         margin-bottom: 10px;
     }
     </style>
-    <h1 class="neon-title">NEON STUDIO MIXER</h1>
+    <h1 class="neon-title">SYNAPSEอยู่นิ้งๆไม่้เจ็บตัว</h1>
 """, unsafe_allow_html=True)
 
 html_code = """
