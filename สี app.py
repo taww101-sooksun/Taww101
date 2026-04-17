@@ -5,28 +5,38 @@ import io
 
 st.title("🎙️ SYNAPSE: Voice Transform")
 
-# 1. ตั้งค่าตัวเลขให้ "สุด" ไปเลย จะได้เห็นความต่าง
-# Rate > 1.0 คือ เร็วขึ้น (Rap)
-# Rate < 1.0 คือ ช้าลง (R&B)
-rate = st.slider("ปรับความเร็ว (Rate):", 0.5, 2.0, 1.0) 
+# 1. ให้ผู้ใช้เลือกไฟล์ก่อน
+uploaded_file = st.file_uploader("ส่งไฟล์เสียงมาลองดู", type=['wav', 'mp3', 'm4a'])
 
-uploaded_file = st.file_uploader("ส่งไฟล์เสียงมาลองดู")
+# 2. เช็คว่ามีไฟล์ถูกอัปโหลดขึ้นมาหรือยัง (ป้องกัน Error บรรทัดที่ 18)
+if uploaded_file is not None:
+    
+    # แสดงเสียงต้นฉบับ (ย้ายมาไว้ใน if เพื่อให้แน่ใจว่ามีไฟล์แน่ๆ)
+    st.audio(uploaded_file, format='audio/wav')
+    st.info("ไฟล์พร้อมแล้ว กดปุ่มรันแม่พิมพ์ได้เลย")
 
-if uploaded_file:
-    # โหลดไฟล์ต้นฉบับ
-    y, sr = librosa.load(uploaded_file)
-    st.audio(uploaded_file, format='audio/wav', caption="เสียงเดิม")
+    # ตั้งค่า Rate
+    rate = st.slider("ปรับความเร็ว (Rate):", 0.5, 2.0, 1.0) 
 
     if st.button("🚀 สั่งรันแม่พิมพ์"):
-        # --- จุดที่ต้องแก้เพื่อให้เปลี่ยนจริง ---
-        # เราต้องเอาผลลัพธ์จากการ stretch ไปใส่ในตัวแปรใหม่ (y_changed)
-        y_changed = librosa.effects.time_stretch(y, rate=rate) 
-        
-        # เขียนไฟล์ใหม่ลงใน Buffer เพื่อให้เครื่องเล่นไฟล์ที่ "แก้แล้ว" ไม่ใช่ไฟล์เดิม
-        buffer = io.BytesIO()
-        sf.write(buffer, y_changed, sr, format='WAV')
-        buffer.seek(0) # กลับไปจุดเริ่มไฟล์เพื่อเตรียมเล่น
-        
-        st.write(f"--- เสียงที่เปลี่ยนไป (Rate: {rate}) ---")
-        st.audio(buffer, format='audio/wav') 
-        st.success("ตอนนี้เสียงเปลี่ยนแล้วครับ!")
+        with st.spinner("กำลังประมวลผล..."):
+            try:
+                # อ่านไฟล์จาก Memory (ต้องใช้ BytesIO เพื่อความชัวร์)
+                data, sr = librosa.load(uploaded_file)
+                
+                # --- จุดสั่งเปลี่ยนเสียงตามแม่พิมพ์ ---
+                y_changed = librosa.effects.time_stretch(data, rate=rate) 
+                
+                # เขียนลง Buffer ใหม่
+                buffer = io.BytesIO()
+                sf.write(buffer, y_changed, sr, format='WAV')
+                buffer.seek(0)
+                
+                st.write(f"--- ผลลัพธ์ (ความเร็ว {rate}x) ---")
+                st.audio(buffer, format='audio/wav')
+                st.success("เปลี่ยนเสียงเรียบร้อย!")
+                
+            except Exception as e:
+                st.error(f"เกิดข้อผิดพลาดในการแปลงเสียง: {e}")
+else:
+    st.warning("กรุณาอัปโหลดไฟล์เสียงก่อนครับ")
