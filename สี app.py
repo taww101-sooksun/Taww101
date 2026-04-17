@@ -1,175 +1,161 @@
 import streamlit as st
+import os
 
-st.set_page_config(page_title="Neon Studio Mixer", layout="centered")
+st.set_page_config(page_title="Neon Playlist Mixer", layout="centered")
 
-# CSS สไตล์ Neon อาจารย์ต๊ะ
+# 1. สแกนหาไฟล์เพลงในโฟลเดอร์ปัจจุบัน
+music_files = [f for f in os.listdir('.') if f.endswith('.mp3')]
+music_files.sort() # เรียงตามชื่อไฟล์
+
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    .main { background-color: #000000; }
-    .neon-title {
+    .main { background-color: #000; }
+    .neon-text {
         font-family: 'Orbitron', sans-serif;
-        color: #fff;
-        text-align: center;
-        text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de;
-        font-size: 2rem;
-        margin-bottom: 10px;
+        color: #fff; text-align: center;
+        text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
+        font-size: 1.5rem; margin-bottom: 5px;
     }
     </style>
-    <h1 class="neon-title">NEON STUDIO MIXER</h1>
+    <h1 class="neon-text">SYNAPSE MUSIC STATION</h1>
 """, unsafe_allow_html=True)
 
-html_code = """
+# 2. ส่งรายชื่อเพลงไปให้ JavaScript ผ่าน HTML Component
+html_code = f"""
 <!DOCTYPE html>
 <html>
 <head>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: transparent; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
-        .neon-box { border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(15, 15, 15, 0.9); }
-        .visualizer-container { height: 150px; background: #000; border-radius: 10px; border: 1px solid #333; }
-        .btn-neon { transition: 0.2s; font-weight: bold; font-size: 12px; }
-        .neon-red { border: 2px solid #ff0055; color: #ff0055; box-shadow: 0 0 10px #ff0055; }
-        .neon-green { border: 2px solid #00ffcc; color: #00ffcc; box-shadow: 0 0 10px #00ffcc; }
-        .progress-bg { height: 6px; background: #222; border-radius: 3px; overflow: hidden; }
-        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #ff00de, #00f3ff); }
+        body {{ background: transparent; color: white; font-family: 'Inter', sans-serif; }}
+        .glass-panel {{ background: rgba(20, 20, 20, 0.9); border: 1px solid #333; box-shadow: 0 0 20px rgba(255,0,222,0.1); }}
+        .visualizer-box {{ height: 120px; background: #000; border-radius: 12px; border: 1px solid #222; }}
+        .playlist-scroll {{ height: 150px; overflow-y: auto; scrollbar-width: thin; }}
+        .song-item {{ transition: 0.2s; cursor: pointer; border-left: 3px solid transparent; }}
+        .song-item:hover {{ background: rgba(255,0,222,0.1); border-left: 3px solid #ff00de; }}
+        .active-song {{ background: rgba(0,243,255,0.1); border-left: 3px solid #00f3ff; color: #00f3ff; }}
+        .neon-btn {{ border: 1px solid #ff00de; color: #ff00de; font-weight: bold; font-size: 12px; }}
+        .neon-btn:hover {{ background: #ff00de; color: white; box-shadow: 0 0 15px #ff00de; }}
     </style>
 </head>
 <body>
-    <div class="max-w-md mx-auto p-4 neon-box rounded-2xl">
-        
-        <canvas id="visualizer" class="visualizer-container w-full"></canvas>
+    <div class="max-w-md mx-auto p-4 glass-panel rounded-3xl">
+        <canvas id="visualizer" class="visualizer-box w-full mb-4"></canvas>
 
-        <div class="mt-4 p-3 border-l-4 border-pink-600 bg-gray-900/50 rounded-r-lg">
-            <div class="flex justify-between items-center mb-1">
-                <span class="text-[10px] text-pink-500 font-bold uppercase">Song A</span>
-                <span id="timeA" class="text-[10px] font-mono text-gray-400">00:00</span>
-            </div>
-            <div id="nameA" class="text-xs font-semibold mb-2 truncate text-gray-200">ยังไม่ได้โหลดเพลง A...</div>
-            <input type="file" id="inputA" accept="audio/*" class="hidden" onchange="loadAudio(this.files[0], 'A')">
-            <button onclick="document.getElementById('inputA').click()" class="text-[10px] bg-pink-900/30 px-2 py-1 rounded border border-pink-500/50 text-pink-300">เลือกเพลง A</button>
-            <div class="progress-bg mt-2"><div id="barA" class="progress-fill"></div></div>
+        <div class="mb-4 text-center">
+            <div id="now-playing" class="text-[11px] text-cyan-400 font-bold uppercase tracking-tighter truncate">รอเริ่มการเล่น...</div>
+            <div id="timer" class="text-[24px] font-mono text-white leading-none mt-1">00:00</div>
         </div>
 
-        <div class="mt-3 p-3 border-l-4 border-cyan-500 bg-gray-900/50 rounded-r-lg">
-            <div class="flex justify-between items-center mb-1">
-                <span class="text-[10px] text-cyan-400 font-bold uppercase">Song B</span>
-                <span id="timeB" class="text-[10px] font-mono text-gray-400">00:00</span>
+        <div class="playlist-scroll space-y-1 mb-4 pr-2" id="playlist">
             </div>
-            <div id="nameB" class="text-xs font-semibold mb-2 truncate text-gray-200">ยังไม่ได้โหลดเพลง B...</div>
-            <input type="file" id="inputB" accept="audio/*" class="hidden" onchange="loadAudio(this.files[0], 'B')">
-            <button onclick="document.getElementById('inputB').click()" class="text-[10px] bg-cyan-900/30 px-2 py-1 rounded border border-cyan-500/50 text-cyan-300">เลือกเพลง B</button>
-            <div class="progress-bg mt-2"><div id="barB" class="progress-fill" style="background: #00ffcc;"></div></div>
-        </div>
 
-        <div class="grid grid-cols-2 gap-3 mt-4">
-            <button onclick="startPlaying()" id="btn-play" class="btn-neon neon-red py-2 rounded-lg uppercase">Start Mix</button>
-            <button onclick="startCrossfade()" id="btn-fade" class="btn-neon neon-green py-2 rounded-lg uppercase">Crossfade</button>
+        <div class="grid grid-cols-2 gap-2">
+            <button onclick="playNext()" class="neon-btn py-2 rounded-xl uppercase">Next Song ⏭️</button>
+            <button onclick="initPlayer()" id="start-btn" class="bg-white text-black font-bold py-2 rounded-xl uppercase text-[12px]">Start System</button>
         </div>
     </div>
 
     <script>
-        let audioCtx, analyser, songA, songB, gainA, gainB, sourceA, sourceB;
-        let isPlaying = false, current = 'A';
-        let dataArray, canvas, canvasCtx;
+        const songs = {music_files}; // รายชื่อเพลงจาก Python
+        let audioCtx, analyser, currentSource, currentGain, dataArray;
+        let currentIndex = 0;
+        let isStarted = false;
 
-        function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioCtx.createAnalyser();
-                analyser.fftSize = 128;
-                dataArray = new Uint8Array(analyser.frequencyBinCount);
-                canvas = document.getElementById('visualizer');
-                canvasCtx = canvas.getContext('2d');
-                draw();
-            }
-        }
+        function initPlayer() {{
+            if (isStarted) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 64;
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            renderPlaylist();
+            playSong(0);
+            draw();
+            isStarted = true;
+            document.getElementById('start-btn').innerText = "System Online";
+        }}
 
-        function draw() {
-            requestAnimationFrame(draw);
-            if (!analyser) return;
-            analyser.getByteFrequencyData(dataArray);
-            canvasCtx.fillStyle = '#000';
-            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-            let x = 0;
-            const barWidth = (canvas.width / dataArray.length) * 2;
-            for(let i = 0; i < dataArray.length; i++) {
-                let h = (dataArray[i] / 255) * canvas.height;
-                // สีสะท้อนแสง ส้ม-ม่วง-น้ำเงิน
-                canvasCtx.fillStyle = `hsl(${280 + (i*2)}, 100%, 50%)`;
-                canvasCtx.fillRect(x, canvas.height - h, barWidth-1, h);
-                x += barWidth;
-            }
-            updateUI();
-        }
+        function renderPlaylist() {{
+            const list = document.getElementById('playlist');
+            list.innerHTML = songs.map((s, i) => `
+                <div class="song-item p-2 text-[10px] flex justify-between" id="song-${{i}}" onclick="playSong(${{i}})">
+                    <span>${{i+1}}. ${{s}}</span>
+                </div>
+            `).join('');
+        }}
 
-        async function loadAudio(file, key) {
-            initAudio();
-            document.getElementById('name'+key).innerText = "Loading: " + file.name;
-            const buffer = await audioCtx.decodeAudioData(await file.arrayBuffer());
-            if(key === 'A') songA = buffer; else songB = buffer;
-            document.getElementById('name'+key).innerText = file.name;
-        }
-
-        function startPlaying() {
-            if (!songA || !songB) return alert("โหลดเพลงก่อนครับ!");
-            if (isPlaying) return;
-
-            sourceA = audioCtx.createBufferSource(); sourceA.buffer = songA;
-            gainA = audioCtx.createGain();
-            sourceA.connect(gainA).connect(analyser).connect(audioCtx.destination);
+        async function playSong(index) {{
+            if (!audioCtx) return;
+            if (currentSource) currentSource.stop();
             
-            sourceB = audioCtx.createBufferSource(); sourceB.buffer = songB;
-            gainB = audioCtx.createGain(); gainB.gain.value = 0;
-            sourceB.connect(gainB).connect(analyser).connect(audioCtx.destination);
+            currentIndex = index;
+            const songName = songs[index];
+            document.getElementById('now-playing').innerText = "Playing: " + songName;
+            
+            // Highlight playlist
+            document.querySelectorAll('.song-item').forEach(el => el.classList.remove('active-song'));
+            document.getElementById('song-'+index).classList.add('active-song');
 
-            sourceA.start(0); sourceB.start(0);
-            isPlaying = true; startTime = audioCtx.currentTime;
-        }
+            // Load file
+            const response = await fetch("./" + songName);
+            const arrayBuffer = await response.arrayBuffer();
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-        function startCrossfade() {
-            const now = audioCtx.currentTime;
-            const dur = 5;
-            if(current === 'A') {
-                gainA.gain.linearRampToValueAtTime(1, now); gainA.gain.linearRampToValueAtTime(0, now+dur);
-                gainB.gain.linearRampToValueAtTime(0, now); gainB.gain.linearRampToValueAtTime(1, now+dur);
-                current = 'B';
-            } else {
-                gainB.gain.linearRampToValueAtTime(1, now); gainB.gain.linearRampToValueAtTime(0, now+dur);
-                gainA.gain.linearRampToValueAtTime(0, now); gainA.gain.linearRampToValueAtTime(1, now+dur);
-                current = 'A';
-            }
-        }
+            currentSource = audioCtx.createBufferSource();
+            currentSource.buffer = audioBuffer;
+            currentGain = audioCtx.createGain();
+            
+            currentSource.connect(currentGain).connect(analyser).connect(audioCtx.destination);
+            currentSource.start(0);
 
-        function updateUI() {
-            if(!isPlaying) return;
-            // คำนวณเวลาที่เหลือแบบง่ายๆ (อ้างอิงจากความยาวเพลง)
-            if(sourceA && songA) {
-                let remA = songA.duration - (audioCtx.currentTime % songA.duration);
-                document.getElementById('timeA').innerText = "-" + formatTime(remA);
-                document.getElementById('barA').style.width = ((songA.duration - remA)/songA.duration*100) + "%";
-            }
-            if(sourceB && songB) {
-                let remB = songB.duration - (audioCtx.currentTime % songB.duration);
-                document.getElementById('timeB').innerText = "-" + formatTime(remB);
-                document.getElementById('barB').style.width = ((songB.duration - remB)/songB.duration*100) + "%";
-            }
-        }
+            // เมื่อเพลงจบ ให้เล่นเพลงถัดไปอัตโนมัติ
+            currentSource.onended = () => {{
+                playNext();
+            }};
+        }}
 
-        function formatTime(sec) {
-            let m = Math.floor(sec/60);
-            let s = Math.floor(sec%60);
-            return (m<10?'0':'')+m+":"+(s<10?'0':'')+s;
-        }
+        function playNext() {{
+            let nextIndex = (currentIndex + 1) % songs.length;
+            playSong(nextIndex);
+        }}
+
+        function draw() {{
+            requestAnimationFrame(draw);
+            analyser.getByteFrequencyData(dataArray);
+            const canvas = document.getElementById('visualizer');
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            let x = 0;
+            const bWidth = (canvas.width / dataArray.length) * 2;
+            for(let i=0; i<dataArray.length; i++) {{
+                let h = (dataArray[i]/255) * canvas.height;
+                ctx.fillStyle = `hsl(${{280 + i*5}}, 100%, 50%)`;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = ctx.fillStyle;
+                ctx.fillRect(x, canvas.height-h, bWidth-2, h);
+                x += bWidth;
+            }}
+
+            // อัปเดตเวลาถอยหลัง
+            if(currentSource && currentSource.buffer) {{
+                let currTime = audioCtx.currentTime % currentSource.buffer.duration;
+                let rem = currentSource.buffer.duration - currTime;
+                let m = Math.floor(rem/60);
+                let s = Math.floor(rem%60);
+                document.getElementById('timer').innerText = (m<10?'0':'')+m+":"+(s<10?'0':'')+s;
+            }}
+        }}
     </script>
 </body>
 </html>
 """
 
-st.components.v1.html(html_code, height=600)
+st.components.v1.html(html_code, height=580)
 
-st.markdown("""
-<div style='text-align: center; color: #555; font-size: 10px;'>
-    อยู่นิ่งๆ ไม่เจ็บตัว | ระบบ Mix เพลงแบบ Real-time Studio
-</div>
-""", unsafe_allow_html=True)
+if not music_files:
+    st.warning("⚠️ ไม่พบไฟล์ .mp3 ในโฟลเดอร์นี้ครับอาจารย์ ลองเช็คดูว่าวางไฟล์ถูกที่หรือยัง")
+else:
+    st.success(f"📂 ตรวจพบเพลงในคลังทั้งหมด {len(music_files)} เพลง พร้อมลุยครับ!")
