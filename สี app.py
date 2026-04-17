@@ -1,9 +1,10 @@
 import streamlit as st
 import os
 import base64
+import random
 
-# --- 1. CONFIG ---
-st.set_page_config(page_title="SYNAPSE 5-ROOMS AUTO-CYCLE", layout="centered")
+# --- 1. CONFIG & SYSTEM ---
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.7", layout="centered")
 
 def get_base64(file_path):
     try:
@@ -15,11 +16,11 @@ def get_base64(file_path):
 
 logo_b64 = get_base64("logo1.png")
 
-# --- 2. GLOBAL STATE (ใช้ร่วมกันทุกห้อง) ---
+# --- 2. GLOBAL STATE ---
 if 'global_song_idx' not in st.session_state:
     st.session_state.global_song_idx = 0
-if 'active_room' not in st.session_state:
-    st.session_state.active_room = 0
+if 'is_playing' not in st.session_state:
+    st.session_state.is_playing = False
 
 room_info = [
     {"name": "🔥 CORE ROOM", "color1": "#39FF14", "color2": "#00FFDD"},
@@ -29,11 +30,9 @@ room_info = [
     {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"}
 ]
 
-# ดึงเพลงทั้งหมด
 all_music = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
 
-# --- 3. UI RENDER ---
-# ใช้ st.tabs แต่เราจะบังคับเลือก tab ตาม active_room
+# --- 3. UI RENDER (5 ROOMS) ---
 tabs = st.tabs([r["name"] for r in room_info])
 
 for index, tab in enumerate(tabs):
@@ -56,7 +55,7 @@ for index, tab in enumerate(tabs):
             @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.1); }} }}
             .title-{index} {{
                 font-family: 'Orbitron', sans-serif; color: #fff; text-align: center;
-                text-shadow: 0 0 10px {c1}, 0 0 20px {c1}; font-size: 1.4rem; margin-top:10px;
+                text-shadow: 0 0 10px {c1}; font-size: 1.4rem; margin-top:10px;
             }}
             </style>
             <div class="logo-img-{index}"></div>
@@ -68,16 +67,15 @@ for index, tab in enumerate(tabs):
             song_b64 = get_base64(current_song_name)
             
             if song_b64:
-                # เครื่องเล่นแบบ Auto-Cycle Engine
                 html_code = f"""
                 <div style="margin-top:5px;">
-                    <canvas id="canvas-{index}" style="width:100%; height:110px; background:#000; border:1px solid {c1}66; border-radius:15px;"></canvas>
-                    <button id="btn-{index}" style="width:100%; padding:15px; margin-top:10px; background:transparent; color:{c1}; border:2px solid {c1}; font-family:'Orbitron'; cursor:pointer; border-radius:10px; font-weight:bold; box-shadow: 0 0 15px {c1}44;">
-                        START SYNAPSE JOURNEY ⚡
+                    <canvas id="canvas-{index}" style="width:100%; height:110px; background:#000; border:1px solid {c1}44; border-radius:15px;"></canvas>
+                    <button id="btn-{index}" style="width:100%; padding:15px; margin-top:10px; background:transparent; color:{c1}; border:2px solid {c1}; font-family:'Orbitron'; cursor:pointer; border-radius:10px; font-weight:bold; box-shadow: 0 0 15px {c1}33;">
+                        ACTIVATE {info["name"]} ⚡
                     </button>
                     <audio id="audio-{index}" src="data:audio/mp3;base64,{song_b64}"></audio>
                     <p style="color:{c1}; font-family:'Orbitron'; font-size:12px; text-align:center; margin-top:8px;">
-                        TRACK: {current_song_name}
+                        NOW PLAYING: {current_song_name}
                     </p>
                 </div>
                 <script>
@@ -118,37 +116,57 @@ for index, tab in enumerate(tabs):
                             x += bWidth;
                         }}
                     }}
-
-                    // เมื่อจบเพลง: สั่งให้ Streamlit เปลี่ยนทั้งเพลงและห้อง!
                     audio.onended = () => {{
-                        window.parent.document.querySelector('button[title="NEXT_CYCLE"]').click();
+                        // สั่งเปลี่ยนเพลงและเปลี่ยนห้องอัตโนมัติ
+                        window.parent.document.querySelector('button[title="AUTO_NEXT"]').click();
                     }};
                 </script>
                 """
                 st.components.v1.html(html_code, height=260)
 
-# --- 4. ปุ่มควบคุมลับ (Hidden) สำหรับ Auto-Cycle ---
-# ปุ่มนี้จะถูก JavaScript กดให้อัตโนมัติเมื่อเพลงจบ
-if st.button("NEXT_CYCLE", key="NEXT_CYCLE", help="Invisible Auto-Next"):
-    # เปลี่ยนเพลงถัดไป
+# --- 4. ปุ่มลับสำหรับระบบอัตโนมัติ ---
+if st.button("AUTO_NEXT", key="AUTO_NEXT", help="Invisible Trigger"):
     st.session_state.global_song_idx = (st.session_state.global_song_idx + 1) % len(all_music)
-    # เปลี่ยนห้องถัดไป (0 -> 1 -> 2 -> 3 -> 4 -> 0)
-    st.session_state.active_room = (st.session_state.active_room + 1) % 5
-    st.rerun()
+    # สั่งให้เปลี่ยนหน้าไปห้องถัดไป (Optional: ถ้าอาจารย์อยากให้อยู่หน้าเดิมก็ตัดบรรทัดนี้ออกได้)
+    # st.rerun() 
 
-# --- 5. CONTROL PANEL (ด้านล่าง) ---
+# --- 5. คลังเพลง 52 เพลง (โชว์รายชื่อทั้งหมด) ---
 st.write("---")
-c1, c2, c3 = st.columns([1, 1, 1])
-with c1:
-    if st.button("⏭️ SKIP TRACK"):
+st.markdown("<h3 style='font-family:Orbitron; color:#39FF14; text-align:center;'>🎵 GLOBAL PLAYLIST (52 TRACKS)</h3>", unsafe_allow_html=True)
+
+# สร้างปุ่มควบคุมหลัก
+col_a, col_b = st.columns(2)
+with col_a:
+    if st.button("⏭️ SKIP TO NEXT"):
         st.session_state.global_song_idx += 1
         st.rerun()
-with c2:
-    if st.button("🎲 SHUFFLE"):
+with col_b:
+    if st.button("🎲 SHUFFLE ALL"):
         st.session_state.global_song_idx = random.randint(0, len(all_music)-1)
         st.rerun()
-with c3:
-    # แสดงห้องปัจจุบัน
-    st.markdown(f"<p style='text-align:right; color:#fff; font-family:Orbitron;'>ROOM: {st.session_state.active_room + 1}/5</p>", unsafe_allow_html=True)
 
-st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE AUTO-JOURNEY V.6")
+# แสดงรายชื่อเพลงทั้งหมดให้อาจารย์จิ้มเลือก
+with st.container():
+    st.markdown("""
+        <style>
+        .song-list-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    with st.expander("📂 ดูรายชื่อเพลงทั้งหมดและเลือกเล่น", expanded=True):
+        for i, song in enumerate(all_music):
+            # เน้นสีเพลงที่กำลังเล่นอยู่
+            is_current = (i == st.session_state.global_song_idx % len(all_music))
+            label = f"▶️ {i+1}. {song}" if is_current else f"▪️ {i+1}. {song}"
+            
+            if st.button(label, key=f"select_{i}", use_container_width=True):
+                st.session_state.global_song_idx = i
+                st.rerun()
+
+st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE OMNI-PLAY V.7")
