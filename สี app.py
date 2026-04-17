@@ -1,50 +1,48 @@
 import streamlit as st
 import librosa
+import numpy as np
 import soundfile as sf
 import io
-import numpy as np
 
-st.title("🎙️ SYNAPSE: Precision R&B Mold")
+st.title("🎙️ SYNAPSE: Intelligent Beat Match")
 
-# ส่วนรับไฟล์ (ให้คุณต๊ะอัปโหลดทั้ง 2 ไฟล์พร้อมกันได้เลย)
-uploaded_files = st.file_uploader("อัปโหลดไฟล์ loop_r&b และ tsta เข้ามาครับ", accept_multiple_files=True)
+uploaded_files = st.file_uploader("อัปโหลด loop_r&b และ tsta", accept_multiple_files=True)
 
 if uploaded_files:
-    beat_data = None
-    voice_data = None
-    sr_final = 22050
+    beat_file = next((f for f in uploaded_files if "loop" in f.name.lower()), None)
+    voice_file = next((f for f in uploaded_files if "tsta" in f.name.lower()), None)
 
-    # ระบบคัดแยกไฟล์อัตโนมัติ
-    for file in uploaded_files:
-        if "loop_r&b" in file.name.lower():
-            beat_data, sr_final = librosa.load(file, sr=None)
-            st.success(f"เจอแม่พิมพ์แล้ว: {file.name} (92 BPM)")
-        elif "tsta" in file.name.lower():
-            voice_data, _ = librosa.load(file, sr=sr_final)
-            st.success(f"เจอวัตถุดิบเสียงแล้ว: {file.name}")
+    if beat_file and voice_file:
+        if st.button("🚀 รันระบบล็อคเป้าจังหวะ (Precision Sync)"):
+            with st.spinner("กำลังวิเคราะห์จังหวะบีท..."):
+                # 1. โหลดไฟล์
+                y_beat, sr = librosa.load(beat_file)
+                y_voice, _ = librosa.load(voice_file, sr=sr)
 
-    if beat_data is not None and voice_data is not None:
-        if st.button("🚀 รันการรวมร่าง (Sync 92 BPM)"):
-            with st.spinner("กำลังล็อคเสียง tsta ให้เข้ากับจังหวะ R&B..."):
-                # 1. คำนวณความยาว
-                dur_beat = len(beat_data) / sr_final
-                dur_voice = len(voice_data) / sr_final
+                # 2. ค้นหาจังหวะในดนตรี (Beat Tracking)
+                # โค้ดจะ "ฟัง" หาเสียงกลอง 92 BPM
+                tempo, beat_frames = librosa.beat.beat_track(y=y_beat, sr=sr)
+                beat_times = librosa.frames_to_time(beat_frames, sr=sr)
+
+                # 3. จัดระเบียบเสียงผู้ใช้ให้ลงล็อค
+                # เราจะบังคับให้เสียงร้อง 'เริ่มต้น' ที่จังหวะแรกของดนตรีเป๊ะๆ
+                first_beat_time = beat_times[0]
+                first_beat_sample = int(first_beat_time * sr)
+
+                # สร้างอาเรย์ใหม่ที่ขยับเสียงร้องไปเริ่มที่จังหวะแรก
+                voice_aligned = np.zeros_like(y_beat)
                 
-                # 2. บังคับยืดหด (The Math) 
-                # บีบเสียง tsta ให้ยาวเท่ากับบีท 92 BPM เป๊ะๆ
-                sync_rate = dur_voice / dur_beat
-                voice_synced = librosa.effects.time_stretch(voice_data, rate=sync_rate)
-                
-                # 3. รวมเสียง (Mixing)
-                # ตัดให้เท่ากันเพื่อความชัวร์
-                length = min(len(beat_data), len(voice_synced))
-                combined = beat_data[:length] + (voice_synced[:length] * 0.8) # ปรับเสียงร้องให้เบากว่าบีทนิดหน่อยเพื่อให้เนียน
-                
-                # 4. ส่งออกไฟล์ที่แก้แล้ว
+                # ตัด/แปะ เสียงร้องลงในจุดที่จังหวะเริ่ม
+                v_len = min(len(y_voice), len(y_beat) - first_beat_sample)
+                voice_aligned[first_beat_sample : first_beat_sample + v_len] = y_voice[:v_len]
+
+                # 4. รวมเสียง
+                combined = y_beat + (voice_aligned * 0.7)
+
+                # ส่งผลลัพธ์
                 buffer = io.BytesIO()
-                sf.write(buffer, combined, sr_final, format='WAV')
+                sf.write(buffer, combined, sr, format='WAV')
                 buffer.seek(0)
                 
-                st.subheader("🎵 ผลลัพธ์ที่รวมร่างแล้ว:")
                 st.audio(buffer, format='audio/wav')
-                st.balloons()
+                st.success(f"ตรวจพบ Tempo: {tempo:.2f} BPM และล็อคจังหวะแรกให้แล้วครับ!")
