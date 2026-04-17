@@ -4,7 +4,7 @@ import base64
 import random
 
 # --- 1. CONFIG & SYSTEM ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.7.1", layout="centered")
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.7", layout="centered")
 
 def get_base64(file_path):
     try:
@@ -17,25 +17,24 @@ def get_base64(file_path):
 # ตรวจสอบตัวแปรระบบ
 if 'global_song_idx' not in st.session_state:
     st.session_state.global_song_idx = 0
-if 'current_room' not in st.session_state:
-    st.session_state.current_room = "NONE" # เริ่มต้นยังไม่เข้าห้องไหน
 
 logo_b64 = get_base64("logo1.png")
 
 # --- 2. ข้อมูลห้องและสีสัน ---
-room_info = {
-    "CORE": {"name": "🔥 CORE ROOM", "color1": "#39FF14", "color2": "#00FFDD"},
-    "RNB": {"name": "🎧 R&B LOUNGE", "color1": "#FF00DE", "color2": "#7000FF"},
-    "RAP": {"name": "🎤 RAP ZONE", "color1": "#00F3FF", "color2": "#0051FF"},
-    "QUANTUM": {"name": "🌌 QUANTUM", "color1": "#FF8C00", "color2": "#FF0000"},
-    "ISAN": {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"}
-}
+room_info = [
+    {"name": "🔥 CORE ROOM", "color1": "#39FF14", "color2": "#00FFDD"},
+    {"name": "🎧 R&B LOUNGE", "color1": "#FF00DE", "color2": "#7000FF"},
+    {"name": "🎤 RAP ZONE", "color1": "#00F3FF", "color2": "#0051FF"},
+    {"name": "🌌 QUANTUM", "color1": "#FF8C00", "color2": "#FF0000"},
+    {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"}
+]
 
+# สแกนเพลงทั้งหมด
 all_music = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
 
-# --- 3. ฟังก์ชันเครื่องเล่นเพลง (ปรับปรุงใหม่) ---
-def synapse_player(room_key):
-    info = room_info[room_key]
+# --- 3. ฟังก์ชันเครื่องเล่น (พร้อมเนื้อเพลงวิ่ง) ---
+def synapse_player(room_idx):
+    info = room_info[room_idx]
     c1, c2 = info["color1"], info["color2"]
     
     if not all_music:
@@ -47,26 +46,28 @@ def synapse_player(room_key):
     song_data = get_base64(current_song)
 
     if song_data:
+        # ส่วนแสดงผล: กราฟเสียง + เนื้อเพลงวิ่ง + ปุ่มควบคุม
         html_code = f"""
-        <div style="margin-top:10px; font-family: sans-serif; background:#111; padding:15px; border-radius:20px; border:2px solid {c1};">
-            <canvas id="canvas" style="width:100%; height:110px; background:#000; border-radius:10px;"></canvas>
+        <div style="margin-top:10px; font-family: 'Orbitron', sans-serif;">
+            <canvas id="canvas-{room_idx}" style="width:100%; height:110px; background:#000; border:1px solid {c1}44; border-radius:15px;"></canvas>
             
-            <div style="background:rgba(0,0,0,0.8); border:1px solid {c1}; border-radius:8px; margin-top:12px; overflow:hidden;">
-                <marquee scrollamount="6" style="color:{c1}; font-size:18px; padding:8px; font-weight:bold;">
-                    NOW PLAYING 🎵 {current_song} | {info['name']} | SYNAPSE OMNI-PLAY ⚡
+            <div style="background:rgba(0,0,0,0.8); border:1px solid {c1}; border-radius:8px; margin-top:12px; overflow:hidden; box-shadow: 0 0 10px {c1}44;">
+                <marquee scrollamount="6" style="color:{c1}; font-size:18px; padding:8px; font-weight:bold; text-shadow: 0 0 8px {c1};">
+                    NOW PLAYING 🎵 {current_song} | {info['name']} | SYNAPSE SYSTEM ONLINE | สโลแกน: อยู่นิ่งๆ ไม่เจ็บตัว ⚡
                 </marquee>
             </div>
 
-            <button id="activate-btn" style="width:100%; padding:18px; margin-top:12px; background:transparent; color:{c1}; border:2px solid {c1}; cursor:pointer; border-radius:12px; font-weight:bold; text-transform:uppercase;">
-                START SYSTEM ⚡
+            <button id="btn-{room_idx}" style="width:100%; padding:18px; margin-top:12px; background:transparent; color:{c1}; border:2px solid {c1}; cursor:pointer; border-radius:12px; font-weight:bold; box-shadow: 0 0 15px {c1}33; text-transform:uppercase; letter-spacing: 2px;">
+                ACTIVATE {info["name"]} ⚡
             </button>
-            <audio id="main-audio" src="data:audio/mp3;base64,{song_data}"></audio>
+            
+            <audio id="audio-{room_idx}" src="data:audio/mp3;base64,{song_data}"></audio>
         </div>
 
         <script>
-            const audio = document.getElementById('main-audio');
-            const btn = document.getElementById('activate-btn');
-            const canvas = document.getElementById('canvas');
+            const audio = document.getElementById('audio-{room_idx}');
+            const btn = document.getElementById('btn-{room_idx}');
+            const canvas = document.getElementById('canvas-{room_idx}');
             const ctx = canvas.getContext('2d');
             let audioCtx, analyser, source, dataArray;
 
@@ -95,8 +96,9 @@ def synapse_player(room_key):
             window.onload = function() {{
                 if (sessionStorage.getItem('synapse_autoplay') === 'true') {{
                     setTimeout(() => {{
-                        audio.play().then(() => {{ btn.innerText = "SYSTEM ONLINE 🟢"; }})
-                        .catch(e => console.log("Blocked"));
+                        audio.play().then(() => {{
+                            btn.innerText = "SYSTEM ONLINE 🟢";
+                        }}).catch(e => console.log("Waiting for user click..."));
                     }}, 1000);
                 }}
             }};
@@ -105,63 +107,76 @@ def synapse_player(room_key):
                 requestAnimationFrame(render);
                 analyser.getByteFrequencyData(dataArray);
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const bWidth = (canvas.width / dataArray.length) * 2.2;
+                let x = 0;
                 for (let i = 0; i < dataArray.length; i++) {{
                     let h = (dataArray[i] / 255) * canvas.height;
-                    ctx.fillStyle = "{c1}";
-                    ctx.fillRect(i * 3, canvas.height - h, 2, h);
+                    let grad = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - h);
+                    grad.addColorStop(0, "{c1}"); grad.addColorStop(1, "{c2}");
+                    ctx.fillStyle = grad;
+                    ctx.shadowBlur = 10; ctx.shadowColor = "{c1}";
+                    ctx.fillRect(x, canvas.height - h, bWidth - 1, h);
+                    x += bWidth;
                 }}
             }}
 
             audio.onended = () => {{
+                // สั่งเปลี่ยนเพลงอัตโนมัติผ่านปุ่มลับ
                 window.parent.document.querySelector('button[title="AUTO_NEXT_TRIGGER"]').click();
             }};
         </script>
         """
-        st.components.v1.html(html_code, height=350)
+        st.components.v1.html(html_code, height=320)
 
-# --- 4. หน้าจอหลักและการเลือกห้อง ---
+# --- 4. การแสดงผลหน้าจอหลัก ---
 st.markdown(f"""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
     header, footer, #MainMenu {{visibility: hidden;}}
     .stApp {{ background-color: #000000 !important; }}
-    .main-logo {{ width: 80px; margin: 0 auto; filter: drop-shadow(0 0 10px #39FF14); }}
+    .logo-img {{
+        width: 80px; height: 80px; margin: 0 auto;
+        background-image: url("data:image/png;base64,{logo_b64}");
+        background-size: contain; background-repeat: no-repeat;
+        filter: drop-shadow(0 0 15px #39FF14);
+        animation: pulse 2s infinite alternate;
+    }}
+    @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.1); }} }}
     </style>
-    <div style="text-align:center;"><img src="data:image/png;base64,{logo_b64}" class="main-logo"></div>
+    <div class="logo-img"></div>
 """, unsafe_allow_html=True)
 
-# สร้างปุ่มเลือกห้องแบบเท่ๆ
-st.markdown("<h2 style='text-align:center; color:#fff;'>SELECT ROOM</h2>", unsafe_allow_html=True)
-c1, c2, c3, c4, c5 = st.columns(5)
-with c1: 
-    if st.button("CORE"): st.session_state.current_room = "CORE"
-with c2: 
-    if st.button("R&B"): st.session_state.current_room = "RNB"
-with c3: 
-    if st.button("RAP"): st.session_state.current_room = "RAP"
-with c4: 
-    if st.button("QTUM"): st.session_state.current_room = "QUANTUM"
-with c5: 
-    if st.button("ISAN"): st.session_state.current_room = "ISAN"
+tabs = st.tabs([r["name"] for r in room_info])
 
-# แสดงเฉพาะห้องที่เลือก
-if st.session_state.current_room != "NONE":
-    room_key = st.session_state.current_room
-    st.markdown(f"<h3 style='text-align:center; color:{room_info[room_key]['color1']};'>{room_info[room_key]['name']}</h3>", unsafe_allow_html=True)
-    synapse_player(room_key)
-    if st.button("❌ LEAVE ROOM"):
-        st.session_state.current_room = "NONE"
-        st.rerun()
+for i, tab in enumerate(tabs):
+    with tab:
+        st.markdown(f"<h1 style='text-align:center; color:#fff; font-family:Orbitron; font-size:1.5rem;'>{room_info[i]['name']}</h1>", unsafe_allow_html=True)
+        synapse_player(i)
 
-# --- 5. ระบบควบคุมส่วนกลาง ---
+# --- 5. ระบบควบคุมและคลังเพลง ---
 if st.button("AUTO_NEXT", key="AUTO_NEXT", help="AUTO_NEXT_TRIGGER"):
     st.session_state.global_song_idx += 1
     st.rerun()
 
 st.write("---")
-with st.expander("📂 GLOBAL TRACKLIST (52)"):
+st.markdown("<h3 style='font-family:Orbitron; color:#39FF14; text-align:center;'>🎵 GLOBAL PLAYLIST (52 TRACKS)</h3>", unsafe_allow_html=True)
+
+c1, c2 = st.columns(2)
+with c1:
+    if st.button("⏭️ SKIP TRACK"):
+        st.session_state.global_song_idx += 1
+        st.rerun()
+with c2:
+    if st.button("🎲 SHUFFLE ALL"):
+        st.session_state.global_song_idx = random.randint(0, len(all_music)-1)
+        st.rerun()
+
+with st.expander("📂 เลือกเพลงจากคลังทั้งหมด", expanded=True):
     for idx, song in enumerate(all_music):
-        if st.button(f"🎼 {idx+1}. {song}", key=f"track_{idx}", use_container_width=True):
+        is_current = (idx == st.session_state.global_song_idx % len(all_music))
+        label = f"▶️ {idx+1}. {song}" if is_current else f"▪️ {idx+1}. {song}"
+        if st.button(label, key=f"track_{idx}", use_container_width=True):
             st.session_state.global_song_idx = idx
             st.rerun()
 
-st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE V.7.1")
+st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE COMMAND CENTER V.7")
