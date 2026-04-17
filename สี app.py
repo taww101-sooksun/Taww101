@@ -1,99 +1,71 @@
 import streamlit as st
 import os
 import random
-import streamlit.components.v1 as components
+import base64
 
-# --- 1. SET UP & THEME SELECTOR ---
-st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
+# --- 1. SET UP & THEME ---
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER V2", layout="wide")
 
-# ระบบจำค่าสี (ถ้ายังไม่มีให้ตั้งค่าเริ่มต้น)
 if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#39FF14" # เขียวนีออน
+    st.session_state.theme_color = "#39FF14" # เขียวนีออนเริ่มต้น
 if 'bg_color' not in st.session_state:
-    st.session_state.bg_color = "#121212" # ดำเทาเข้ม
+    st.session_state.bg_color = "#000000"
 
+# --- Sidebar ปรับแต่งสี ---
 with st.sidebar:
-    # ส่วนของ Logo
-    if os.path.exists("logo2.jpg"):
-        st.image("logo2.jpg", use_container_width=True)
-    else:
-        st.write("📌 [ยังไม่มีไฟล์ logo2.jpg]")
-        
-    st.markdown("### 🎨 ปรับแต่งสีระบบ")
-    # เลือกสีนีออน (เส้นขอบ/ตัวอักษร)
-    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
-    # เลือกสีพื้นหลัง
-    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
-    
+    if os.path.exists("logo1.png"):
+        st.image("logo1.png", use_container_width=True)
+    st.markdown("### 🎨 System Tuning")
+    st.session_state.theme_color = st.color_picker("Neon Color", st.session_state.theme_color)
     st.write("---")
     st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
 
-# --- 2. CSS DYNAMIC THEME (ดึงสีจาก Picker) ---
+# --- 2. ฟังก์ชันแปลงรูปเป็น Base64 สำหรับ CSS ---
+def get_base64(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return ""
+
+logo_b64 = get_base64("logo1.png")
+
+# --- 3. CSS DYNAMIC THEME ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
     
-    .stApp {{
-        background-color: {st.session_state.bg_color} !important;
-        color: {st.session_state.theme_color} !important;
+    header, footer, #MainMenu {{visibility: hidden;}}
+    .stApp {{ background-color: {st.session_state.bg_color} !important; }}
+
+    /* Logo ตรงกลางแบบมี Animation */
+    .block-container::before {{
+        content: "";
+        position: absolute;
+        top: 10px; left: 50%;
+        transform: translateX(-50%);
+        width: 80px; height: 80px;
+        background-image: url("data:image/png;base64,{logo_b64}");
+        background-size: contain; background-repeat: no-repeat;
+        z-index: 999;
+        filter: drop-shadow(0 0 10px {st.session_state.theme_color});
+        animation: pulse 2s infinite alternate;
+    }}
+    @keyframes pulse {{
+        from {{ transform: translateX(-50%) scale(1); opacity: 0.8; }}
+        to {{ transform: translateX(-50%) scale(1.1); opacity: 1; }}
     }}
 
-    /* ปรับปรุงขอบกล่องรายการเพลง */
-    [data-testid="stVVerticalBlock"] > div > div > [data-testid="stVerticalBlockBorderWrapper"] {{
-        border: 2px solid {st.session_state.theme_color} !important;
-        border-radius: 15px !important;
-        background: rgba(0, 0, 0, 0.4) !important;
-        box-shadow: 0px 0px 15px {st.session_state.theme_color}44;
-        padding: 15px;
-    }}
-
-    .marquee {{
-        width: 100%;
-        overflow: hidden;
-        white-space: nowrap;
-        background: rgba(0,0,0,0.6);
-        padding: 15px 0;
-        border-radius: 12px;
-        margin-bottom: 15px;
-        border: 2px solid {st.session_state.theme_color};
-    }}
-    .marquee p {{
-        display: inline-block;
-        padding-left: 100%;
-        animation: marquee 20s linear infinite;
+    .neon-title {{
         font-family: 'Orbitron', sans-serif;
-        font-size: 22px;
-        color: {st.session_state.theme_color};
-        text-shadow: 0px 0px 10px {st.session_state.theme_color};
-        margin: 0;
+        color: #fff; text-align: center;
+        text-shadow: 0 0 15px {st.session_state.theme_color};
+        font-size: 2rem; margin-top: 80px;
     }}
-    @keyframes marquee {{
-        0% {{ transform: translate(0, 0); }}
-        100% {{ transform: translate(-100%, 0); }}
-    }}
-
-    .stButton>button {{
-        width: 100%;
-        text-align: left;
-        background-color: transparent !important;
-        color: {st.session_state.theme_color} !important;
-        border-radius: 10px !important;
-        font-weight: bold;
-        border: 1px solid {st.session_state.theme_color} !important;
-        margin-bottom: 5px;
-        transition: 0.3s;
-    }}
-    .stButton>button:hover {{
-        background-color: {st.session_state.theme_color} !important;
-        color: {st.session_state.bg_color} !important;
-        box-shadow: 0px 0px 15px {st.session_state.theme_color};
-    }}
-    
-    h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
     </style>
+    <h1 class="neon-title">SYNAPSE COMMAND CENTER</h1>
     """, unsafe_allow_html=True)
 
-# --- 3. ระบบจัดการเพลง ---
+# --- 4. ระบบจัดการไฟล์เพลง ---
 music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
 
 if music_files:
@@ -101,92 +73,116 @@ if music_files:
         st.session_state.song_index = 0
     
     current_song = music_files[st.session_state.song_index]
-
-    # ส่วนหัวและโลโก้
-    col_l, col_r = st.columns([1, 5])
-    with col_l:
-        if os.path.exists("logo2.jpg"):
-            st.image("logo2.jpg", width=500)
-    with col_r:
-        st.title("🎸 อยู่นิ่งๆไม่เจ็บตัว 🎼 MUSIC")
-
-    # 1. ชื่อเพลงวิ่ง
-    st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
-
-    # 2. ปก
-    base_name = os.path.splitext(current_song)[0]
-    if os.path.exists(base_name + ".mp4"):
-        st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
-    elif os.path.exists(base_name + ".jpg"):
-        st.image(base_name + ".jpg", use_container_width=True)
     
-    # 3. เครื่องเล่นเพลง
-    st.audio(current_song)
+    # ส่วนแสดงชื่อเพลงวิ่ง
+    st.markdown(f"""
+        <div style="overflow:hidden; white-space:nowrap; background:rgba(0,0,0,0.5); border:1px solid {st.session_state.theme_color}; border-radius:10px; padding:10px;">
+            <p style="display:inline-block; padding-left:100%; animation: marquee 15s linear infinite; color:{st.session_state.theme_color}; font-family:'Orbitron';">
+                NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON 
+            </p>
+        </div>
+        <style>@keyframes marquee {{ 0% {{transform: translate(0,0);}} 100% {{transform: translate(-100%,0);}} }}</style>
+    """, unsafe_allow_html=True)
 
-    st.markdown("---")
+    # กะขนาดคอลัมน์ [ซ้าย: ปก/วิดีโอ , ขวา: คลังเพลง]
+    col_main, col_list = st.columns([2, 1])
 
-    # 4. กล่องรายชื่อเพลง
-    st.subheader("🎧 รายชื่อเพลง🎸")
-    with st.container(border=True, height=250):
-        for i, song in enumerate(music_files):
-            label = f"▶️ {i+1}. {song}" if i == st.session_state.song_index else f"{i+1}. {song}"
-            if st.button(label, key=f"box_{i}"):
-                st.session_state.song_index = i
-                st.rerun()
+    with col_main:
+        # ดึงไฟล์วิดีโอหรือรูปที่ชื่อตรงกับเพลงมาโชว์
+        base_name = os.path.splitext(current_song)[0]
+        if os.path.exists(base_name + ".mp4"):
+            st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
+        elif os.path.exists(base_name + ".jpg"):
+            st.image(base_name + ".jpg", use_container_width=True)
+        else:
+            st.info("💡 Tip: ตั้งชื่อรูป .jpg ให้เหมือนชื่อเพลง .mp3 เพื่อโชว์ปกแบบอัตโนมัติ")
 
-    # 5. ปุ่มควบคุม
-    col1, col2 = st.columns(2)
-    with col1:
+    with col_list:
+        st.markdown(f"<h3 style='font-size:14px; color:{st.session_state.theme_color}'>🎧 PLAYLIST</h3>", unsafe_allow_html=True)
+        with st.container(height=300):
+            for i, song in enumerate(music_files):
+                btn_label = f"▶️ {song}" if i == st.session_state.song_index else f"▪️ {song}"
+                if st.button(btn_label, key=f"s_{i}"):
+                    st.session_state.song_index = i
+                    st.rerun()
+
+    # --- 5. หัวใจหลัก: Mixer & Visualizer Engine ---
+    # เราจะส่งชื่อไฟล์เพลงปัจจุบันเข้าไปใน JavaScript เพื่อเล่น
+    html_mixer = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            .vis-box {{ height: 120px; background: #000; border: 1px solid {st.session_state.theme_color}; border-radius: 15px; }}
+        </style>
+    </head>
+    <body>
+        <canvas id="canvas" class="vis-box" style="width:100%"></canvas>
+        <script>
+            let audioCtx, analyser, source, dataArray;
+            let songUrl = "./{current_song}";
+
+            async function startAudio() {{
+                if(!audioCtx) {{
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioCtx.createAnalyser();
+                    analyser.fftSize = 64;
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    
+                    const res = await fetch(songUrl);
+                    const buffer = await audioCtx.decodeAudioData(await res.arrayBuffer());
+                    
+                    source = audioCtx.createBufferSource();
+                    source.buffer = buffer;
+                    
+                    // ระบบ Fade In (10 วินาทีตามที่อาจารย์ชอบ)
+                    let gain = audioCtx.createGain();
+                    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(1, audioCtx.currentTime + 10);
+                    
+                    source.connect(gain).connect(analyser).connect(audioCtx.destination);
+                    source.start(0);
+                    
+                    source.onended = () => {{ window.parent.document.querySelector('button[title="⏭️ เพลงถัดไป"]').click(); }};
+                    draw();
+                }}
+            }}
+
+            function draw() {{
+                requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(dataArray);
+                const canvas = document.getElementById('canvas');
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0,0,canvas.width, canvas.height);
+                const bWidth = (canvas.width / dataArray.length) * 2;
+                for(let i=0; i<dataArray.length; i++) {{
+                    let h = (dataArray[i]/255) * canvas.height;
+                    ctx.fillStyle = '{st.session_state.theme_color}';
+                    ctx.shadowBlur = 10; ctx.shadowColor = '{st.session_state.theme_color}';
+                    ctx.fillRect(i*bWidth, canvas.height-h, bWidth-2, h);
+                }}
+            }}
+            // เริ่มอัตโนมัติเมื่อ User คลิกที่ไหนก็ได้ในหน้าจอ
+            window.onclick = () => {{ startAudio(); }};
+        </script>
+    </body>
+    </html>
+    """
+    st.components.v1.html(html_mixer, height=150)
+
+    # ปุ่มควบคุมเสริมด้านล่าง
+    c1, c2, c3 = st.columns(3)
+    with c1:
         if st.button("⏭️ เพลงถัดไป"):
             st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
             st.rerun()
-    with col2:
+    with c2:
         if st.button("🎲 สุ่มเพลง"):
             st.session_state.song_index = random.randint(0, len(music_files) - 1)
             st.rerun()
+    with c3:
+        st.markdown(f"<p style='font-size:10px; text-align:right;'>อยู่นิ่งๆ ไม่เจ็บตัว CORE V2</p>", unsafe_allow_html=True)
 
-    # 6. JavaScript: ใช้ตัวที่คุณยืนยันว่าเวิร์ค (Fade + Auto Play + Auto Next)
-    components.html(
-        """
-        <script>
-        var fadeDuration = 12; 
-
-        function handleAudioSync() {
-            var audio = window.parent.document.querySelector('audio');
-            var buttons = window.parent.document.querySelectorAll('button');
-            
-            if (audio) {
-                // ระบบ Fade In
-                if (audio.currentTime < fadeDuration && !audio.paused) {
-                    audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
-                } 
-                // ระบบ Fade Out
-                else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {
-                    audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
-                } 
-                else {
-                    audio.volume = 1;
-                }
-
-                // ระบบ Auto-Next เมื่อเพลงจบ
-                audio.onended = function() {
-                    for (var i = 0; i < buttons.length; i++) {
-                        if (buttons[i].textContent.includes('เพลงถัดไป')) {
-                            buttons[i].click();
-                            break;
-                        }
-                    }
-                };
-
-                // บังคับ Play เมื่อโหลดใหม่
-                if (audio.paused && audio.currentTime == 0) {
-                    audio.play().catch(e => console.log("User interaction needed"));
-                }
-            }
-        }
-        setInterval(handleAudioSync, 500);
-        </script>
-        """, height=0
-    )
 else:
-    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์ครับ")
+    st.error("ไม่พบไฟล์เพลง .mp3 ครับอาจารย์")
