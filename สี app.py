@@ -119,11 +119,11 @@ if song_files:
         let x = 0;
 
         for (let i = 0; i < bufferLength; i++) {{
-            const barHeight = dataArray[i] * 0.8;
+            const barHeight = dataArray[i] * 0.4;
             
             // ไล่เฉดสีรุ้ง (Rainbow Bar)
             const hue = i * 360 / bufferLength;
-            ctx.fillStyle = `hsl(${{hue}}, 100%, 80%)`;
+            ctx.fillStyle = `hsl(${{hue}}, 100%, 40%)`;
             
             // วาดแท่งกราฟ (เต้นตามจังหวะจริง!)
             ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
