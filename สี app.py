@@ -47,7 +47,7 @@ hide_ui = """
         margin-top: 10px;
     }
     @keyframes shine {
-        to { background-position: 200% center; }
+        to { background-position: 100% center; }
     }
     </style>
 """
@@ -57,12 +57,12 @@ st.markdown(hide_ui, unsafe_allow_html=True)
 song_files = [f for f in os.listdir('.') if f.endswith(('.mp3', '.wav'))]
 
 # --- UI DISPLAY ---
-# 1. โลโก้ดิ้นได้ (200px ตามสั่ง)
+# 1. โลโก้ดิ้นได้ (100px ตามสั่ง)
 logo_data = get_base64_bin("logo1.png")
 if logo_data:
     st.markdown(f"""
         <div class="logo-container">
-            <img src="data:image/png;base64,{logo_data}" width="200">
+            <img src="data:image/png;base64,{logo_data}" width="100">
         </div>
     """, unsafe_allow_html=True)
 
@@ -81,9 +81,9 @@ if song_files:
     # ส่วนนี้จะใช้ Web Audio API เพื่อดึงค่าความถี่จริงจากเพลง
     visual_code = f"""
     <div style="text-align: center;">
-        <canvas id="canvas" width="1000" height="250" style="width: 100%; max-width: 800px;"></canvas>
+        <canvas id="canvas" width="1000" height="300" style="width: 100%; max-width: 800px;"></canvas>
         <br>
-        <audio id="audioPlayer" controls style="width: 80%; border-radius: 50px; background: #fff;"></audio>
+        <audio id="audioPlayer" controls style="width: 100%; border-radius: 100px; background: #fff;"></audio>
     </div>
 
     <script>
@@ -102,7 +102,7 @@ if song_files:
             source = audioCtx.createMediaElementSource(audio);
             source.connect(analyser);
             analyser.connect(audioCtx.destination);
-            analyser.fftSize = 256; 
+            analyser.fftSize = 512; 
             draw();
         }}
     }};
