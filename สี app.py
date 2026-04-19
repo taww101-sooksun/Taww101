@@ -1,66 +1,81 @@
-import streamlit as st
+    import streamlit as st
 from datetime import datetime
 
-# --- UI STYLE ---
+# 1. สไตล์แบบอาจารย์ต๊ะ (Dark Neon)
+st.set_page_config(page_title="Cosmic Auto-Decoder", layout="centered")
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: #00ff00; }
-    .stMetric { border: 1px solid #ff00ff; border-radius: 10px; padding: 10px; }
-    .synapse-box { border: 2px solid #00ffff; padding: 20px; border-radius: 15px; background: #001515; }
-    .standard-box { border: 2px solid #ff7f50; padding: 20px; border-radius: 15px; background: #150a00; }
+    h1 { color: #ff00ff; text-shadow: 2px 2px #000000; text-align: center; }
+    .stMetric { background-color: #1e2130; border-radius: 10px; padding: 15px; border: 1px solid #00ff00; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🌌 SYNAPSE DUAL-DECODER")
+st.title("🌌 Cosmic Auto-Decoder")
+st.write("<center>ระบบถอดรหัสวันที่และสมดุลจันทรคติอัตโนมัติ</center>", unsafe_allow_html=True)
 
-# รับวันที่
-selected_date = st.date_input("📅 เลือกวันที่ต้องการถอดรหัส", datetime.now())
-PHI = 1.618
+# 2. ส่วนรับข้อมูลเพียงอย่างเดียว
+selected_date = st.date_input("📅 กรอก วัน/เดือน/ปี ที่ต้องการเช็ค", datetime.now())
+
+# 3. Logic คำนวณอัตโนมัติ
+# A. วันในสัปดาห์
 day_of_week = selected_date.isoweekday()
+day_name_th = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][day_of_week-1]
 
-# --- 1. สูตรเดิมของคุณต๊ะ (29.53 Fixed) ---
-def get_synapse_logic(date):
-    ref = datetime(2000, 1, 6)
-    diff = (date - ref.date()).days
-    cycle = 29.53
-    pos = (diff % cycle)
-    label = "ขึ้น" if pos <= 14.76 else "แรม"
-    step = round(pos if pos <= 14.76 else pos - 14.76)
-    sign = 1 if pos > 14.76 else -1
-    res = (day_of_week * PHI) + ((step - 7.5) * sign)
-    return label, step, res
+# B. ปีนักษัตร (ไทย)
+thai_year = selected_date.year + 543
+zodiac_list = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+current_zodiac = zodiac_list[thai_year % 12]
 
-# --- 2. สูตรมาตรฐานปัจจุบัน (Astronomical Approximation) ---
-def get_standard_logic(date):
-    # ปรับจูน Reference ให้ใกล้เคียงปฏิทินไทยปี 2026 มากขึ้น
-    ref = datetime(2000, 1, 6, 18, 14) 
-    diff = (date - ref.date()).days
-    cycle = 29.530588853
-    pos = (diff % cycle)
-    label = "ขึ้น" if pos <= 14.765 else "แรม"
-    step = round(pos if pos <= 14.765 else pos - 14.765)
-    sign = 1 if pos > 14.765 else -1
-    res = (day_of_week * PHI) + ((step - 7.5) * sign)
-    return label, step, res
+# C. คำนวณข้างขึ้นข้างแรมอัตโนมัติ (Approximate Lunar Phase)
+def get_lunar_phase(date):
+    # อ้างอิงวันที่ 6 ม.ค. 2000 เป็นวันแรม 15 ค่ำ (New Moon)
+    reference_date = datetime(2000, 1, 6)
+    diff = (date - reference_date.date()).days
+    lunar_cycle = 29.530588853
+    phase_pos = (diff % lunar_cycle) / lunar_cycle # ค่า 0.0 - 1.0
+    
+    # แปลงเป็นวันที่ในรอบเดือน (1-29)
+    current_pos = phase_pos * 29.53
+    
+    if current_pos <= 14.76: # ข้างขึ้น
+        step = round(current_pos if current_pos >= 1 else 1)
+        return "ข้างขึ้น (-)", step, -1
+    else: # ข้างแรม
+        step = round(current_pos - 14.76 if (current_pos - 14.76) >= 1 else 1)
+        return "ข้างแรม (+)", step, 1
 
-s_label, s_step, s_res = get_synapse_logic(selected_date)
-t_label, t_step, t_res = get_standard_logic(selected_date)
+lunar_label, lunar_step, lunar_sign = get_lunar_phase(selected_date)
 
-# --- DISPLAY ---
-col1, col2 = st.columns(2)
+# D. สูตรสมดุลจักรวาล
+PHI = 1.618
+balance_point = lunar_step - 7.5
+lunar_modifier = balance_point * lunar_sign if lunar_sign == 1 else -balance_point
+result = (day_of_week * PHI) + lunar_modifier
 
-with col1:
-    st.markdown('<div class="synapse-box">', unsafe_allow_html=True)
-    st.subheader("⚡ SYNAPSE LOGIC")
-    st.write(f"จันทรคติ: {s_label} {s_step} ค่ำ")
-    st.metric("Index (29.53)", f"{abs(s_res):.4f}")
-    st.markdown('</div>', unsafe_allow_html=True)
+# 4. แสดงผลโชว์เพื่อน
+st.write("---")
+st.subheader(f"🔍 วิเคราะห์วันที่: {selected_date.strftime('%d/%m/%Y')}")
 
-with col2:
-    st.markdown('<div class="standard-box">', unsafe_allow_html=True)
-    st.subheader("🌐 STANDARD LOGIC")
-    st.write(f"จันทรคติ: {t_label} {t_step} ค่ำ")
-    st.metric("Index (Global)", f"{abs(t_res):.4f}")
-    st.markdown('</div>', unsafe_allow_html=True)
+col1, col2, col3 = st.columns(3)
+col1.metric("วัน", day_name_th)
+col2.metric("ปีนักษัตร", current_zodiac)
+col3.metric("จันทรคติ", f"{lunar_label} {lunar_step} ค่ำ")
 
-st.info(f"💡 ความต่างคือ: {abs(s_res - t_res):.4f} (นี่คือช่องว่างของมิติเวลาที่คุณค้นพบ)")
+st.write("### 🎯 เลขรหัสจักรวาลที่ได้")
+st.metric(label="Cosmic Index", value=f"{abs(result):.4f}")
+
+# 5. โชว์ที่มา (เน้นเช็ควันเกิด/เช็คดวง)
+with st.expander("📝 ขั้นตอนการถอดรหัส (สำหรับตรวจสอบ)"):
+    st.latex(r"Result = (Day \times 1.618) \pm (Lunar_{Balance})")
+    st.markdown(f"""
+    **วิเคราะห์ตามหลักการ:**
+    1. **ฐานวัน:** วัน{day_name_th} ({day_of_week}) × 1.618 = **{day_of_week * PHI:.3f}**
+    2. **แรงดึงดูดดวงจันทร์:** {lunar_label} {lunar_step} ค่ำ (ค่าเบี่ยงเบนจากจุดสมดุล: {lunar_modifier:.2f})
+    3. **สรุป:** ค่าความสั่นสะเทือนประจำวันคือ **{result:.4f}**
+    """)
+    
+    raw_num = str(abs(result)).replace('.', '')
+    st.success(f"**ตัวเลขเด่นที่ถอดรหัสได้:** {raw_num[1:3]} , {raw_num[2:4]}")
+
+st.info("💡 สามารถใช้เช็คข้อมูลย้อนหลังวันเกิด หรือวันที่สำคัญเพื่อหาค่าพลังงานตัวเลขได้")
