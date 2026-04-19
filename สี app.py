@@ -2,164 +2,85 @@ import streamlit as st
 import base64
 import os
 
-# --- CONFIG & HIDE UI ---
-st.set_page_config(page_title="SYNAPSE X COMMAND CENTER", layout="wide")
+st.set_page_config(page_title="SYNAPSE REAL-TIME", layout="wide")
 
-# ระบบเลือกธีมสี
-if 'bg_mode' not in st.session_state:
-    st.session_state.bg_mode = "rainbow"
-
-def set_bg(mode): 
-    st.session_state.bg_mode = mode
-
-# กำหนดค่าสีตามโหมด
-if st.session_state.bg_mode == "rainbow":
-    current_style = "background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff); background-size: 1200% 1200%; animation: RainbowFlow 10s ease infinite;"
-    theme_color = "#00FFFF"
-elif st.session_state.bg_mode == "coral":
-    current_style = "background-color: #FF7F50;"
-    theme_color = "#FF7F50"
-else:
-    current_style = "background-color: #000000;"
-    theme_color = "#AFEEEE"
-
-def get_base64_image(image_path):
-    try:
-        if os.path.exists(image_path):
-            with open(image_path, "rb") as img_file:
-                return base64.b64encode(img_file.read()).decode()
-    except: 
-        return ""
-    return ""
-
-logo_base64 = get_base64_image("logo1.png")
-logo_url = f"data:image/png;base64,{logo_base64}" if logo_base64 else ""
-
-# --- CSS FULL PACK ---
+# --- CSS & THEME ---
+theme_color = "#00FFFF" # สีหลักของ SYNAPSE
 st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
     header, footer, #MainMenu {{visibility: hidden;}}
-    
-    @keyframes RainbowFlow {{ 0%{{background-position:0% 50%}} 50%{{background-position:100% 50%}} 100%{{background-position:0% 50%}} }}
-    .stApp {{ {current_style} transition: all 0.5s ease; }}
-    
-    /* โลโก้ดิ้นและเรืองแสง */
-    .logo-container {{ display: flex; justify-content: center; margin-bottom: 20px; }}
-    .logo-img {{ 
-        width: 400px; 
-        filter: drop-shadow(0 0 20px {theme_color});
-        animation: logoPulse 4s ease-in-out infinite; 
-    }}
-    @keyframes logoPulse {{ 
-        0%, 100% {{ filter: drop-shadow(0 0 15px {theme_color}); transform: scale(1); }} 
-        50% {{ filter: drop-shadow(0 0 50px {theme_color}); transform: scale(1.03); }} 
-    }}
-
-    /* ตัวหนังสือวิ้งๆ Cinematic */
+    .stApp {{ background-color: #000; }}
     .shimmer-text {{
-        text-align: center;
-        font-family: 'Orbitron', sans-serif;
-        font-weight: bold;
-        font-size: 2.5rem;
-        background: linear-gradient(90deg, rgba(255,255,255,0.1), #fff, rgba(255,255,255,0.1));
-        background-size: 200% auto;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: shine 3s linear infinite;
-        margin-bottom: 10px;
-    }}
-    @keyframes shine {{ to {{ background-position: 200% center; }} }}
-
-    /* ปรับแต่ง Dropdown */
-    .stSelectbox div[data-baseweb="select"] {{
-        background-color: rgba(0,0,0,0.7) !important;
-        border: 1px solid {theme_color} !important;
-        color: white !important;
-    }}
-    
-    /* เครื่องเล่นเพลงสีรุ้ง */
-    .stAudio {{
-        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-        background-size: 1200% 1200%;
-        animation: RainbowFlow 15s ease infinite;
-        border-radius: 50px;
-        padding: 8px;
+        text-align: center; font-family: 'Orbitron', sans-serif; font-weight: bold;
+        font-size: 2rem; color: {theme_color}; text-shadow: 0 0 20px {theme_color};
     }}
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# --- DISPLAY ---
-# 1. โลโก้
-if logo_url:
-    st.markdown(f'<div class="logo-container"><img src="{logo_url}" class="logo-img"></div>', unsafe_allow_html=True)
-else:
-    st.warning("กรุณาวางไฟล์ logo1.png ในโฟลเดอร์เดียวกัน")
-
-# 2. ตัวหนังสือวิ้ง
-st.markdown('<div class="shimmer-text">SYNAPSE X COMMAND CENTER</div>', unsafe_allow_html=True)
-
-# 3. เลือกเพลง
+# --- MUSIC LOGIC ---
 audio_files = [f for f in os.listdir('.') if f.endswith(('.mp3', '.wav'))]
-selected_track = st.selectbox("เลือกเพลงที่จะเล่น", audio_files if audio_files else ["ไม่มีไฟล์เพลงในโฟลเดอร์"])
+selected_track = st.selectbox("เลือกเพลงเพื่อประมวลผลจริง", audio_files)
 
-# 4. กราฟเสียง Visualizer 60 แท่ง
-if audio_files and selected_track != "ไม่มีไฟล์เพลงในโฟลเดอร์":
-    visualizer_html = f"""
-    <div style="display: flex; justify-content: center; align-items: flex-end; height: 100px; gap: 2px; margin-bottom: 20px;">
-        <canvas id="vis" width="800" height="100" style="width: 100%; max-width: 600px;"></canvas>
+if selected_track:
+    # แปลงไฟล์เป็น Base64 เพื่อส่งเข้า JavaScript
+    with open(selected_track, "rb") as f:
+        audio_base64 = base64.b64encode(f.read()).decode()
+
+    # --- JAVASCRIPT: THE ENGINE ---
+    # ส่วนนี้คือของจริงครับ มันจะสร้าง AudioContext เพื่อดึงคลื่นเสียงมาวาดกราฟ
+    visual_code = f"""
+    <div style="text-align: center;">
+        <canvas id="canvas" width="800" height="250" style="width: 100%; border-bottom: 2px solid {theme_color};"></canvas>
+        <br><br>
+        <audio id="audioPlayer" controls style="width: 80%; filter: hue-rotate(180deg);"></audio>
     </div>
+
     <script>
-    const can = document.getElementById('vis');
-    const ctx = can.getContext('2d');
-    const barCount = 60;
-    
-    function draw() {{
-        ctx.clearRect(0, 0, can.width, can.height);
-        for (let i = 0; i < barCount; i++) {{
-            // จำลองจังหวะเต้นของกราฟให้ดูสมูท
-            const time = Date.now() * 0.005;
-            const h = Math.abs(Math.sin(time + (i * 0.2))) * 80 + 10;
-            
-            let grad = ctx.createLinearGradient(0, can.height, 0, 0);
-            grad.addColorStop(0, '{theme_color}');
-            grad.addColorStop(1, '#FFFFFF');
-            ctx.fillStyle = grad;
-            
-            const x = i * (can.width / barCount);
-            const w = (can.width / barCount) - 2;
-            
-            ctx.beginPath();
-            // วาดแท่งหัวมน
-            if (ctx.roundRect) {{
-                ctx.roundRect(x, can.height - h, w, h, 5);
-            }} else {{
-                ctx.rect(x, can.height - h, w, h);
-            }}
-            ctx.fill();
+    const audio = document.getElementById('audioPlayer');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // โหลดเพลงจาก Base64
+    audio.src = "data:audio/mp3;base64,{audio_base64}";
+
+    let audioCtx, analyser, source;
+
+    // ต้องมีการคลิกก่อน Web Audio ถึงจะทำงาน (กฎของ Browser)
+    audio.onplay = () => {{
+        if (!audioCtx) {{
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            source = audioCtx.createMediaElementSource(audio);
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            analyser.fftSize = 256; // ความละเอียดของกราฟ
+            draw();
         }}
+    }};
+
+    function draw() {{
         requestAnimationFrame(draw);
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyser.getByteFrequencyData(dataArray);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const barWidth = (canvas.width / bufferLength) * 2.5;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {{
+            const barHeight = dataArray[i] / 1.5;
+            
+            // ไล่เฉดสีให้วิ้งๆ
+            ctx.fillStyle = "rgb(" + (barHeight + 100) + ", 50, 255)";
+            
+            // วาดแท่งกราฟ (เต้นตามจริง!)
+            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+            x += barWidth + 1;
+        }}
     }}
-    draw();
     </script>
     """
-    st.components.v1.html(visualizer_html, height=120)
-
-    # 5. ตัวเครื่องเล่น
-    with open(selected_track, 'rb') as f:
-        st.audio(f.read(), format='audio/mp3')
-
-# 6. ปุ่มเปลี่ยนธีม
-st.markdown("<br>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:white; font-size:12px;'>GLOBAL THEME CONTROL</p>", unsafe_allow_html=True)
-col1, col2, col3 = st.columns(3)
-with col1: st.button("💎 Turquoise", on_click=set_bg, args=("turquoise",), use_container_width=True)
-with col2: st.button("🧡 Coral", on_click=set_bg, args=("coral",), use_container_width=True)
-with col3: st.button("🌈 Rainbow", on_click=set_bg, args=("rainbow",), use_container_width=True)
-
-# 7. คำแนะนำ
-with st.expander("🎥 คำแนะนำการบันทึกหน้าจอเพื่อลง YouTube"):
-    st.write("1. กดปุ่ม **F11** เพื่อขยายเต็มหน้าจอ Browser")
-    st.write("2. ใช้โปรแกรม **OBS Studio** ในการบันทึก")
-    st.write("3. ตั้งค่า Video Bitrate ใน OBS ให้สูง (15,000 - 20,000 kbps) เพื่อให้แสงสีรุ้งไม่แตก")
-    st.write("4. เลือก 'Window Capture' ไปที่หน้าจอแอปนี้")
+    st.markdown('<div class="shimmer-text">REAL-TIME FREQUENCY SCANNER</div>', unsafe_allow_html=True)
+    st.components.v1.html(visual_code, height=400)
