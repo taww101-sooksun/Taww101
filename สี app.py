@@ -39,7 +39,7 @@ hide_ui = """
         font-weight: bold;
         font-size: 2.5rem;
         font-family: 'Orbitron', sans-serif;
-        background: linear-gradient(90deg, #AFEEEE, #FFFFFF, #FF7F50);
+        background: linear-gradient(90deg, #AFEEEE, #FFFFFF, #FF7F50, #1F51FF, #39FF14);
         background-size: 200% auto;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
