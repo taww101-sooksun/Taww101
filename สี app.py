@@ -123,7 +123,7 @@ if song_files:
             
             // ไล่เฉดสีรุ้ง (Rainbow Bar)
             const hue = i * 360 / bufferLength;
-            ctx.fillStyle = `hsl(${{hue}}, 100%, 100%)`;
+            ctx.fillStyle = `hsl(${{hue}}, 100%, 50%, 25℅)`;
             
             // วาดแท่งกราฟ (เต้นตามจังหวะจริง!)
             ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
