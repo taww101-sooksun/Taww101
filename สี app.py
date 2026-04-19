@@ -3,24 +3,87 @@ import os
 import base64
 
 # --- CONFIG & UI HIDING ---
-st.set_page_config(page_title="SYNAPSE Player", layout="centered")
+st.set_page_config(page_title="SYNAPSE X REAL-TIME", layout="wide")
 
 def get_base64_bin(bin_file):
-    with open(bin_file, 'rb') as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
-if selected_track:
-    # แปลงไฟล์เป็น Base64 เพื่อส่งเข้า JavaScript
-    with open(selected_track, "rb") as f:
+    try:
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except:
+        return ""
+
+# ซ่อน Streamlit UI เดิมๆ เพื่อความคลีน
+hide_ui = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .block-container {padding-top: 2rem; background-color: #000000;}
+    
+    /* Animation โลโก้ดิ้นได้ */
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); filter: drop-shadow(0 0 10px #00ffff); }
+        50% { transform: translateY(-15px); filter: drop-shadow(0 0 30px #00ffff); }
+    }
+    .logo-container {
+        display: flex;
+        justify-content: center;
+        animation: bounce 3s ease-in-out infinite;
+        margin-bottom: 20px;
+    }
+
+    /* ตัวหนังสือวิ้งๆ */
+    .shimmer-text {
+        text-align: center;
+        font-weight: bold;
+        font-size: 2.5rem;
+        font-family: 'Orbitron', sans-serif;
+        background: linear-gradient(90deg, #AFEEEE, #FFFFFF, #FF7F50);
+        background-size: 200% auto;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: shine 2s linear infinite;
+        margin-top: 10px;
+    }
+    @keyframes shine {
+        to { background-position: 200% center; }
+    }
+    </style>
+"""
+st.markdown(hide_ui, unsafe_allow_html=True)
+
+# --- LOGIC: ดึงไฟล์เพลง ---
+song_files = [f for f in os.listdir('.') if f.endswith(('.mp3', '.wav'))]
+
+# --- UI DISPLAY ---
+# 1. โลโก้ดิ้นได้ (200px ตามสั่ง)
+logo_data = get_base64_bin("logo1.png")
+if logo_data:
+    st.markdown(f"""
+        <div class="logo-container">
+            <img src="data:image/png;base64,{logo_data}" width="200">
+        </div>
+    """, unsafe_allow_html=True)
+
+# 2. ตัวหนังสือวิ้ง
+st.markdown('<div class="shimmer-text">SYNAPSE X COMMAND CENTER</div>', unsafe_allow_html=True)
+
+# 3. ส่วนเลือกเพลงและระบบประมวลผลจริง
+if song_files:
+    selected_song = st.selectbox("เลือกเพลงที่จะเล่น (ประมวลผลกราฟจริง)", song_files)
+    
+    # อ่านไฟล์เพลงเพื่อส่งเข้า JavaScript
+    with open(selected_song, "rb") as f:
         audio_base64 = base64.b64encode(f.read()).decode()
 
-    # --- JAVASCRIPT: THE ENGINE ---
-    # ส่วนนี้คือของจริงครับ มันจะสร้าง AudioContext เพื่อดึงคลื่นเสียงมาวาดกราฟ
+    # --- HTML & JS: REAL-TIME VISUALIZER ENGINE ---
+    # ส่วนนี้จะใช้ Web Audio API เพื่อดึงค่าความถี่จริงจากเพลง
     visual_code = f"""
     <div style="text-align: center;">
-        <canvas id="canvas" width="800" height="250" style="width: 100%; border-bottom: 2px solid {theme_color};"></canvas>
-        <br><br>
-        <audio id="audioPlayer" controls style="width: 80%; filter: hue-rotate(180deg);"></audio>
+        <canvas id="canvas" width="1000" height="250" style="width: 100%; max-width: 800px;"></canvas>
+        <br>
+        <audio id="audioPlayer" controls style="width: 80%; border-radius: 50px; background: #fff;"></audio>
     </div>
 
     <script>
@@ -28,12 +91,10 @@ if selected_track:
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
-    // โหลดเพลงจาก Base64
     audio.src = "data:audio/mp3;base64,{audio_base64}";
 
     let audioCtx, analyser, source;
 
-    // ต้องมีการคลิกก่อน Web Audio ถึงจะทำงาน (กฎของ Browser)
     audio.onplay = () => {{
         if (!audioCtx) {{
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -41,7 +102,7 @@ if selected_track:
             source = audioCtx.createMediaElementSource(audio);
             source.connect(analyser);
             analyser.connect(audioCtx.destination);
-            analyser.fftSize = 256; // ความละเอียดของกราฟ
+            analyser.fftSize = 256; 
             draw();
         }}
     }};
@@ -58,127 +119,28 @@ if selected_track:
         let x = 0;
 
         for (let i = 0; i < bufferLength; i++) {{
-            const barHeight = dataArray[i] / 1.5;
+            const barHeight = dataArray[i] * 0.8;
             
-            // ไล่เฉดสีให้วิ้งๆ
-            ctx.fillStyle = "rgb(" + (barHeight + 100) + ", 50, 255)";
+            // ไล่เฉดสีรุ้ง (Rainbow Bar)
+            const hue = i * 360 / bufferLength;
+            ctx.fillStyle = `hsl(${{hue}}, 100%, 50%)`;
             
-            // วาดแท่งกราฟ (เต้นตามจริง!)
-            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-            x += barWidth + 1;
+            // วาดแท่งกราฟ (เต้นตามจังหวะจริง!)
+            ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+            x += barWidth;
         }}
     }}
     </script>
     """
-    st.markdown('<div class="shimmer-text">REAL-TIME FREQUENCY SCANNER</div>', unsafe_allow_html=True)
     st.components.v1.html(visual_code, height=400)
-
-# ซ่อน Streamlit UI เดิมๆ เพื่อความคลีน
-hide_ui = """
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .block-container {padding-top: 2rem;}
-    
-    /* Animation โลโก้ดิ้นได้ */
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-    }
-    .logo-container {
-        display: flex;
-        justify-content: center;
-        animation: bounce 2s ease-in-out infinite;
-    }
-
-    /* ตัวหนังสือวิ้งๆ */
-    .shimmer-text {
-        text-align: center;
-        font-weight: bold;
-        font-size: 1.5rem;
-        background: linear-gradient(90deg, #AFEEEE, #FF7F50, #AFEEEE);
-        background-size: 200% auto;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: shine 2s linear infinite;
-    }
-    @keyframes shine {
-        to { background-position: 200% center; }
-    }
-
-    /* แถบสีรุ้ง (Rainbow Flow) สำหรับเครื่องเล่น */
-    .stAudio {
-        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-        background-size: 1200% 1200%;
-        animation: RainbowFlow 15s ease infinite;
-        border-radius: 50px;
-        padding: 5px;
-    }
-    @keyframes RainbowFlow {
-        0%{background-position:0% 50%}
-        50%{background-position:100% 50%}
-        100%{background-position:0% 50%}
-    }
-    </style>
-"""
-st.markdown(hide_ui, unsafe_allow_html=True)
-
-# --- LOGIC: ดึงไฟล์เพลงจาก Directory ---
-song_files = [f for f in os.listdir('.') if f.endswith('.mp3')]
-
-# --- UI DISPLAY ---
-# 1. โลโก้ดิ้นได้ (ขนาด 200px)
-if os.path.exists("logo1.png"):
-    logo_base64 = get_base64_bin("logo1.png")
-    st.markdown(f"""
-        <div class="logo-container">
-            <img src="data:image/png;base64,{logo_base64}" width="200">
-        </div>
-    """, unsafe_allow_html=True)
-else:
-    st.warning("กรุณาวางไฟล์ logo1.png ในโฟลเดอร์เดียวกับโค้ด")
-
-# 2. ตัวหนังสือวิ้ง
-st.markdown('<div class="shimmer-text">SYNAPSE X COMMAND CENTER</div>', unsafe_allow_html=True)
-
-# 3. ส่วนเลือกเพลงและเครื่องเล่น
-if song_files:
-    selected_song = st.selectbox("เลือกเพลงที่จะเล่น", song_files)
-    
-    # อ่านไฟล์เพลงมาทำเป็น Audio Player
-    audio_file = open(selected_song, 'rb')
-    audio_bytes = audio_file.read()
-    st.audio(audio_bytes, format='audio/mp3')
-    
-    # 4. จำลองกราฟเครื่องเสียง (Visualizer)
-    # ใช้ HTML/CSS เพื่อจำลองกราฟแท่งขยับได้
-    st.markdown("""
-        <div style="display: flex; justify-content: center; align-items: flex-end; height: 50px; gap: 3px;">
-            <style>
-                .bar { width: 10px; background: #00ffff; animation: equalize 1s infinite alternate; }
-                @keyframes equalize { 
-                    0% { height: 10px; } 100% { height: 40px; } 
-                }
-                .bar:nth-child(2) { animation-delay: 0.2s; background: #ff00ff; }
-                .bar:nth-child(3) { animation-delay: 0.4s; background: #ffff00; }
-                .bar:nth-child(4) { animation-delay: 0.6s; background: #00ff00; }
-                .bar:nth-child(5) { animation-delay: 0.1s; background: #ff7f50; }
-            </style>
-            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
-        </div>
-    """, unsafe_allow_html=True)
 else:
     st.info("ไม่พบไฟล์ .mp3 ในโฟลเดอร์นี้")
 
 # --- ข้อแนะนำการบันทึกวิดีโอลง YouTube ---
 st.markdown("---")
-with st.expander("คำแนะนำการบันทึกหน้าจอเพื่อลง YouTube"):
+with st.expander("🎥 คำแนะนำการบันทึกหน้าจอเพื่อลง YouTube"):
     st.write("""
-    1. **ใช้ OBS Studio:** ตั้งค่า Canvas เป็น 1080p (1920x1080)
-    2. **Window Capture:** เลือกหน้าต่าง Browser ที่รัน Streamlit อยู่
-    3. **Bitrate:** ตั้งค่า Bitrate ใน OBS ให้สูง (ประมาณ 10,000 kbps ขึ้นไป) เพื่อให้สีรุ้งไม่แตก
-    4. **การเล่นต่อเนื่อง:** ในเครื่องเล่นปกติของ Streamlit จะไม่มีระบบ Queue อัตโนมัติในตัว (Native) 
-       แต่คุณสามารถกด 'Loop' ได้โดยการคลิกขวาที่ตัวเครื่องเล่นเสียงครับ
+    1. **กดปุ่ม Play:** กราฟจะยังไม่เต้นจนกว่าจะกดเล่นเพลง (กฎของ Browser)
+    2. **OBS Studio:** ใช้ Window Capture และตั้งค่า Bitrate 15,000-20,000 kbps เพื่อให้สีรุ้งเนียนกริบ
+    3. **Full Screen:** กด F11 ใน Browser ก่อนเริ่มบันทึกเพื่อให้ภาพเต็มตาที่สุด
     """)
