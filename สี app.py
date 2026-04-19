@@ -57,17 +57,17 @@ st.markdown(hide_ui, unsafe_allow_html=True)
 song_files = [f for f in os.listdir('.') if f.endswith(('.mp3', '.wav'))]
 
 # --- UI DISPLAY ---
-# 1. โลโก้ดิ้นได้ (100px ตามสั่ง)
+# 1. โลโก้ดิ้นได้ (150px ตามสั่ง)
 logo_data = get_base64_bin("logo1.png")
 if logo_data:
     st.markdown(f"""
         <div class="logo-container">
-            <img src="data:image/png;base64,{logo_data}" width="100">
+            <img src="data:image/png;base64,{logo_data}" width="150">
         </div>
     """, unsafe_allow_html=True)
 
 # 2. ตัวหนังสือวิ้ง
-st.markdown('<div class="shimmer-text">SYNAPSE X COMMAND CENTER</div>', unsafe_allow_html=True)
+st.markdown('<div class="shimmer-text">SYNAPSE อยู่นิ้งๆไม่เจ็บตัว</div>', unsafe_allow_html=True)
 
 # 3. ส่วนเลือกเพลงและระบบประมวลผลจริง
 if song_files:
@@ -132,7 +132,7 @@ if song_files:
     }}
     </script>
     """
-    st.components.v1.html(visual_code, height=400)
+    st.components.v1.html(visual_code, height=500)
 else:
     st.info("ไม่พบไฟล์ .mp3 ในโฟลเดอร์นี้")
 
