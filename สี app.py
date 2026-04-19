@@ -64,9 +64,8 @@ st.markdown(f"""
         -webkit-text-fill-color: transparent;
         animation: shine 3s linear infinite;
         margin-bottom: 10px;
-    }
+   }
     @keyframes shine {{ to {{ background-position: 200% center; }} }}
-
 
     /* ปรับแต่ง Dropdown */
     .stSelectbox {{ color: white !important; }}
