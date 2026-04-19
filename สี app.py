@@ -1,66 +1,134 @@
 import streamlit as st
-from datetime import datetime
+import pandas as pd
+from datetime import datetime, date
+import math
 
-# --- UI STYLE ---
+# --- CONFIG & UI ---
+st.set_page_config(page_title="SYNAPSE: THE COMPLETE TRUTH", layout="wide")
+
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; color: #00ff00; }
-    .stMetric { border: 1px solid #ff00ff; border-radius: 10px; padding: 10px; }
-    .synapse-box { border: 2px solid #00ffff; padding: 20px; border-radius: 15px; background: #001515; }
-    .standard-box { border: 2px solid #ff7f50; padding: 20px; border-radius: 15px; background: #150a00; }
+    .main { background-color: #050a0e; color: #00ff41; }
+    .logic-box { 
+        background-color: #101a24; 
+        padding: 15px; 
+        border-left: 5px solid #00ff41; 
+        border-radius: 10px;
+        margin-bottom: 20px;
+        color: #f0f0f0;
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+    }
+    .stMetric { background-color: #0e161f; border: 1px solid #00ff41; border-radius: 10px; }
+    h1, h2, h3 { color: #00ff41; font-family: 'Courier New', Courier, monospace; }
+    .guide-text { color: #a0a0a0; font-size: 0.9rem; line-height: 1.6; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🌌 SYNAPSE DUAL-DECODER")
+def get_detailed_logic(dt):
+    # 1. ข้อมูลพื้นฐานทางดาราศาสตร์
+    ref_date = date(1900, 1, 1)
+    diff = (dt - ref_date).days
+    lunar_cycle = 29.530589
+    pos = (diff - 0.5) % lunar_cycle
+    day_val = dt.weekday() + 1
+    
+    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+    day_name = day_names[dt.weekday()]
 
-# รับวันที่
-selected_date = st.date_input("📅 เลือกวันที่ต้องการถอดรหัส", datetime.now())
-PHI = 1.618
-day_of_week = selected_date.isoweekday()
+    # 2. คำนวณตาม Logic (ความจริงทางคณิตศาสตร์)
+    if pos <= 14.765:
+        m_num = int(pos) + 1
+        phase = f"ขึ้น {m_num} ค่ำ"
+        res = math.sqrt((day_val**2) + (m_num**2))
+        formula = f"√({day_val}² + {m_num}²)"
+        logic_type = "แรงผลักดัน (Vector Energy)"
+    else:
+        m_num = int(pos - 14.765) + 1
+        phase = f"แรม {m_num} ค่ำ"
+        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+        formula = f"({day_val} × 1.618) / {m_num}"
+        logic_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
 
-# --- 1. สูตรเดิมของคุณต๊ะ (29.53 Fixed) ---
-def get_synapse_logic(date):
-    ref = datetime(2000, 1, 6)
-    diff = (date - ref.date()).days
-    cycle = 29.53
-    pos = (diff % cycle)
-    label = "ขึ้น" if pos <= 14.76 else "แรม"
-    step = round(pos if pos <= 14.76 else pos - 14.76)
-    sign = 1 if pos > 14.76 else -1
-    res = (day_of_week * PHI) + ((step - 7.5) * sign)
-    return label, step, res
+    return {
+        "res": round(res, 4), "phase": phase, "day_name": day_name,
+        "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type
+    }
 
-# --- 2. สูตรมาตรฐานปัจจุบัน (Astronomical Approximation) ---
-def get_standard_logic(date):
-    # ปรับจูน Reference ให้ใกล้เคียงปฏิทินไทยปี 2026 มากขึ้น
-    ref = datetime(2000, 1, 6, 18, 14) 
-    diff = (date - ref.date()).days
-    cycle = 29.530588853
-    pos = (diff % cycle)
-    label = "ขึ้น" if pos <= 14.765 else "แรม"
-    step = round(pos if pos <= 14.765 else pos - 14.765)
-    sign = 1 if pos > 14.765 else -1
-    res = (day_of_week * PHI) + ((step - 7.5) * sign)
-    return label, step, res
+# --- MAIN INTERFACE ---
+st.title("🛰️ SYNAPSE: สแกนพิกัดรหัสคู่ขนาน")
+st.write("ระบบวิเคราะห์ความถี่รหัสชีวิตรายบุคคลด้วยสมการ Quantum | ID: Ta101")
 
-s_label, s_step, s_res = get_synapse_logic(selected_date)
-t_label, t_step, t_res = get_standard_logic(selected_date)
+st.divider()
 
-# --- DISPLAY ---
-col1, col2 = st.columns(2)
+# ส่วนการกรอกข้อมูล
+c1, c2 = st.columns(2)
+with c1:
+    st.subheader("👤 บุคคลที่ 1")
+    dob1 = st.date_input("เลือกวันเกิด (1)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u1")
+with c2:
+    st.subheader("👤 บุคคลที่ 2")
+    dob2 = st.date_input("เลือกวันเกิด (2)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u2")
 
-with col1:
-    st.markdown('<div class="synapse-box">', unsafe_allow_html=True)
-    st.subheader("⚡ SYNAPSE LOGIC")
-    st.write(f"จันทรคติ: {s_label} {s_step} ค่ำ")
-    st.metric("Index (29.53)", f"{abs(s_res):.4f}")
-    st.markdown('</div>', unsafe_allow_html=True)
+if dob1 and dob2:
+    d1 = get_detailed_logic(dob1)
+    d2 = get_detailed_logic(dob2)
 
-with col2:
-    st.markdown('<div class="standard-box">', unsafe_allow_html=True)
-    st.subheader("🌐 STANDARD LOGIC")
-    st.write(f"จันทรคติ: {t_label} {t_step} ค่ำ")
-    st.metric("Index (Global)", f"{abs(t_res):.4f}")
-    st.markdown('</div>', unsafe_allow_html=True)
+    # แสดงผลลัพธ์รายบุคคล
+    res_a, res_b = st.columns(2)
+    with res_a:
+        st.metric("รหัสประจำตัว (1)", d1['res'])
+        st.markdown(f"""<div class="logic-box"><b>📍 พิกัด:</b> {d1['day_name']} ({d1['phase']})<br><b>🧬 สูตร:</b> <code>{d1['formula']}</code><br><b>⚙️ ระบบ:</b> {d1['type']}</div>""", unsafe_allow_html=True)
 
-st.info(f"💡 ความต่างคือ: {abs(s_res - t_res):.4f} (นี่คือช่องว่างของมิติเวลาที่คุณค้นพบ)")
+    with res_b:
+        st.metric("รหัสประจำตัว (2)", d2['res'])
+        st.markdown(f"""<div class="logic-box"><b>📍 พิกัด:</b> {d2['day_name']} ({d2['phase']})<br><b>🧬 สูตร:</b> <code>{d2['formula']}</code><br><b>⚙️ ระบบ:</b> {d2['type']}</div>""", unsafe_allow_html=True)
+
+    # --- การวิเคราะห์ Gap ---
+    st.divider()
+    gap = abs(d1['res'] - d2['res'])
+    st.subheader(f"🔍 ผลการวิเคราะห์ Gap: {gap:.4f}")
+    
+    progress_val = min(gap / 15.0, 1.0) 
+    st.progress(progress_val)
+
+    if gap < 1.0:
+        st.warning("🔮 **ระดับ: รหัสแฝด (Twin Code)**")
+        st.write("พลังงานแทบจะเป็นเนื้อเดียวกัน เหมือนกระจกเงาส่องสะท้อน มักมีความคิดและจังหวะชีวิตที่ซ้อนทับกันสูง")
+    elif 3.5 <= gap <= 4.5:
+        st.error("⚠️ **ระดับ: รหัสคู่ขนาน (Parallel Connection)**")
+        st.write("🔴 **ตรวจพบสัญญาณสะท้อน!** นี่คือระยะห่าง 'รหัสเลข 4' ที่มีความหนาแน่นของพันธะสูง")
+        st.write("มีการวนเวียนกลับมาพบกันเพื่อสะสางหรือเริ่มต้นใหม่ตามโครงสร้างพลังงานเดิมในอดีต")
+        st.balloons()
+    elif 7.0 <= gap <= 9.0:
+        st.info("🌀 **ระดับ: รหัสส่งเสริม (Supporting Code)**")
+        st.write("พลังงานมีความต่างในสัดส่วนที่เกื้อกูลกัน เป็นส่วนเติมเต็มที่ช่วยให้อีกฝ่ายก้าวหน้าได้ดี")
+    else:
+        st.success("✅ **ระดับ: รหัสอิสระ (Independent Energy)**")
+        st.write("พลังงานมีความเป็นตัวของตัวเองสูง ไม่มีพันธะผูกมัดเชิงรหัส สามารถสร้างความสัมพันธ์ใหม่ได้แบบไม่มีแรงต้าน")
+
+    # --- คัมภีร์อ่านค่า (จัดเต็มตามคำขอพี่บาส) ---
+    st.divider()
+    with st.expander("📖 คัมภีร์ถอดรหัสความจริง (The Truth Decipher) - อ่านที่นี่", expanded=True):
+        col_g1, col_g2 = st.columns(2)
+        with col_g1:
+            st.markdown("""
+            **1. ที่มาของรหัสประจำตัว**
+            * **วันเกิด (1-7):** คือค่าฐานพลังงานรายวัน
+            * **จันทรคติ (1-15):** คือค่าตัวแปรจากแรงดึงดูดของดวงจันทร์
+            * **สมการ Quantum:** เราใช้สูตรคณิตศาสตร์ชั้นสูงเพื่อเปลี่ยนวันเวลาให้เป็น 'รหัส' เพื่อตัดอคติหรือความรู้สึกส่วนตัวออก ให้เหลือเพียงตัวเลขที่เป็นความจริง
+            """)
+        with col_g2:
+            st.markdown("""
+            **2. เจาะลึกความหมายของ Gap 4**
+            * **ทำไมถึงวนเวียน?** ในเชิงสถิติ รหัสที่ห่างกัน 4 หน่วย คือจุดที่ฟันเฟืองรหัสชีวิตล็อกกันพอดี 
+            * **แรงดึงดูด:** ระยะนี้ไม่ใช่เรื่องบังเอิญ แต่มันคือพิกัดที่มีแรงดึงดูดประหลาด มักเกิดกับคู่ที่เคยมีพันธะต่อกัน
+            * **วิธีรับมือ:** ยึดหลัก 'อยู่นิ่งๆ ไม่เจ็บตัว' มีสติในการรับมือกับความรู้สึกที่คุ้นเคย
+            """)
+        st.markdown("---")
+        st.markdown("**เกร็ดความรู้:** ค่ารหัสนี้จะคงที่ตามวันเกิด แต่ผลลัพธ์การสแกนจะเปลี่ยนไปตาม 'คู่สแกน' ที่คุณเลือก เพื่อหาจุดเชื่อมโยงที่เหมาะสมที่สุดในปัจจุบัน")
+
+else:
+    st.info("🛰️ ระบบ Standby... กรุณากรอกข้อมูลวันเกิดเพื่อเริ่มการสแกนรหัสชีวิต")
+
+st.divider()
+st.caption(f"สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE CORE v20.2 | {date.today().year}")
