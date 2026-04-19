@@ -119,7 +119,7 @@ if song_files:
         let x = 0;
 
         for (let i = 0; i < bufferLength; i++) {{
-            const barHeight = dataArray[i] * 1.0;
+            const barHeight = dataArray[i] * 2.0;
             
             // ไล่เฉดสีรุ้ง (Rainbow Bar)
             const hue = i * 360 / bufferLength;
