@@ -1,33 +1,7 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import math
-from datetime import timedelta
-
-def scan_destiny(target_res, days=180):
-    future_data = []
-    start_date = date.today()
-    
-    for i in range(days):
-        current_date = start_date + timedelta(days=i)
-        d = get_detailed_logic(current_date)
-        current_gap = abs(d['res'] - target_res)
-        
-        status = ""
-        if current_gap < 0.5: status = "💎 วันที่รหัสบรรจบ (เจอ/รวมตัว)"
-        elif 3.8 <= current_gap <= 4.2: status = "🌀 วันที่สัญญาณสะท้อน (ดึงดูดสูง)"
-        elif current_gap > 10.0: status = "🚩 วันที่รหัสแยกตัว (จาก/อิสระ)"
-        
-        if status:
-            future_data.append({"วันที่": current_date, "สถานะ": status, "Gap": round(current_gap, 4)})
-            
-    return pd.DataFrame(future_data)
-
-# ส่วนการแสดงผลใน Streamlit
-st.subheader("🗓️ พยากรณ์พิกัดเวลาในอนาคต (180 วัน)")
-if dob1:
-    timeline_df = scan_destiny(d1['res'])
-    st.table(timeline_df)
 
 # --- CONFIG & UI ---
 st.set_page_config(page_title="SYNAPSE: THE COMPLETE TRUTH", layout="wide")
@@ -50,6 +24,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# --- CORE LOGIC (ฟังก์ชันคำนวณ) ---
 def get_detailed_logic(dt):
     # 1. ข้อมูลพื้นฐานทางดาราศาสตร์
     ref_date = date(1900, 1, 1)
@@ -80,6 +55,34 @@ def get_detailed_logic(dt):
         "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type
     }
 
+# --- FUTURE SCANNER (ฟังก์ชันพยากรณ์อนาคต) ---
+def scan_destiny(target_res, days=180):
+    future_data = []
+    start_date = date.today()
+    
+    for i in range(days):
+        current_date = start_date + timedelta(days=i)
+        d = get_detailed_logic(current_date)
+        current_gap = abs(d['res'] - target_res)
+        
+        status = ""
+        if current_gap < 0.5: 
+            status = "💎 วันที่รหัสบรรจบ (เจอ/รวมตัว)"
+        elif 3.8 <= current_gap <= 4.2: 
+            status = "🌀 วันที่สัญญาณสะท้อน (ดึงดูดสูง)"
+        elif current_gap > 10.0: 
+            status = "🚩 วันที่รหัสแยกตัว (จาก/อิสระ)"
+        
+        if status:
+            future_data.append({
+                "วันที่": current_date.strftime('%d/%m/%Y'),
+                "พิกัดวัน": d['day_name'],
+                "สถานะ": status,
+                "ค่า Gap": round(current_gap, 4)
+            })
+            
+    return pd.DataFrame(future_data)
+
 # --- MAIN INTERFACE ---
 st.title("🛰️ SYNAPSE: สแกนพิกัดรหัสคู่ขนาน")
 st.write("ระบบวิเคราะห์ความถี่รหัสชีวิตรายบุคคลด้วยสมการ Quantum | ID: Ta101")
@@ -89,10 +92,10 @@ st.divider()
 # ส่วนการกรอกข้อมูล
 c1, c2 = st.columns(2)
 with c1:
-    st.subheader("👤 บุคคลที่ 1")
+    st.subheader("👤 บุคคลที่ 1 (ตัวตั้งต้น)")
     dob1 = st.date_input("เลือกวันเกิด (1)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u1")
 with c2:
-    st.subheader("👤 บุคคลที่ 2")
+    st.subheader("👤 บุคคลที่ 2 (คู่สแกน)")
     dob2 = st.date_input("เลือกวันเกิด (2)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u2")
 
 if dob1 and dob2:
@@ -109,52 +112,47 @@ if dob1 and dob2:
         st.metric("รหัสประจำตัว (2)", d2['res'])
         st.markdown(f"""<div class="logic-box"><b>📍 พิกัด:</b> {d2['day_name']} ({d2['phase']})<br><b>🧬 สูตร:</b> <code>{d2['formula']}</code><br><b>⚙️ ระบบ:</b> {d2['type']}</div>""", unsafe_allow_html=True)
 
-    # --- การวิเคราะห์ Gap ---
+    # --- การวิเคราะห์ Gap ปัจจุบัน ---
     st.divider()
     gap = abs(d1['res'] - d2['res'])
-    st.subheader(f"🔍 ผลการวิเคราะห์ Gap: {gap:.4f}")
+    st.subheader(f"🔍 ผลการวิเคราะห์ Gap ปัจจุบัน: {gap:.4f}")
     
     progress_val = min(gap / 15.0, 1.0) 
     st.progress(progress_val)
 
     if gap < 1.0:
         st.warning("🔮 **ระดับ: รหัสแฝด (Twin Code)**")
-        st.write("พลังงานแทบจะเป็นเนื้อเดียวกัน เหมือนกระจกเงาส่องสะท้อน มักมีความคิดและจังหวะชีวิตที่ซ้อนทับกันสูง")
     elif 3.5 <= gap <= 4.5:
         st.error("⚠️ **ระดับ: รหัสคู่ขนาน (Parallel Connection)**")
-        st.write("🔴 **ตรวจพบสัญญาณสะท้อน!** นี่คือระยะห่าง 'รหัสเลข 4' ที่มีความหนาแน่นของพันธะสูง")
-        st.write("มีการวนเวียนกลับมาพบกันเพื่อสะสางหรือเริ่มต้นใหม่ตามโครงสร้างพลังงานเดิมในอดีต")
         st.balloons()
     elif 7.0 <= gap <= 9.0:
         st.info("🌀 **ระดับ: รหัสส่งเสริม (Supporting Code)**")
-        st.write("พลังงานมีความต่างในสัดส่วนที่เกื้อกูลกัน เป็นส่วนเติมเต็มที่ช่วยให้อีกฝ่ายก้าวหน้าได้ดี")
     else:
         st.success("✅ **ระดับ: รหัสอิสระ (Independent Energy)**")
-        st.write("พลังงานมีความเป็นตัวของตัวเองสูง ไม่มีพันธะผูกมัดเชิงรหัส สามารถสร้างความสัมพันธ์ใหม่ได้แบบไม่มีแรงต้าน")
 
-    # --- คัมภีร์อ่านค่า (จัดเต็มตามคำขอพี่บาส) ---
+    # --- ส่วนที่เพิ่มใหม่: พยากรณ์พิกัดเวลาในอนาคต ---
     st.divider()
-    with st.expander("📖 คัมภีร์ถอดรหัสความจริง (The Truth Decipher) - อ่านที่นี่", expanded=True):
-        col_g1, col_g2 = st.columns(2)
-        with col_g1:
-            st.markdown("""
-            **1. ที่มาของรหัสประจำตัว**
-            * **วันเกิด (1-7):** คือค่าฐานพลังงานรายวัน
-            * **จันทรคติ (1-15):** คือค่าตัวแปรจากแรงดึงดูดของดวงจันทร์
-            * **สมการ Quantum:** เราใช้สูตรคณิตศาสตร์ชั้นสูงเพื่อเปลี่ยนวันเวลาให้เป็น 'รหัส' เพื่อตัดอคติหรือความรู้สึกส่วนตัวออก ให้เหลือเพียงตัวเลขที่เป็นความจริง
-            """)
-        with col_g2:
-            st.markdown("""
-            **2. เจาะลึกความหมายของ Gap 4**
-            * **ทำไมถึงวนเวียน?** ในเชิงสถิติ รหัสที่ห่างกัน 4 หน่วย คือจุดที่ฟันเฟืองรหัสชีวิตล็อกกันพอดี 
-            * **แรงดึงดูด:** ระยะนี้ไม่ใช่เรื่องบังเอิญ แต่มันคือพิกัดที่มีแรงดึงดูดประหลาด มักเกิดกับคู่ที่เคยมีพันธะต่อกัน
-            * **วิธีรับมือ:** ยึดหลัก 'อยู่นิ่งๆ ไม่เจ็บตัว' มีสติในการรับมือกับความรู้สึกที่คุ้นเคย
-            """)
-        st.markdown("---")
-        st.markdown("**เกร็ดความรู้:** ค่ารหัสนี้จะคงที่ตามวันเกิด แต่ผลลัพธ์การสแกนจะเปลี่ยนไปตาม 'คู่สแกน' ที่คุณเลือก เพื่อหาจุดเชื่อมโยงที่เหมาะสมที่สุดในปัจจุบัน")
+    st.subheader("🗓️ พยากรณ์พิกัดเวลา (180 วันข้างหน้า)")
+    st.write(f"ค้นหาจังหวะชีวิตที่สอดคล้องกับรหัสประจำตัว: **{d1['res']}**")
+    
+    timeline_df = scan_destiny(d1['res'])
+    
+    if not timeline_df.empty:
+        st.dataframe(timeline_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("ยังไม่พบพิกัดที่สอดคล้องในช่วง 180 วันนี้")
+
+    # --- คัมภีร์อ่านค่า ---
+    st.divider()
+    with st.expander("📖 คัมภีร์ถอดรหัสความจริง", expanded=False):
+        st.markdown("""
+        * **วันที่จะเจอ (รหัสบรรจบ):** คือวันที่รหัสจักรวาลวิ่งมาทับกับรหัสคุณพอดี
+        * **วันที่จะจาก (รหัสแยกตัว):** คือวันที่พลังงานดีดตัวออกจากกันจนเป็นอิสระ
+        * **สัญญาณสะท้อน:** วันที่เกิดแรงดึงดูดประหลาด (Gap 4) มักมีเรื่องไม่คาดคิดเกิดขึ้น
+        """)
 
 else:
     st.info("🛰️ ระบบ Standby... กรุณากรอกข้อมูลวันเกิดเพื่อเริ่มการสแกนรหัสชีวิต")
 
 st.divider()
-st.caption(f"สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE CORE v20.2 | {date.today().year}")
+st.caption(f"สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE CORE v2.1 | {date.today().year}")
