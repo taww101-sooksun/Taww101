@@ -102,7 +102,7 @@ if song_files:
             source = audioCtx.createMediaElementSource(audio);
             source.connect(analyser);
             analyser.connect(audioCtx.destination);
-            analyser.fftSize = 512; 
+            analyser.fftSize = 1024; 
             draw();
         }}
     }};
