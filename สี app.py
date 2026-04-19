@@ -67,6 +67,7 @@ st.markdown(f"""
     }
     @keyframes shine {{ to {{ background-position: 200% center; }} }}
 
+
     /* ปรับแต่ง Dropdown */
     .stSelectbox {{ color: white !important; }}
     
