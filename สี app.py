@@ -2,6 +2,32 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, date
 import math
+from datetime import timedelta
+
+def scan_destiny(target_res, days=180):
+    future_data = []
+    start_date = date.today()
+    
+    for i in range(days):
+        current_date = start_date + timedelta(days=i)
+        d = get_detailed_logic(current_date)
+        current_gap = abs(d['res'] - target_res)
+        
+        status = ""
+        if current_gap < 0.5: status = "💎 วันที่รหัสบรรจบ (เจอ/รวมตัว)"
+        elif 3.8 <= current_gap <= 4.2: status = "🌀 วันที่สัญญาณสะท้อน (ดึงดูดสูง)"
+        elif current_gap > 10.0: status = "🚩 วันที่รหัสแยกตัว (จาก/อิสระ)"
+        
+        if status:
+            future_data.append({"วันที่": current_date, "สถานะ": status, "Gap": round(current_gap, 4)})
+            
+    return pd.DataFrame(future_data)
+
+# ส่วนการแสดงผลใน Streamlit
+st.subheader("🗓️ พยากรณ์พิกัดเวลาในอนาคต (180 วัน)")
+if dob1:
+    timeline_df = scan_destiny(d1['res'])
+    st.table(timeline_df)
 
 # --- CONFIG & UI ---
 st.set_page_config(page_title="SYNAPSE: THE COMPLETE TRUTH", layout="wide")
