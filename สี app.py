@@ -12,22 +12,18 @@ def get_base64_bin(bin_file):
 
 # ซ่อน Streamlit UI เดิมๆ เพื่อความคลีน
 hide_ui = """
-    <style>
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .block-container {padding-top: 2rem;}
-    
-    /* Animation โลโก้ดิ้นได้ */
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-    }
-    .logo-container {
-        display: flex;
-        justify-content: center;
-        animation: bounce 2s ease-in-out infinite;
-    }
+    /* ใส่ในส่วน <style> */
+.logo-img {
+    width: 400px;
+    filter: drop-shadow(0 0 20px {theme_color});
+    animation: logoPulse 4s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+    0%, 100% { filter: drop-shadow(0 0 15px {theme_color}) contrast(1.1); transform: scale(1); }
+    50% { filter: drop-shadow(0 0 50px {theme_color}) contrast(1.3); transform: scale(1.02); }
+}
+
 
     /* ตัวหนังสือวิ้งๆ */
     .shimmer-text {
