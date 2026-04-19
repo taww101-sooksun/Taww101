@@ -3,31 +3,84 @@ import base64
 import os
 
 # ==========================================
-# 1. การตั้งค่าหน้าจอและระบบธีมสี
+# 1. การตั้งค่าหน้าจอและ Logic ระบบสี
 # ==========================================
 st.set_page_config(page_title="Synapse Studio Mixer", layout="centered")
 
-if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#AFEEEE" # สี Pale Turquoise ที่ขอมา
+# สร้าง Session State สำหรับเก็บโหมดสี
+if 'bg_mode' not in st.session_state:
+    st.session_state.bg_mode = "turquoise"
 
-with st.sidebar:
-    st.markdown("### 🎨 SYNAPSE CUSTOMIZER")
-    st.session_state.theme_color = st.color_picker("ปรับสีนีออนระบบ", st.session_state.theme_color)
-    st.write(f"สีปัจจุบัน: {st.session_state.theme_color}")
-    st.markdown("---")
-    st.info('สโลแกน: "อยู่นิ่งๆ ไม่เจ็บตัว"')
-
-theme_c = st.session_state.theme_color
+# ฟังก์ชันเปลี่ยนโหมดสี
+def set_bg(mode):
+    st.session_state.bg_mode = mode
 
 # ==========================================
-# 2. ฟังก์ชันสแกนหาไฟล์เพลงในโฟลเดอร์หลัก
+# 2. CSS & Animations (รวม Rainbow Flow ที่คุณให้มา)
 # ==========================================
-# สแกนไฟล์ที่มีนามสกุล .mp3, .wav, .ogg ในโฟลเดอร์เดียวกับไฟล์ .py
-audio_extensions = ('.mp3', '.wav', '.ogg', '.m4a')
-music_files = [f for f in os.listdir('.') if f.endswith(audio_extensions)]
+rainbow_css = ""
+current_style = ""
+
+if st.session_state.bg_mode == "rainbow":
+    current_style = """
+        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
+        background-size: 1200% 1200%;
+        animation: RainbowFlow 10s ease infinite;
+    """
+    theme_color = "#FFFFFF" # สีขาวเพื่อให้ตัดกับรุ้ง
+elif st.session_state.bg_mode == "coral":
+    current_style = "background-color: #FF7F50;"
+    theme_color = "#FF7F50"
+else:
+    current_style = "background-color: #000000; border: 1px solid #AFEEEE;"
+    theme_color = "#AFEEEE"
+
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    
+    header, footer, #MainMenu {{visibility: hidden;}}
+    
+    /* ตัวคุมการวิ่งของสี (Keyframes) ที่คุณส่งมา */
+    @keyframes RainbowFlow {{
+        0%{{background-position:0% 50%}}
+        50%{{background-position:100% 50%}}
+        100%{{background-position:0% 50%}}
+    }}
+
+    .stApp {{
+        {current_style}
+        transition: all 0.5s ease;
+    }}
+
+    /* จัดสมดุล Header */
+    .header-container {{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 40px;
+        margin-bottom: 30px;
+    }}
+
+    .logo-img {{
+        width: 110px;
+        margin-bottom: 25px; /* เว้นระยะไม่ให้บังตัวหนังสือ */
+        filter: drop-shadow(0 0 10px {theme_color});
+    }}
+
+    .neon-title {{
+        font-family: 'Orbitron', sans-serif;
+        color: #fff;
+        text-shadow: 0 0 15px {theme_color};
+        font-size: 1.8rem;
+        letter-spacing: 5px;
+        margin: 0;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. จัดการ Logo และ CSS (จัดสมดุลไม่ให้ทับตัวหนังสือ)
+# 3. ส่วนหัวและปุ่มเปลี่ยนสี (UI)
 # ==========================================
 def get_base64_image(image_path):
     try:
@@ -39,79 +92,43 @@ logo_base64 = get_base64_image("logo1.png")
 logo_url = f"data:image/png;base64,{logo_base64}" if logo_base64 else ""
 
 st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    
-    header, footer, #MainMenu {{visibility: hidden;}}
-    
-    .main {{ 
-        background: #000;
-        background: linear-gradient(270deg, #000, #111, #000);
-        background-size: 400% 400%;
-    }}
-
-    /* จัดระเบียบส่วนหัวให้สมดุล */
-    .header-box {{
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 30px 0 20px 0;
-    }}
-
-    .logo-frame {{
-        width: 110px;
-        height: 110px;
-        margin-bottom: 20px;
-        filter: drop-shadow(0 0 10px {theme_c});
-        animation: glow 2s infinite alternate;
-    }}
-
-    @keyframes glow {{
-        from {{ filter: drop-shadow(0 0 5px {theme_c}); transform: scale(1); }}
-        to {{ filter: drop-shadow(0 0 20px {theme_c}); transform: scale(1.05); }}
-    }}
-
-    .neon-text {{
-        font-family: 'Orbitron', sans-serif;
-        color: #fff;
-        text-shadow: 0 0 10px {theme_c}, 0 0 20px {theme_c};
-        font-size: 1.6rem;
-        letter-spacing: 4px;
-        text-align: center;
-    }}
-    </style>
-
-    <div class="header-box">
-        <img src="{logo_url}" class="logo-frame">
-        <div class="neon-text">SYNAPSE STUDIO</div>
-        <div style="color:{theme_c}; font-size:11px; margin-top:8px; opacity:0.8;">อยู่นิ่งๆ ไม่เจ็บตัว</div>
+    <div class="header-container">
+        <img src="{logo_url}" class="logo-img">
+        <h1 class="neon-title">SYNAPSE STUDIO</h1>
+        <p style="color:#fff; font-size:12px; margin-top:10px; opacity:0.8;">อยู่นิ่งๆ ไม่เจ็บตัว</p>
     </div>
     """, unsafe_allow_html=True)
 
+# ปุ่มกดเปลี่ยนสี
+col_btn1, col_btn2, col_btn3 = st.columns(3)
+with col_btn1:
+    st.button("💎 Turquoise", on_click=set_bg, args=("turquoise",), use_container_width=True)
+with col_btn2:
+    st.button("🧡 Coral", on_click=set_bg, args=("coral",), use_container_width=True)
+with col_btn3:
+    st.button("🌈 Rainbow", on_click=set_bg, args=("rainbow",), use_container_width=True)
+
 # ==========================================
-# 4. ส่วนเลือกเพลง (ดึงจากไฟล์ในเครื่อง/GitHub)
+# 4. ระบบดึงเพลงจากโฟลเดอร์เดียวกัน
 # ==========================================
-st.markdown(f"<div style='color:{theme_c}; font-size:12px; margin-bottom:10px;'>🎵 เลือกเพลงสำหรับ DECK A และ B:</div>", unsafe_allow_html=True)
+audio_files = [f for f in os.listdir('.') if f.endswith(('.mp3', '.wav', '.ogg'))]
 
-col1, col2 = st.columns(2)
+col_a, col_b = st.columns(2)
+with col_a:
+    track_a = st.selectbox("DECK A", audio_files if audio_files else ["No file"])
+with col_b:
+    track_b = st.selectbox("DECK B", audio_files if audio_files else ["No file"])
 
-with col1:
-    track_a = st.selectbox("เลือกเพลง DECK A", music_files if music_files else ["ไม่มีไฟล์เพลงในโฟลเดอร์"])
-with col2:
-    track_b = st.selectbox("เลือกเพลง DECK B", music_files if music_files else ["ไม่มีไฟล์เพลงในโฟลเดอร์"])
-
-# แปลงเพลงเป็น Base64 เพื่อส่งเข้า HTML Mixer
-def get_audio_base64(file_path):
+def to_base64(file):
     try:
-        with open(file_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
+        with open(file, "rb") as f: return base64.b64encode(f.read()).decode()
     except: return ""
 
-audio_a_data = get_audio_base64(track_a) if track_a in music_files else ""
-audio_b_data = get_audio_base64(track_b) if track_b in music_files else ""
+data_a = to_base64(track_a) if track_a in audio_files else ""
+data_b = to_base64(track_b) if track_b in audio_files else ""
 
 # ==========================================
-# 5. เครื่องเล่นเพลงและ Visualizer
+# 5. HTML Mixer (ปรับตามสีที่เลือก)
 # ==========================================
 html_mixer = f"""
 <!DOCTYPE html>
@@ -119,126 +136,49 @@ html_mixer = f"""
 <head>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {{ background: transparent; color: white; }}
-        .mixer-card {{
-            border: 1px solid {theme_c}55;
-            background: rgba(10,10,10,0.9);
-            box-shadow: 0 0 25px {theme_c}22;
-            border-radius: 20px;
-            padding: 20px;
-        }}
-        .visual-box {{
-            height: 120px; background: #000; border-radius: 12px;
-            border: 1px solid {theme_c}33; margin-bottom: 20px;
-        }}
-        .btn-action {{
-            border: 2px solid {theme_c};
-            color: {theme_c};
-            padding: 12px; border-radius: 15px; width: 100%;
-            font-weight: bold; transition: 0.3s;
-            text-shadow: 0 0 5px {theme_c};
-            background: transparent;
-        }}
-        .btn-action:hover {{ background: {theme_c}; color: #000; }}
-        .progress-bar {{ height: 4px; background: #222; border-radius: 2px; overflow: hidden; margin-top: 8px; }}
-        .progress-fill {{ height: 100%; width: 0%; background: {theme_c}; box-shadow: 0 0 10px {theme_c}; }}
+        .mixer-bg {{ background: rgba(0,0,0,0.85); border: 2px solid {theme_color}; border-radius: 20px; padding: 20px; }}
+        .btn-mix {{ border: 1px solid {theme_color}; color: {theme_color}; width: 100%; padding: 10px; border-radius: 10px; font-weight: bold; font-size: 12px; }}
+        .btn-mix:hover {{ background: {theme_color}; color: #000; }}
+        .vis {{ height: 80px; background: #000; border-radius: 8px; margin-bottom: 15px; border: 1px solid #333; }}
     </style>
 </head>
-<body>
-    <div class="mixer-card">
-        <canvas id="canvas" class="visual-box w-full"></canvas>
-        
-        <div class="grid grid-cols-2 gap-4 mb-6">
-            <div>
-                <div class="flex justify-between text-[9px]" style="color:{theme_c}">
-                    <span>DECK A: {track_a}</span>
-                    <span id="tA">00:00</span>
-                </div>
-                <div class="progress-bar"><div id="bA" class="progress-fill"></div></div>
-            </div>
-            <div>
-                <div class="flex justify-between text-[9px]" style="color:{theme_c}">
-                    <span>DECK B: {track_b}</span>
-                    <span id="tB">00:00</span>
-                </div>
-                <div class="progress-bar"><div id="bB" class="progress-fill"></div></div>
-            </div>
+<body class="bg-transparent text-white">
+    <div class="mixer-bg">
+        <canvas id="canvas" class="vis w-full"></canvas>
+        <div class="grid grid-cols-2 gap-4 mb-4">
+            <button onclick="play()" class="btn-mix">LOAD & START</button>
+            <button onclick="fade()" class="btn-mix">CROSSFADE</button>
         </div>
-
-        <div class="grid grid-cols-2 gap-4">
-            <button onclick="startMix()" class="btn-action">LOAD & PLAY</button>
-            <button onclick="fade()" class="btn-action">CROSSFADE</button>
-        </div>
+        <div class="text-[10px] text-center opacity-50">SYNAPSE COMMAND CENTER ACTIVE</div>
     </div>
 
     <script>
-        let ctx, analyser, sA, sB, gA, gB, isPlaying=false, cur='A';
-        const rawA = "{audio_a_data}";
-        const rawB = "{audio_b_data}";
-
-        async function decode(base64) {{
-            const buffer = Uint8Array.from(atob(base64), c => c.charCodeAt(0)).buffer;
-            return await ctx.decodeAudioData(buffer);
+        let ctx, ana, sA, sB, gA, gB, isP=false, cur='A';
+        async function play() {{
+            if(!ctx) {{ ctx = new AudioContext(); ana = ctx.createAnalyser(); draw(); }}
+            if(isP) return;
+            const dec = async (b) => ctx.decodeAudioData(Uint8Array.from(atob(b), c => c.charCodeAt(0)).buffer);
+            sA = ctx.createBufferSource(); sA.buffer = await dec("{data_a}");
+            gA = ctx.createGain(); sA.connect(gA).connect(ana).connect(ctx.destination);
+            sB = ctx.createBufferSource(); sB.buffer = await dec("{data_b}");
+            gB = ctx.createGain(); gB.gain.value = 0; sB.connect(gB).connect(ana).connect(ctx.destination);
+            sA.start(0); sB.start(0); isP = true;
         }}
-
-        async function startMix() {{
-            if(!ctx) {{
-                ctx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = ctx.createAnalyser();
-                analyser.fftSize = 128;
-                draw();
-            }}
-            if(isPlaying) return;
-            
-            const dataA = await decode(rawA);
-            const dataB = await decode(rawB);
-
-            sA = ctx.createBufferSource(); sA.buffer = dataA;
-            gA = ctx.createGain(); sA.connect(gA).connect(analyser).connect(ctx.destination);
-            
-            sB = ctx.createBufferSource(); sB.buffer = dataB;
-            gB = ctx.createGain(); gB.gain.value = 0;
-            sB.connect(gB).connect(analyser).connect(ctx.destination);
-
-            sA.start(0); sB.start(0);
-            isPlaying = true;
-        }}
-
         function fade() {{
-            const now = ctx.currentTime;
-            if(cur==='A') {{
-                gA.gain.linearRampToValueAtTime(0, now+4);
-                gB.gain.linearRampToValueAtTime(1, now+4);
-                cur='B';
-            }} else {{
-                gB.gain.linearRampToValueAtTime(0, now+4);
-                gA.gain.linearRampToValueAtTime(1, now+4);
-                cur='A';
-            }}
+            const n = ctx.currentTime;
+            if(cur==='A') {{ gA.gain.linearRampToValueAtTime(0,n+3); gB.gain.linearRampToValueAtTime(1,n+3); cur='B'; }}
+            else {{ gB.gain.linearRampToValueAtTime(0,n+3); gA.gain.linearRampToValueAtTime(1,n+3); cur='A'; }}
         }}
-
         function draw() {{
             requestAnimationFrame(draw);
-            const can = document.getElementById('canvas');
-            const c = can.getContext('2d');
-            const freq = new Uint8Array(analyser.frequencyBinCount);
-            analyser.getByteFrequencyData(freq);
-
-            c.fillStyle = 'rgba(0,0,0,0.2)';
-            c.fillRect(0,0,can.width,can.height);
-            
-            const bw = (can.width / freq.length) * 2.5;
-            freq.forEach((v, i) => {{
-                c.fillStyle = '{theme_c}';
-                c.fillRect(i*bw, can.height - v/2, bw-1, v/2);
-            }});
+            const can = document.getElementById('canvas'), c = can.getContext('2d');
+            const f = new Uint8Array(ana.frequencyBinCount); ana.getByteFrequencyData(f);
+            c.clearRect(0,0,can.width,can.height);
+            f.forEach((v, i) => {{ c.fillStyle='{theme_color}'; c.fillRect(i*3, can.height-v/3, 2, v/3); }});
         }}
     </script>
 </body>
 </html>
 """
 
-st.components.v1.html(html_mixer, height=480)
-
-# Footer
-st.markdown(f"<div style='text-align:center; color:{theme_c}; font-size:10px; margin-top:20px; opacity:0.4; font-family:Orbitron;'>COMMAND CENTER V2 | 2026</div>", unsafe_allow_html=True)
+st.components.v1.html(html_mixer, height=250)
