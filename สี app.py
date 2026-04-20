@@ -700,17 +700,28 @@ elif st.session_state.page == "7":
         else:
             st.warning("กรุณาระบุชื่อเป้าหมายทั้งสองให้ครบถ้วน")
 
-# --- [ ห้องที่ 8: DAILY CODE (รหัสลับประจำวัน) ] ---
+# --- [ หน้าที่ 8: DAILY CODE ] ---
 elif st.session_state.page == "8":
     st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>🔢 DAILY SECURITY CODE</h2>", unsafe_allow_html=True)
     
     today_str = date.today().strftime("%Y-%m-%d")
-    st.write(f"📅 พิกัดเวลาปัจจุบัน: **{today_str}**")
     
-    # ใช้ Hashing SHA-256 สร้างรหัสจากวันที่ (เพื่อให้ได้เลขเดิมเสมอในวันเดียวกัน)
-    # ผสมกับชื่อ Agent เพื่อให้รหัสของแต่ละคนไม่เหมือนกัน
-    raw_data = f"{today_str}_{st.session_state.user}_SYNAPSE"
+    # 1. ป้องกัน Error บรรทัด 713: ดึงชื่อผู้ใช้แบบปลอดภัย
+    # ถ้ายังไม่ได้ Login ให้ใช้ชื่อ 'Guest' ไปก่อน แอปจะได้ไม่พัง
+    current_agent = st.session_state.get('user', 'Guest_Agent')
+    
+    # 2. สร้างวัตถุดิบสำหรับทำรหัส
+    raw_data = f"{today_str}_{current_agent}_SYNAPSE"
+    
+    # 3. บรรทัดที่เคยพัง (713): ตอนนี้ raw_data จะมีค่าแน่นอนแล้ว 100%
     hash_object = hashlib.sha256(raw_data.encode('utf-8')).hexdigest()
+    
+    # 4. แปลงรหัสเป็นตัวเลข (Logic เดิมของเพื่อน)
+    daily_4_digit = str(int(hash_object[:4], 16))[:4].zfill(4)
+    daily_6_digit = str(int(hash_object[4:8], 16))[:6].zfill(6)
+    
+    # ... (ส่วนแสดงผลคอลัมน์เหมือนเดิม) ...
+
     
     # แปลง Hash บางส่วนให้เป็นตัวเลข
     daily_4_digit = str(int(hash_object[:4], 16))[:4].zfill(4)
