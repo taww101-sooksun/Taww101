@@ -1,876 +1,211 @@
 import streamlit as st
 import os
-import datetime
 import pandas as pd
 import math
 import time
 import base64
-from datetime import datetime, date, timedelta
-import streamlit.components.v1 as components
 import firebase_admin
 from firebase_admin import credentials, db
-import hashlib
-import folium
+from datetime import datetime, date, timedelta
+import streamlit.components.v1 as components
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
-from datetime import date
 
-# --- [ หัวใจคำนวณ: วางไว้ส่วนบนเพื่อให้ทุกห้องเรียกใช้ได้ ] ---
+# --- [ หัวใจคำนวณ: ระบบถอดรหัส Lunar ] ---
 def get_detailed_logic(dt):
     if dt is None: return None
-    
-    # 1. ข้อมูลพื้นฐานทางดาราศาสตร์ (อ้างอิง New Moon 1 Jan 1900)
     ref_date = date(1900, 1, 1)
     diff = (dt - ref_date).days
     lunar_cycle = 29.530589
     pos = (diff - 0.5) % lunar_cycle
-    day_val = dt.weekday() + 1 # จันทร์=1, อาทิตย์=7
-    
+    day_val = dt.weekday() + 1
     day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
     day_name = day_names[dt.weekday()]
 
-    # 2. แยกคำนวณตามสถานะจันทรคติ (ความจริงทางคณิตศาสตร์)
     if pos <= 14.765:
-        # ช่วงข้างขึ้น (Vector Energy)
         m_num = int(pos) + 1
         phase = f"ขึ้น {m_num} ค่ำ"
         res = math.sqrt((day_val**2) + (m_num**2))
-        formula = f"√({day_val}² + {m_num}²)"
-        logic_type = "แรงผลักดัน (Vector Energy)"
+        formula, logic_type = f"√({day_val}² + {m_num}²)", "Vector Energy"
     else:
-        # ช่วงข้างแรม (Golden Ratio)
         m_num = int(pos - 14.765) + 1
         phase = f"แรม {m_num} ค่ำ"
         res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
-        formula = f"({day_val} × 1.618) / {m_num}"
-        logic_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
+        formula, logic_type = f"({day_val} × 1.618) / {m_num}", "Golden Ratio"
 
-    return {
-        "res": round(res, 4), 
-        "phase": phase, 
-        "day_name": day_name,
-        "day_val": day_val, 
-        "m_num": m_num, 
-        "formula": formula, 
-        "type": logic_type
-    }
-
-
-# ==========================================
-# 1. วางระบบ INITIALIZATION ไว้บนสุด (ตรงนี้แหล่ะ!)
-# ==========================================
-def init_system():
-    # --- ดักเรื่อง Session State (กัน Error: has no attribute 'user') ---
-    if 'logged_in' not in st.session_state:
-        st.session_state.logged_in = False
-    
-    if 'user' not in st.session_state:
-        st.session_state.user = "Guest_Agent" # ชื่อสำรองกันแอปเด้ง
-        
-    if 'page' not in st.session_state:
-        st.session_state.page = "login" # หน้าเริ่มต้น
-
-    # --- ดักเรื่อง Firebase (กัน Error: default app does not exist) ---
-    if not firebase_admin._apps:
-        try:
-            fb_creds = dict(st.secrets["firebase_credentials"])
-            # แก้ปัญหาเรื่องขึ้นบรรทัดใหม่ใน Private Key
-            if "\\n" in fb_creds["private_key"]:
-                fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
-                
-            cred = credentials.Certificate(fb_creds)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': st.secrets["firebase_db_url"]
-            })
-
-# --- ระบบจำค่าสีธีม (Global Style) ---
-if 'primary_color' not in st.session_state:
-    st.session_state.primary_color = "#00f3ff" # สีฟ้า Cyber เริ่มต้น
-
-# ฉีด CSS เข้าไปในทุกหน้า
-st.markdown(f"""
-    <style>
-    /* เปลี่ยนสีหัวข้อและปุ่มตามที่เลือก */
-    .neon-title-main, h1, h2, h3, .stMetric {{ color: {st.session_state.primary_color} !important; text-shadow: 0 0 10px {st.session_state.primary_color}; }}
-    .stButton>button {{
-        border: 1px solid {st.session_state.primary_color} !important;
-        color: {st.session_state.primary_color} !important;
-    }}
-    .stButton>button:hover {{
-        background: {st.session_state.primary_color} !important;
-        color: #000 !important;
-    }}
-    </style>
-""", unsafe_allow_html=True)
-            st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
-
-# เรียกใช้งานทันทีที่รันไฟล์
-init_system()
-
-# ==========================================
-# 2. ต่อด้วยระบบ LOGIN (ตัวอย่าง)
-# ==========================================
-if not st.session_state.logged_in:
-    # ใส่โค้ดหน้า Login ของแกตรงนี้ 
-    # พอ Login สำเร็จ อย่าลืมตั้งค่า:
-    # st.session_state.logged_in = True
-    # st.session_state.user = uid
-    # st.session_state.page = "1" (หรือหน้าอื่น)
-    pass
-# --- ส่วนหน้าจอลงชื่อเข้าใช้ (Login / Register) ---
-if not st.session_state.get('logged_in', False):
-    st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>REGISTER AGENT</h2>", unsafe_allow_html=True)
-    
-    with st.container():
-        # ช่องให้คนใหม่ตั้งชื่อ (ID)
-        new_user = st.text_input("ENTER AGENT NAME", placeholder="เช่น ต๊ะ101, บาส, ฯลฯ").strip()
-        
-        if st.button("ACTIVATE SYSTEM", use_container_width=True):
-            if new_user:
-                # 1. เช็คใน Firebase ว่าชื่อนี้มีคนใช้หรือยัง
-                user_check = db.reference(f'users/{new_user}').get()
-                
-                if user_check:
-                    # ถ้ามีชื่อนี้แล้ว ให้ถือว่าเป็นการ Login (หรือจะใส่รหัสผ่านเพิ่มก็ได้)
-                    st.session_state.user = new_user
-                    st.session_state.logged_in = True
-                    st.success(f"ยินดีต้อนรับกลับ AGENT: {new_user}")
-                    time.sleep(1)
-                    st.rerun()
-                else:
-                    # 2. ถ้ายังไม่มีชื่อนี้ ให้ลงทะเบียนใหม่
-                    db.reference(f'users/{new_user}').set({
-                        'created_at': time.time(),
-                        'lat': 13.7367, # พิกัดเริ่มต้น
-                        'lon': 100.5231
-                    })
-                    st.session_state.user = new_user
-                    st.session_state.logged_in = True
-                    st.balloons() # ฉลอง Agent ใหม่
-                    st.success(f"ลงทะเบียน AGENT: {new_user} สำเร็จ!")
-                    time.sleep(2)
-                    st.rerun()
-            else:
-                st.warning("กรุณาใส่ชื่อ AGENT ของคุณก่อน!")
-    st.stop() # หยุดการทำงานหน้าอื่นไว้จนกว่าจะ Login สำเร็จ
-
-# ==========================================
-# 3. ส่วนควบคุมหน้าเพจ (Navigation)
-# ==========================================
-# ใช้ st.session_state.page ในการสลับหน้า
-if st.session_state.page == "1":
-
-    st.write("---")
-    
-    # 1. ส่วนเลือกธีมสีอัญมณี (Jewel Tones)
-    st.subheader("💎 เลือกโทนสีอัญมณี (Jewel Themes)")
-    theme_choice = st.selectbox("เลือกสีหลักของระบบ:", [
-        "Emerald (#50C878)", 
-        "Sapphire (#0F52BA)", 
-        "Ruby (#E0115F)", 
-        "Amethyst (#9966CC)", 
-        "Golden Topaz (#FFD700)",
-        "Cyber Neon (#00E5FF)"
-    ])
-
-    # Mapping รหัสสีจากคลังของเจ้านาย
-    color_map = {
-        "Emerald (#50C878)": "#50C878",
-        "Sapphire (#0F52BA)": "#0F52BA",
-        "Ruby (#E0115F)": "#E0115F",
-        "Amethyst (#9966CC)": "#9966CC",
-        "Golden Topaz (#FFD700)": "#FFD700",
-        "Cyber Neon (#00E5FF)": "#00E5FF"
-    }
-    
-    selected_color = color_map[theme_choice]
-
-    # 2. ส่วนตั้งค่าข้อมูลส่วนตัว (ความจริงของคุณต๊ะ)
-    st.subheader("👤 ข้อมูลพื้นฐานการถอดรหัส")
-    col1, col2 = st.columns(2)
-    with col1:
-        user_name = st.text_input("ชื่อเรียกในระบบ:", value="Ta101")
-    with col2:
-        user_motto = st.text_input("สโลแกนประจำตัว:", value="อยู่นิ่งๆ ไม่เจ็บตัว")
-
-    # 3. ปุ่มบันทึกการตั้งค่า
-    if st.button("💾 บันทึกและปรับใช้ระบบ", use_container_width=True):
-        st.session_state.primary_color = selected_color
-        st.session_state.user_name = user_name
-        st.success(f"ระบบบันทึกค่าสี {theme_choice} และข้อมูลของคุณเรียบร้อยแล้ว!")
-        st.rerun()
-
-    # --- ส่วนแสดงตัวอย่าง CSS ที่เจ้านายรวบรวมมา (Rainbow Flow) ---
-    st.write("---")
-    with st.expander("🌈 ทดสอบระบบแสง Rainbow Flow"):
-        st.markdown(f"""
-        <div style="
-            background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-            background-size: 600% 600%;
-            animation: RainbowFlow 10s ease infinite;
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            font-weight: bold;
-            color: white;
-            text-shadow: 2px 2px 4px #000;">
-            ระบบกำลังรันรหัสสีสายรุ้ง...
-        </div>
-        <style>
-            @keyframes RainbowFlow {{
-                0%{{background-position:0% 50%}}
-                50%{{background-position:100% 50%}}
-                100%{{background-position:0% 50%}}
-            }}
-        </style>
-        """, unsafe_allow_html=True)
-
-    st.caption(f"ผู้ควบคุมระบบ: {user_name} | {user_motto}")
-
-    # โค้ดห้องที่ 1 (OMNI-MIXER)
-    pass
-
-elif st.session_state.page == "2":
-    # โค้ดห้องที่ 2 (TACTICAL RADAR & CHAT)
-    pass
-
-
-def init_system():
-    # เช็คว่ามีการเปิดแอป Firebase ไว้หรือยัง
-    if not firebase_admin._apps:
-        try:
-            # ดึงข้อมูลจาก secrets.toml
-            fb_creds = dict(st.secrets["firebase_credentials"])
-            
-            # ตรวจสอบเรื่อง Private Key (ต้องจัดการเรื่องเว้นวรรค \n ให้ถูกต้อง)
-            if "\\n" in fb_creds["private_key"]:
-                fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
-                
-            cred = credentials.Certificate(fb_creds)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': st.secrets["firebase_db_url"]
-            })
-            # st.success("🛰️ เชื่อมต่อศูนย์บัญชาการสำเร็จ") # เปิดไว้เช็คตอน Test ได้
-        except Exception as e:
-            st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
-            return False
-    return True
-
-# --- ตรงนี้สำคัญ ---
-# เรียกใช้ฟังก์ชันก่อนจะเริ่มรันเนื้อหาในหน้าเพจ
-if init_system():
-    # รันเนื้อหาแอปของแกต่อที่นี่ (เช่น main() หรือการเช็ค page)
-    pass
-
-# สั่งให้รีเฟรชตัวเองทุกๆ 5 วินาที (5000 มิลลิวินาที)
-# เพื่อไปดึงพิกัดใหม่และแชตใหม่จาก Firebase
-count = st_autorefresh(interval=5000, key="datarefresh")
-
-# --- ส่วนบนสุดของไฟล์ (Initial State) ---
-if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#39FF14"  # กำหนดสีเริ่มต้นเป็นสีเขียว Matrix
-
-def get_base64(file_path):
-    """ฟังก์ชันสำหรับแปลงไฟล์เพลงเป็น Base64 เพื่อให้เล่นบน HTML5 Player ได้"""
-    try:
-        with open(file_path, "rb") as f:
-            data = f.read()
-            return base64.b64encode(data).decode()
-    except Exception as e:
-        st.error(f"❌ ไม่สามารถอ่านไฟล์ได้: {e}")
-        return None
-
-# --- 1. SETUP & ลบติ่ง (อยู่นิ่งๆ ไม่เจ็บตัว) ---
+    return {"res": round(res, 4), "phase": phase, "day_name": day_name, "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type}
+# --- ตั้งค่าหน้าจอ ---
 st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
-def setup_ui():
-    st.markdown("""
-        <style>
-        /* ลบ Header, Footer และเมนูเดิมของ Streamlit */
-        header, footer, #MainMenu {visibility: hidden;}
-        .stApp { background: #000; color: #00f2fe; }
-        
-        /* สไตล์ปุ่มเมนู */
-        .stButton>button {
-            border-radius: 15px;
-            border: 1px solid #00f2fe;
-            background: rgba(0, 242, 254, 0.1);
-            color: white;
-            height: 100px;
-            font-size: 18px;
-            transition: 0.3s;
-        }
-        .stButton>button:hover {
-            background: #00f2fe;
-            color: #000;
-            box-shadow: 0 0 20px #00f2fe;
-        }
-        
-        /* ตัวหนังสือวิ้ง */
-        .neon-text {
-            text-align: center;
-            color: #fff;
-            text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe;
-            font-weight: bold;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-setup_ui()
-
-# --- 2. การจัดการหน้าจอ (Navigation) ---
+if 'primary_color' not in st.session_state:
+    st.session_state.primary_color = "#00f3ff"
 if 'page' not in st.session_state:
     st.session_state.page = "HOME"
 
-# ฟังก์ชันย้อนกลับ
+# --- ระบบเชื่อมต่อ Firebase ---
+def init_system():
+    if not firebase_admin._apps:
+        try:
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            if "\\n" in fb_creds["private_key"]:
+                fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
+        except Exception as e:
+            st.error(f"🛰️ Firebase Connect Error: {e}")
+
+init_system()
+
+# --- ฉีดสไตล์ CSS (Global) ---
+st.markdown(f"""
+    <style>
+    header, footer, #MainMenu {{visibility: hidden;}}
+    .stApp {{ background: #000; color: #fff; }}
+    .neon-text {{ color: {st.session_state.primary_color}; text-shadow: 0 0 10px {st.session_state.primary_color}; font-weight: bold; text-align: center; }}
+    .stButton>button {{ border: 1px solid {st.session_state.primary_color} !important; border-radius: 15px; background: rgba(0,0,0,0); color: {st.session_state.primary_color}; }}
+    </style>
+""", unsafe_allow_html=True)
+# --- ปุ่มย้อนกลับ (แสดงทุกหน้ายกเว้น Home) ---
 if st.session_state.page != "HOME":
-    if st.button("⬅️ กลับหน้าหลัก"):
+    if st.button("⬅️ BACK TO COMMAND CENTER"):
         st.session_state.page = "HOME"
         st.rerun()
 
-# --- 3. เนื้อหาแต่ละหน้า ---
-
-# [ หน้าแรก: ศูนย์รวม 10 แอป ]
+# --- หน้าแรก: ศูนย์รวม 10 แอป ---
 if st.session_state.page == "HOME":
-    # วาง LOGO แทนที่ติ่ง
-    col_l, col_m, col_r = st.columns([1, 2, 1])
-    with col_m:
-        if os.path.exists("logo1.png"):
-            st.image("logo1.png", use_container_width=True)
-        else:
-            st.markdown("<h1 class='neon-text'>SYNAPSE</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='neon-text'>SYNAPSE COMMAND CENTER</h1>", unsafe_allow_html=True)
+    st.write("---")
     
-    st.markdown("<h3 style='text-align: center;'>ศูนย์ควบคุมระบบ: เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
-    st.divider()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🎵 1. MUSIC MIXER", use_container_width=True): st.session_state.page = "1"; st.rerun()
+        if st.button("🛰️ 2. TACTICAL RADAR", use_container_width=True): st.session_state.page = "2"; st.rerun()
+        if st.button("🧬 3. CODE DECODER", use_container_width=True): st.session_state.page = "3"; st.rerun()
+    with col2:
+        if st.button("🔮 4. DESTINY SCAN", use_container_width=True): st.session_state.page = "4"; st.rerun()
+        if st.button("🔊 5. SONIC SENSOR", use_container_width=True): st.session_state.page = "5"; st.rerun()
+        if st.button("🎨 10. SYSTEM THEME", use_container_width=True): st.session_state.page = "10"; st.rerun()
 
-    # สร้าง Grid 10 แอป (แบ่งเป็น 2 คอลัมน์)
-    c1, c2 = st.columns(2)
-
-    with c1:
-        if st.button("🎵 1. MUSIC PLAYER\nฟังเพลง MP3 จากคลังข้อมูล", use_container_width=True):
-            st.session_state.page = "1"; st.rerun()
-        st.caption("ความสามารถ: เล่นไฟล์เสียง 1.mp3 และระบบควบคุมเสียงผ่านหน้าเว็บ")
-
-        if st.button("📝 2. IMAGE SEARCH\nค้นหาภาพจากดาวเทียม", use_container_width=True):
-            st.session_state.page = "3"; st.rerun()
-        st.caption("ความสามารถ: ดึงรูปภาพจากคลัง Unsplash ตามคำค้นหาที่ต้องการ")
-
-        if st.button("✨ 3. NEON GENERATOR\nสร้างตัวอักษรเรืองแสง", use_container_width=True):
-            st.session_state.page = "5"; st.rerun()
-        st.caption("ความสามารถ: แปลงข้อความธรรมดาให้เป็นศิลปะนีออนวิ้งๆ")
-
-        if st.button("💖 4. DESTINY CHECK\nตรวจดวงชะตาคู่ขนาน", use_container_width=True):
-            st.session_state.page = "7"; st.rerun()
-        st.caption("ความสามารถ: วิเคราะห์ดวงชะตาในมิติที่ 4 ผ่านระบบฐานข้อมูลชื่อ")
-
-        if st.button("📝 5. SYSTEM LOG\nบันทึกข้อมูลการใช้งาน", use_container_width=True):
-            st.session_state.page = "9"; st.rerun()
-        st.caption("ความสามารถ: จดบันทึกข้อความและเหตุการณ์สำคัญลงในหน่วยความจำ")
-
-    with c2:
-        if st.button("⌨️ 6. CHAT SYSTEM\nระบบสื่อสารอัจฉริยะ", use_container_width=True):
-            st.session_state.page = "2"; st.rerun()
-        st.caption("ความสามารถ: โต้ตอบผ่านข้อความกับระบบจัดการ AI")
-
-        if st.button("🎬 7. VIDEO HUB\nศูนย์รวมวิดีโอวงจรปิด", use_container_width=True):
-            st.session_state.page = "4"; st.rerun()
-        st.caption("ความสามารถ: เชื่อมต่อและฉายภาพวิดีโอจาก YouTube หรือ Link ตรง")
-
-        if st.button("🌍 8. WORLD CLOCK\nเวลาโลกแบบเรียลไทม์", use_container_width=True):
-            st.session_state.page = "6"; st.rerun()
-        st.caption("ความสามารถ: ตรวจสอบเวลาปัจจุบันในโซนต่างๆ ทั่วโลก")
-
-        if st.button("🔢 9. DAILY CODE\nรหัสลับประจำวัน", use_container_width=True):
-            st.session_state.page = "8"; st.rerun()
-        st.caption("ความสามารถ: เจนรหัสตัวเลขนำโชคและรหัสรักษาความปลอดภัยรายวัน")
-
-        if st.button("🎨 10. COLOR MASTER\nปรับแต่งธีมสีระบบ", use_container_width=True):
-            st.session_state.page = "10"; st.rerun()
-        st.caption("ความสามารถ: เปลี่ยนสีสันของ Interface เพื่อความสวยงามตามใจชอบ")
-
-# --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
-# --- [ ห้องที่ 1: SYNAPSE OMNI-MIXER (COMMAND CENTER) ] ---
+# --- หน้า 1: MUSIC MIXER ---
 elif st.session_state.page == "1":
-    import base64
-    import os
+    st.subheader("🎵 OMNI-MIXER UNIT")
+    # ใส่โค้ด Mixer HTML ที่เจ้านายมีได้เลย
+    st.info("ระบบกำลังดึงคลังเพลง...")
 
-    # 1. ฟังก์ชันช่วยสำหรับการแสดงผล
-    def get_base64_img(file_path):
-        try:
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-        except: return ""
+# --- หน้า 3: CODE DECODER ---
+elif st.session_state.page == "3":
+    st.markdown("<h2 class='neon-text'>🧬 PERSONAL CODE</h2>", unsafe_allow_html=True)
+    dob = st.date_input("เลือกวันเกิด", value=date.today())
+    if dob:
+        res = get_detailed_logic(dob)
+        st.metric("YOUR REALITY CODE", res['res'])
+        st.write(f"ประเภท: {res['type']}")
 
-    logo_b64 = get_base64_img("logo1.png")
+# --- หน้า 10: THEME MASTER ---
+elif st.session_state.page == "10":
+    st.subheader("🎨 ADJUST SYSTEM COLOR")
+    color = st.color_picker("เลือกสีนีออนหลักของแอป", st.session_state.primary_color)
+    if st.button("SAVE COLOR"):
+        st.session_state.primary_color = color
+        st.rerun()
+# --- [ หน้าที่ 3: ระบบสแกนภาพและค้นหาข้อมูล (IMAGE SEARCH) ] ---
+elif st.session_state.page == "3":
+    st.markdown("<h2 class='neon-text'>📸 SATELLITE & IMAGE SCANNER</h2>", unsafe_allow_html=True)
+    query = st.text_input("ระบุรหัสค้นหาภาพ (เช่น Space, Cyberpunk, Forest)", placeholder="SEARCH...")
+    if query:
+        # ใช้ Unsplash API แบบง่ายในการดึงรูป
+        st.image(f"https://source.unsplash.com/featured/?{query}", use_container_width=True, caption=f"DATA FETCHED: {query}")
+    st.caption("ระบบดึงภาพจากฐานข้อมูลคลาวด์แบบ Real-time")
 
-    # 2. CSS ปรับแต่งหน้าจอ (Logo ตรงกลาง + สไตล์ Neon)
-    st.markdown(f"""
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        
-        header, footer, #MainMenu {{visibility: hidden;}}
-        .stApp {{ background-color: #000000; }}
+# --- [ หน้าที่ 4: ศูนย์รวมวิดีโอ (VIDEO HUB) ] ---
+elif st.session_state.page == "4":
+    st.markdown("<h2 class='neon-text'>🎬 CCTV & VIDEO COMMAND</h2>", unsafe_allow_html=True)
+    v_url = st.text_input("กรอก URL วิดีโอ (YouTube/Direct Link)", value="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    if v_url:
+        st.video(v_url)
+    st.write("---")
+    st.caption("🛰️ เชื่อมต่อสัญญาณถ่ายทอดสดจากเครือข่าย")
 
-        /* สร้าง Logo กระพริบตรงกลางหน้า */
-        .logo-center {{
-            display: block;
-            margin: 0 auto;
-            width: 100px; height: 100px;
-            background-image: url("data:image/png;base64,{logo_b64}");
-            background-size: contain; background-repeat: no-repeat;
-            filter: drop-shadow(0 0 10px #ff00de);
-            animation: logo-pulsing 2s infinite alternate;
-            z-index: 99;
-        }}
-        @keyframes logo-pulsing {{
-            from {{ filter: drop-shadow(0 0 5px #ff00de); transform: scale(1); }}
-            to {{ filter: drop-shadow(0 0 20px #00f3ff); transform: scale(1.1); }}
-        }}
+# --- [ หน้าที่ 5: บันทึกระบบ (SYSTEM LOG) ] ---
+elif st.session_state.page == "5":
+    st.markdown("<h2 class='neon-text'>📝 MISSION LOG</h2>", unsafe_allow_html=True)
+    # ระบบจดบันทึกเก็บเข้า Firebase หรือ Local
+    log_entry = st.text_area("บันทึกเหตุการณ์วันนี้...", height=150)
+    if st.button("SAVE TO DATABASE"):
+        if log_entry:
+            db.reference(f'logs/{st.session_state.user}').push({
+                'entry': log_entry,
+                'ts': time.time()
+            })
+            st.success("บันทึกข้อมูลลงฐานข้อมูลลับเรียบร้อย")
+    
+    # ดึง Log เก่ามาโชว์
+    logs = db.reference(f'logs/{st.session_state.user}').limit_to_last(5).get()
+    if logs:
+        st.write("📂 บันทึกล่าสุด:")
+        for lid in reversed(list(logs.keys())):
+            st.code(f"[{datetime.fromtimestamp(logs[lid]['ts']).strftime('%Y-%m-%d %H:%M')}] {logs[lid]['entry']}")
 
-        .neon-title-main {{
-            font-family: 'Orbitron', sans-serif;
-            color: #fff; text-align: center;
-            text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
-            font-size: 1.8rem; margin: 15px 0;
-        }}
-        </style>
-        <div class="logo-center"></div>
-        <h1 class="neon-title-main">SYNAPSE COMMAND CENTER</h1>
+# --- [ หน้าที่ 6: เวลาโลก (WORLD CLOCK) ] ---
+elif st.session_state.page == "6":
+    st.markdown("<h2 class='neon-text'>🌍 GLOBAL CHRONOMETER</h2>", unsafe_allow_html=True)
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        st.metric("THAILAND (GMT+7)", datetime.now().strftime("%H:%M:%S"))
+    with col_t2:
+        st.metric("UTC/GMT", datetime.utcnow().strftime("%H:%M:%S"))
+    
+    # ระบบสแกนเข็มทิศ (Compass Simulation)
+    st.markdown("""
+        <div style="border: 2px solid #00f3ff; border-radius: 50%; width: 200px; height: 200px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+            <div style="color:#00f3ff; font-family:Orbitron; animation: spin 4s linear infinite;">N</div>
+        </div>
+        <style> @keyframes spin { 100% { transform: rotate(360deg); } } </style>
     """, unsafe_allow_html=True)
 
-    # 3. ส่วนของ Mixer HTML/JS (Deck A & B)
-    # ผมรวมโค้ด Mixer ที่มี Visualizer และ Crossfade มาไว้ตรงนี้
-    mixer_html = f"""
-    <div id="mixer-container" style="background: rgba(10,10,10,0.9); border: 2px solid #333; border-radius: 25px; padding: 20px; font-family: sans-serif;">
-        <canvas id="v-main" style="width: 100%; height: 120px; background: #000; border-radius: 15px; border: 1px solid #ff00de;"></canvas>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
-            <div style="padding: 15px; border-left: 4px solid #ff00de; background: rgba(255,0,222,0.05); border-radius: 10px;">
-                <small style="color: #ff00de; font-weight: bold;">DECK A</small>
-                <div id="nameA" style="color: #fff; font-size: 12px; margin: 5px 0; overflow: hidden;">ยังไม่ได้เลือกเพลง...</div>
-                <input type="file" id="inA" accept="audio/*" style="display:none" onchange="loadA(this.files[0])">
-                <button onclick="document.getElementById('inA').click()" style="background: #ff00de; color: white; border: none; padding: 5px 10px; border-radius: 5px; font-size: 10px; cursor: pointer;">SELECT A</button>
-                <div style="height: 4px; background: #222; margin-top: 10px; border-radius: 2px;"><div id="barA" style="height: 100%; width: 0%; background: #ff00de;"></div></div>
-            </div>
-
-            <div style="padding: 15px; border-left: 4px solid #00f3ff; background: rgba(0,243,255,0.05); border-radius: 10px;">
-                <small style="color: #00f3ff; font-weight: bold;">DECK B</small>
-                <div id="nameB" style="color: #fff; font-size: 12px; margin: 5px 0; overflow: hidden;">ยังไม่ได้เลือกเพลง...</div>
-                <input type="file" id="inB" accept="audio/*" style="display:none" onchange="loadB(this.files[0])">
-                <button onclick="document.getElementById('inB').click()" style="background: #00f3ff; color: black; border: none; padding: 5px 10px; border-radius: 5px; font-size: 10px; cursor: pointer;">SELECT B</button>
-                <div style="height: 4px; background: #222; margin-top: 10px; border-radius: 2px;"><div id="barB" style="height: 100%; width: 0%; background: #00f3ff;"></div></div>
-            </div>
-        </div>
-
-        <div style="display: grid; grid-cols: 2; gap: 10px; margin-top: 20px;">
-            <button onclick="playAll()" style="width: 100%; padding: 12px; background: none; border: 2px solid #ff0055; color: #ff0055; font-weight: bold; border-radius: 15px; cursor: pointer;">⚡ START MIX</button>
-            <button onclick="fade()" style="width: 100%; padding: 12px; background: none; border: 2px solid #00ffcc; color: #00ffcc; font-weight: bold; border-radius: 15px; cursor: pointer; margin-top: 10px;">🔄 CROSSFADE (5s)</button>
-        </div>
-    </div>
-
-    <script>
-        let ctx, ana, sA, sB, gA, gB, isP = false, cur = 'A', data;
-        function init() {{ if(!ctx) {{ ctx = new (window.AudioContext || window.webkitAudioContext)(); ana = ctx.createAnalyser(); ana.fftSize = 128; data = new Uint8Array(ana.frequencyBinCount); loop(); }} }}
-        function loop() {{
-            requestAnimationFrame(loop); if(!ana) return; ana.getByteFrequencyData(data);
-            const can = document.getElementById('v-main'); const c = can.getContext('2d');
-            c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(0,0,can.width,can.height);
-            let x = 0; let w = (can.width/data.length)*2;
-            for(let i=0; i<data.length; i++) {{
-                let h = (data[i]/255)*can.height;
-                c.fillStyle = 'hsl('+(180+i*5)+', 100%, 50%)';
-                c.fillRect(x, can.height-h, w-1, h); x += w;
-            }}
-            updateProgress();
-        }}
-        async function loadA(f) {{ init(); document.getElementById('nameA').innerText = f.name; sA = await ctx.decodeAudioData(await f.arrayBuffer()); }}
-        async function loadB(f) {{ init(); document.getElementById('nameB').innerText = f.name; sB = await ctx.decodeAudioData(await f.arrayBuffer()); }}
-        function playAll() {{
-            if(!sA || !sB || isP) return;
-            srcA = ctx.createBufferSource(); srcA.buffer = sA; gA = ctx.createGain();
-            srcA.connect(gA).connect(ana).connect(ctx.destination);
-            srcB = ctx.createBufferSource(); srcB.buffer = sB; gB = ctx.createGain(); gB.gain.value = 0;
-            srcB.connect(gB).connect(ana).connect(ctx.destination);
-            srcA.start(0); srcB.start(0); isP = true;
-        }}
-        function fade() {{
-            let now = ctx.currentTime;
-            if(cur === 'A') {{ gA.gain.linearRampToValueAtTime(0, now+5); gB.gain.linearRampToValueAtTime(1, now+5); cur = 'B'; }}
-            else {{ gB.gain.linearRampToValueAtTime(0, now+5); gA.gain.linearRampToValueAtTime(1, now+5); cur = 'A'; }}
-        }}
-        function updateProgress() {{
-             // อัปเดต Progress Bar แบบง่าย (จำลอง)
-             if(isP) {{
-                document.getElementById('barA').style.width = cur === 'A' ? '100%' : '0%';
-                document.getElementById('barB').style.width = cur === 'B' ? '100%' : '0%';
-             }}
-        }}
-    </script>
-    """
-    st.components.v1.html(mixer_html, height=520)
-
-    # 4. ส่วนคลังเพลง (Global Playlist)
-    st.write("---")
-    st.markdown("<h4 style='color:#00f3ff; font-family:Orbitron; text-align:center;'>📂 GLOBAL DATABASE</h4>", unsafe_allow_html=True)
-    all_songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-    if all_songs:
-        with st.expander("คลิกเพื่อเลือกเล่นเพลงในคลัง (52+ เพลง)"):
-            for s in all_songs:
-                if st.button(f"🎵 {s}", use_container_width=True):
-                    # ฟังเพลงเดี่ยวๆ ผ่าน Streamlit Audio
-                    st.audio(s)
-    
-    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Studio v.1")
-elif st.session_state.page == "2":
-    from streamlit_autorefresh import st_autorefresh
-    
-    # --- [ จุดสำคัญ: ระบบ AUTO REFRESH ] ---
-    # สั่งให้หน้านี้รีเฟรชตัวเองทุก 8 วินาที เพื่อดึงแชตและพิกัดใหม่
-    # (ไม่ตั้งให้เร็วเกินไป เพื่อป้องกันหน้าจอกะพริบจนใช้งานลำบาก)
-    st_autorefresh(interval=8000, key="synapse_update")
-
-    st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>🛰️ TACTICAL RADAR & PRIVATE CHAT</h2>", unsafe_allow_html=True)
-
-    # --- ส่วนที่ 1: RADAR (GPS) ---
-    from streamlit_js_eval import get_geolocation
-    from streamlit_folium import st_folium
-    import folium
-
-    loc = get_geolocation()
-    my_lat, my_lon = 13.7367, 100.5231 # Default BKK
-    if loc and 'coords' in loc:
-        my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
-
-    # แสดงแผนที่ Satellite
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=15, 
-                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
-                   attr='Google Satellite')
-    
-    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star'), tooltip="YOU").add_to(m)
-
-    # ดึงพิกัดเพื่อนๆ จาก Firebase
-    try:
-        users_ref = db.reference('users').get()
-        if users_ref:
-            for uid, data in users_ref.items():
-                if uid != st.session_state.user and 'lat' in data:
-                    folium.Marker([data['lat'], data['lon']], 
-                                 icon=folium.Icon(color='blue'), 
-                                 tooltip=f"AGENT: {uid}").add_to(m)
-    except: pass
-
-    st_folium(m, width="100%", height=300)
-
-    # ปุ่ม Broadcast พิกัดตัวเอง
-    if st.button("📡 BROADCAST POSITION", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-        st.toast("พิกัดถูกส่งแล้ว!")
-
-    st.write("---")
-
-    # --- ส่วนที่ 2: PRIVATE CHAT ---
-    st.markdown("<h4 style='color:#ff00de; font-family:Orbitron;'>🔐 PRIVATE SECURE CHAT</h4>", unsafe_allow_html=True)
-
-    try:
-        all_users = db.reference('users').get()
-        if all_users:
-            friends = [u for u in all_users.keys() if u != st.session_state.user]
-            target_agent = st.selectbox("🎯 เลือก AGENT ที่ต้องการติดต่อ:", friends)
-
-            if target_agent:
-                # สร้าง ID ห้องแบบคู่ (เช่น user1_user2)
-                room_id = "_".join(sorted([st.session_state.user, target_agent]))
-                chat_ref = db.reference(f'private_messages/{room_id}')
-
-                # ฟอร์มส่งข้อความ
-                with st.form("private_chat_form", clear_on_submit=True):
-                    msg = st.text_input(f"TO: {target_agent}", placeholder="พิมพ์ข้อความที่นี่...")
-                    if st.form_submit_button("SEND SIGNAL"):
-                        if msg:
-                            chat_ref.push({
-                                'sender': st.session_state.user,
-                                'text': msg,
-                                'ts': time.time()
-                            })
-                            st.rerun()
-
-                # แสดงผลข้อความล่าสุด 10 ข้อความ
-                messages = chat_ref.order_by_child('ts').limit_to_last(10).get()
-                if messages:
-                    for mid in reversed(list(messages.keys())):
-                        m_data = messages[mid]
-                        is_me = m_data['sender'] == st.session_state.user
-                        align = "right" if is_me else "left"
-                        color = "#00f3ff" if is_me else "#ff00de"
-                        bg = "rgba(0, 243, 255, 0.15)" if is_me else "rgba(255, 0, 222, 0.15)"
-                        
-                        st.markdown(f"""
-                            <div style="text-align:{align}; margin-bottom:10px;">
-                                <div style="display:inline-block; background:{bg}; padding:8px 15px; border-radius:15px; border:1px solid {color};">
-                                    <b style="color:{color}; font-size:0.75rem;">{m_data['sender']}</b><br>
-                                    <span style="color:white;">{m_data['text']}</span>
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
-                else:
-                    st.caption("ระบบพร้อมสำหรับการสื่อสารลับ...")
-    except Exception as e:
-        st.error(f"ระบบขัดข้อง: {e}")
-
-    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Module v.2 (Auto-Update)")
-elif st.session_state.page == "3":
-    st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>🧬 PERSONAL CODE DECODER</h2>", unsafe_allow_html=True)
-    
-    # ส่วนรับข้อมูล: ช่วงปี 1960 - 2026
-    dob = st.date_input("📅 ระบุวันเกิดเพื่อถอดรหัส", 
-                        min_value=date(1960, 1, 1), 
-                        max_value=date(2026, 12, 31))
-
-    if dob:
-        d = get_detailed_logic(dob)
-        
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            st.metric("YOUR CODE", d['res'])
-        with col2:
-            st.info(f"พิกัด: วัน{d['day_name']} | {d['phase']}")
-
-        # --- อธิบายที่มาของตัวเลข (ความจริง) ---
-        st.markdown(f"""
-        <div class="logic-box">
-            <h4>📝 ที่มาของรหัสประจำตัว (The Truth)</h4>
-            <ul>
-                <li><b>เลขฐานวัน ({d['day_val']}):</b> มาจากลำดับวันในสัปดาห์ (จันทร์=1 จนถึง อาทิตย์=7)</li>
-                <li><b>เลขจันทรคติ ({d['m_num']}):</b> คำนวณจากระยะห่างระหว่างวันเกิดกับจุด New Moon ของดาราศาสตร์</li>
-                <li><b>วิธีคำนวณ:</b> ระบบใช้ <b>{d['type']}</b></li>
-                <li><b>สมการที่ใช้จริง:</b> <code>{d['formula']}</code></li>
-            </ul>
-            <p style='font-size:0.8rem; color:#888;'>*หมายเหตุ: ขึ้นค่ำใช้สมการ Vector (ความชัน), แรมค่ำใช้สมการ Golden Ratio (สมดุล)*</p>
-        </div>
-        """, unsafe_allow_html=True)
-elif st.session_state.page == "6":
-    import streamlit.components.v1 as components
-    
-    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>⚡ SYNAPSE VIBRATION UNIT</h2>", unsafe_allow_html=True)
-    
-    # 1. สร้าง Tab สำหรับแยกการวัด
-    tab_sonic, tab_motion, tab_power = st.tabs(["🎙️ SONIC SCAN", "📳 MOTION SCAN", "🔋 POWER INFO"])
-
-    with tab_sonic:
-        st.subheader("🎙️ REAL-TIME SONIC ANALYZER")
-        # โค้ดวัดเสียง (ดึง dB และ Hz)
-        audio_js = """
-        <div style="background-color: #111; color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 15px; text-align: center; font-family: monospace;">
-            <div style="display: flex; justify-content: space-around;">
-                <div><small>ความดัง</small><h1 id="db_val" style="font-size: 40px; color:#0f0;">0</h1><small>เดซิเบล (dB)</small></div>
-                <div><small>ความถี่</small><h1 id="hz_val" style="font-size: 40px; color:#00ffff;">0</h1><small>เฮิรตซ์ (Hz)</small></div>
-            </div>
-            <p id="audio_status" style="margin-top:10px; color:#888;">🔴 รอสัญญาณเสียง...</p>
-        </div>
-        <script>
-            async function startAudio() {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    const analyser = audioCtx.createAnalyser();
-                    const source = audioCtx.createMediaStreamSource(stream);
-                    source.connect(analyser);
-                    analyser.fftSize = 2048;
-                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-                    function update() {
-                        analyser.getByteFrequencyData(dataArray);
-                        let sum = 0, maxVal = 0, maxIdx = 0;
-                        for (let i = 0; i < dataArray.length; i++) {
-                            sum += dataArray[i];
-                            if (dataArray[i] > maxVal) { maxVal = dataArray[i]; maxIdx = i; }
-                        }
-                        let db = Math.round(sum / dataArray.length * 2);
-                        let hz = Math.round(maxIdx * audioCtx.sampleRate / analyser.fftSize);
-                        document.getElementById('db_val').innerText = db;
-                        document.getElementById('hz_val').innerText = hz;
-                        document.getElementById('audio_status').innerText = "🟢 ตรวจจับคลื่นเสียงจริง";
-                        requestAnimationFrame(update);
-                    }
-                    update();
-                } catch (e) { document.getElementById('audio_status').innerText = "❌ เข้าถึงไมค์ไม่ได้"; }
-            }
-            startAudio();
-        </script>
-        """
-        components.html(audio_js, height=250)
-        st.info("**ที่มาของตัวเลข (The Truth):** ค่าความถี่ (Hz) วัดจากรอบการสั่นของอากาศที่กระทบไมค์จริง ไม่มีการจำลอง")
-
-    with tab_motion:
-        st.subheader("📳 MOTION & VIBRATION SENSOR")
-        # โค้ดวัดแรงสั่น (G-Force)
-        motion_js = """
-        <div style="background-color: #111; color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 15px; text-align: center; font-family: monospace;">
-            <small>แรงสั่นสะเทือนรวม (Magnitude)</small>
-            <h1 id="mag_val" style="font-size: 50px; color: #0f0;">1.000</h1>
-            <p>G-Force</p>
-            <p id="motion_info" style="color: #888;">สถานะ: รอนิ่ง...</p>
-        </div>
-        <script>
-            window.addEventListener('devicemotion', (e) => {
-                const acc = e.accelerationIncludingGravity;
-                if (!acc) return;
-                let magnitude = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.80665;
-                document.getElementById('mag_val').innerText = magnitude.toFixed(3);
-                document.getElementById('mag_val').style.color = (magnitude > 1.05 || magnitude < 0.95) ? "#f00" : "#0f0";
-            });
-        </script>
-        """
-        components.html(motion_js, height=250)
-        st.info("**ที่มาของตัวเลข (The Truth):** วัดจากเซนเซอร์ Accelerometer ภายในเครื่อง ยึดตามแรงโน้มถ่วงโลก (1G) เป็นเกณฑ์")
-
-    with tab_power:
-        # ส่วนแบตเตอรี่ (Power) ที่แกมีอยู่แล้ว
-        st.write("ระบบวิเคราะห์พลังงานสำรอง")
-        # components.html(battery_js, height=300)
-
-    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | VIBRATION ENGINE v.1.2")
-        
-elif st.session_state.page == "4":
-    st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>🛰️ PARALLEL SCANNER</h2>", unsafe_allow_html=True)
-    
+# --- [ หน้าที่ 7: ตรวจดวงชะตาคู่ขนาน (DESTINY CHECK) ] ---
+elif st.session_state.page == "7":
+    st.markdown("<h2 class='neon-text'>💖 DESTINY PARALLEL SCANNER</h2>", unsafe_allow_html=True)
     c1, c2 = st.columns(2)
-    with c1:
-        dob1 = st.date_input("วันเกิด AGENT 1", min_value=date(1960,1,1), max_value=date(2026,12,31), key="p1")
-    with c2:
-        dob2 = st.date_input("วันเกิด AGENT 2", min_value=date(1960,1,1), max_value=date(2026,12,31), key="p2")
-
-    if dob1 and dob2:
-        d1 = get_detailed_logic(dob1)
-        d2 = get_detailed_logic(dob2)
-        gap = abs(d1['res'] - d2['res'])
-
-        st.divider()
-        st.subheader(f"🔍 ค่าความต่างพิกัด (Gap): {gap:.4f}")
-        
-        # อธิบายที่มาของ Gap
-        st.markdown(f"""
-        <div class="logic-box" style="border-left-color: #ff7f50;">
-            <h4>📊 การถอดค่าความสัมพันธ์</h4>
-            คำนวณจาก: <code>|รหัสคนแรก ({d1['res']}) - รหัสคนที่สอง ({d2['res']})|</code><br><br>
-            <b>เกณฑ์การอ่านค่าที่เกิดขึ้นจริง:</b>
-            <ul>
-                <li><b>0.0 - 1.0 (รหัสแฝด):</b> ความถี่ใกล้กันมาก มักคุยกันรู้เรื่องเร็ว</li>
-                <li><b>3.8 - 4.2 (สัญญาณสะท้อน):</b> ค่า Gap 4 ตามหลัก Synapse คือแรงดึงดูดที่มองไม่เห็น</li>
-                <li><b>มากกว่า 10.0 (แยกตัว):</b> พลังงานอิสระต่อกัน ไม่ผูกมัด</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
-elif st.session_state.page == "5":
-    st.markdown("<h2 style='color:#00ff41; font-family:Orbitron; text-align:center;'>🔮 DESTINY TIMELINE</h2>", unsafe_allow_html=True)
+    with c1: dob1 = st.date_input("วันเกิดของคุณ", key="d1")
+    with c2: dob2 = st.date_input("วันเกิดคู่กรณี", key="d2")
     
-    # ส่วนรับข้อมูล (1960-2026)
-    user_dob = st.date_input("📅 กรอกวันเกิดเพื่อสแกนหาพิกัดเพชร/ธรรม/กระจก", 
-                             min_value=date(1960,1,1), 
-                             max_value=date(2026,12,31), key="t1")
+    if st.button("START SCANNING..."):
+        r1 = get_detailed_logic(dob1)
+        r2 = get_detailed_logic(dob2)
+        gap = abs(r1['res'] - r2['res'])
+        st.write(f"ผลต่างพิกัด: **{gap:.4f}**")
+        if gap < 1.0: st.success("💎 สภาวะ: พิกัดเพชร (บรรจบ/ใกล้ชิด)")
+        elif 3.8 <= gap <= 4.2: st.info("🌀 สภาวะ: พิกัดธรรม (สะท้อน/ดึงดูด)")
+        else: st.warning("🪞 สภาวะ: พิกัดกระจก (อิสระ/แยกตัว)")
 
-    if user_dob:
-        d_logic = get_detailed_logic(user_dob)
-        my_code = d_logic['res']
-        
-        st.write(f"🧬 รหัสประจำตัวของคุณคือ: **{my_code}**")
-        
-        # --- เริ่มการสแกน 180 วัน ---
-        future_results = []
-        for i in range(180):
-            target_date = date.today() + timedelta(days=i)
-            d = get_detailed_logic(target_date)
-            gap = abs(d['res'] - my_code)
-            
-            # การแบ่งประเภทตามหลักอาจารย์ต๊ะ
-            status = "อิสระ"
-            symbol = "⚪"
-            if gap < 0.5: 
-                status = "💎 พิกัดเพชร (บรรจบ/โอกาส)"
-                symbol = "💎"
-            elif 3.8 <= gap <= 4.2: 
-                status = "🌀 พิกัดธรรม (สะท้อน/ดึงดูด)"
-                symbol = "🌀"
-            elif gap > 10.0: 
-                status = "🪞 พิกัดกระจก (แยกตัว/อิสระ)"
-                symbol = "🪞"
-            
-            if status != "อิสระ":
-                future_results.append({
-                    "วันที่": target_date.strftime('%d/%m/%Y'),
-                    "วัน": d['day_name'],
-                    "ประเภทพิกัด": status,
-                    "ค่า Gap": round(gap, 4),
-                    "สัญลักษณ์": symbol
-                })
+# --- [ หน้าที่ 8: รหัสลับประจำวัน (DAILY CODE) ] ---
+elif st.session_state.page == "8":
+    st.markdown("<h2 class='neon-text'>🔢 DAILY REALITY CODE</h2>", unsafe_allow_html=True)
+    today = date.today()
+    d_code = get_detailed_logic(today)
+    st.metric("TODAY'S GLOBAL CODE", d_code['res'])
+    st.info(f"สมการที่ใช้: {d_code['formula']}")
+    st.write(f"ช่วงพลังงาน: {d_code['type']}")
 
-        # แสดงตารางผลลัพธ์
-        if future_results:
-            df = pd.DataFrame(future_results)
-            st.dataframe(df, use_container_width=True, hide_index=True)
-        else:
-            st.info("ไม่พบพิกัดพิเศษในช่วง 180 วันนี้ (ช่วงเวลาปกติ)")
+# --- [ หน้าที่ 9: ระบบความปลอดภัย (SECURITY LOG) ] ---
+elif st.session_state.page == "9":
+    st.markdown("<h2 class='neon-text'>🛡️ ACCESS CONTROL</h2>", unsafe_allow_html=True)
+    st.write("ตรวจสอบรายชื่อ Agent ที่ออนไลน์อยู่...")
+    try:
+        active_agents = db.reference('users').get()
+        if active_agents:
+            for agent in active_agents.keys():
+                st.write(f"🟢 AGENT: {agent} (ONLINE)")
+    except:
+        st.error("ไม่สามารถดึงข้อมูลสถานะได้")
 
-        # --- ส่วนอธิบายที่มาของ "เพชร/ธรรม/กระจก" (ความจริงสำหรับคนใหม่) ---
-        st.write("---")
-        with st.expander("📝 คู่มืออ่านพิกัดรหัส (ที่มาของตัวเลข)", expanded=True):
-            st.markdown(f"""
-            <div class="logic-box">
-                <h4>🔍 ความหมายของพิกัดที่คุณเห็น:</h4>
-                <ol>
-                    <li><b>💎 พิกัดเพชร (Gap < 0.5):</b> <br>
-                        คือวันที่รหัสจักรวาล (Computed Code) วิ่งมาทับกับรหัสคุณพอดี เหมือนเพชรที่เจียระไนลงตัว เป็นวันแห่งการ <b>"บรรจบ"</b> หรือเริ่มต้นสิ่งใหม่</li>
-                    <li><b>🌀 พิกัดธรรม (Gap 3.8 - 4.2):</b> <br>
-                        คือวันที่เกิดค่าสะท้อน (Reflection) ตามกฎเลข 4 ของระบบ Synapse เป็นวันที่มีแรงดึงดูดสูง มักมีเรื่องไม่คาดฝันหรือ <b>"ธรรมะจัดสรร"</b> ให้เจอ</li>
-                    <li><b>🪞 พิกัดกระจก (Gap > 10.0):</b> <br>
-                        คือวันที่รหัสดีดตัวออกจากกันจนสุดขอบ เหมือนกระจกที่สะท้อนภาพออกไปคนละทาง เป็นวันแห่งการ <b>"แยกตัว"</b> หรือการเป็นอิสระจากพันธนาการ</li>
-                </ol>
-                <hr>
-                <p><b>ที่มาของตัวเลข:</b> ทั้งหมดคำนวณจาก <code>|รหัสประจำตัว - รหัสประจำวัน|</code> โดยรหัสแต่ละวันมาจากการคำนวณตำแหน่งดวงจันทร์และฐานวันจริงทางดาราศาสตร์</p>
-            </div>
-        """, unsafe_allow_html=True)
-elif st.session_state.page == "6":
-    import streamlit.components.v1 as components # ต้องมีตัวนี้เพื่อรัน JS
-    
-    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>⚡ SYNAPSE SENSOR UNIT</h2>", unsafe_allow_html=True)
-    
-    # 1. นิยามโค้ด JavaScript สำหรับเซนเซอร์ (ถ้ายังไม่มีให้ก๊อปอันนี้ไปวาง)
-    bio_js = """
-    <div style="background-color: #111; color: #FFD700; padding: 15px; border: 2px solid #FFD700; border-radius: 15px; font-family: monospace;">
-        <video id="v" style="display:none;" autoplay playsinline></video>
-        <canvas id="c" width="100" height="100" style="display:none;"></canvas>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
-            <div style="border: 1px solid #333; padding: 10px;">
-                <small>BPM</small><h2 id="bpm" style="color:#0f0;">--</h2><small>ครั้ง/นาที</small>
-            </div>
-            <div style="border: 1px solid #333; padding: 10px;">
-                <small>SpO2</small><h2 id="spo2" style="color:#00ffff;">--</h2><small>%</small>
-            </div>
-            <div style="border: 1px solid #333; padding: 10px;">
-                <small>PI</small><h2 id="pi">0.0</h2><small>Index</small>
-            </div>
-            <div style="border: 1px solid #333; padding: 10px;">
-                <small>RGB</small><h2 id="rgb" style="font-size: 14px;">0,0,0</h2><small>R,G,B</small>
-            </div>
-        </div>
-        <div id="status" style="margin-top: 10px; text-align: center; color: #f00;">🔴 รอการสแกนปลายนิ้ว...</div>
-    </div>
-    <script>
-        // ... (ใส่ Script ที่ผมเคยให้ไว้สำหรับเริ่มกล้องและคำนวณค่า) ...
-    </script>
-    """
-
-    tab_bio, tab_env, tab_power = st.tabs(["🩸 BIO-SCAN", "🎨 ENV-SCAN", "🔋 POWER-SCAN"])
-
-    with tab_bio:
-        st.markdown("### 🩸 REAL-TIME BIO-DATA SCANNER")
-        
-        # --- จุดที่หายไปคือบรรทัดนี้ครับ! ---
-        components.html(bio_js, height=300) 
-        # ----------------------------------
-        
-        st.info("**ที่มาของตัวเลข (The Truth):** ...")
-
-
-
-# (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
+# --- [ หน้าที่ 10: ปรับแต่งธีมสี (COLOR MASTER) ] ---
+elif st.session_state.page == "10":
+    st.markdown("<h2 class='neon-text'>🎨 UI CUSTOMIZATION</h2>", unsafe_allow_html=True)
+    new_color = st.color_picker("เลือกสีนีออนที่คุณชอบ:", st.session_state.primary_color)
+    if st.button("APPLY THEME"):
+        st.session_state.primary_color = new_color
+        st.success(f"ระบบเปลี่ยนสีเป็น {new_color} เรียบร้อย!")
+        st.rerun()
