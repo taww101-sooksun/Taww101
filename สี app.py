@@ -14,6 +14,9 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import base64
+# --- ส่วนบนสุดของไฟล์ (Initial State) ---
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#39FF14"  # กำหนดสีเริ่มต้นเป็นสีเขียว Matrix
 
 def get_base64(file_path):
     """ฟังก์ชันสำหรับแปลงไฟล์เพลงเป็น Base64 เพื่อให้เล่นบน HTML5 Player ได้"""
