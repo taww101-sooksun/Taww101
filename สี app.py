@@ -224,36 +224,36 @@ if st.session_state.page == "HOME":
             st.session_state.page = "1"; st.rerun()
         st.caption("ความสามารถ: เล่นไฟล์เสียง 1.mp3 และระบบควบคุมเสียงผ่านหน้าเว็บ")
 
-        if st.button("🖼️ 3. IMAGE SEARCH\nค้นหาภาพจากดาวเทียม", use_container_width=True):
+        if st.button("📝 2. IMAGE SEARCH\nค้นหาภาพจากดาวเทียม", use_container_width=True):
             st.session_state.page = "3"; st.rerun()
         st.caption("ความสามารถ: ดึงรูปภาพจากคลัง Unsplash ตามคำค้นหาที่ต้องการ")
 
-        if st.button("✨ 5. NEON GENERATOR\nสร้างตัวอักษรเรืองแสง", use_container_width=True):
+        if st.button("✨ 3. NEON GENERATOR\nสร้างตัวอักษรเรืองแสง", use_container_width=True):
             st.session_state.page = "5"; st.rerun()
         st.caption("ความสามารถ: แปลงข้อความธรรมดาให้เป็นศิลปะนีออนวิ้งๆ")
 
-        if st.button("💖 7. DESTINY CHECK\nตรวจดวงชะตาคู่ขนาน", use_container_width=True):
+        if st.button("💖 4. DESTINY CHECK\nตรวจดวงชะตาคู่ขนาน", use_container_width=True):
             st.session_state.page = "7"; st.rerun()
         st.caption("ความสามารถ: วิเคราะห์ดวงชะตาในมิติที่ 4 ผ่านระบบฐานข้อมูลชื่อ")
 
-        if st.button("📝 9. SYSTEM LOG\nบันทึกข้อมูลการใช้งาน", use_container_width=True):
+        if st.button("📝 5. SYSTEM LOG\nบันทึกข้อมูลการใช้งาน", use_container_width=True):
             st.session_state.page = "9"; st.rerun()
         st.caption("ความสามารถ: จดบันทึกข้อความและเหตุการณ์สำคัญลงในหน่วยความจำ")
 
     with c2:
-        if st.button("💬 2. CHAT SYSTEM\nระบบสื่อสารอัจฉริยะ", use_container_width=True):
+        if st.button("⌨️ 6. CHAT SYSTEM\nระบบสื่อสารอัจฉริยะ", use_container_width=True):
             st.session_state.page = "2"; st.rerun()
         st.caption("ความสามารถ: โต้ตอบผ่านข้อความกับระบบจัดการ AI")
 
-        if st.button("🎬 4. VIDEO HUB\nศูนย์รวมวิดีโอวงจรปิด", use_container_width=True):
+        if st.button("🎬 7. VIDEO HUB\nศูนย์รวมวิดีโอวงจรปิด", use_container_width=True):
             st.session_state.page = "4"; st.rerun()
         st.caption("ความสามารถ: เชื่อมต่อและฉายภาพวิดีโอจาก YouTube หรือ Link ตรง")
 
-        if st.button("🌍 6. WORLD CLOCK\nเวลาโลกแบบเรียลไทม์", use_container_width=True):
+        if st.button("🌍 8. WORLD CLOCK\nเวลาโลกแบบเรียลไทม์", use_container_width=True):
             st.session_state.page = "6"; st.rerun()
         st.caption("ความสามารถ: ตรวจสอบเวลาปัจจุบันในโซนต่างๆ ทั่วโลก")
 
-        if st.button("🔢 8. DAILY CODE\nรหัสลับประจำวัน", use_container_width=True):
+        if st.button("🔢 9. DAILY CODE\nรหัสลับประจำวัน", use_container_width=True):
             st.session_state.page = "8"; st.rerun()
         st.caption("ความสามารถ: เจนรหัสตัวเลขนำโชคและรหัสรักษาความปลอดภัยรายวัน")
 
