@@ -16,6 +16,62 @@ from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 
 
+# ==========================================
+# 1. วางระบบ INITIALIZATION ไว้บนสุด (ตรงนี้แหล่ะ!)
+# ==========================================
+def init_system():
+    # --- ดักเรื่อง Session State (กัน Error: has no attribute 'user') ---
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+    
+    if 'user' not in st.session_state:
+        st.session_state.user = "Guest_Agent" # ชื่อสำรองกันแอปเด้ง
+        
+    if 'page' not in st.session_state:
+        st.session_state.page = "login" # หน้าเริ่มต้น
+
+    # --- ดักเรื่อง Firebase (กัน Error: default app does not exist) ---
+    if not firebase_admin._apps:
+        try:
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            # แก้ปัญหาเรื่องขึ้นบรรทัดใหม่ใน Private Key
+            if "\\n" in fb_creds["private_key"]:
+                fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
+                
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': st.secrets["firebase_db_url"]
+            })
+        except Exception as e:
+            st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
+
+# เรียกใช้งานทันทีที่รันไฟล์
+init_system()
+
+# ==========================================
+# 2. ต่อด้วยระบบ LOGIN (ตัวอย่าง)
+# ==========================================
+if not st.session_state.logged_in:
+    # ใส่โค้ดหน้า Login ของแกตรงนี้ 
+    # พอ Login สำเร็จ อย่าลืมตั้งค่า:
+    # st.session_state.logged_in = True
+    # st.session_state.user = uid
+    # st.session_state.page = "1" (หรือหน้าอื่น)
+    pass
+
+# ==========================================
+# 3. ส่วนควบคุมหน้าเพจ (Navigation)
+# ==========================================
+# ใช้ st.session_state.page ในการสลับหน้า
+if st.session_state.page == "1":
+    # โค้ดห้องที่ 1 (OMNI-MIXER)
+    pass
+
+elif st.session_state.page == "2":
+    # โค้ดห้องที่ 2 (TACTICAL RADAR & CHAT)
+    pass
+
+
 def init_system():
     # เช็คว่ามีการเปิดแอป Firebase ไว้หรือยัง
     if not firebase_admin._apps:
