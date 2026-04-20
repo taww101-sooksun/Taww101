@@ -661,41 +661,47 @@ elif st.session_state.page == "5":
             </div>
         """, unsafe_allow_html=True)
 elif st.session_state.page == "6":
+    import streamlit.components.v1 as components # ต้องมีตัวนี้เพื่อรัน JS
+    
     st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>⚡ SYNAPSE SENSOR UNIT</h2>", unsafe_allow_html=True)
     
-    # สร้าง Tab เพื่อแยกประเภทเซนเซอร์ให้ดูง่าย
+    # 1. นิยามโค้ด JavaScript สำหรับเซนเซอร์ (ถ้ายังไม่มีให้ก๊อปอันนี้ไปวาง)
+    bio_js = """
+    <div style="background-color: #111; color: #FFD700; padding: 15px; border: 2px solid #FFD700; border-radius: 15px; font-family: monospace;">
+        <video id="v" style="display:none;" autoplay playsinline></video>
+        <canvas id="c" width="100" height="100" style="display:none;"></canvas>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+            <div style="border: 1px solid #333; padding: 10px;">
+                <small>BPM</small><h2 id="bpm" style="color:#0f0;">--</h2><small>ครั้ง/นาที</small>
+            </div>
+            <div style="border: 1px solid #333; padding: 10px;">
+                <small>SpO2</small><h2 id="spo2" style="color:#00ffff;">--</h2><small>%</small>
+            </div>
+            <div style="border: 1px solid #333; padding: 10px;">
+                <small>PI</small><h2 id="pi">0.0</h2><small>Index</small>
+            </div>
+            <div style="border: 1px solid #333; padding: 10px;">
+                <small>RGB</small><h2 id="rgb" style="font-size: 14px;">0,0,0</h2><small>R,G,B</small>
+            </div>
+        </div>
+        <div id="status" style="margin-top: 10px; text-align: center; color: #f00;">🔴 รอการสแกนปลายนิ้ว...</div>
+    </div>
+    <script>
+        // ... (ใส่ Script ที่ผมเคยให้ไว้สำหรับเริ่มกล้องและคำนวณค่า) ...
+    </script>
+    """
+
     tab_bio, tab_env, tab_power = st.tabs(["🩸 BIO-SCAN", "🎨 ENV-SCAN", "🔋 POWER-SCAN"])
 
     with tab_bio:
-        st.subheader("🩸 REAL-TIME BIO-DATA SCANNER")
-        # --- ก๊อปปี้โค้ด bio_js ของแกมาวางที่นี่ ---
-        # components.html(bio_js, height=350)
-        st.info("""
-        **ที่มาของตัวเลข (The Truth):** - **BPM:** คำนวณจากความถี่ของคลื่นสีแดงที่ขยับเมื่อหัวใจฉีดฉีดเลือดเข้าสู่ปลายนิ้ว
-        - **SpO2:** วิเคราะห์จากอัตราส่วนแสงสีแดงต่อสีเขียวที่สะท้อนผ่านผิวหนัง
-        """)
+        st.markdown("### 🩸 REAL-TIME BIO-DATA SCANNER")
+        
+        # --- จุดที่หายไปคือบรรทัดนี้ครับ! ---
+        components.html(bio_js, height=300) 
+        # ----------------------------------
+        
+        st.info("**ที่มาของตัวเลข (The Truth):** ...")
 
-    with tab_env:
-        st.subheader("🎨 LIGHT & COLOR ANALYZER")
-        # --- ก๊อปปี้โค้ด color_js ของแกมาวางที่นี่ ---
-        # components.html(color_js, height=500)
-        st.info("""
-        **ที่มาของตัวเลข (The Truth):**
-        - **Brightness:** ค่าเฉลี่ยความสว่างจากพิกเซลจริง (0-255)
-        - **RGB:** ค่าแม่สีดิบที่เซนเซอร์กล้องรับได้ ใช้ระบุความบริสุทธิ์ของพลังงานรอบตัว
-        """)
-
-    with tab_power:
-        st.subheader("🔋 THERMAL & ENERGY INTELLIGENCE")
-        # --- ก๊อปปี้โค้ด battery_js ของแกมาวางที่นี่ ---
-        # components.html(battery_js, height=350)
-        st.info("""
-        **ที่มาของตัวเลข (The Truth):**
-        - **Energy Level:** ข้อมูลจากระบบจัดการพลังงานของเครื่อง
-        - **Thermal:** วิเคราะห์ความร้อนจากการเปลี่ยนแปลงของกระแสไฟ (ถ้าชาร์จไปเล่นไป ค่าจะพุ่งสูง)
-        """)
-
-    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Sensor Module v.1.0")
 
 
 # (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
