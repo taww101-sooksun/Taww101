@@ -14,6 +14,47 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
+from datetime import date
+
+# --- [ หัวใจคำนวณ: วางไว้ส่วนบนเพื่อให้ทุกห้องเรียกใช้ได้ ] ---
+def get_detailed_logic(dt):
+    if dt is None: return None
+    
+    # 1. ข้อมูลพื้นฐานทางดาราศาสตร์ (อ้างอิง New Moon 1 Jan 1900)
+    ref_date = date(1900, 1, 1)
+    diff = (dt - ref_date).days
+    lunar_cycle = 29.530589
+    pos = (diff - 0.5) % lunar_cycle
+    day_val = dt.weekday() + 1 # จันทร์=1, อาทิตย์=7
+    
+    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+    day_name = day_names[dt.weekday()]
+
+    # 2. แยกคำนวณตามสถานะจันทรคติ (ความจริงทางคณิตศาสตร์)
+    if pos <= 14.765:
+        # ช่วงข้างขึ้น (Vector Energy)
+        m_num = int(pos) + 1
+        phase = f"ขึ้น {m_num} ค่ำ"
+        res = math.sqrt((day_val**2) + (m_num**2))
+        formula = f"√({day_val}² + {m_num}²)"
+        logic_type = "แรงผลักดัน (Vector Energy)"
+    else:
+        # ช่วงข้างแรม (Golden Ratio)
+        m_num = int(pos - 14.765) + 1
+        phase = f"แรม {m_num} ค่ำ"
+        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+        formula = f"({day_val} × 1.618) / {m_num}"
+        logic_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
+
+    return {
+        "res": round(res, 4), 
+        "phase": phase, 
+        "day_name": day_name,
+        "day_val": day_val, 
+        "m_num": m_num, 
+        "formula": formula, 
+        "type": logic_type
+    }
 
 
 # ==========================================
