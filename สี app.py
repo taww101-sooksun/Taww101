@@ -13,8 +13,35 @@ import hashlib
 import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
-import base64
 from streamlit_autorefresh import st_autorefresh
+
+
+def init_system():
+    # เช็คว่ามีการเปิดแอป Firebase ไว้หรือยัง
+    if not firebase_admin._apps:
+        try:
+            # ดึงข้อมูลจาก secrets.toml
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            
+            # ตรวจสอบเรื่อง Private Key (ต้องจัดการเรื่องเว้นวรรค \n ให้ถูกต้อง)
+            if "\\n" in fb_creds["private_key"]:
+                fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
+                
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': st.secrets["firebase_db_url"]
+            })
+            # st.success("🛰️ เชื่อมต่อศูนย์บัญชาการสำเร็จ") # เปิดไว้เช็คตอน Test ได้
+        except Exception as e:
+            st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
+            return False
+    return True
+
+# --- ตรงนี้สำคัญ ---
+# เรียกใช้ฟังก์ชันก่อนจะเริ่มรันเนื้อหาในหน้าเพจ
+if init_system():
+    # รันเนื้อหาแอปของแกต่อที่นี่ (เช่น main() หรือการเช็ค page)
+    pass
 
 # สั่งให้รีเฟรชตัวเองทุกๆ 5 วินาที (5000 มิลลิวินาที)
 # เพื่อไปดึงพิกัดใหม่และแชตใหม่จาก Firebase
