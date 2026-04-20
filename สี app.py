@@ -12,6 +12,18 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 import hashlib
+# --- [ ส่วนเชื่อมต่อฐานข้อมูล (ต้องเพิ่มตรงนี้) ] ---
+if not firebase_admin._apps:
+    try:
+        # ดึงค่าจาก Secrets ของ Streamlit Cloud
+        cred_dict = dict(st.secrets["firebase_credentials"])
+        cred = credentials.Certificate(cred_dict)
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': st.secrets["firebase_db_url"]
+        })
+    except Exception as e:
+        st.error(f"🛰️ เชื่อมต่อฐานข้อมูลไม่ได้: {e}")
+
 # --- [ หัวใจคำนวณ: ระบบถอดรหัส Lunar ] ---
 def get_detailed_logic(dt):
     if dt is None: return None
