@@ -58,6 +58,42 @@ if not st.session_state.logged_in:
     # st.session_state.user = uid
     # st.session_state.page = "1" (หรือหน้าอื่น)
     pass
+# --- ส่วนหน้าจอลงชื่อเข้าใช้ (Login / Register) ---
+if not st.session_state.get('logged_in', False):
+    st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>REGISTER AGENT</h2>", unsafe_allow_html=True)
+    
+    with st.container():
+        # ช่องให้คนใหม่ตั้งชื่อ (ID)
+        new_user = st.text_input("ENTER AGENT NAME", placeholder="เช่น ต๊ะ101, บาส, ฯลฯ").strip()
+        
+        if st.button("ACTIVATE SYSTEM", use_container_width=True):
+            if new_user:
+                # 1. เช็คใน Firebase ว่าชื่อนี้มีคนใช้หรือยัง
+                user_check = db.reference(f'users/{new_user}').get()
+                
+                if user_check:
+                    # ถ้ามีชื่อนี้แล้ว ให้ถือว่าเป็นการ Login (หรือจะใส่รหัสผ่านเพิ่มก็ได้)
+                    st.session_state.user = new_user
+                    st.session_state.logged_in = True
+                    st.success(f"ยินดีต้อนรับกลับ AGENT: {new_user}")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    # 2. ถ้ายังไม่มีชื่อนี้ ให้ลงทะเบียนใหม่
+                    db.reference(f'users/{new_user}').set({
+                        'created_at': time.time(),
+                        'lat': 13.7367, # พิกัดเริ่มต้น
+                        'lon': 100.5231
+                    })
+                    st.session_state.user = new_user
+                    st.session_state.logged_in = True
+                    st.balloons() # ฉลอง Agent ใหม่
+                    st.success(f"ลงทะเบียน AGENT: {new_user} สำเร็จ!")
+                    time.sleep(2)
+                    st.rerun()
+            else:
+                st.warning("กรุณาใส่ชื่อ AGENT ของคุณก่อน!")
+    st.stop() # หยุดการทำงานหน้าอื่นไว้จนกว่าจะ Login สำเร็จ
 
 # ==========================================
 # 3. ส่วนควบคุมหน้าเพจ (Navigation)
