@@ -141,6 +141,76 @@ if not st.session_state.get('logged_in', False):
 # ==========================================
 # ใช้ st.session_state.page ในการสลับหน้า
 if st.session_state.page == "1":
+    if st.session_state.page == "1":
+    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>⚙️ SYSTEM SETTINGS</h2>", unsafe_allow_html=True)
+    
+    st.write("---")
+    
+    # 1. ส่วนเลือกธีมสีอัญมณี (Jewel Tones)
+    st.subheader("💎 เลือกโทนสีอัญมณี (Jewel Themes)")
+    theme_choice = st.selectbox("เลือกสีหลักของระบบ:", [
+        "Emerald (#50C878)", 
+        "Sapphire (#0F52BA)", 
+        "Ruby (#E0115F)", 
+        "Amethyst (#9966CC)", 
+        "Golden Topaz (#FFD700)",
+        "Cyber Neon (#00E5FF)"
+    ])
+
+    # Mapping รหัสสีจากคลังของเจ้านาย
+    color_map = {
+        "Emerald (#50C878)": "#50C878",
+        "Sapphire (#0F52BA)": "#0F52BA",
+        "Ruby (#E0115F)": "#E0115F",
+        "Amethyst (#9966CC)": "#9966CC",
+        "Golden Topaz (#FFD700)": "#FFD700",
+        "Cyber Neon (#00E5FF)": "#00E5FF"
+    }
+    
+    selected_color = color_map[theme_choice]
+
+    # 2. ส่วนตั้งค่าข้อมูลส่วนตัว (ความจริงของคุณต๊ะ)
+    st.subheader("👤 ข้อมูลพื้นฐานการถอดรหัส")
+    col1, col2 = st.columns(2)
+    with col1:
+        user_name = st.text_input("ชื่อเรียกในระบบ:", value="Ta101")
+    with col2:
+        user_motto = st.text_input("สโลแกนประจำตัว:", value="อยู่นิ่งๆ ไม่เจ็บตัว")
+
+    # 3. ปุ่มบันทึกการตั้งค่า
+    if st.button("💾 บันทึกและปรับใช้ระบบ", use_container_width=True):
+        st.session_state.primary_color = selected_color
+        st.session_state.user_name = user_name
+        st.success(f"ระบบบันทึกค่าสี {theme_choice} และข้อมูลของคุณเรียบร้อยแล้ว!")
+        st.rerun()
+
+    # --- ส่วนแสดงตัวอย่าง CSS ที่เจ้านายรวบรวมมา (Rainbow Flow) ---
+    st.write("---")
+    with st.expander("🌈 ทดสอบระบบแสง Rainbow Flow"):
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
+            background-size: 600% 600%;
+            animation: RainbowFlow 10s ease infinite;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px #000;">
+            ระบบกำลังรันรหัสสีสายรุ้ง...
+        </div>
+        <style>
+            @keyframes RainbowFlow {{
+                0%{{background-position:0% 50%}}
+                50%{{background-position:100% 50%}}
+                100%{{background-position:0% 50%}}
+            }}
+        </style>
+        """, unsafe_allow_html=True)
+
+    st.caption(f"ผู้ควบคุมระบบ: {user_name} | {user_motto}")
+
     # โค้ดห้องที่ 1 (OMNI-MIXER)
     pass
 
