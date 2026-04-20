@@ -97,37 +97,47 @@ if not st.session_state.get('logged_in', False):
     st.stop() 
 
 def setup_ui():
-    st.markdown("""
+    # 1. ดึงค่าสีจาก Session State (ถ้ายังไม่มีให้ใช้สีฟ้า Cyan เป็นพื้นฐาน)
+    current_theme_color = st.session_state.get('custom_theme', "#00f3ff")
+    
+    st.markdown(f"""
         <style>
-        /* ลบ Header, Footer และเมนูเดิมของ Streamlit */
-        header, footer, #MainMenu {visibility: hidden;}
-        .stApp { background: #000; color: #00f2fe; }
+        /* ลบ Header, Footer และเมนูเดิม */
+        header, footer, #MainMenu {{visibility: hidden;}}
+        .stApp {{ background: #000; color: {current_theme_color}; }}
         
-        /* สไตล์ปุ่มเมนู */
-        .stButton>button {
+        /* ปรับสีเส้นคั่น (Divider) */
+        hr {{ border-bottom: 2px solid {current_theme_color} !important; }}
+
+        /* ปรับสีปุ่มเมนูให้เปลี่ยนตามสีที่เลือก */
+        .stButton>button {{
             border-radius: 15px;
-            border: 1px solid #00f2fe;
-            background: rgba(0, 242, 254, 0.1);
+            border: 1px solid {current_theme_color} !important;
+            background: rgba(0, 242, 254, 0.05);
             color: white;
-            height: 100px;
-            font-size: 18px;
             transition: 0.3s;
-        }
-        .stButton>button:hover {
-            background: #00f2fe;
+            box-shadow: 0 0 5px {current_theme_color};
+        }}
+        .stButton>button:hover {{
+            background: {current_theme_color};
             color: #000;
-            box-shadow: 0 0 20px #00f2fe;
-        }
+            box-shadow: 0 0 20px {current_theme_color};
+        }}
         
-        /* ตัวหนังสือวิ้ง */
-        .neon-text {
+        /* ตัวหนังสือวิ้ง (Neon Text) */
+        .neon-text {{
             text-align: center;
             color: #fff;
-            text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe;
+            text-shadow: 0 0 10px {current_theme_color}, 0 0 20px {current_theme_color};
             font-weight: bold;
-        }
+        }}
         </style>
     """, unsafe_allow_html=True)
+
+# เรียกใช้ setup_ui() ไว้ข้างนอกเพื่อให้รันทุกครั้งที่เปลี่ยนหน้า
+setup_ui()
+
+
 
 setup_ui()
 
