@@ -398,69 +398,64 @@ elif st.session_state.page == "2":
     # แสดงผล Mixer
     st.components.v1.html(mixer_html, height=550)
 # --- [ แก้ไขเฉพาะส่วนหน้า 3 (IMAGE SEARCH -> COSMIC DECODER) ] ---
-elif st.session_state.page == "3":
-    # 1. สไตล์เฉพาะหน้า 3 (Dark Neon สไตล์อาจารย์ต๊ะ)
-    st.markdown("""
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        .cosmic-title {
-            font-family: 'Orbitron', sans-serif;
-            color: #ff00ff;
-            text-shadow: 0 0 10px #ff00ff, 0 0 20px #00f3ff;
-            text-align: center;
-            font-size: 2rem;
-            margin-bottom: 5px;
-        }
-        .stMetric {
-            background-color: rgba(30, 33, 48, 0.5);
-            border-radius: 15px;
-            padding: 15px;
-            border: 1px solid #00f3ff;
-            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
-        }
-        </style>
-        <h1 class="cosmic-title">🌌 COSMIC AUTO-DECODER</h1>
-        <p style='text-align: center; color: #00f3ff; font-family: "Orbitron";'>QUANTUM REALITY CHECK</p>
+elif st.session_state.page == "2":
+    import pandas as pd
+    from datetime import datetime, timedelta
+
+    st.markdown(f"""
+        <h1 style='text-align: center; color: {st.session_state.theme_color}; font-family: "Orbitron";'>🧬 LIFE CODE SCANNER</h1>
+        <p style='text-align: center;'>ระบบถอดรหัสความจริงรายวัน (Real-time Analysis)</p>
     """, unsafe_allow_html=True)
 
-    # 2. ส่วนรับข้อมูล
-    with st.container():
-        st.write("### 📅 เลือกวันที่ต้องการถอดรหัส")
-        selected_date = st.date_input("", datetime.now(), label_visibility="collapsed")
-    
-    st.divider()
+    # 1. ปรับช่วงวันที่ (ขยายจากอดีต 30 วัน ไปจนถึงอนาคต 150 วัน รวมเป็น 180 วัน)
+    start_date = datetime.now() - timedelta(days=30)
+    date_list = [start_date + timedelta(days=x) for x in range(180)]
 
-    # 3. Logic คำนวณอัตโนมัติ (ความจริงล้วนๆ)
-    # A. วันในสัปดาห์
-    day_of_week = selected_date.isoweekday()
-    day_name_th = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][day_of_week-1]
+    # 2. ฟังก์ชันวิเคราะห์รายละเอียดตัวเลข (ความหมายของรหัส)
+    def analyze_code(n):
+        # วิเคราะห์ตามหลักเลขศาสตร์/พลังงานที่คุณยึดถือ (ตัวอย่าง)
+        if n % 9 == 0: return "🌀 พลังงานสมบูรณ์ (จุดสูงสุด)"
+        if n % 2 == 0: return "⚖️ สมดุล/นิ่ง (อยู่นิ่งๆ ไม่เจ็บตัว)"
+        if n % 5 == 0: return "⚡ เปลี่ยนแปลง/เคลื่อนไหว"
+        if n % 7 == 0: return "🛡️ ระวัง/เน้นสติ"
+        return "✨ ปกติ/ราบรื่น"
 
-    # B. ปีนักษัตร
-    thai_year = selected_date.year + 543
-    zodiac_list = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
-    current_zodiac = zodiac_list[thai_year % 12]
+    # 3. สร้างข้อมูล Matrix
+    scan_data = []
+    for d in date_list:
+        # คำนวณรหัส (ตัวอย่างสูตร: วัน+เดือน+ปี)
+        day_val = d.day
+        month_val = d.month
+        year_val = d.year + 543
+        raw_code = (day_val + month_val + (year_val % 100)) % 100
+        
+        # ใส่รายละเอียดลงในช่อง
+        scan_data.append({
+            "วันที่": d.strftime("%d/%m/%Y"),
+            "รหัสลับ": f"{raw_code:02d}",
+            "รายละเอียดความหมาย": analyze_code(raw_code),
+            "สถานะ": "🟢 ผ่าน" if d.date() <= datetime.now().date() else "⚪ อนาคต"
+        })
 
-    # C. คำนวณข้างขึ้นข้างแรม (Approximate Lunar Phase)
-    def get_lunar_phase(date):
-        reference_date = datetime(2000, 1, 6) # วันแรม 15 ค่ำ
-        diff = (date - reference_date.date()).days
-        lunar_cycle = 29.530588853
-        phase_pos = (diff % lunar_cycle) / lunar_cycle
-        current_pos = phase_pos * 29.53
-        if current_pos <= 14.76:
-            step = round(current_pos if current_pos >= 1 else 1)
-            return "ข้างขึ้น (-)", step, -1
-        else:
-            step = round(current_pos - 14.76 if (current_pos - 14.76) >= 1 else 1)
-            return "ข้างแรม (+)", step, 1
+    df = pd.DataFrame(scan_data)
 
-    lunar_label, lunar_step, lunar_sign = get_lunar_phase(selected_date)
+    # 4. แสดงผลตาราง (ปรับให้ยาวขึ้นและมีรายละเอียด)
+    st.dataframe(
+        df, 
+        use_container_width=True, 
+        height=600, # เพิ่มความสูงเพื่อให้เห็นข้อมูลเยอะขึ้น
+        column_config={
+            "รหัสลับ": st.column_config.TextColumn("🔢 รหัส", help="รหัสที่ถอดได้จากฐานเวลาจักรวาล"),
+            "รายละเอียดความหมาย": st.column_config.TextColumn("📝 วิเคราะห์รหัส", width="large")
+        }
+    )
 
-    # D. สูตรสมดุลจักรวาล (PHI Ratio)
-    PHI = 1.618
-    balance_point = lunar_step - 7.5
-    lunar_modifier = balance_point * lunar_sign if lunar_sign == 1 else -balance_point
-    result = (day_of_week * PHI) + lunar_modifier
+    # ปุ่มเลื่อนกลับมาวันปัจจุบัน
+    if st.button("📍 เล็งเป้าหมายมาที่วันปัจจุบัน"):
+        st.rerun()
+
+    st.caption("ข้อมูลถูกคำนวณตามหลักความจริงทางสถิติและเวลา | Synapse Scanner v2.1")
+
 
     # 4. แสดงผลลัพธ์
     col1, col2, col3 = st.columns(3)
