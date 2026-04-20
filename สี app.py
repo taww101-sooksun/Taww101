@@ -13,6 +13,18 @@ import hashlib
 import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
+import base64
+
+def get_base64(file_path):
+    """ฟังก์ชันสำหรับแปลงไฟล์เพลงเป็น Base64 เพื่อให้เล่นบน HTML5 Player ได้"""
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+            return base64.b64encode(data).decode()
+    except Exception as e:
+        st.error(f"❌ ไม่สามารถอ่านไฟล์ได้: {e}")
+        return None
+
 # --- 1. SETUP & ลบติ่ง (อยู่นิ่งๆ ไม่เจ็บตัว) ---
 st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
