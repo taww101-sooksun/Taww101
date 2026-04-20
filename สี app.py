@@ -562,6 +562,88 @@ elif st.session_state.page == "3":
             <p style='font-size:0.8rem; color:#888;'>*หมายเหตุ: ขึ้นค่ำใช้สมการ Vector (ความชัน), แรมค่ำใช้สมการ Golden Ratio (สมดุล)*</p>
         </div>
         """, unsafe_allow_html=True)
+elif st.session_state.page == "6":
+    import streamlit.components.v1 as components
+    
+    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>⚡ SYNAPSE VIBRATION UNIT</h2>", unsafe_allow_html=True)
+    
+    # 1. สร้าง Tab สำหรับแยกการวัด
+    tab_sonic, tab_motion, tab_power = st.tabs(["🎙️ SONIC SCAN", "📳 MOTION SCAN", "🔋 POWER INFO"])
+
+    with tab_sonic:
+        st.subheader("🎙️ REAL-TIME SONIC ANALYZER")
+        # โค้ดวัดเสียง (ดึง dB และ Hz)
+        audio_js = """
+        <div style="background-color: #111; color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 15px; text-align: center; font-family: monospace;">
+            <div style="display: flex; justify-content: space-around;">
+                <div><small>ความดัง</small><h1 id="db_val" style="font-size: 40px; color:#0f0;">0</h1><small>เดซิเบล (dB)</small></div>
+                <div><small>ความถี่</small><h1 id="hz_val" style="font-size: 40px; color:#00ffff;">0</h1><small>เฮิรตซ์ (Hz)</small></div>
+            </div>
+            <p id="audio_status" style="margin-top:10px; color:#888;">🔴 รอสัญญาณเสียง...</p>
+        </div>
+        <script>
+            async function startAudio() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const analyser = audioCtx.createAnalyser();
+                    const source = audioCtx.createMediaStreamSource(stream);
+                    source.connect(analyser);
+                    analyser.fftSize = 2048;
+                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    function update() {
+                        analyser.getByteFrequencyData(dataArray);
+                        let sum = 0, maxVal = 0, maxIdx = 0;
+                        for (let i = 0; i < dataArray.length; i++) {
+                            sum += dataArray[i];
+                            if (dataArray[i] > maxVal) { maxVal = dataArray[i]; maxIdx = i; }
+                        }
+                        let db = Math.round(sum / dataArray.length * 2);
+                        let hz = Math.round(maxIdx * audioCtx.sampleRate / analyser.fftSize);
+                        document.getElementById('db_val').innerText = db;
+                        document.getElementById('hz_val').innerText = hz;
+                        document.getElementById('audio_status').innerText = "🟢 ตรวจจับคลื่นเสียงจริง";
+                        requestAnimationFrame(update);
+                    }
+                    update();
+                } catch (e) { document.getElementById('audio_status').innerText = "❌ เข้าถึงไมค์ไม่ได้"; }
+            }
+            startAudio();
+        </script>
+        """
+        components.html(audio_js, height=250)
+        st.info("**ที่มาของตัวเลข (The Truth):** ค่าความถี่ (Hz) วัดจากรอบการสั่นของอากาศที่กระทบไมค์จริง ไม่มีการจำลอง")
+
+    with tab_motion:
+        st.subheader("📳 MOTION & VIBRATION SENSOR")
+        # โค้ดวัดแรงสั่น (G-Force)
+        motion_js = """
+        <div style="background-color: #111; color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 15px; text-align: center; font-family: monospace;">
+            <small>แรงสั่นสะเทือนรวม (Magnitude)</small>
+            <h1 id="mag_val" style="font-size: 50px; color: #0f0;">1.000</h1>
+            <p>G-Force</p>
+            <p id="motion_info" style="color: #888;">สถานะ: รอนิ่ง...</p>
+        </div>
+        <script>
+            window.addEventListener('devicemotion', (e) => {
+                const acc = e.accelerationIncludingGravity;
+                if (!acc) return;
+                let magnitude = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.80665;
+                document.getElementById('mag_val').innerText = magnitude.toFixed(3);
+                document.getElementById('mag_val').style.color = (magnitude > 1.05 || magnitude < 0.95) ? "#f00" : "#0f0";
+            });
+        </script>
+        """
+        components.html(motion_js, height=250)
+        st.info("**ที่มาของตัวเลข (The Truth):** วัดจากเซนเซอร์ Accelerometer ภายในเครื่อง ยึดตามแรงโน้มถ่วงโลก (1G) เป็นเกณฑ์")
+
+    with tab_power:
+        # ส่วนแบตเตอรี่ (Power) ที่แกมีอยู่แล้ว
+        st.write("ระบบวิเคราะห์พลังงานสำรอง")
+        # components.html(battery_js, height=300)
+
+    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | VIBRATION ENGINE v.1.2")
+        
 elif st.session_state.page == "4":
     st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>🛰️ PARALLEL SCANNER</h2>", unsafe_allow_html=True)
     
