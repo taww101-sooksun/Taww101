@@ -141,9 +141,7 @@ if not st.session_state.get('logged_in', False):
 # ==========================================
 # ใช้ st.session_state.page ในการสลับหน้า
 if st.session_state.page == "1":
-    if st.session_state.page == "1":
-    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>⚙️ SYSTEM SETTINGS</h2>", unsafe_allow_html=True)
-    
+
     st.write("---")
     
     # 1. ส่วนเลือกธีมสีอัญมณี (Jewel Tones)
