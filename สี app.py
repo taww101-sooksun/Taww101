@@ -1,7 +1,18 @@
 import streamlit as st
 import os
 import datetime
-
+import pandas as pd
+import math
+import time
+import base64
+from datetime import datetime, date, timedelta
+import streamlit.components.v1 as components
+import firebase_admin
+from firebase_admin import credentials, db
+import hashlib
+import folium
+from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
 # --- 1. SETUP & ลบติ่ง (อยู่นิ่งๆ ไม่เจ็บตัว) ---
 st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
