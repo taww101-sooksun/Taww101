@@ -659,10 +659,7 @@ elif st.session_state.page == "5":
                 <hr>
                 <p><b>ที่มาของตัวเลข:</b> ทั้งหมดคำนวณจาก <code>|รหัสประจำตัว - รหัสประจำวัน|</code> โดยรหัสแต่ละวันมาจากการคำนวณตำแหน่งดวงจันทร์และฐานวันจริงทางดาราศาสตร์</p>
             </div>
-            """, unsafe_allow_html=True)
-
-st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE ENGINE v3.5")
-   
+        """, unsafe_allow_html=True)
 elif st.session_state.page == "6":
     st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>⚡ SYNAPSE SENSOR UNIT</h2>", unsafe_allow_html=True)
     
