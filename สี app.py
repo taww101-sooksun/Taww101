@@ -491,7 +491,7 @@ elif st.session_state.page == "2":
         st.error(f"ระบบขัดข้อง: {e}")
 
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Module v.2 (Auto-Update)")
- elif st.session_state.page == "3":
+elif st.session_state.page == "3":
     st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>🧬 PERSONAL CODE DECODER</h2>", unsafe_allow_html=True)
     
     # ส่วนรับข้อมูล: ช่วงปี 1960 - 2026
