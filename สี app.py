@@ -491,6 +491,137 @@ elif st.session_state.page == "2":
         st.error(f"ระบบขัดข้อง: {e}")
 
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Module v.2 (Auto-Update)")
+ elif st.session_state.page == "3":
+    st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>🧬 PERSONAL CODE DECODER</h2>", unsafe_allow_html=True)
+    
+    # ส่วนรับข้อมูล: ช่วงปี 1960 - 2026
+    dob = st.date_input("📅 ระบุวันเกิดเพื่อถอดรหัส", 
+                        min_value=date(1960, 1, 1), 
+                        max_value=date(2026, 12, 31))
+
+    if dob:
+        d = get_detailed_logic(dob)
+        
+        col1, col2 = st.columns([1, 2])
+        with col1:
+            st.metric("YOUR CODE", d['res'])
+        with col2:
+            st.info(f"พิกัด: วัน{d['day_name']} | {d['phase']}")
+
+        # --- อธิบายที่มาของตัวเลข (ความจริง) ---
+        st.markdown(f"""
+        <div class="logic-box">
+            <h4>📝 ที่มาของรหัสประจำตัว (The Truth)</h4>
+            <ul>
+                <li><b>เลขฐานวัน ({d['day_val']}):</b> มาจากลำดับวันในสัปดาห์ (จันทร์=1 จนถึง อาทิตย์=7)</li>
+                <li><b>เลขจันทรคติ ({d['m_num']}):</b> คำนวณจากระยะห่างระหว่างวันเกิดกับจุด New Moon ของดาราศาสตร์</li>
+                <li><b>วิธีคำนวณ:</b> ระบบใช้ <b>{d['type']}</b></li>
+                <li><b>สมการที่ใช้จริง:</b> <code>{d['formula']}</code></li>
+            </ul>
+            <p style='font-size:0.8rem; color:#888;'>*หมายเหตุ: ขึ้นค่ำใช้สมการ Vector (ความชัน), แรมค่ำใช้สมการ Golden Ratio (สมดุล)*</p>
+        </div>
+        """, unsafe_allow_html=True)
+elif st.session_state.page == "4":
+    st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>🛰️ PARALLEL SCANNER</h2>", unsafe_allow_html=True)
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        dob1 = st.date_input("วันเกิด AGENT 1", min_value=date(1960,1,1), max_value=date(2026,12,31), key="p1")
+    with c2:
+        dob2 = st.date_input("วันเกิด AGENT 2", min_value=date(1960,1,1), max_value=date(2026,12,31), key="p2")
+
+    if dob1 and dob2:
+        d1 = get_detailed_logic(dob1)
+        d2 = get_detailed_logic(dob2)
+        gap = abs(d1['res'] - d2['res'])
+
+        st.divider()
+        st.subheader(f"🔍 ค่าความต่างพิกัด (Gap): {gap:.4f}")
+        
+        # อธิบายที่มาของ Gap
+        st.markdown(f"""
+        <div class="logic-box" style="border-left-color: #ff7f50;">
+            <h4>📊 การถอดค่าความสัมพันธ์</h4>
+            คำนวณจาก: <code>|รหัสคนแรก ({d1['res']}) - รหัสคนที่สอง ({d2['res']})|</code><br><br>
+            <b>เกณฑ์การอ่านค่าที่เกิดขึ้นจริง:</b>
+            <ul>
+                <li><b>0.0 - 1.0 (รหัสแฝด):</b> ความถี่ใกล้กันมาก มักคุยกันรู้เรื่องเร็ว</li>
+                <li><b>3.8 - 4.2 (สัญญาณสะท้อน):</b> ค่า Gap 4 ตามหลัก Synapse คือแรงดึงดูดที่มองไม่เห็น</li>
+                <li><b>มากกว่า 10.0 (แยกตัว):</b> พลังงานอิสระต่อกัน ไม่ผูกมัด</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+elif st.session_state.page == "5":
+    st.markdown("<h2 style='color:#00ff41; font-family:Orbitron; text-align:center;'>🔮 DESTINY TIMELINE</h2>", unsafe_allow_html=True)
+    
+    # ส่วนรับข้อมูล (1960-2026)
+    user_dob = st.date_input("📅 กรอกวันเกิดเพื่อสแกนหาพิกัดเพชร/ธรรม/กระจก", 
+                             min_value=date(1960,1,1), 
+                             max_value=date(2026,12,31), key="t1")
+
+    if user_dob:
+        d_logic = get_detailed_logic(user_dob)
+        my_code = d_logic['res']
+        
+        st.write(f"🧬 รหัสประจำตัวของคุณคือ: **{my_code}**")
+        
+        # --- เริ่มการสแกน 180 วัน ---
+        future_results = []
+        for i in range(180):
+            target_date = date.today() + timedelta(days=i)
+            d = get_detailed_logic(target_date)
+            gap = abs(d['res'] - my_code)
+            
+            # การแบ่งประเภทตามหลักอาจารย์ต๊ะ
+            status = "อิสระ"
+            symbol = "⚪"
+            if gap < 0.5: 
+                status = "💎 พิกัดเพชร (บรรจบ/โอกาส)"
+                symbol = "💎"
+            elif 3.8 <= gap <= 4.2: 
+                status = "🌀 พิกัดธรรม (สะท้อน/ดึงดูด)"
+                symbol = "🌀"
+            elif gap > 10.0: 
+                status = "🪞 พิกัดกระจก (แยกตัว/อิสระ)"
+                symbol = "🪞"
+            
+            if status != "อิสระ":
+                future_results.append({
+                    "วันที่": target_date.strftime('%d/%m/%Y'),
+                    "วัน": d['day_name'],
+                    "ประเภทพิกัด": status,
+                    "ค่า Gap": round(gap, 4),
+                    "สัญลักษณ์": symbol
+                })
+
+        # แสดงตารางผลลัพธ์
+        if future_results:
+            df = pd.DataFrame(future_results)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+        else:
+            st.info("ไม่พบพิกัดพิเศษในช่วง 180 วันนี้ (ช่วงเวลาปกติ)")
+
+        # --- ส่วนอธิบายที่มาของ "เพชร/ธรรม/กระจก" (ความจริงสำหรับคนใหม่) ---
+        st.write("---")
+        with st.expander("📝 คู่มืออ่านพิกัดรหัส (ที่มาของตัวเลข)", expanded=True):
+            st.markdown(f"""
+            <div class="logic-box">
+                <h4>🔍 ความหมายของพิกัดที่คุณเห็น:</h4>
+                <ol>
+                    <li><b>💎 พิกัดเพชร (Gap < 0.5):</b> <br>
+                        คือวันที่รหัสจักรวาล (Computed Code) วิ่งมาทับกับรหัสคุณพอดี เหมือนเพชรที่เจียระไนลงตัว เป็นวันแห่งการ <b>"บรรจบ"</b> หรือเริ่มต้นสิ่งใหม่</li>
+                    <li><b>🌀 พิกัดธรรม (Gap 3.8 - 4.2):</b> <br>
+                        คือวันที่เกิดค่าสะท้อน (Reflection) ตามกฎเลข 4 ของระบบ Synapse เป็นวันที่มีแรงดึงดูดสูง มักมีเรื่องไม่คาดฝันหรือ <b>"ธรรมะจัดสรร"</b> ให้เจอ</li>
+                    <li><b>🪞 พิกัดกระจก (Gap > 10.0):</b> <br>
+                        คือวันที่รหัสดีดตัวออกจากกันจนสุดขอบ เหมือนกระจกที่สะท้อนภาพออกไปคนละทาง เป็นวันแห่งการ <b>"แยกตัว"</b> หรือการเป็นอิสระจากพันธนาการ</li>
+                </ol>
+                <hr>
+                <p><b>ที่มาของตัวเลข:</b> ทั้งหมดคำนวณจาก <code>|รหัสประจำตัว - รหัสประจำวัน|</code> โดยรหัสแต่ละวันมาจากการคำนวณตำแหน่งดวงจันทร์และฐานวันจริงทางดาราศาสตร์</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE ENGINE v3.5")
+   
 
 
 # (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
