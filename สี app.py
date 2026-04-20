@@ -700,50 +700,53 @@ elif st.session_state.page == "7":
         else:
             st.warning("กรุณาระบุชื่อเป้าหมายทั้งสองให้ครบถ้วน")
 
-# --- [ หน้าที่ 8: DAILY CODE ] ---
+# --- [ ห้องที่ 8: DAILY CODE (รหัสลับประจำวัน) ] ---
 elif st.session_state.page == "8":
     st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>🔢 DAILY SECURITY CODE</h2>", unsafe_allow_html=True)
     
+    # 1. ตรวจสอบพิกัดเวลาปัจจุบัน
     today_str = date.today().strftime("%Y-%m-%d")
+    st.write(f"📅 พิกัดเวลาปัจจุบัน: **{today_str}**")
     
-    # 1. ป้องกัน Error บรรทัด 713: ดึงชื่อผู้ใช้แบบปลอดภัย
-    # ถ้ายังไม่ได้ Login ให้ใช้ชื่อ 'Guest' ไปก่อน แอปจะได้ไม่พัง
+    # 2. ดึงชื่อผู้ใช้แบบปลอดภัย (หัวใจสำคัญที่ทำให้ไม่พัง)
+    # ถ้ายังไม่ได้ Login หรือหาชื่อไม่เจอ ให้ใช้ 'Guest_Agent' แทน
     current_agent = st.session_state.get('user', 'Guest_Agent')
     
-    # 2. สร้างวัตถุดิบสำหรับทำรหัส
+    # 3. สร้างวัตถุดิบสำหรับทำรหัส (ประกาศตัวแปรให้ชัดเจนก่อนเรียกใช้)
     raw_data = f"{today_str}_{current_agent}_SYNAPSE"
     
-    # 3. บรรทัดที่เคยพัง (713): ตอนนี้ raw_data จะมีค่าแน่นอนแล้ว 100%
-    hash_object = hashlib.sha256(raw_data.encode('utf-8')).hexdigest()
-    
-    # 4. แปลงรหัสเป็นตัวเลข (Logic เดิมของเพื่อน)
-    daily_4_digit = str(int(hash_object[:4], 16))[:4].zfill(4)
-    daily_6_digit = str(int(hash_object[4:8], 16))[:6].zfill(6)
-    
-    # ... (ส่วนแสดงผลคอลัมน์เหมือนเดิม) ...
+    try:
+        # 4. บรรทัดที่เคยพัง (717): ตอนนี้ raw_data จะมีค่าแน่นอนแล้ว
+        hash_object = hashlib.sha256(raw_data.encode('utf-8')).hexdigest()
+        
+        # 5. แปลง Hash เป็นรหัสตัวเลข
+        daily_4_digit = str(int(hash_object[:4], 16))[-4:].zfill(4)
+        daily_6_digit = str(int(hash_object[4:10], 16))[-6:].zfill(6)
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"""
+            <div style="text-align:center; border: 2px solid #00f3ff; padding: 20px; border-radius: 15px; background: rgba(0, 243, 255, 0.05);">
+                <small style="color:#00f3ff;">ACCESS PIN (4 DIGIT)</small>
+                <h1 style="color:#fff; font-family: monospace;">{daily_4_digit}</h1>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <div style="text-align:center; border: 2px solid #ff00de; padding: 20px; border-radius: 15px; background: rgba(255, 0, 222, 0.05);">
+                <small style="color:#ff00de;">MASTER KEY (6 DIGIT)</small>
+                <h1 style="color:#fff; font-family: monospace;">{daily_6_digit}</h1>
+            </div>
+            """, unsafe_allow_html=True)
 
-    
-    # แปลง Hash บางส่วนให้เป็นตัวเลข
-    daily_4_digit = str(int(hash_object[:4], 16))[:4].zfill(4)
-    daily_6_digit = str(int(hash_object[4:8], 16))[:6].zfill(6)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"""
-        <div style="text-align:center; border: 2px solid #00f3ff; padding: 20px; border-radius: 15px;">
-            <small style="color:#00f3ff;">ACCESS PIN (4 DIGIT)</small>
-            <h1 style="color:#fff;">{daily_4_digit}</h1>
-        </div>
-        """, unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"""
-        <div style="text-align:center; border: 2px solid #ff00de; padding: 20px; border-radius: 15px;">
-            <small style="color:#ff00de;">MASTER KEY (6 DIGIT)</small>
-            <h1 style="color:#fff;">{daily_6_digit}</h1>
-        </div>
-        """, unsafe_allow_html=True)
+        st.info(f"**สถานะ:** กำลังใช้รหัสเฉพาะของ AGENT: **{current_agent}**")
 
-    st.info("**ที่มา (The Truth):** ใช้สมการรหัสผ่านแบบ SHA-256 Hashing นำเอา [วันที่ปัจจุบัน + ID ของคุณ] ไปเข้ารหัสทางคณิตศาสตร์ เลขจะเปลี่ยนไปทุกวันตอนเที่ยงคืนเป๊ะๆ")
+    except Exception as e:
+        # ถ้าพังอีก ให้แสดง Error แบบนุ่มนวลแทนการหยุดทำงาน
+        st.error(f"ระบบถอดรหัสขัดข้อง: {e}")
+
+    st.caption("รหัสจะเปลี่ยนโดยอัตโนมัติทุกๆ 24 ชั่วโมง ตามพิกัดเวลาโลก")
+
 
 # --- [ ห้องที่ 9: SYSTEM LOG (บันทึกข้อมูลการใช้งาน) ] ---
 elif st.session_state.page == "9":
