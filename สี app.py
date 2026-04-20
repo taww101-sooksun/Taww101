@@ -84,6 +84,25 @@ def init_system():
                 'databaseURL': st.secrets["firebase_db_url"]
             })
         except Exception as e:
+# --- ระบบจำค่าสีธีม (Global Style) ---
+if 'primary_color' not in st.session_state:
+    st.session_state.primary_color = "#00f3ff" # สีฟ้า Cyber เริ่มต้น
+
+# ฉีด CSS เข้าไปในทุกหน้า
+st.markdown(f"""
+    <style>
+    /* เปลี่ยนสีหัวข้อและปุ่มตามที่เลือก */
+    .neon-title-main, h1, h2, h3, .stMetric {{ color: {st.session_state.primary_color} !important; text-shadow: 0 0 10px {st.session_state.primary_color}; }}
+    .stButton>button {{
+        border: 1px solid {st.session_state.primary_color} !important;
+        color: {st.session_state.primary_color} !important;
+    }}
+    .stButton>button:hover {{
+        background: {st.session_state.primary_color} !important;
+        color: #000 !important;
+    }}
+    </style>
+""", unsafe_allow_html=True)
             st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
 
 # เรียกใช้งานทันทีที่รันไฟล์
