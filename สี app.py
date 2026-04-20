@@ -663,6 +663,42 @@ elif st.session_state.page == "5":
 
 st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE ENGINE v3.5")
    
+elif st.session_state.page == "6":
+    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>⚡ SYNAPSE SENSOR UNIT</h2>", unsafe_allow_html=True)
+    
+    # สร้าง Tab เพื่อแยกประเภทเซนเซอร์ให้ดูง่าย
+    tab_bio, tab_env, tab_power = st.tabs(["🩸 BIO-SCAN", "🎨 ENV-SCAN", "🔋 POWER-SCAN"])
+
+    with tab_bio:
+        st.subheader("🩸 REAL-TIME BIO-DATA SCANNER")
+        # --- ก๊อปปี้โค้ด bio_js ของแกมาวางที่นี่ ---
+        # components.html(bio_js, height=350)
+        st.info("""
+        **ที่มาของตัวเลข (The Truth):** - **BPM:** คำนวณจากความถี่ของคลื่นสีแดงที่ขยับเมื่อหัวใจฉีดฉีดเลือดเข้าสู่ปลายนิ้ว
+        - **SpO2:** วิเคราะห์จากอัตราส่วนแสงสีแดงต่อสีเขียวที่สะท้อนผ่านผิวหนัง
+        """)
+
+    with tab_env:
+        st.subheader("🎨 LIGHT & COLOR ANALYZER")
+        # --- ก๊อปปี้โค้ด color_js ของแกมาวางที่นี่ ---
+        # components.html(color_js, height=500)
+        st.info("""
+        **ที่มาของตัวเลข (The Truth):**
+        - **Brightness:** ค่าเฉลี่ยความสว่างจากพิกเซลจริง (0-255)
+        - **RGB:** ค่าแม่สีดิบที่เซนเซอร์กล้องรับได้ ใช้ระบุความบริสุทธิ์ของพลังงานรอบตัว
+        """)
+
+    with tab_power:
+        st.subheader("🔋 THERMAL & ENERGY INTELLIGENCE")
+        # --- ก๊อปปี้โค้ด battery_js ของแกมาวางที่นี่ ---
+        # components.html(battery_js, height=350)
+        st.info("""
+        **ที่มาของตัวเลข (The Truth):**
+        - **Energy Level:** ข้อมูลจากระบบจัดการพลังงานของเครื่อง
+        - **Thermal:** วิเคราะห์ความร้อนจากการเปลี่ยนแปลงของกระแสไฟ (ถ้าชาร์จไปเล่นไป ค่าจะพุ่งสูง)
+        """)
+
+    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Sensor Module v.1.0")
 
 
 # (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
