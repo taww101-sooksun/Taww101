@@ -14,6 +14,12 @@ import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 import base64
+from streamlit_autorefresh import st_autorefresh
+
+# สั่งให้รีเฟรชตัวเองทุกๆ 5 วินาที (5000 มิลลิวินาที)
+# เพื่อไปดึงพิกัดใหม่และแชตใหม่จาก Firebase
+count = st_autorefresh(interval=5000, key="datarefresh")
+
 # --- ส่วนบนสุดของไฟล์ (Initial State) ---
 if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#39FF14"  # กำหนดสีเริ่มต้นเป็นสีเขียว Matrix
@@ -269,6 +275,103 @@ elif st.session_state.page == "1":
                     st.audio(s)
     
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Studio v.1")
+elif st.session_state.page == "2":
+    from streamlit_autorefresh import st_autorefresh
+    
+    # --- [ จุดสำคัญ: ระบบ AUTO REFRESH ] ---
+    # สั่งให้หน้านี้รีเฟรชตัวเองทุก 8 วินาที เพื่อดึงแชตและพิกัดใหม่
+    # (ไม่ตั้งให้เร็วเกินไป เพื่อป้องกันหน้าจอกะพริบจนใช้งานลำบาก)
+    st_autorefresh(interval=8000, key="synapse_update")
+
+    st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>🛰️ TACTICAL RADAR & PRIVATE CHAT</h2>", unsafe_allow_html=True)
+
+    # --- ส่วนที่ 1: RADAR (GPS) ---
+    from streamlit_js_eval import get_geolocation
+    from streamlit_folium import st_folium
+    import folium
+
+    loc = get_geolocation()
+    my_lat, my_lon = 13.7367, 100.5231 # Default BKK
+    if loc and 'coords' in loc:
+        my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
+
+    # แสดงแผนที่ Satellite
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=15, 
+                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+                   attr='Google Satellite')
+    
+    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star'), tooltip="YOU").add_to(m)
+
+    # ดึงพิกัดเพื่อนๆ จาก Firebase
+    try:
+        users_ref = db.reference('users').get()
+        if users_ref:
+            for uid, data in users_ref.items():
+                if uid != st.session_state.user and 'lat' in data:
+                    folium.Marker([data['lat'], data['lon']], 
+                                 icon=folium.Icon(color='blue'), 
+                                 tooltip=f"AGENT: {uid}").add_to(m)
+    except: pass
+
+    st_folium(m, width="100%", height=300)
+
+    # ปุ่ม Broadcast พิกัดตัวเอง
+    if st.button("📡 BROADCAST POSITION", use_container_width=True):
+        db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
+        st.toast("พิกัดถูกส่งแล้ว!")
+
+    st.write("---")
+
+    # --- ส่วนที่ 2: PRIVATE CHAT ---
+    st.markdown("<h4 style='color:#ff00de; font-family:Orbitron;'>🔐 PRIVATE SECURE CHAT</h4>", unsafe_allow_html=True)
+
+    try:
+        all_users = db.reference('users').get()
+        if all_users:
+            friends = [u for u in all_users.keys() if u != st.session_state.user]
+            target_agent = st.selectbox("🎯 เลือก AGENT ที่ต้องการติดต่อ:", friends)
+
+            if target_agent:
+                # สร้าง ID ห้องแบบคู่ (เช่น user1_user2)
+                room_id = "_".join(sorted([st.session_state.user, target_agent]))
+                chat_ref = db.reference(f'private_messages/{room_id}')
+
+                # ฟอร์มส่งข้อความ
+                with st.form("private_chat_form", clear_on_submit=True):
+                    msg = st.text_input(f"TO: {target_agent}", placeholder="พิมพ์ข้อความที่นี่...")
+                    if st.form_submit_button("SEND SIGNAL"):
+                        if msg:
+                            chat_ref.push({
+                                'sender': st.session_state.user,
+                                'text': msg,
+                                'ts': time.time()
+                            })
+                            st.rerun()
+
+                # แสดงผลข้อความล่าสุด 10 ข้อความ
+                messages = chat_ref.order_by_child('ts').limit_to_last(10).get()
+                if messages:
+                    for mid in reversed(list(messages.keys())):
+                        m_data = messages[mid]
+                        is_me = m_data['sender'] == st.session_state.user
+                        align = "right" if is_me else "left"
+                        color = "#00f3ff" if is_me else "#ff00de"
+                        bg = "rgba(0, 243, 255, 0.15)" if is_me else "rgba(255, 0, 222, 0.15)"
+                        
+                        st.markdown(f"""
+                            <div style="text-align:{align}; margin-bottom:10px;">
+                                <div style="display:inline-block; background:{bg}; padding:8px 15px; border-radius:15px; border:1px solid {color};">
+                                    <b style="color:{color}; font-size:0.75rem;">{m_data['sender']}</b><br>
+                                    <span style="color:white;">{m_data['text']}</span>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.caption("ระบบพร้อมสำหรับการสื่อสารลับ...")
+    except Exception as e:
+        st.error(f"ระบบขัดข้อง: {e}")
+
+    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Module v.2 (Auto-Update)")
 
 
 # (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
