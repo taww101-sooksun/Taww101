@@ -40,6 +40,38 @@ st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
 # --- 1. SETUP & ลบติ่ง (อยู่นิ่งๆ ไม่เจ็บตัว) ---
 st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
+# --- ส่วนหน้าจอลงชื่อเข้าใช้ (Login / Register) ---
+if not st.session_state.get('logged_in', False):
+    st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>REGISTER AGENT</h2>", unsafe_allow_html=True)
+    
+    with st.container():
+        new_user = st.text_input("ENTER AGENT NAME", placeholder="เช่น ต๊ะ101, บาส").strip()
+        
+        if st.button("ACTIVATE SYSTEM", use_container_width=True):
+            if new_user:
+                # 1. เช็ค/ลงทะเบียนใน Firebase (โค้ดเดิมของเพื่อน)
+                user_check = db.reference(f'users/{new_user}').get()
+                
+                if not user_check:
+                    db.reference(f'users/{new_user}').set({
+                        'created_at': time.time(),
+                        'lat': 13.7367,
+                        'lon': 100.5231
+                    })
+                
+                # 2. จุดสำคัญ: สั่งให้ระบบ "จดจำ" ข้อมูลลงใน Session
+                st.session_state.user = new_user        # จำชื่อรหัส
+                st.session_state.logged_in = True     # เปลี่ยนสถานะเป็นล็อกอินแล้ว
+                st.session_state.page = "HOME"         # สั่งให้ไปหน้าหลัก (HOME) ทันที
+
+                # 3. แสดงผลความสำเร็จและรีโหลดแอป
+                st.success(f"WELCOME AGENT: {new_user}")
+                st.balloons()
+                time.sleep(1.5) # หน่วงเวลาให้เห็นความสำเร็จนิดนึง
+                st.rerun()      # รีเฟรชแอปเพื่อเข้าหน้าหลักด้วยชื่อใหม่ทันที
+            else:
+                st.warning("กรุณาใส่ชื่อ AGENT ของคุณก่อน!")
+    st.stop() 
 
 def setup_ui():
     st.markdown("""
