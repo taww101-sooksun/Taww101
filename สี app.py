@@ -83,7 +83,7 @@ def init_system():
             firebase_admin.initialize_app(cred, {
                 'databaseURL': st.secrets["firebase_db_url"]
             })
-except Exception as e:
+
 # --- ระบบจำค่าสีธีม (Global Style) ---
 if 'primary_color' not in st.session_state:
     st.session_state.primary_color = "#00f3ff" # สีฟ้า Cyber เริ่มต้น
