@@ -12,17 +12,28 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 import hashlib
-# --- [ ส่วนเชื่อมต่อฐานข้อมูล (ต้องเพิ่มตรงนี้) ] ---
+# --- [ 🛰️ ระบบเชื่อมต่อศูนย์บัญชาการ Firebase ] ---
 if not firebase_admin._apps:
     try:
-        # ดึงค่าจาก Secrets ของ Streamlit Cloud
-        cred_dict = dict(st.secrets["firebase_credentials"])
-        cred = credentials.Certificate(cred_dict)
+        # 1. ดึงค่าจาก st.secrets ที่คุณตั้งค่าไว้ (ต้องไปกรอกในหน้า Manage App ของ Streamlit ด้วย)
+        fb_creds = dict(st.secrets["firebase_credentials"])
+        
+        # 2. จัดการเรื่องขึ้นบรรทัดใหม่ใน Private Key (ป้องกันการถอดรหัสพลาด)
+        if "private_key" in fb_creds:
+            fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
+            
+        # 3. เริ่มการเชื่อมต่อ
+        cred = credentials.Certificate(fb_creds)
         firebase_admin.initialize_app(cred, {
             'databaseURL': st.secrets["firebase_db_url"]
         })
+        # st.success("🛰️ SYNAPSE ONLINE: เชื่อมต่อฐานข้อมูลสำเร็จ")
     except Exception as e:
-        st.error(f"🛰️ เชื่อมต่อฐานข้อมูลไม่ได้: {e}")
+        st.error(f"❌ ระบบเชื่อมต่อขัดข้อง: {e}")
+
+# ประกาศตัวแปร DB ไว้เรียกใช้งานง่ายๆ
+db_ref = db.reference('/')
+
 
 # --- [ หัวใจคำนวณ: ระบบถอดรหัส Lunar ] ---
 def get_detailed_logic(dt):
