@@ -838,53 +838,33 @@ if st.session_state.page == "HOME":
     c1, c2 = st.columns(2)
     apps = [
         ("🎵 1. MUSIC PLAYER", "1"), ("💬 2. CHAT & RADAR", "2"),
-        ("🧬 3. SENSOR UNIT", "6"), ("🛰️ 4. PARALLEL SCAN", "4"),
-        ("🔮 5. DESTINY TIMELINE", "5"), ("💖 6. DESTINY CHECK", "7"),
-        ("🔢 7. DAILY CODE", "8"), ("📝 8. MEMORY LOG", "9"),
-        ("🎨 9. COLOR MASTER", "10"), ("🚀 10. SYSTEM STATUS", "HOME")
-    ]
-
-    for i, (name, p_id) in enumerate(apps):
-        target_col = c1 if i % 2 == 0 else c2
-        if target_col.button(name, use_container_width=True):
-            st.session_state.page = p_id
-            st.rerun()
-
-# --- [ 7. แต่ละห้อง (ย่อพอสังเขปเพื่อรันจริง) ] ---
-
-# ห้อง 1: Music Mixer
-elif st.session_state.page == "1":
-    st.markdown("<h2 class='neon-text'>SYNAPSE MIXER</h2>", unsafe_allow_html=True)
-    # ใส่โค้ด Mixer HTML/JS ที่ต๊ะมีได้เลย (ผมเว้นไว้เพื่อประหยัดเนื้อที่รัน)
-    st.info("ระบบกำลังดึงไฟล์เสียง .mp3 จากคลังข้อมูล...")
-
-# ห้อง 2: Chat & Radar
-elif st.session_state.page == "2":
-    st_autorefresh(interval=8000, key="chat_refresh")
-    st.markdown("<h2 class='neon-text'>TACTICAL RADAR</h2>", unsafe_allow_html=True)
-    # โค้ด Folium Map และ Firebase Chat
-    st.write("📡 เรดาร์ตรวจพบผู้ใช้งานในพื้นที่...")
-
-# ห้อง 6: Sensor (BPM, dB, G-Force)
-elif st.session_state.page == "6":
-    st.markdown("<h2 class='neon-text'>VIBRATION & BIO UNIT</h2>", unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["🎙️ AUDIO SCAN", "📳 MOTION"])
-    with tab1:
-        st.write("วัดค่าเสียงจริง (dB / Hz)")
-        # ใส่ components.html(audio_js) ตรงนี้
-
-# ห้อง 8: Daily Code
+ # --- [ ห้องที่ 8: DAILY CODE ] ---
 elif st.session_state.page == "8":
-    st.markdown("<h2 class='neon-text'>DAILY SECURITY CODE</h2>", unsafe_allow_html=True)
-    today = date.today().strftime("%Y-%m-%d")
-    raw = f"{today}_{st.session_state.user}_SYNAPSE"
-    h = hashlib.sha256(raw.encode()).hexdigest()
-    st.metric("PIN (4 DIGIT)", str(int(h[:4], 16))[-4:].zfill(4))
-
-# ห้อง 10: Color Master
-elif st.session_state.page == "10":
-    st.markdown("<h2 class='neon-text'>COLOR MASTER</h2>", unsafe_allow_html=True)
-    new_c = st.color_picker("ปรับรังสีระบบ", st.session_state.get('custom_theme', '#00f3ff'))
-    if st.button("SAVE COLOR"):
-        st.session_state.custom_theme = new_c
-        st.rerun()
+    st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>🔢 DAILY SECURITY CODE</h2>", unsafe_allow_html=True)
+    
+    today_str = date.today().strftime("%Y-%m-%d")
+    
+    # ✅ แก้จุดนี้: ใช้ .get เพื่อป้องกันเครื่องระเบิดถ้ายังไม่ได้ Login
+    current_agent = st.session_state.get('user_id', 'Guest_Agent') 
+    
+    # สร้างวัตถุดิบ (Raw Data)
+    raw_data = f"{today_str}_{current_agent}_SYNAPSE"
+    
+    try:
+        # บรรทัดที่เคยพัง (การเข้ารหัส)
+        hash_object = hashlib.sha256(raw_data.encode('utf-8')).hexdigest()
+        
+        # แปลงเป็นรหัส 4 และ 6 หลัก
+        daily_4_digit = str(int(hash_object[:4], 16))[-4:].zfill(4)
+        daily_6_digit = str(int(hash_object[4:10], 16))[-6:].zfill(6)
+        
+        # แสดงผล (ใช้โค้ดเดิมของต๊ะได้เลย)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"PIN: {daily_4_digit}")
+        with col2:
+            st.success(f"KEY: {daily_6_digit}")
+            
+    except Exception as e:
+        st.error(f"ระบบถอดรหัสขัดข้อง: {e}")
+       ("
