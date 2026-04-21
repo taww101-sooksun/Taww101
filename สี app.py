@@ -152,7 +152,7 @@ elif st.session_state.page == "1":
 
     # 2. CSS ปรับแต่งหน้าจอ (ซ่อนติ่ง + โลโก้ดิ้น)
     st.markdown(f"""
-        <style>
+    <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
         header, footer, #MainMenu {{visibility: hidden;}}
         .stApp {{ background-color: #000000; }}
