@@ -100,13 +100,71 @@ if st.session_state.page == "HOME":
         if st.button("🔢 9. DAILY CODE\nรหัสลับประจำวัน", use_container_width=True): st.session_state.page = "9"; st.rerun()
         if st.button("🎨 10. COLOR MASTER\nปรับแต่งธีม", use_container_width=True): st.session_state.page = "10"; st.rerun()
 
-# --- PAGE 1: MUSIC PLAYER ---
+# (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
 elif st.session_state.page == "1":
-    st.markdown("<h2 class='neon-text'>🎵 SYNAPSE MUSIC DECK</h2>", unsafe_allow_html=True)
-    st.write("อัปโหลดไฟล์เสียงและเล่นผ่านเบราว์เซอร์ของคุณ")
-    audio_file = st.file_uploader("เลือกไฟล์เสียง (MP3, WAV)", type=['mp3', 'wav'])
-    if audio_file is not None:
-        st.audio(audio_file, format='audio/mp3')
+    import base64
+    import os
+
+    # 1. ฟังก์ชันดึงโลโก้ (ความจริงคือต้องมีไฟล์ logo1.png ในโฟลเดอร์)
+    def get_base64_img(file_path):
+        try:
+            if os.path.exists(file_path):
+                with open(file_path, "rb") as f:
+                    return base64.b64encode(f.read()).decode()
+            return ""
+        except: return ""
+
+    logo_b64 = get_base64_img("logo1.png")
+
+    # 2. CSS ปรับแต่งหน้าจอ (ซ่อนติ่ง + โลโก้ดิ้น)
+    st.markdown(f"""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        header, footer, #MainMenu {{visibility: hidden;}}
+        .stApp {{ background-color: #000000; }}
+
+        .logo-center {{
+            display: block;
+            margin: 0 auto;
+            width: 120px; height: 120px;
+            background-image: url("data:image/png;base64,{logo_b64}");
+            background-size: contain; background-repeat: no-repeat;
+            animation: pulse-ring 2s infinite alternate;
+        }}
+        @keyframes pulse-ring {{
+            from {{ filter: drop-shadow(0 0 5px #00f3ff); transform: scale(1); }}
+            to {{ filter: drop-shadow(0 0 20px #ff00de); transform: scale(1.05); }}
+        }}
+        .neon-text {{
+            font-family: 'Orbitron', sans-serif;
+            color: #fff; text-align: center;
+            text-shadow: 0 0 10px #00f3ff;
+            font-size: 1.5rem; margin-top: 10px;
+        }}
+        </style>
+        <div class="logo-center"></div>
+        <h1 class="neon-text">SYNAPSE MUSIC DECK</h1>
+    """, unsafe_allow_html=True)
+
+    # 3. เครื่องเล่นเพลงระบบ Mixer (HTML5 Canvas + Web Audio API)
+    mixer_html = """
+    <div style="background: #111; border: 2px solid #333; border-radius: 20px; padding: 20px; font-family: monospace; color: #00f3ff;">
+        <canvas id="visualizer" style="width: 100%; height: 100px; background: #000; border-radius: 10px;"></canvas>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+            <div style="border: 1px solid #ff00de; padding: 10px; border-radius: 10px;">
+                <small style="color: #ff00de;">DECK A (Primary)</small>
+                <input type="file" id="audioA" accept="audio/*" style="width: 100%; font-size: 10px; margin-top: 5px;">
+            </div>
+            <div style="border: 1px solid #00f3ff; padding: 10px; border-radius: 10px;">
+                <small style="color: #00f3ff;">DECK B (Sub)</small>
+                <input type="file" id="audioB" accept="audio/*" style="width: 100%; font-size: 10px; margin-top: 5px;">
+            </div>
+        </div>
+
+        <div style="margin-top: 20px; text-align: center;">
+            <button onclick="startMix()" style="width: 100%; padding: 10px; background:
+
 
 # --- PAGE 2: PERSONAL CODE (Image Search) ---
 elif st.session_state.page == "2":
