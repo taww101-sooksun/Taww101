@@ -184,8 +184,6 @@ with c1: st.button("💾 SAVE")
 with c2: st.button("📤 SHARE")
 with c3: st.button("🔥 TURBO")
 
-    
-        <style>
         /* ลบ Header, Footer และเมนูเดิม */
         header, footer, #MainMenu {{visibility: hidden;}}
         .stApp {{ background: #000; color: {current_theme_color}; }}
