@@ -99,7 +99,91 @@ if not st.session_state.get('logged_in', False):
 def setup_ui():
     # 1. ดึงค่าสีจาก Session State (ถ้ายังไม่มีให้ใช้สีฟ้า Cyan เป็นพื้นฐาน)
     current_theme_color = st.session_state.get('custom_theme', "#00f3ff")
+    st.markdown("""
+    <style>
+    /* ตั้งค่าพื้นหลังและ Font */
+    @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;600&display=swap');
     
+    .stApp {
+        background-color: #0A0A0A;
+        font-family: 'Kanit', sans-serif;
+    }
+
+    /* หัวข้อ S.S.S Music */
+    .sss-header {
+        color: #FF0000;
+        font-size: 45px;
+        font-weight: bold;
+        text-align: center;
+        text-shadow: 0 0 15px rgba(255, 0, 0, 0.5);
+        margin-bottom: 0px;
+    }
+
+    /* สโลแกนประจำตัว */
+    .sss-motto {
+        color: #FFD700;
+        font-size: 18px;
+        text-align: center;
+        margin-bottom: 30px;
+        letter-spacing: 2px;
+    }
+
+    /* ปรับแต่งช่องกรอกข้อความ (Input) */
+    .stTextInput>div>div>input {
+        background-color: #1A1A1A !important;
+        color: #FFFFFF !important;
+        border: 1px solid #333 !important;
+        border-radius: 10px !important;
+    }
+
+    /* ปุ่ม GENERATE (สีแดงดุดัน) */
+    div.stButton > button:first-child {
+        background-color: #FF0000 !important;
+        color: white !important;
+        width: 100%;
+        height: 60px;
+        font-size: 20px;
+        font-weight: bold;
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 4px 15px rgba(255, 0, 0, 0.3);
+        transition: 0.3s;
+    }
+    div.stButton > button:first-child:hover {
+        transform: scale(1.02);
+        box-shadow: 0 0 25px #FF0000;
+    }
+
+    /* กลุ่มปุ่ม SAVE, SHARE, TURBO */
+    .stButton > button {
+        border-radius: 10px;
+        transition: 0.2s;
+    }
+    </style>
+    
+    <div class="sss-header">S.S.S Music</div>
+    <div class="sss-motto">"อยู่นิ่งๆ ไม่เจ็บตัว"</div>
+""", unsafe_allow_html=True)
+
+# ส่วนแสดงผลเนื้อหาแอป
+col_l, col_m, col_r = st.columns([1, 2, 1])
+with col_m:
+    # แสดงรูป Logo (ดึงจากไฟล์ที่มีอยู่)
+    st.image("logo1.png", use_container_width=True)
+
+note = st.text_input("", placeholder="ใจความสั้นๆ ที่จะให้ AI ขยี้...")
+
+if st.button("ขยี้ใจความ (GENERATE)"):
+    with st.spinner("🚀 กำลังส่งสัญญาณไปที่ศูนย์บัญชาการ..."):
+        time.sleep(2)
+        st.success("ขยี้เนื้อความสำเร็จ!")
+
+# ปุ่มแถวล่าง (จำลองดีไซน์ XML)
+c1, c2, c3 = st.columns(3)
+with c1: st.button("💾 SAVE")
+with c2: st.button("📤 SHARE")
+with c3: st.button("🔥 TURBO")
+
     st.markdown(f"""
         <style>
         /* ลบ Header, Footer และเมนูเดิม */
