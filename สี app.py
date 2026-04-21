@@ -440,36 +440,69 @@ elif st.session_state.page == "2":
         st.error(f"ระบบขัดข้อง: {e}")
 
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Module v.2 (Auto-Update)")
-elif st.session_state.page == "3":
-    st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>🧬 PERSONAL CODE DECODER</h2>", unsafe_allow_html=True)
+# --- [ ห้องที่ 3: SYNAPSE SENSOR & ENVIRONMENT ] ---
+elif st.session_state.page == "6":
+    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>🛰️ ENV-SCAN & GPS SENSOR</h2>", unsafe_allow_html=True)
     
-    # ส่วนรับข้อมูล: ช่วงปี 1960 - 2026
-    dob = st.date_input("📅 ระบุวันเกิดเพื่อถอดรหัส", 
-                        min_value=date(1960, 1, 1), 
-                        max_value=date(2026, 12, 31))
-
-    if dob:
-        d = get_detailed_logic(dob)
-        
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            st.metric("YOUR CODE", d['res'])
-        with col2:
-            st.info(f"พิกัด: วัน{d['day_name']} | {d['phase']}")
-
-        # --- อธิบายที่มาของตัวเลข (ความจริง) ---
-        st.markdown(f"""
-        <div class="logic-box">
-            <h4>📝 ที่มาของรหัสประจำตัว (The Truth)</h4>
-            <ul>
-                <li><b>เลขฐานวัน ({d['day_val']}):</b> มาจากลำดับวันในสัปดาห์ (จันทร์=1 จนถึง อาทิตย์=7)</li>
-                <li><b>เลขจันทรคติ ({d['m_num']}):</b> คำนวณจากระยะห่างระหว่างวันเกิดกับจุด New Moon ของดาราศาสตร์</li>
-                <li><b>วิธีคำนวณ:</b> ระบบใช้ <b>{d['type']}</b></li>
-                <li><b>สมการที่ใช้จริง:</b> <code>{d['formula']}</code></li>
-            </ul>
-            <p style='font-size:0.8rem; color:#888;'>*หมายเหตุ: ขึ้นค่ำใช้สมการ Vector (ความชัน), แรมค่ำใช้สมการ Golden Ratio (สมดุล)*</p>
+    # 1. ส่วนแสดงผลนาฬิกา (Master Clock) แบบ Real-time
+    thai_now = datetime.utcnow() + timedelta(hours=7)
+    current_time = thai_now.strftime("%H:%M:%S")
+    
+    st.markdown(f"""
+        <div style="text-align: center; border: 1px solid #FFD700; padding: 10px; border-radius: 10px; margin-bottom: 20px;">
+            <h2 style="font-family: monospace; color: #FFD700; margin: 0;">{current_time}</h2>
+            <small>THAILAND REAL-TIME SYSTEM</small>
         </div>
-        """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+
+    # 2. ส่วนของ GPS และ Weather (JavaScript ที่คุณเขียนมา)
+    env_test_js = """
+    <div style="background-color: #111; color: #FFD700; padding: 25px; border: 2px solid #FFD700; border-radius: 20px; text-align: center; font-family: monospace;">
+        <div id="status" style="color: #00ffff; margin-bottom: 15px;">📍 พร้อมสแกนพิกัด</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+            <div style="background: #222; padding: 10px; border-radius: 10px;">
+                <small>LATITUDE</small><h3 id="lat" style="margin:5px 0;">-</h3>
+            </div>
+            <div style="background: #222; padding: 10px; border-radius: 10px;">
+                <small>LONGITUDE</small><h3 id="lon" style="margin:5px 0;">-</h3>
+            </div>
+        </div>
+        <div style="background: rgba(255, 215, 0, 0.1); padding: 20px; border-radius: 15px; border: 1px dashed #FFD700;">
+            <p style="margin:0;">🌡️ TEMP: <span id="temp" style="font-size: 25px; color:#fff;">--</span> °C</p>
+            <p style="margin:10px 0 0 0;">💧 HUMIDITY: <span id="hum" style="font-size: 25px; color:#fff;">--</span> %</p>
+        </div>
+        <button id="btn" style="margin-top: 20px; width: 100%; padding: 15px; background: #FFD700; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; color:#000;">🌍 SCAN REALITY DATA</button>
+    </div>
+    <script>
+        const btn = document.getElementById('btn');
+        btn.onclick = () => {
+            document.getElementById('status').innerText = "🛰️ กำลังติดต่อดาวเทียม...";
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    document.getElementById('lat').innerText = lat.toFixed(4);
+                    document.getElementById('lon').innerText = lon.toFixed(4);
+                    try {
+                        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m`);
+                        const data = await res.json();
+                        document.getElementById('temp').innerText = data.current_weather.temperature;
+                        document.getElementById('hum').innerText = data.hourly.relativehumidity_2m[0];
+                        document.getElementById('status').innerText = "🟢 ดึงค่าความจริงสำเร็จ";
+                    } catch (e) {
+                        document.getElementById('status').innerText = "⚠️ ดึงข้อมูลอากาศไม่ได้";
+                    }
+                }, (err) => {
+                    document.getElementById('status').innerText = "❌ ปฏิเสธการเข้าถึง GPS";
+                });
+            }
+        };
+    </script>
+    """
+    components.html(env_test_js, height=450)
+    
+    st.caption("ข้อมูลนี้ถูกดึงมาจากเซนเซอร์เครื่องและดาวเทียมโดยตรง | SYNAPSE SENSOR")
+
 elif st.session_state.page == "6":
     import streamlit.components.v1 as components
     
