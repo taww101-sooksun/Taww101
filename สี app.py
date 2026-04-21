@@ -184,7 +184,7 @@ with c1: st.button("💾 SAVE")
 with c2: st.button("📤 SHARE")
 with c3: st.button("🔥 TURBO")
 
-    st.markdown(f"""
+    
         <style>
         /* ลบ Header, Footer และเมนูเดิม */
         header, footer, #MainMenu {{visibility: hidden;}}
