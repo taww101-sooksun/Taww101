@@ -814,7 +814,6 @@ if 'primary_color' not in st.session_state:
     st.session_state.primary_color = "#00f3ff"
 if 'page' not in st.session_state:
     st.session_state.page = "HOME"
-                    time.sleep(1)
                     st.rerun()
                 else:
                     st.warning("กรุณาระบุรหัส AGENT")
