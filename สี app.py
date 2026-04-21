@@ -68,29 +68,65 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- [ 🔐 ระบบบันทึกระหัสยูสเซอร์ ] ---
+# --- [ 🔐 ระบบลงทะเบียนและเข้าสู่ระบบ ] ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
+    st.session_state.show_register = False # เพิ่มตัวแปรเช็คว่าจะดูหน้าสมัครหรือหน้าล็อกอิน
 
 if not st.session_state.logged_in:
-    # หน้า Login
     st.markdown('<img src="logo1.png" class="logo-img" onerror="this.src=\'https://via.placeholder.com/250?text=LOGO1.PNG\'">', unsafe_allow_html=True)
-    st.markdown("<h2 style='text-align: center;'>SYNAPSE LOGIN</h2>", unsafe_allow_html=True)
     
-    with st.form("login_form"):
-        user_id = st.text_input("รหัสยูสเซอร์ / ชื่อผู้ใช้")
-        password = st.text_input("รหัสผ่าน", type="password")
-        submit = st.form_submit_button("ลงชื่อเข้าใช้")
+    # สลับหน้า Login / Register
+    if not st.session_state.show_register:
+        st.markdown("<h2 style='text-align: center;'>เข้าสู่ระบบ SYNAPSE</h2>", unsafe_allow_html=True)
+        with st.form("login_form"):
+            user_id = st.text_input("รหัสยูสเซอร์")
+            password = st.text_input("รหัสผ่าน", type="password")
+            if st.form_submit_button("ตกลง"):
+                # เช็คความจริงจาก Firebase
+                user_data = db_ref.child('users').child(user_id).get()
+                if user_data and user_data.get('password') == password:
+                    st.session_state.logged_in = True
+                    st.session_state.user_id = user_id
+                    st.rerun()
+                else:
+                    st.error("ไม่พบข้อมูล หรือรหัสผ่านไม่ถูกต้อง")
         
-        if submit:
-            # เช็คค่าจาก Firebase จริง (ตัวอย่าง)
-            user_data = db_ref.child('users').child(user_id).get()
-            if user_data and user_data.get('password') == password:
-                st.session_state.logged_in = True
-                st.session_state.user_id = user_id
-                st.rerun()
-            else:
-                st.error("ข้อมูลไม่ถูกต้อง")
+        if st.button("ยังไม่มีบัญชี? ลงทะเบียนใช้งานฟรี"):
+            st.session_state.show_register = True
+            st.rerun()
+
+    else:
+        st.markdown("<h2 style='text-align: center;'>ลงทะเบียนฟรี</h2>", unsafe_allow_html=True)
+        with st.form("register_form"):
+            new_user = st.text_input("ตั้งชื่อยูสเซอร์ (ภาษาอังกฤษ/ตัวเลข)")
+            new_pw = st.text_input("ตั้งรหัสผ่าน", type="password")
+            confirm_pw = st.text_input("ยืนยันรหัสผ่านอีกครั้ง", type="password")
+            
+            if st.form_submit_button("ยืนยันการลงทะเบียน"):
+                if new_user and new_pw == confirm_pw:
+                    # เช็คก่อนว่าชื่อซ้ำไหม
+                    existing_user = db_ref.child('users').child(new_user).get()
+                    if existing_user:
+                        st.warning("ชื่อนี้มีคนใช้แล้วครับ ลองชื่ออื่นนะ")
+                    else:
+                        # บันทึกลง Firebase ทันที
+                        db_ref.child('users').child(new_user).set({
+                            'password': new_pw,
+                            'reg_date': str(datetime.now()),
+                            'status': 'active'
+                        })
+                        st.success("ลงทะเบียนสำเร็จ! กลับไปหน้าล็อกอินได้เลย")
+                        time.sleep(2)
+                        st.session_state.show_register = False
+                        st.rerun()
+                else:
+                    st.error("รหัสผ่านไม่ตรงกัน หรือกรอกข้อมูลไม่ครบ")
+        
+        if st.button("กลับไปหน้าล็อกอิน"):
+            st.session_state.show_register = False
+            st.rerun()
+
 
 else:
     # --- [ 🏠 หน้าหลัก 8 ห้อง ] ---
