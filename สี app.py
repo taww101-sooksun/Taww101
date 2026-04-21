@@ -156,7 +156,7 @@ if st.session_state.page != "HOME":
 # [ หน้าแรก: ศูนย์รวม 10 แอป ]
 if st.session_state.page == "HOME":
     # วาง LOGO แทนที่ติ่ง
-    col_l, col_m, col_r = st.columns([1, 2, 1])
+    col_l, col_m, col_r = st.columns([1, 4, 1])
     with col_m:
         if os.path.exists("logo1.png"):
             st.image("logo1.png", use_container_width=True)
