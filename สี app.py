@@ -832,4 +832,4 @@ elif st.session_state.page == "10":
 if 'primary_color' not in st.session_state:
     st.session_state.primary_color = "#00f3ff"
 if 'page' not in st.session_state:
-    st.session_state.page = "HOME”
+    st.session_state.page = "HOME"
