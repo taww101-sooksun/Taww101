@@ -827,9 +827,9 @@ elif st.session_state.page == "10":
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Interface Control")
 
 
-# (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
-
+# --- [ ส่วนการจัดการ Session State ท้ายไฟล์ ] ---
 if 'primary_color' not in st.session_state:
     st.session_state.primary_color = "#00f3ff"
+
 if 'page' not in st.session_state:
-    st.session_state.page = "HOME"
+    st.session_state.page = "HOME"  # แก้ไขเครื่องหมายคำพูดตรงนี้ให้ถูกต้องแล้วครับ
