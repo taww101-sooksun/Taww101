@@ -2,8 +2,7 @@ import streamlit as st
 import os
 import pandas as pd
 import math
-เวลานำเข้า
-นำเข้า base64
+import base64
 import firebase_admin
 จาก firebase_admin นำเข้า credentials, db
 จากการนำเข้า datetime , date และ timedelta
