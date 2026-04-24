@@ -58,6 +58,41 @@ st.markdown(f"""
     
     <img src="data:image/png;base64,{logo_b64}" class="global-logo">
 """, unsafe_allow_html=True)
+# แก้ไขส่วน :root ใน Style ของคุณต๊ะให้เป็นแบบนี้
+st.markdown(f"""
+    <style>
+    :root {{
+        --primary: {st.session_state.main_color};
+        --secondary: {st.session_state.sub_color};
+        --glow: {st.session_state.get('bg_glow', '#00f3ff')};
+    }}
+
+    /* ทุกปุ่มในทุกห้องจะเปลี่ยนตาม */
+    .stButton>button {{
+        border: 1px solid var(--primary) !important;
+        background: rgba(0,0,0,0.2) !important;
+        color: white !important;
+        box-shadow: 0 0 5px var(--primary);
+    }}
+    
+    .stButton>button:hover {{
+        border-color: var(--secondary) !important;
+        box-shadow: 0 0 20px var(--secondary) !important;
+    }}
+
+    /* หัวข้อทุกห้องจะเรืองแสงตามสีที่เลือก */
+    .neon-text {{
+        color: var(--primary) !important;
+        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary) !important;
+    }}
+    
+    /* ขอบหน้าจอแอป */
+    .stApp {{
+        border: 2px solid var(--primary);
+        transition: all 0.8s ease;
+    }}
+    </style>
+""", unsafe_allow_html=True)
 
 
 # 4. SIDEBAR: ระบบเปลี่ยนสีและเพลงพื้นหลัง (เพื่อให้เพลงเล่นต่อเนื่อง)
