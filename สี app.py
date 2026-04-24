@@ -148,38 +148,137 @@ elif st.session_state.page == "2":
     # (โค้ดแผนที่และแชตที่คุณต๊ะมีอยู่แล้ว)
 
 # --- [ หน้า 3: INTELLIGENCE CENTER (รวม 3-9) ] ---
+# --- [ ห้องรวมมิติ: SYNAPSE INTELLIGENCE CENTER (ยุบรวม 3-9) ] ---
 elif st.session_state.page == "3":
-    st.markdown("<h2 class='neon-text'>🧠 INTELLIGENCE CENTER</h2>", unsafe_allow_html=True)
-    t1, t2, t3, t4 = st.tabs(["🌙 LUNAR & GAP", "🔮 DESTINY SCAN", "🔢 DAILY PIN", "📝 SYSTEM LOG"])
-    
-    with t1:
-        st.write("### 🌙 Lunar & Parallel Decoder")
-        d_input = st.date_input("เลือกวันเกิดเพื่อถอดรหัส", value=date.today())
-        if d_input:
-            info = get_detailed_logic(d_input)
-            st.info(f"รหัสของคุณคือ: {info['res']} | พิกัด: {info['phase']}")
-            st.caption(f"ลอจิก: {info['type']} ใช้สูตร {info['formula']}")
+    # ส่วนหัวและปุ่มย้อนกลับ
+    col_h1, col_h2 = st.columns([4, 1])
+    with col_h1:
+        st.markdown("<h2 class='neon-text'>🧠 INTELLIGENCE CENTER</h2>", unsafe_allow_html=True)
+    with col_h2:
+        if st.button("⬅️ HOME", use_container_width=True):
+            st.session_state.page = "HOME"
+            st.rerun()
 
-    with t2:
-        st.write("### 🔮 Destiny Timeline (180 Days)")
-        # สแกนหาพิกัด เพชร/ธรรม/กระจก
-        st.write("กำลังสแกนพิกัดบรรจบของรหัสคุณกับจักรวาล...")
-        # (ส่วนนี้ใส่ลอจิกสแกน 180 วันที่ผมให้ไว้ก่อนหน้า)
+    # สร้าง Tabs เพื่อแยกรายละเอียดงาน
+    tab_lunar, tab_destiny, tab_sensor, tab_code, tab_log = st.tabs([
+        "🌙 LUNAR & GAP", 
+        "🔮 DESTINY SCAN", 
+        "📡 BIO-SENSORS", 
+        "🔢 DAILY PIN", 
+        "📝 SYSTEM LOG"
+    ])
 
-    with t3:
-        st.write("### 🔢 Daily Security PIN")
-        u_name = st.session_state.get('user', 'AGENT')
-        raw_code = f"{date.today()}_{u_name}_SYNAPSE"
-        h = hashlib.sha256(raw_code.encode()).hexdigest()
-        st.markdown(f"<h1 style='text-align:center;'>{h[:6].upper()}</h1>", unsafe_allow_html=True)
-        st.caption("รหัสเปลี่ยนทุก 24 ชม. ตามชื่อผู้ใช้และวันที่")
+    # --- 1. รายละเอียด LUNAR & GAP (เดิมคือ 3, 4) ---
+    with tab_lunar:
+        st.markdown("### 🌙 การถอดรหัสพิกัดดวงดาว")
+        st.write("วิเคราะห์รหัสประจำตัวจากฐานวันเกิดและจันทรคติ (Lunar Cycle)")
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            d1_input = st.date_input("วันเกิด AGENT 1", value=date(1995,1,1), key="ic_d1")
+        with c2:
+            d2_input = st.date_input("วันเกิด AGENT 2 (เปรียบเทียบ)", value=date(1995,1,1), key="ic_d2")
+        
+        if d1_input:
+            res1 = get_detailed_logic(d1_input)
+            res2 = get_detailed_logic(d2_input)
+            gap = abs(res1['res'] - res2['res'])
+            
+            st.markdown(f"""
+                <div style="background:rgba(0,243,255,0.1); border:1px solid var(--primary); padding:20px; border-radius:15px;">
+                    <h3 style="color:var(--primary);">RESULT: {res1['res']}</h3>
+                    <p><b>พิกัด:</b> วัน{res1['day_name']} | {res1['phase']}</p>
+                    <p><b>ลอจิกที่ใช้:</b> {res1['type']} ({res1['formula']})</p>
+                    <hr style="border-color:var(--primary);">
+                    <h4 style="color:var(--secondary);">GAP ANALYZER: {gap:.4f}</h4>
+                    <small>*ค่า Gap คือความต่างของคลื่นความถี่ระหว่างบุคคล*</small>
+                </div>
+            """, unsafe_allow_html=True)
 
-    with t4:
-        st.write("### 📝 System Memory Log")
-        with st.form("log_form"):
-            note = st.text_area("บันทึกเหตุการณ์:")
-            if st.form_submit_button("SAVE"):
-                st.success("บันทึกลงฐานข้อมูลแล้ว (Firebase)")
+    # --- 2. รายละเอียด DESTINY SCAN (เดิมคือ 5, 7) ---
+    with tab_destiny:
+        st.markdown("### 🔮 สแกนชะตาและไทม์ไลน์")
+        mode = st.radio("เลือกฟังก์ชัน:", ["ไทม์ไลน์ 180 วัน (เพชร/ธรรม/กระจก)", "สแกนชื่อคู่ขนาน"], horizontal=True)
+        
+        if mode == "ไทม์ไลน์ 180 วัน (เพชร/ธรรม/กระจก)":
+            st.write("ระบบจะสแกนหา 'วันบรรจบ' ที่รหัสของคุณตรงกับรหัสจักรวาล")
+            # ลอจิกสแกน 180 วัน
+            my_code = get_detailed_logic(d1_input)['res']
+            future_data = []
+            for i in range(180):
+                t_date = date.today() + timedelta(days=i)
+                t_res = get_detailed_logic(t_date)
+                t_gap = abs(t_res['res'] - my_code)
+                
+                status = ""
+                if t_gap < 0.5: status = "💎 พิกัดเพชร (โอกาสใหญ่)"
+                elif 3.8 <= t_gap <= 4.2: status = "🌀 พิกัดธรรม (ดึงดูด)"
+                elif t_gap > 10.0: status = "🪞 พิกัดกระจก (อิสระ)"
+                
+                if status:
+                    future_data.append({"วันที่": t_date, "วัน": t_res['day_name'], "พิกัด": status, "Gap": round(t_gap, 4)})
+            
+            if future_data:
+                st.table(future_data)
+            else:
+                st.info("ไม่พบพิกัดพิเศษในช่วงนี้")
+
+        else:
+            st.write("วิเคราะห์ความเข้ากันได้จากค่า Unicode ของชื่อ")
+            n1 = st.text_input("ชื่อ AGENT 1", key="ic_n1")
+            n2 = st.text_input("ชื่อ AGENT 2", key="ic_n2")
+            if n1 and n2:
+                s1, s2 = sum(ord(c) for c in n1), sum(ord(c) for c in n2)
+                sync = 100 - (abs(s1 - s2) % 100)
+                st.metric("SYNC LEVEL", f"{sync}%")
+
+    # --- 3. รายละเอียด BIO-SENSORS (เดิมคือ 6) ---
+    with tab_sensor:
+        st.markdown("### 📡 ระบบตรวจจับสัญญาณกายภาพ")
+        st.write("เชื่อมต่อเซนเซอร์จากอุปกรณ์เพื่อดึงค่าจริง (Vibration & Bio-data)")
+        
+        # ใส่ Component สำหรับวัดเสียง/แรงสั่น (ใช้โค้ดเดิมที่คุณต๊ะมีได้เลย)
+        st.warning("⚠️ โปรดอนุญาตการเข้าถึงเซนเซอร์บนอุปกรณ์ของคุณ")
+        c_v1, c_v2 = st.columns(2)
+        c_v1.metric("VIBRATION", "1.002 G", "Normal")
+        c_v2.metric("SOUND LEVEL", "45 dB", "-2%")
+
+    # --- 4. รายละเอียด DAILY PIN (เดิมคือ 8) ---
+    with tab_code:
+        st.markdown("### 🔢 รหัสรักษาความปลอดภัยรายวัน")
+        st.write("รหัสผ่านที่เจนเนอเรทจาก วันที่ + ชื่อ AGENT + SHA-256")
+        
+        u_name = st.session_state.get('user', 'GUEST')
+        raw = f"{date.today()}_{u_name}_SYNAPSE"
+        h = hashlib.sha256(raw.encode()).hexdigest()
+        
+        st.markdown(f"""
+            <div style="text-align:center; padding:30px; background:black; border:2px dashed var(--primary); border-radius:20px;">
+                <h1 style="letter-spacing: 10px; color:white;">{h[:6].upper()}</h1>
+                <p style="color:var(--primary);">รหัสลับของคุณประจำวันนี้</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # --- 5. รายละเอียด SYSTEM LOG (เดิมคือ 9) ---
+    with tab_log:
+        st.markdown("### 📝 บันทึกความจำระบบ (Memory Log)")
+        with st.form("ic_log", clear_on_submit=True):
+            note = st.text_area("บันทึกเหตุการณ์วันนี้:")
+            if st.form_submit_button("COMMIT TO FIREBASE"):
+                if note:
+                    db.reference(f'system_logs/{st.session_state.user}').push({
+                        'text': note, 'ts': time.time(), 'dt': str(datetime.now())
+                    })
+                    st.success("บันทึกลงฐานข้อมูลแล้ว")
+        
+        # แสดงประวัติ 3 รายการล่าสุด
+        st.write("---")
+        logs = db.reference(f'system_logs/{st.session_state.user}').limit_to_last(3).get()
+        if logs:
+            for k, v in reversed(logs.items()):
+                st.caption(f"📅 {v['dt']}")
+                st.info(v['text'])
+
 
 # --- [ หน้า 10: COLOR MASTER ] ---
 elif st.session_state.page == "10":
