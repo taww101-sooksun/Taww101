@@ -12,6 +12,31 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 import hashlib
+# --- วางไว้บนสุดหลัง import ---
+def get_base64_data(file_path):
+    import base64
+    try:
+        with open(file_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except: return ""
+
+logo_base64 = get_base64_data("logo1.png")
+
+# CSS สำหรับ Logo ให้ลอยอยู่ทุกหน้า
+st.markdown(f"""
+    <style>
+    .global-logo {{
+        position: fixed;
+        top: 10px;
+        right: 20px;
+        width: 60px;
+        z-index: 9999;
+        filter: drop-shadow(0 0 10px #00f3ff);
+    }}
+    </style>
+    <img src="data:image/png;base64,{logo_base64}" class="global-logo">
+""", unsafe_allow_html=True)
+
 # --- [ หัวใจคำนวณ: ระบบถอดรหัส Lunar ] ---
 def get_detailed_logic(dt):
     if dt is None: return None
@@ -180,145 +205,142 @@ if st.session_state.page == "HOME":
 
 # --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
 elif st.session_state.page == "1":
-    import base64
-    import os
-
-    # 1. ฟังก์ชันดึงข้อมูลไฟล์
-    def get_base64_data(file_path):
-        try:
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-        except: return None
-
-    st.markdown("<h2 class='neon-text'>🎧 SYNAPSE DUAL-DECK DJ UNIT</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 class='neon-text'>🎧 SYNAPSE DJ STATION V.3</h2>", unsafe_allow_html=True)
     
-    # 2. ค้นหารายชื่อเพลง MP3 ทั้งหมดใน GitHub Root
     all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
     
-    if not all_songs:
-        st.warning("⚠️ ไม่พบไฟล์ MP3 ในระบบ (GitHub Root)")
-    else:
-        # ส่วนเลือกเพลงสำหรับ Deck A และ B
-        col_sel_a, col_sel_b = st.columns(2)
-        with col_sel_a:
-            song_a = st.selectbox("💿 Select Track for DECK A", ["-- Select --"] + all_songs, key="sa")
-        with col_sel_b:
-            song_b = st.selectbox("💿 Select Track for DECK B", ["-- Select --"] + all_songs, key="sb")
+    col_sel_a, col_sel_b = st.columns(2)
+    with col_sel_a:
+        song_a = st.selectbox("💿 DECK A", ["-- Select --"] + all_songs, key="sa")
+    with col_sel_b:
+        song_b = st.selectbox("💿 DECK B", ["-- Select --"] + all_songs, key="sb")
 
-        # เตรียมข้อมูล Base64
-        data_a = get_base64_data(song_a) if song_a != "-- Select --" else ""
-        data_b = get_base64_data(song_b) if song_b != "-- Select --" else ""
+    data_a = get_base64_data(song_a) if song_a != "-- Select --" else ""
+    data_b = get_base64_data(song_b) if song_b != "-- Select --" else ""
 
-        # 3. DJ Mixer Interface (HTML + JS)
-        mixer_html = f"""
-        <div style="background: #0a0a0a; border: 3px solid #333; border-radius: 25px; padding: 20px; font-family: 'Orbitron', sans-serif; color: white;">
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <div style="background: rgba(0, 243, 255, 0.05); border: 2px solid #00f3ff; padding: 15px; border-radius: 20px; text-align: center;">
-                    <h4 style="color: #00f3ff; margin-top:0;">DECK A</h4>
-                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
-                        <span id="curA">00:00</span>
-                        <span id="remA" style="color: #ff00de;">-00:00</span>
-                    </div>
-                    <input type="range" id="seekA" value="0" style="width: 100%; accent-color: #00f3ff; margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 15px;">
-                        <button onclick="play('A')" style="background: #00f3ff; border:none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight:bold;">PLAY</button>
-                        <button onclick="pause('A')" style="background: none; border:1px solid #ff00de; color:#ff00de; padding: 8px 20px; border-radius: 5px; cursor: pointer;">PAUSE</button>
-                    </div>
-                    <small>VOLUME</small>
-                    <input type="range" id="volA" min="0" max="1" step="0.01" value="0.8" style="width: 100%; accent-color: #00f3ff;">
+    mixer_html = f"""
+    <div style="background: #000; border: 2px solid #333; border-radius: 20px; padding: 15px; font-family: 'Orbitron';">
+        
+        <marquee style="color: #00f3ff; margin-bottom: 10px;"> Now Playing Deck A: {song_a} | Deck B: {song_b} --- Synapse Unit High-Resolution Audio --- </marquee>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div style="border: 1px solid #00f3ff; padding: 10px; border-radius: 15px; text-align: center;">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #00f3ff;">
+                    <span id="curA">00:00</span><span id="remA">-00:00</span>
                 </div>
-
-                <div style="background: rgba(255, 0, 222, 0.05); border: 2px solid #ff00de; padding: 15px; border-radius: 20px; text-align: center;">
-                    <h4 style="color: #ff00de; margin-top:0;">DECK B</h4>
-                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
-                        <span id="curB">00:00</span>
-                        <span id="remB" style="color: #00f3ff;">-00:00</span>
-                    </div>
-                    <input type="range" id="seekB" value="0" style="width: 100%; accent-color: #ff00de; margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 15px;">
-                        <button onclick="play('B')" style="background: #ff00de; border:none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight:bold; color: white;">PLAY</button>
-                        <button onclick="pause('B')" style="background: none; border:1px solid #00f3ff; color:#00f3ff; padding: 8px 20px; border-radius: 5px; cursor: pointer;">PAUSE</button>
-                    </div>
-                    <small>VOLUME</small>
-                    <input type="range" id="volB" min="0" max="1" step="0.01" value="0.8" style="width: 100%; accent-color: #ff00de;">
-                </div>
-            </div>
-
-            <div style="margin-top: 30px; text-align: center; border-top: 1px solid #333; padding-top: 20px;">
-                <button onclick="autoFade()" style="background: linear-gradient(90deg, #00f3ff, #ff00de); border: none; padding: 15px 40px; border-radius: 30px; color: white; font-weight: bold; cursor: pointer; width: 100%; font-family: 'Orbitron'; box-shadow: 0 0 15px rgba(255,0,222,0.4);">
-                    🔄 START 10s CROSSFADE (A ➜ B)
-                </button>
-                <p style="font-size: 10px; color: #666; margin-top: 10px;">ระบบจะทำการค่อยๆ หรี่เสียง Deck A และเร่งเสียง Deck B อัตโนมัติภายใน 10 วินาที</p>
-            </div>
-
-            <audio id="audioA"><source src="data:audio/mp3;base64,{data_a}"></audio>
-            <audio id="audioB"><source src="data:audio/mp3;base64,{data_b}"></audio>
-
-            <script>
-                const audA = document.getElementById('audioA');
-                const audB = document.getElementById('audioB');
+                <canvas id="canvasA" style="width: 100%; height: 50px; background: #111; margin: 5px 0;"></canvas>
                 
-                function play(deck) {{ deck === 'A' ? audA.play() : audB.play(); }}
-                function pause(deck) {{ deck === 'A' ? audA.pause() : audB.pause(); }}
+                <input type="range" id="volA" min="0" max="1" step="0.01" value="0.7" style="width: 100%; accent-color: #00f3ff;">
+                <div style="margin-top: 10px;">
+                    <button onclick="play('A')" style="background:#00f3ff; border:none; padding:5px 15px; border-radius:5px;">PLAY</button>
+                    <button onclick="pause('A')" style="background:none; border:1px solid #00f3ff; color:#00f3ff; padding:5px 15px; border-radius:5px;">PAUSE</button>
+                </div>
+            </div>
 
-                // Volume Control
-                document.getElementById('volA').oninput = (e) => audA.volume = e.target.value;
-                document.getElementById('volB').oninput = (e) => audB.volume = e.target.value;
+            <div style="border: 1px solid #ff00de; padding: 10px; border-radius: 15px; text-align: center;">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #ff00de;">
+                    <span id="curB">00:00</span><span id="remB">-00:00</span>
+                </div>
+                <canvas id="canvasB" style="width: 100%; height: 50px; background: #111; margin: 5px 0;"></canvas>
 
-                // Sync UI
-                function updateUI(aud, curID, remID, seekID) {{
-                    aud.ontimeupdate = () => {{
-                        const cur = aud.currentTime;
-                        const dur = aud.duration;
-                        document.getElementById(seekID).value = (cur/dur)*100 || 0;
-                        
-                        let cM = Math.floor(cur/60), cS = Math.floor(cur%60);
-                        document.getElementById(curID).innerText = (cM<10?'0'+cM:cM)+":"+(cS<10?'0'+cS:cS);
-                        
-                        let r = dur - cur;
-                        if(!isNaN(r)) {{
-                            let rM = Math.floor(r/60), rS = Math.floor(r%60);
-                            document.getElementById(remID).innerText = "-"+(rM<10?'0'+rM:rM)+":"+(rS<10?'0'+rS:rS);
-                        }}
-                    }};
-                }}
-                updateUI(audA, 'curA', 'remA', 'seekA');
-                updateUI(audB, 'curB', 'remB', 'seekB');
-
-                // 10s CROSSFADE LOGIC
-                function autoFade() {{
-                    let steps = 100; // 10 วินาที แบ่งเป็น 100 ขั้น
-                    let interval = 100; // ทุกๆ 0.1 วินาที
-                    let volStep = 1 / steps;
-                    
-                    audB.volume = 0;
-                    audB.play();
-                    
-                    let count = 0;
-                    let fade = setInterval(() => {{
-                        if (count >= steps) {{
-                            clearInterval(fade);
-                            audA.pause();
-                        }} else {{
-                            if (audA.volume > volStep) audA.volume -= volStep;
-                            if (audB.volume < (1 - volStep)) audB.volume += volStep;
-                            count++;
-                        }}
-                    }}, interval);
-                }}
-            </script>
+                <input type="range" id="volB" min="0" max="1" step="0.01" value="0.7" style="width: 100%; accent-color: #ff00de;">
+                <div style="margin-top: 10px;">
+                    <button onclick="play('B')" style="background:#ff00de; border:none; padding:5px 15px; border-radius:5px; color:white;">PLAY</button>
+                    <button onclick="pause('B')" style="background:none; border:1px solid #ff00de; color:#ff00de; padding:5px 15px; border-radius:5px;">PAUSE</button>
+                </div>
+            </div>
         </div>
-        """
-        st.components.v1.html(mixer_html, height=600)
 
-    # รายชื่อเพลงบอกด้านล่าง
-    st.write("---")
-    st.markdown("#### 🎵 รายชื่อเพลงที่มีในคลัง (GitHub Root)")
-    for i, s in enumerate(all_songs):
-        st.caption(f"{i+1}. {s}")
+        <button onclick="autoFade()" style="width:100%; margin-top:15px; background: linear-gradient(90deg, #00f3ff, #ff00de); border:none; padding:10px; border-radius:10px; color:white; font-weight:bold;">🔄 10s AUTO CROSSFADE</button>
 
-                                    
+        <audio id="audioA" src="data:audio/mp3;base64,{data_a}" crossorigin="anonymous"></audio>
+        <audio id="audioB" src="data:audio/mp3;base64,{data_b}" crossorigin="anonymous"></audio>
+
+        <script>
+            const audA = document.getElementById('audioA');
+            const audB = document.getElementById('audioB');
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            function setupVisualizer(audioElem, canvasID, color) {{
+                const src = ctx.createMediaElementSource(audioElem);
+                const analyzer = ctx.createAnalyser();
+                const canvas = document.getElementById(canvasID);
+                const canvasCtx = canvas.getContext("2d");
+
+                src.connect(analyzer);
+                analyzer.connect(ctx.destination);
+                analyzer.fftSize = 512; // ความละเอียดตามที่ขอ
+
+                const bufferLength = analyzer.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+
+                function draw() {{
+                    requestAnimationFrame(draw);
+                    analyzer.getByteFrequencyData(dataArray);
+                    canvasCtx.fillStyle = "#111";
+                    canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    const barWidth = (canvas.width / bufferLength) * 2.5;
+                    let barHeight;
+                    let x = 0;
+
+                    for(let i = 0; i < bufferLength; i++) {{
+                        barHeight = dataArray[i] / 2;
+                        canvasCtx.fillStyle = color;
+                        canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                        x += barWidth + 1;
+                    }}
+                }}
+                draw();
+            }}
+
+            let setupA = false, setupB = false;
+            function play(deck) {{
+                if (ctx.state === 'suspended') ctx.resume();
+                if (deck === 'A') {{
+                    if(!setupA) {{ setupVisualizer(audA, 'canvasA', '#00f3ff'); setupA = true; }}
+                    audA.play();
+                }} else {{
+                    if(!setupB) {{ setupVisualizer(audB, 'canvasB', '#ff00de'); setupB = true; }}
+                    audB.play();
+                }}
+            }}
+            function pause(deck) {{ deck === 'A' ? audA.pause() : audB.pause(); }}
+
+            // ระบบเวลาถอยหลัง
+            function updateTime(aud, curID, remID) {{
+                aud.ontimeupdate = () => {{
+                    let cM = Math.floor(aud.currentTime/60), cS = Math.floor(aud.currentTime%60);
+                    document.getElementById(curID).innerText = (cM<10?'0'+cM:cM)+":"+(cS<10?'0'+cS:cS);
+                    let r = aud.duration - aud.currentTime;
+                    if(!isNaN(r)) {{
+                        let rM = Math.floor(r/60), rS = Math.floor(r%60);
+                        document.getElementById(remID).innerText = "-"+(rM<10?'0'+rM:rM)+":"+(rS<10?'0'+rS:rS);
+                    }}
+                }};
+            }}
+            updateTime(audA, 'curA', 'remA');
+            updateTime(audB, 'curB', 'remB');
+
+            function autoFade() {{
+                let steps = 100, interval = 100, volStep = 1/steps;
+                audB.volume = 0; audB.play();
+                if(!setupB) {{ setupVisualizer(audB, 'canvasB', '#ff00de'); setupB = true; }}
+                let count = 0;
+                let fade = setInterval(() => {{
+                    if (count >= steps) {{ clearInterval(fade); audA.pause(); }}
+                    else {{ 
+                        if (audA.volume > volStep) audA.volume -= volStep;
+                        if (audB.volume < 1-volStep) audB.volume += volStep;
+                        count++;
+                    }}
+                }}, interval);
+            }}
+        </script>
+    </div>
+    """
+    st.components.v1.html(mixer_html, height=550)
+                        
  
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Studio v.1")
 elif st.session_state.page == "2":
