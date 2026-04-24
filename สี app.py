@@ -33,34 +33,42 @@ if 'page' not in st.session_state:
 
 # 3. GLOBAL CSS & LOGO (แสดงผลทุกหน้า)
 logo_base64 = get_base64_data("logo1.png")
+# แก้ไขส่วน :root ใน Style ของคุณต๊ะให้เป็นแบบนี้
 st.markdown(f"""
     <style>
     :root {{
         --primary: {st.session_state.main_color};
         --secondary: {st.session_state.sub_color};
+        --glow: {st.session_state.get('bg_glow', '#00f3ff')};
     }}
-    .stApp {{ background-color: #000000; color: white; }}
-    .global-logo {{
-        position: fixed; 
-        top: 10px; 
-        right: 20px; 
-        width: 60px; 
-        z-index: 9999;
-        filter: drop-shadow(0 0 10px var(--primary));
-        animation: pulse 2s infinite alternate;
+
+    /* ทุกปุ่มในทุกห้องจะเปลี่ยนตาม */
+    .stButton>button {{
+        border: 1px solid var(--primary) !important;
+        background: rgba(0,0,0,0.2) !important;
+        color: white !important;
+        box-shadow: 0 0 5px var(--primary);
     }}
-    @keyframes pulse {{
-        from {{ transform: scale(1); filter: drop-shadow(0 0 5px var(--primary)); }}
-        to {{ transform: scale(1.1); filter: drop-shadow(0 0 15px var(--secondary)); }}
+    
+    .stButton>button:hover {{
+        border-color: var(--secondary) !important;
+        box-shadow: 0 0 20px var(--secondary) !important;
     }}
+
+    /* หัวข้อทุกห้องจะเรืองแสงตามสีที่เลือก */
     .neon-text {{
-        color: var(--primary);
-        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary);
-        font-family: 'Orbitron', sans-serif;
+        color: var(--primary) !important;
+        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary) !important;
+    }}
+    
+    /* ขอบหน้าจอแอป */
+    .stApp {{
+        border: 2px solid var(--primary);
+        transition: all 0.8s ease;
     }}
     </style>
-    <img src="data:image/png;base64,{logo_base64}" class="global-logo">
 """, unsafe_allow_html=True)
+
 
 # 4. SIDEBAR: ระบบเปลี่ยนสีและเพลงพื้นหลัง (เพื่อให้เพลงเล่นต่อเนื่อง)
 with st.sidebar:
