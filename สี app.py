@@ -179,105 +179,101 @@ if st.session_state.page == "HOME":
         st.caption("ความสามารถ: เปลี่ยนสีสันของ Interface เพื่อความสวยงามตามใจชอบ")
 
 # --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
+
 elif st.session_state.page == "1":
-    import base64
-    import os
-
-    # 1. ฟังก์ชันดึงรูป/เสียง เป็น Base64
-    def get_base64_data(file_path):
-        try:
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-        except: return ""
-
-    logo_b64 = get_base64_data("logo1.png")
+    st.markdown("<h2 class='neon-text'>🎵 SYNAPSE ADVANCED PLAYER</h2>", unsafe_allow_html=True)
     
-    # ดึงเพลงชื่อ 1.mp3 มาเตรียมไว้ (ถ้ามี)
-    audio_b64 = get_base64_data("1.mp3")
-
-    # 2. CSS ปรับแต่งหน้าจอ (คงความเท่ของโลโก้กระพริบไว้)
-    st.markdown(f"""
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    # 1. ส่วนอัปโหลดไฟล์
+    uploaded_file = st.file_uploader("เลือกไฟล์เพลง (MP3)", type=['mp3'])
+    
+    if uploaded_file:
+        # แปลงไฟล์เป็น Base64 เพื่อให้ JavaScript เล่นได้
+        audio_bytes = uploaded_file.read()
+        b64_audio = base64.b64encode(audio_bytes).decode()
         
-        header, footer, #MainMenu {{visibility: hidden;}}
-        .stApp {{ background-color: #000000; }}
-
-        .logo-center {{
-            display: block;
-            margin: 0 auto;
-            width: 80px; height: 80px;
-            background-image: url("data:image/png;base64,{logo_b64}");
-            background-size: contain; background-repeat: no-repeat;
-            filter: drop-shadow(0 0 10px #ff00de);
-            animation: logo-pulsing 2s infinite alternate;
-        }}
-        @keyframes logo-pulsing {{
-            from {{ filter: drop-shadow(0 0 5px #ff00de); transform: scale(1); }}
-            to {{ filter: drop-shadow(0 0 20px #00f3ff); transform: scale(1.1); }}
-        }}
-
-        .neon-title-main {{
-            font-family: 'Orbitron', sans-serif;
-            color: #fff; text-align: center;
-            text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
-            font-size: 1.5rem; margin: 15px 0;
-        }}
-        </style>
-        <div class="logo-center"></div>
-        <h1 class="neon-title-main">SYNAPSE AUDIO UNIT</h1>
-    """, unsafe_allow_html=True)
-
-    # 3. ตรวจสอบว่ามีเพลงไหม ถ้ามีให้แสดงเครื่องเล่นตัวใหม่
-    if audio_b64:
+        # 2. อินเตอร์เฟซเครื่องเล่นเพลง (HTML + JS)
         player_html = f"""
-        <div style="background: rgba(15,15,15,0.95); border: 2px solid #00f3ff; border-radius: 20px; padding: 25px; text-align: center; font-family: 'Orbitron', sans-serif; box-shadow: 0 0 20px rgba(0,243,255,0.3); max-width: 500px; margin: 0 auto;">
+        <div style="background: rgba(20,20,20,0.95); border: 2px solid #00f3ff; border-radius: 20px; padding: 25px; text-align: center; font-family: 'Orbitron', sans-serif;">
             
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; color: #00f3ff; font-size: 14px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; color: #00f3ff;">
                 <div id="current-time">00:00</div>
                 <div id="remaining-time" style="color: #ff00de;">-00:00</div>
             </div>
 
-            <input type="range" id="seek-bar" value="0" style="width: 100%; cursor: pointer; accent-color: #00f3ff; margin-bottom: 25px;">
+            <input type="range" id="seek-bar" value="0" style="width: 100%; cursor: pointer; accent-color: #00f3ff; margin-bottom: 20px;">
 
-            <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 25px;">
-                <button onclick="document.getElementById('myAudio').play()" style="background: #00f3ff; border: none; color: #000; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-weight: bold; font-family: 'Orbitron';">▶ PLAY</button>
-                <button onclick="document.getElementById('myAudio').pause()" style="background: none; border: 1px solid #ff00de; color: #ff00de; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-family: 'Orbitron';">⏸ PAUSE</button>
+            <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;">
+                <button onclick="playAudio()" style="background: none; border: 1px solid #00f3ff; color: #00f3ff; padding: 10px 30px; border-radius: 10px; cursor: pointer;">▶ PLAY</button>
+                <button onclick="pauseAudio()" style="background: none; border: 1px solid #ff00de; color: #ff00de; padding: 10px 30px; border-radius: 10px; cursor: pointer;">⏸ PAUSE</button>
             </div>
 
-            <div style="color: #888; font-size: 11px; margin-bottom: 8px;">VOLUME CONTROL</div>
-            <input type="range" id="volume-bar" min="0" max="1" step="0.01" value="0.7" style="width: 80%; accent-color: #ff00de; cursor: pointer;">
+            <div style="color: #eee; font-size: 12px; margin-bottom: 5px;">VOLUME CONTROL</div>
+            <input type="range" id="volume-bar" min="0" max="1" step="0.01" value="0.5" style="width: 60%; accent-color: #ff00de; cursor: pointer;">
 
-            <audio id="myAudio" autoplay><source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3"></audio>
+            <audio id="myAudio">
+                <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
+            </audio>
 
             <script>
                 const audio = document.getElementById("myAudio");
                 const seekBar = document.getElementById("seek-bar");
                 const volBar = document.getElementById("volume-bar");
+                const curTimeTxt = document.getElementById("current-time");
+                const remTimeTxt = document.getElementById("remaining-time");
 
-                volBar.addEventListener("input", () => {{ audio.volume = volBar.value; }});
+                // เล่นเพลงอัตโนมัติเมื่อโหลด (ถ้า Browser ยอมรับ)
+                window.onload = () => {{
+                    audio.volume = 0.5;
+                    audio.play().catch(() => console.log("Auto-play blocked by browser"));
+                }};
 
+                function playAudio() {{ audio.play(); }}
+                function pauseAudio() {{ audio.pause(); }}
+
+                // ปรับระดับเสียง
+                volBar.addEventListener("input", () => {{
+                    audio.volume = volBar.value;
+                }});
+
+                // อัปเดตเวลาและ Progress Bar
                 audio.addEventListener("timeupdate", () => {{
-                    seekBar.value = (audio.currentTime / audio.duration) * 100 || 0;
-                    let cM = Math.floor(audio.currentTime/60), cS = Math.floor(audio.currentTime%60);
-                    document.getElementById("current-time").innerText = (cM<10?'0'+cM:cM)+":"+(cS<10?'0'+cS:cS);
-                    let r = audio.duration - audio.currentTime;
-                    if(!isNaN(r)) {{
-                        let rM = Math.floor(r/60), rS = Math.floor(r%60);
-                        document.getElementById("remaining-time").innerText = "-"+(rM<10?'0'+rM:rM)+":"+(rS<10?'0'+rS:rS);
+                    // แถบเลื่อน
+                    const val = (audio.currentTime / audio.duration) * 100;
+                    seekBar.value = val || 0;
+
+                    // คำนวณเวลาเดินหน้า
+                    let curM = Math.floor(audio.currentTime / 60);
+                    let curS = Math.floor(audio.currentTime % 60);
+                    curTimeTxt.innerText = (curM < 10 ? "0"+curM : curM) + ":" + (curS < 10 ? "0"+curS : curS);
+
+                    // คำนวณเวลาถอยหลัง (Remaining)
+                    let rem = audio.duration - audio.currentTime;
+                    if(!isNaN(rem)) {{
+                        let remM = Math.floor(rem / 60);
+                        let remS = Math.floor(rem % 60);
+                        remTimeTxt.innerText = "-" + (remM < 10 ? "0"+remM : remM) + ":" + (remS < 10 ? "0"+remS : remS);
                     }}
                 }});
-                seekBar.addEventListener("input", () => {{ audio.currentTime = (seekBar.value/100)*audio.duration; }});
+
+                // เลื่อนเพลงเองตามแถบ Progress
+                seekBar.addEventListener("input", () => {{
+                    const time = (seekBar.value / 100) * audio.duration;
+                    audio.currentTime = time;
+                }});
             </script>
         </div>
         """
-        st.components.v1.html(player_html, height=450)
+        components.html(player_html, height=400)
     else:
-        st.warning("⚠️ ไม่พบไฟล์ '1.mp3' ในระบบ กรุณาตรวจสอบการอัปโหลดไฟล์")
+        st.info("💡 กรุณาอัปโหลดไฟล์ .mp3 เพื่อใช้งานเครื่องเล่นเพลงระบบสัมผัส")
 
-    # คลังเพลงเพิ่มเติม (ข้างล่าง)
+    # ส่วนคลังเพลงเดิม (แสดงลิสต์)
     st.write("---")
-    st.caption("ระบบดึงข้อมูลเสียงอัตโนมัติ | Synapse Unit v.2")
+    st.markdown("<h4 style='text-align:center;'>📂 LOCAL PLAYLIST</h4>", unsafe_allow_html=True)
+    songs = [f for f in os.listdir('.') if f.endswith('.mp3')]
+    for s in songs:
+        st.button(f"🎵 {s}", use_container_width=True)
+
                 
     
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Studio v.1")
