@@ -12,6 +12,62 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 import hashlib
+
+# --- 1. SETUP SESSION STATE (เก็บค่าสีและสถานะเพลง) ---
+if 'main_color' not in st.session_state:
+    st.session_state.main_color = "#00f3ff"  # สีเริ่มต้น (ฟ้า)
+if 'sub_color' not in st.session_state:
+    st.session_state.sub_color = "#ff00de"   # สีรอง (ชมพู)
+
+# --- 2. GLOBAL CSS (คุมสีทุกหน้า) ---
+st.markdown(f"""
+    <style>
+    :root {{
+        --primary: {st.session_state.main_color};
+        --secondary: {st.session_state.sub_color};
+    }}
+    .stApp {{ background-color: #000; }}
+    .neon-text {{
+        color: var(--primary);
+        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary);
+        font-family: 'Orbitron'; text-align: center;
+    }}
+    /* โลโก้คงที่ทุกหน้า */
+    .global-logo {{
+        position: fixed; top: 10px; right: 20px; width: 50px; z-index: 1000;
+        filter: drop-shadow(0 0 5px var(--primary));
+    }}
+    </style>
+    <img src="data:image/png;base64,{get_base64_data('logo1.png')}" class="global-logo">
+""", unsafe_allow_html=True)
+
+# --- 3. GLOBAL AUDIO PLAYER (ทำให้เพลงไม่ดับ) ---
+# ดึงเพลงจาก GitHub Root มาเตรียมไว้
+all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
+# ส่วนนี้จะซ่อนตัวเล่นไว้ข้างหลัง (Background) เพื่อให้เพลงไหลต่อเนื่อง
+st.sidebar.markdown("### 🎚 GLOBAL CONTROL")
+selected_bg_music = st.sidebar.selectbox("เลือกเพลงพื้นหลัง", ["None"] + all_songs)
+
+if selected_bg_music != "None":
+    audio_data = get_base64_data(selected_bg_music)
+    st.sidebar.markdown(f"""
+        <audio id="bgAudio" autoplay loop controls style="width: 100%; height: 30px;">
+            <source src="data:audio/mp3;base64,{audio_data}" type="audio/mp3">
+        </audio>
+    """, unsafe_allow_html=True)
+
+# --- 4. หน้าตั้งค่าสี (เปลี่ยนแล้วเปลี่ยนเลยทุกหน้า) ---
+with st.sidebar.expander("🎨 THEME CUSTOMIZE"):
+    st.session_state.main_color = st.color_picker("สีหลัก (Neon 1)", st.session_state.main_color)
+    st.session_state.sub_color = st.color_picker("สีรอง (Neon 2)", st.session_state.sub_color)
+    if st.button("RESET COLOR"):
+        st.session_state.main_color = "#00f3ff"
+        st.session_state.sub_color = "#ff00de"
+        st.rerun()
+
+# --- 5. การจัดการหน้า (Navigation) ---
+# (โค้ดส่วน elif st.session_state.page == "1" ... ของเดิมของคุณต๊ะ)
+
 # --- วางไว้บนสุดหลัง import ---
 def get_base64_data(file_path):
     import base64
