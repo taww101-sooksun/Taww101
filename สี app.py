@@ -11,143 +11,99 @@ from streamlit_folium import st_folium
 from math import radians, cos, sin, asin, sqrt
 import pytz
 from timezonefinder import TimezoneFinder
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import math
 import random
+import hashlib
+import pandas as pd
 from streamlit_js_eval import get_geolocation 
-# 1. ฟังก์ชั่นดึงข้อมูล (สีแดงบนสุด)
+
+# =================================================================
+# 1. SETUP สูงสุด (ต้องอยู่บรรทัดแรกสุดของไฟล์เท่านั้น!)
+# =================================================================
+st.set_page_config(
+    page_title="SYNAPSE ULTIMATE", 
+    layout="wide", 
+    initial_sidebar_state="expanded"
+)
+
+# =================================================================
+# 2. ระบบจัดการสถานะสี (Global State)
+# =================================================================
+if 'main_color' not in st.session_state: st.session_state.main_color = "#00f3ff"
+if 'sub_color' not in st.session_state: st.session_state.sub_color = "#ff00de"
+if 'bg_glow' not in st.session_state: st.session_state.bg_glow = "#0015ff"
+if 'page' not in st.session_state: st.session_state.page = "HOME"
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+
+# =================================================================
+# 3. GLOBAL CSS: ลบติ่ง + เชื่อมสีทุกห้อง (ROOT)
+# =================================================================
+st.markdown(f"""
+    <style>
+    /* --- ลบติ่งและส่วนเกินของ Streamlit --- */
+    header, footer, #MainMenu {{visibility: hidden !important; height: 0px !important;}}
+    .stDeployButton {{display: none !important;}}
+    [data-testid="stStatusWidget"] {{visibility: hidden !important;}}
+    
+    /* ปรับระยะขอบให้เต็มจอ */
+    .block-container {{
+        padding-top: 1rem !important;
+        padding-bottom: 0rem !important;
+        max-width: 95% !important;
+    }}
+
+    /* --- ระบบสีกลาง (CSS Variables) --- */
+    :root {{
+        --primary: {st.session_state.main_color};
+        --secondary: {st.session_state.sub_color};
+        --glow: {st.session_state.bg_glow};
+    }}
+
+    /* บังคับสีพื้นหลังและขอบแอป */
+    .stApp {{
+        background-color: #000 !important;
+        color: white !important;
+        border: 2px solid var(--primary);
+        transition: border 0.5s ease;
+    }}
+
+    /* บังคับสีปุ่มทุกปุ่มในทุกห้อง */
+    .stButton>button {{
+        border: 1px solid var(--primary) !important;
+        background: rgba(0,0,0,0.3) !important;
+        color: white !important;
+        box-shadow: 0 0 10px var(--primary);
+        transition: 0.3s;
+        border-radius: 10px !important;
+    }}
+    .stButton>button:hover {{
+        border-color: var(--secondary) !important;
+        box-shadow: 0 0 20px var(--secondary) !important;
+        transform: scale(1.02);
+    }}
+
+    /* หัวข้อเรืองแสง (ใช้ class='neon-text' ในทุกห้อง) */
+    .neon-text {{
+        color: var(--primary) !important;
+        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary) !important;
+        text-align: center;
+        font-weight: bold;
+    }}
+    </style>
+""", unsafe_allow_html=True)
+
+# =================================================================
+# 4. ฟังก์ชันเสริม (Base64 & ลอจิกดวง)
+# =================================================================
 def get_base64_data(file_path):
     try:
         if os.path.exists(file_path):
             with open(file_path, "rb") as f:
                 return base64.b64encode(f.read()).decode()
         return ""
-    except Exception:
-        return ""
+    except: return ""
 
-
-#2.ตั้งค่าสีและสถานะเริ่มต้น
-# --- ตรวจสอบสถานะสีและหน้าจอ (ห้ามมีภาษาไทยในคำสั่ง) ---
-if 'main_color' not in st.session_state:
-    st.session_state.main_color = "#00f3ff"
-
-if 'sub_color' not in st.session_state:
-    st.session_state.sub_color = "#ff00de"
-
-if 'page' not in st.session_state:
-    st.session_state.page = "HOME"
-
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-
-#การแสดงส่วน :root ใน Style ของคุณต๊ะให้เป็นเช่นนั้น
-# --- ส่วนนี้คือตัวคุมโลโก้ให้แสดงทุกหน้า ---
-logo_b64 = get_base64_data("logo1.png") # ดึงไฟล์รูปโลโก้
-
-st.markdown(f"""
-    <style>
-    /* ตั้งค่าให้โลโก้อยู่กับที่ (Fixed) ไม่ว่าจะเลื่อนไปหน้าไหน */
-    .global-logo {{
-        position: fixed; 
-        top: 15px;      /* ระยะห่างจากขอบบน */
-        right: 25px;    /* ระยะห่างจากขอบขวา */
-        width: 65px;    /* ขนาดความกว้างโลโก้ */
-        z-index: 10000; /* ตั้งค่าให้อยู่ชั้นบนสุดของทุกอย่าง */
-        filter: drop-shadow(0 0 10px var(--primary)); /* ใส่แสงเรืองแสงตามสีหลัก */
-        animation: pulse 2s infinite alternate; /* ใส่เอฟเฟกต์เต้นตุบๆ */
-    }}
-    
-    @keyframes pulse {{ 
-        from {{ transform: scale(1); }} 
-        to {{ transform: scale(1.1); }} 
-    }}
-    </style>
-    
-    <img src="data:image/png;base64,{logo_b64}" class="global-logo">
-""", unsafe_allow_html=True)
-# แก้ไขส่วน :root ใน Style ของคุณต๊ะให้เป็นแบบนี้
-st.markdown(f"""
-    <style>
-    :root {{
-        --primary: {st.session_state.main_color};
-        --secondary: {st.session_state.sub_color};
-        --glow: {st.session_state.get('bg_glow', '#00f3ff')};
-    }}
-
-    /* ทุกปุ่มในทุกห้องจะเปลี่ยนตาม */
-    .stButton>button {{
-        border: 1px solid var(--primary) !important;
-        background: rgba(0,0,0,0.2) !important;
-        color: white !important;
-        box-shadow: 0 0 5px var(--primary);
-    }}
-    
-    .stButton>button:hover {{
-        border-color: var(--secondary) !important;
-        box-shadow: 0 0 20px var(--secondary) !important;
-    }}
-
-    /* หัวข้อทุกห้องจะเรืองแสงตามสีที่เลือก */
-    .neon-text {{
-        color: var(--primary) !important;
-        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary) !important;
-    }}
-    
-    /* ขอบหน้าจอแอป */
-    .stApp {{
-        border: 2px solid var(--primary);
-        transition: all 0.8s ease;
-    }}
-    </style>
-""", unsafe_allow_html=True)
-st.markdown("""
-    <style>
-    /* 1. เอาติ่งข้างล่าง (Footer) ออก */
-    footer {visibility: hidden;}
-    
-    /* 2. เอาแถบเมนู (Header) ข้างบนออก */
-    header {visibility: hidden;}
-    
-    /* 3. เอาปุ่มจุดสามจุด (MainMenu) ออก */
-    #MainMenu {visibility: hidden;}
-    
-    /* แถม: ปรับระยะขอบใหม่ให้เต็มจอหลังจากเอาติ่งออก */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 0rem;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-
-# 4. SIDEBAR: ระบบเปลี่ยนสีและเพลงพื้นหลัง (เพื่อให้เพลงเล่นต่อเนื่อง)
-with st.sidebar:
-    st.markdown("<h2 class='neon-text'>CONTROL PANEL</h2>", unsafe_allow_html=True)
-    
-    # ส่วนเปลี่ยนสี
-    with st.expander("🎨 THEME COLORS"):
-        st.session_state.main_color = st.color_picker("Main Neon", st.session_state.main_color)
-        st.session_state.sub_color = st.color_picker("Sub Neon", st.session_state.sub_color)
-    
-    # ส่วนเพลงพื้นหลัง (เล่นต่อเนื่องทุกหน้า)
-    all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
-    selected_bg = st.selectbox("🎵 Background Music", ["Off"] + all_songs)
-    
-    if selected_bg != "Off":
-        bg_audio_data = get_base64_data(selected_bg)
-        st.markdown(f"""
-            <audio id="bgAudio" autoplay loop controls style="width: 100%; height: 40px; margin-top:10px;">
-                <source src="data:audio/mp3;base64,{bg_audio_data}" type="audio/mp3">
-            </audio>
-        """, unsafe_allow_html=True)
-
-# --- 5. การจัดการหน้า (Navigation) เริ่มต่อจากตรงนี้ ---
-# if st.session_state.page == "HOME":
-# elif st.session_state.page == "1":
-
-
-
-# --- [ หัวใจคำนวณ: ระบบถอดรหัส Lunar ] ---
 def get_detailed_logic(dt):
     if dt is None: return None
     ref_date = date(1900, 1, 1)
@@ -157,7 +113,6 @@ def get_detailed_logic(dt):
     day_val = dt.weekday() + 1
     day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
     day_name = day_names[dt.weekday()]
-
     if pos <= 14.765:
         m_num = int(pos) + 1
         phase = f"ขึ้น {m_num} ค่ำ"
@@ -168,150 +123,76 @@ def get_detailed_logic(dt):
         phase = f"แรม {m_num} ค่ำ"
         res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
         formula, logic_type = f"({day_val} × 1.618) / {m_num}", "Golden Ratio"
-
     return {"res": round(res, 4), "phase": phase, "day_name": day_name, "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type}
-# --- ตั้งค่าหน้าจอ ---
-st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
-# --- 1. SETUP & ลบติ่ง (อยู่นิ่งๆ ไม่เจ็บตัว) ---
-st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
-# --- ส่วนหน้าจอลงชื่อเข้าใช้ (Login / Register) ---
-if not st.session_state.get('logged_in', False):
-    st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>REGISTER AGENT</h2>", unsafe_allow_html=True)
-    
-    with st.container():
-        new_user = st.text_input("ENTER AGENT NAME", placeholder="เช่น ต๊ะ101, บาส").strip()
-        
-        if st.button("ACTIVATE SYSTEM", use_container_width=True):
-            if new_user:
-                # 1. เช็ค/ลงทะเบียนใน Firebase (โค้ดเดิมของเพื่อน)
-                user_check = db.reference(f'users/{new_user}').get()
-                
-                if not user_check:
-                    db.reference(f'users/{new_user}').set({
-                        'created_at': time.time(),
-                        'lat': 13.7367,
-                        'lon': 100.5231
-                    })
-                
-                # 2. จุดสำคัญ: สั่งให้ระบบ "จดจำ" ข้อมูลลงใน Session
-                st.session_state.user = new_user        # จำชื่อรหัส
-                st.session_state.logged_in = True     # เปลี่ยนสถานะเป็นล็อกอินแล้ว
-                st.session_state.page = "HOME"         # สั่งให้ไปหน้าหลัก (HOME) ทันที
+# =================================================================
+# 5. SIDEBAR & LOGO
+# =================================================================
+logo_b64 = get_base64_data("logo1.png")
+st.markdown(f'<img src="data:image/png;base64,{logo_b64}" style="position:fixed; top:10px; right:10px; width:60px; z-index:10001; filter:drop-shadow(0 0 10px var(--primary));">', unsafe_allow_html=True)
 
-                # 3. แสดงผลความสำเร็จและรีโหลดแอป
-                st.success(f"WELCOME AGENT: {new_user}")
-                st.balloons()
-                time.sleep(1.5) # หน่วงเวลาให้เห็นความสำเร็จนิดนึง
-                st.rerun()      # รีเฟรชแอปเพื่อเข้าหน้าหลักด้วยชื่อใหม่ทันที
-            else:
-                st.warning("กรุณาใส่ชื่อ AGENT ของคุณก่อน!")
-    st.stop() 
-
-def setup_ui():
-    st.markdown("""
-        <style>
-        /* ลบ Header, Footer และเมนูเดิมของ Streamlit */
-        header, footer, #MainMenu {visibility: hidden;}
-        .stApp { background: #000; color: #00f2fe; }
-        
-        /* สไตล์ปุ่มเมนู */
-        .stButton>button {
-            border-radius: 15px;
-            border: 1px solid #00f2fe;
-            background: rgba(0, 242, 254, 0.1);
-            color: white;
-            height: 100px;
-            font-size: 18px;
-            transition: 0.3s;
-        }
-        .stButton>button:hover {
-            background: #00f2fe;
-            color: #000;
-            box-shadow: 0 0 20px #00f2fe;
-        }
-        
-        /* ตัวหนังสือวิ้ง */
-        .neon-text {
-            text-align: center;
-            color: #fff;
-            text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe;
-            font-weight: bold;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-setup_ui()
-
-# --- 2. การจัดการหน้าจอ (Navigation) ---
-if 'page' not in st.session_state:
-    st.session_state.page = "HOME"
-
-# ฟังก์ชันย้อนกลับ
-if st.session_state.page != "HOME":
-    if st.button("⬅️ กลับหน้าหลัก"):
+with st.sidebar:
+    st.markdown("<h2 class='neon-text'>CONTROL</h2>", unsafe_allow_html=True)
+    if st.button("🏠 กลับหน้าหลัก (HOME)", use_container_width=True):
         st.session_state.page = "HOME"
         st.rerun()
+    with st.expander("🎨 ปรับสีด่วน"):
+        st.session_state.main_color = st.color_picker("สีหลัก", st.session_state.main_color)
+        st.session_state.sub_color = st.color_picker("สีรอง", st.session_state.sub_color)
 
-# --- 3. เนื้อหาแต่ละหน้า ---
+# =================================================================
+# 6. ระบบ LOGIN
+# =================================================================
+if not st.session_state.logged_in:
+    st.markdown("<h2 class='neon-text'>REGISTER AGENT</h2>", unsafe_allow_html=True)
+    new_user = st.text_input("ENTER AGENT NAME").strip()
+    if st.button("ACTIVATE SYSTEM", use_container_width=True):
+        if new_user:
+            st.session_state.user = new_user
+            st.session_state.logged_in = True
+            st.session_state.page = "HOME"
+            st.rerun()
+    st.stop()
 
-# [ หน้าแรก: ศูนย์รวม 10 แอป ]
+# =================================================================
+# 7. MAIN NAVIGATION (จัดการห้องต่างๆ)
+# =================================================================
+
+# [ หน้า HOME ]
 if st.session_state.page == "HOME":
-    # วาง LOGO แทนที่ติ่ง
-    col_l, col_m, col_r = st.columns([1, 2, 1])
-    with col_m:
-        if os.path.exists("logo1.png"):
-            st.image("logo1.png", use_container_width=True)
-        else:
-            st.markdown("<h1 class='neon-text'>SYNAPSE</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='neon-text'>SYNAPSE HUB</h1>", unsafe_allow_html=True)
+    st.write("---")
     
-    st.markdown("<h3 style='text-align: center;'>ศูนย์ควบคุมระบบ: เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
-    st.divider()
-
-    # สร้าง Grid 10 แอป (แบ่งเป็น 2 คอลัมน์)
+    # Grid 10 แอป
     c1, c2 = st.columns(2)
-
     with c1:
-        if st.button("🎵 1. MUSIC PLAYER\nฟังเพลง MP3 จากคลังข้อมูล", use_container_width=True):
-            st.session_state.page = "1"; st.rerun()
-        st.caption("ความสามารถ: เล่นไฟล์เสียง 1.mp3 และระบบควบคุมเสียงผ่านหน้าเว็บ")
-
-        if st.button("🖼️ 2. IMAGE SEARCH\nค้นหาภาพจากดาวเทียม", use_container_width=True):
-            st.session_state.page = "3"; st.rerun()
-        st.caption("ความสามารถ: ดึงรูปภาพจากคลัง Unsplash ตามคำค้นหาที่ต้องการ")
-
-        if st.button("✨ 3. NEON GENERATOR\nสร้างตัวอักษรเรืองแสง", use_container_width=True):
-            st.session_state.page = "5"; st.rerun()
-        st.caption("ความสามารถ: แปลงข้อความธรรมดาให้เป็นศิลปะนีออนวิ้งๆ")
-
-        if st.button("💖 4. DESTINY CHECK\nตรวจดวงชะตาคู่ขนาน", use_container_width=True):
-            st.session_state.page = "7"; st.rerun()
-        st.caption("ความสามารถ: วิเคราะห์ดวงชะตาในมิติที่ 4 ผ่านระบบฐานข้อมูลชื่อ")
-
-        if st.button("📝 5. SYSTEM LOG\nบันทึกข้อมูลการใช้งาน", use_container_width=True):
-            st.session_state.page = "9"; st.rerun()
-        st.caption("ความสามารถ: จดบันทึกข้อความและเหตุการณ์สำคัญลงในหน่วยความจำ")
-
+        if st.button("🎵 1. MUSIC PLAYER", use_container_width=True): st.session_state.page = "1"; st.rerun()
+        if st.button("💬 2. CHAT & RADAR", use_container_width=True): st.session_state.page = "2"; st.rerun()
+        if st.button("📅 3. LUNAR DECODER", use_container_width=True): st.session_state.page = "3"; st.rerun()
+        if st.button("🔍 4. PARALLEL SCAN", use_container_width=True): st.session_state.page = "4"; st.rerun()
+        if st.button("🔮 5. DESTINY TIMELINE", use_container_width=True): st.session_state.page = "5"; st.rerun()
     with c2:
-        if st.button("💬 6. CHAT SYSTEM\nระบบสื่อสารอัจฉริยะ", use_container_width=True):
-            st.session_state.page = "2"; st.rerun()
-        st.caption("ความสามารถ: โต้ตอบผ่านข้อความกับระบบจัดการ AI")
+        if st.button("⚡ 6. VIBRATION UNIT", use_container_width=True): st.session_state.page = "6"; st.rerun()
+        if st.button("💖 7. DESTINY CHECK", use_container_width=True): st.session_state.page = "7"; st.rerun()
+        if st.button("🔢 8. DAILY CODE", use_container_width=True): st.session_state.page = "8"; st.rerun()
+        if st.button("📝 9. SYSTEM LOG", use_container_width=True): st.session_state.page = "9"; st.rerun()
+        if st.button("🎨 10. COLOR MASTER", use_container_width=True): st.session_state.page = "10"; st.rerun()
 
-        if st.button("🎬 7. VIDEO HUB\nศูนย์รวมวิดีโอวงจรปิด", use_container_width=True):
-            st.session_state.page = "4"; st.rerun()
-        st.caption("ความสามารถ: เชื่อมต่อและฉายภาพวิดีโอจาก YouTube หรือ Link ตรง")
+# [ ห้องที่ 10: COLOR MASTER ]
+elif st.session_state.page == "10":
+    st.markdown("<h2 class='neon-text'>🎨 COLOR MASTER CONTROL</h2>", unsafe_allow_html=True)
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        st.session_state.main_color = st.color_picker("🔵 ปรับสีหลักทุกห้อง", st.session_state.main_color)
+    with c2:
+        st.session_state.sub_color = st.color_picker("🔴 ปรับสีรองทุกห้อง", st.session_state.sub_color)
+    
+    if st.button("🔥 UPDATE ALL DIMENSIONS", use_container_width=True):
+        st.balloons()
+        st.rerun()
 
-        if st.button("🌍 8. WORLD CLOCK\nเวลาโลกแบบเรียลไทม์", use_container_width=True):
-            st.session_state.page = "6"; st.rerun()
-        st.caption("ความสามารถ: ตรวจสอบเวลาปัจจุบันในโซนต่างๆ ทั่วโลก")
-
-        if st.button("🔢 9. DAILY CODE\nรหัสลับประจำวัน", use_container_width=True):
-            st.session_state.page = "8"; st.rerun()
-        st.caption("ความสามารถ: เจนรหัสตัวเลขนำโชคและรหัสรักษาความปลอดภัยรายวัน")
-
-        if st.button("🎨 10. COLOR MASTER\nปรับแต่งธีมสีระบบ", use_container_width=True):
-            st.session_state.page = "10"; st.rerun()
-        st.caption("ความสามารถ: เปลี่ยนสีสันของ Interface เพื่อความสวยงามตามใจชอบ")
+# (ใส่ elif ห้องอื่นๆ 1-9 ตามโค้ดเดิมของคุณต๊ะได้เลยครับ)
 
 # --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
 elif st.session_state.page == "1":
