@@ -183,133 +183,6 @@ elif st.session_state.page == "1":
     import base64
     import os
 
-    # 1. ฟังก์ชันช่วยสำหรับการแสดงผล
-    def get_base64_img(file_path):
-        try:
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-        except: return ""
-
-    logo_b64 = get_base64_img("logo1.png")
-
-    # 2. CSS ปรับแต่งหน้าจอ (Logo ตรงกลาง + สไตล์ Neon)
-    st.markdown(f"""
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        
-        header, footer, #MainMenu {{visibility: hidden;}}
-        .stApp {{ background-color: #000000; }}
-
-        /* สร้าง Logo กระพริบตรงกลางหน้า */
-        .logo-center {{
-            display: block;
-            margin: 0 auto;
-            width: 100px; height: 100px;
-            background-image: url("data:image/png;base64,{logo_b64}");
-            background-size: contain; background-repeat: no-repeat;
-            filter: drop-shadow(0 0 10px #ff00de);
-            animation: logo-pulsing 2s infinite alternate;
-            z-index: 99;
-        }}
-        @keyframes logo-pulsing {{
-            from {{ filter: drop-shadow(0 0 5px #ff00de); transform: scale(1); }}
-            to {{ filter: drop-shadow(0 0 20px #00f3ff); transform: scale(1.1); }}
-        }}
-
-        .neon-title-main {{
-            font-family: 'Orbitron', sans-serif;
-            color: #fff; text-align: center;
-            text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
-            font-size: 1.8rem; margin: 15px 0;
-        }}
-        </style>
-        <div class="logo-center"></div>
-        <h1 class="neon-title-main">SYNAPSE COMMAND CENTER</h1>
-    """, unsafe_allow_html=True)
-elif st.session_state.page == "1":
-    st.markdown("<h2 class='neon-text'>🎵 SYNAPSE ADVANCED PLAYER</h2>", unsafe_allow_html=True)
-    
-    # 1. ส่วนอัปโหลดไฟล์
-    uploaded_file = st.file_uploader("เลือกไฟล์เพลง (MP3)", type=['mp3'])
-    
-    if uploaded_file:
-        # แปลงไฟล์เป็น Base64 เพื่อให้ JavaScript เล่นได้
-        audio_bytes = uploaded_file.read()
-        b64_audio = base64.b64encode(audio_bytes).decode()
-        
-        # 2. อินเตอร์เฟซเครื่องเล่นเพลง (HTML + JS)
-        player_html = f"""
-        <div style="background: rgba(20,20,20,0.95); border: 2px solid #00f3ff; border-radius: 20px; padding: 25px; text-align: center; font-family: 'Orbitron', sans-serif;">
-            
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; color: #00f3ff;">
-                <div id="current-time">00:00</div>
-                <div id="remaining-time" style="color: #ff00de;">-00:00</div>
-            </div>
-
-            <input type="range" id="seek-bar" value="0" style="width: 100%; cursor: pointer; accent-color: #00f3ff; margin-bottom: 20px;">
-
-            <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;">
-                <button onclick="playAudio()" style="background: none; border: 1px solid #00f3ff; color: #00f3ff; padding: 10px 30px; border-radius: 10px; cursor: pointer;">▶ PLAY</button>
-                <button onclick="pauseAudio()" style="background: none; border: 1px solid #ff00de; color: #ff00de; padding: 10px 30px; border-radius: 10px; cursor: pointer;">⏸ PAUSE</button>
-            </div>
-
-            <div style="color: #eee; font-size: 12px; margin-bottom: 5px;">VOLUME CONTROL</div>
-            <input type="range" id="volume-bar" min="0" max="1" step="0.01" value="0.5" style="width: 60%; accent-color: #ff00de; cursor: pointer;">
-
-elif st.session_state.page == "1":
-    import base64
-    import os
-
-    # 1. ฟังก์ชันดึงรูป/เสียง เป็น Base64
-    def get_base64_data(file_path):
-        try:
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-        except: return ""
-    st.write("---")
-    st.caption("ระบบดึงข้อมูลเสียงอัตโนมัติ | Synapse Unit v.2")
-                c.fillStyle = 'hsl('+(180+i*5)+', 100%, 50%)';
-                c.fillRect(x, can.height-h, w-1, h); x += w;
-            }}
-            updateProgress();
-        }}
-        async function loadA(f) {{ init(); document.getElementById('nameA').innerText = f.name; sA = await ctx.decodeAudioData(await f.arrayBuffer()); }}
-        async function loadB(f) {{ init(); document.getElementById('nameB').innerText = f.name; sB = await ctx.decodeAudioData(await f.arrayBuffer()); }}
-        function playAll() {{
-            if(!sA || !sB || isP) return;
-            srcA = ctx.createBufferSource(); srcA.buffer = sA; gA = ctx.createGain();
-            srcA.connect(gA).connect(ana).connect(ctx.destination);
-            srcB = ctx.createBufferSource(); srcB.buffer = sB; gB = ctx.createGain(); gB.gain.value = 0;
-            srcB.connect(gB).connect(ana).connect(ctx.destination);
-            srcA.start(0); srcB.start(0); isP = true;
-        }}
-        function fade() {{
-            let now = ctx.currentTime;
-            if(cur === 'A') {{ gA.gain.linearRampToValueAtTime(0, now+5); gB.gain.linearRampToValueAtTime(1, now+5); cur = 'B'; }}
-            else {{ gB.gain.linearRampToValueAtTime(0, now+5); gA.gain.linearRampToValueAtTime(1, now+5); cur = 'A'; }}
-        }}
-        function updateProgress() {{
-             // อัปเดต Progress Bar แบบง่าย (จำลอง)
-             if(isP) {{
-                document.getElementById('barA').style.width = cur === 'A' ? '100%' : '0%';
-                document.getElementById('barB').style.width = cur === 'B' ? '100%' : '0%';
-             }}
-        }}
-    </script>
-    """
-    st.components.v1.html(mixer_html, height=520)
-
-    # 4. ส่วนคลังเพลง (Global Playlist)
-    st.write("---")
-    st.markdown("<h4 style='color:#00f3ff; font-family:Orbitron; text-align:center;'>📂 GLOBAL DATABASE</h4>", unsafe_allow_html=True)
-    all_songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-    if all_songs:
-        with st.expander("คลิกเพื่อเลือกเล่นเพลงในคลัง (52+ เพลง)"):
-            for s in all_songs:
-elif st.session_state.page == "1":
-    import base64
-    import os
-
     # 1. ฟังก์ชันดึงรูป/เสียง เป็น Base64
     def get_base64_data(file_path):
         try:
@@ -405,7 +278,7 @@ elif st.session_state.page == "1":
     # คลังเพลงเพิ่มเติม (ข้างล่าง)
     st.write("---")
     st.caption("ระบบดึงข้อมูลเสียงอัตโนมัติ | Synapse Unit v.2")
-
+                
     
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Studio v.1")
 elif st.session_state.page == "2":
@@ -424,106 +297,8 @@ elif st.session_state.page == "2":
     import folium
 
     loc = get_geolocation()
-    my_lat, my_lon = 13.elif st.session_state.page == "1":
-    import base64
-    import os
-
-    # 1. ฟังก์ชันดึงรูป/เสียง เป็น Base64
-    def get_base64_data(file_path):
-        try:
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-        except: return ""
-
-    logo_b64 = get_base64_data("logo1.png")
-    
-    # ดึงเพลงชื่อ 1.mp3 มาเตรียมไว้ (ถ้ามี)
-    audio_b64 = get_base64_data("1.mp3")
-
-    # 2. CSS ปรับแต่งหน้าจอ (คงความเท่ของโลโก้กระพริบไว้)
-    st.markdown(f"""
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        
-        header, footer, #MainMenu {{visibility: hidden;}}
-        .stApp {{ background-color: #000000; }}
-
-        .logo-center {{
-            display: block;
-            margin: 0 auto;
-            width: 80px; height: 80px;
-            background-image: url("data:image/png;base64,{logo_b64}");
-            background-size: contain; background-repeat: no-repeat;
-            filter: drop-shadow(0 0 10px #ff00de);
-            animation: logo-pulsing 2s infinite alternate;
-        }}
-        @keyframes logo-pulsing {{
-            from {{ filter: drop-shadow(0 0 5px #ff00de); transform: scale(1); }}
-            to {{ filter: drop-shadow(0 0 20px #00f3ff); transform: scale(1.1); }}
-        }}
-
-        .neon-title-main {{
-            font-family: 'Orbitron', sans-serif;
-            color: #fff; text-align: center;
-            text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
-            font-size: 1.5rem; margin: 15px 0;
-        }}
-        </style>
-        <div class="logo-center"></div>
-        <h1 class="neon-title-main">SYNAPSE AUDIO UNIT</h1>
-    """, unsafe_allow_html=True)
-
-    # 3. ตรวจสอบว่ามีเพลงไหม ถ้ามีให้แสดงเครื่องเล่นตัวใหม่
-    if audio_b64:
-        player_html = f"""
-        <div style="background: rgba(15,15,15,0.95); border: 2px solid #00f3ff; border-radius: 20px; padding: 25px; text-align: center; font-family: 'Orbitron', sans-serif; box-shadow: 0 0 20px rgba(0,243,255,0.3); max-width: 500px; margin: 0 auto;">
-            
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; color: #00f3ff; font-size: 14px;">
-                <div id="current-time">00:00</div>
-                <div id="remaining-time" style="color: #ff00de;">-00:00</div>
-            </div>
-
-            <input type="range" id="seek-bar" value="0" style="width: 100%; cursor: pointer; accent-color: #00f3ff; margin-bottom: 25px;">
-
-            <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 25px;">
-                <button onclick="document.getElementById('myAudio').play()" style="background: #00f3ff; border: none; color: #000; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-weight: bold; font-family: 'Orbitron';">▶ PLAY</button>
-                <button onclick="document.getElementById('myAudio').pause()" style="background: none; border: 1px solid #ff00de; color: #ff00de; padding: 12px 30px; border-radius: 10px; cursor: pointer; font-family: 'Orbitron';">⏸ PAUSE</button>
-            </div>
-
-            <div style="color: #888; font-size: 11px; margin-bottom: 8px;">VOLUME CONTROL</div>
-            <input type="range" id="volume-bar" min="0" max="1" step="0.01" value="0.7" style="width: 80%; accent-color: #ff00de; cursor: pointer;">
-
-            <audio id="myAudio" autoplay><source src="data:audio/mp3;base64,{audio_b64}" type="audio/mp3"></audio>
-
-            <script>
-                const audio = document.getElementById("myAudio");
-                const seekBar = document.getElementById("seek-bar");
-                const volBar = document.getElementById("volume-bar");
-
-                volBar.addEventListener("input", () => {{ audio.volume = volBar.value; }});
-
-                audio.addEventListener("timeupdate", () => {{
-                    seekBar.value = (audio.currentTime / audio.duration) * 100 || 0;
-                    let cM = Math.floor(audio.currentTime/60), cS = Math.floor(audio.currentTime%60);
-                    document.getElementById("current-time").innerText = (cM<10?'0'+cM:cM)+":"+(cS<10?'0'+cS:cS);
-                    let r = audio.duration - audio.currentTime;
-                    if(!isNaN(r)) {{
-                        let rM = Math.floor(r/60), rS = Math.floor(r%60);
-                        document.getElementById("remaining-time").innerText = "-"+(rM<10?'0'+rM:rM)+":"+(rS<10?'0'+rS:rS);
-                    }}
-                }});
-                seekBar.addEventListener("input", () => {{ audio.currentTime = (seekBar.value/100)*audio.duration; }});
-            </script>
-        </div>
-        """
-        st.components.v1.html(player_html, height=450)
-    else:
-        st.warning("⚠️ ไม่พบไฟล์ '1.mp3' ในระบบ กรุณาตรวจสอบการอัปโหลดไฟล์")
-
-    # คลังเพลงเพิ่มเติม (ข้างล่าง)
-    st.write("---")
-    st.caption("ระบบดึงข้อมูลเสียงอัตโนมัติ | Synapse Unit v.2")
-n loc:
+    my_lat, my_lon = 13.7367, 100.5231 # Default BKK
+    if loc and 'coords' in loc:
         my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
 
     # แสดงแผนที่ Satellite
@@ -1023,9 +798,9 @@ elif st.session_state.page == "10":
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Interface Control")
 
 
-# --- [ ส่วนการจัดการ Session State ท้ายไฟล์ ] ---
+# (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
+
 if 'primary_color' not in st.session_state:
     st.session_state.primary_color = "#00f3ff"
-
 if 'page' not in st.session_state:
-    st.session_state.page = "HOME"  # แก้ไขเครื่องหมายคำพูดตรงนี้ให้ถูกต้องแล้วครับ
+    st.session_state.page = "HOME”
