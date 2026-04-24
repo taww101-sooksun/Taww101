@@ -1,98 +1,127 @@
+import streamlit as st
 import datetime
 import math
+import hashlib
+from datetime import date, timedelta
 
+# =================================================================
+# 1. SETUP & CONFIG (ป้องกัน Error บรรทัดแรกๆ)
+# =================================================================
+st.set_page_config(page_title="SYNAPSE ULTIMATE", layout="wide")
+
+if 'page' not in st.session_state: st.session_state.page = "HOME"
+if 'main_color' not in st.session_state: st.session_state.main_color = "#00f3ff"
+if 'sub_color' not in st.session_state: st.session_state.sub_color = "#ff00de"
+
+# =================================================================
+# 2. INTELLIGENCE ENGINE (ลอจิกถอดรหัสของคุณต๊ะ)
+# =================================================================
 def get_synapse_report(dt):
     if dt is None: return None
     
-    # --- 1. แปลงค่าวัน (คุณต๊ะใช้ ศุกร์=5) ---
-    # มาตรฐานคุณต๊ะ: อาทิตย์=7, จันทร์=1, อังคาร=2, พุธ=3, พฤหัส=4, ศุกร์=5, เสาร์=6
-    # (โค้ดดึงวัน: จันทร์=0...อาทิตย์=6)
+    # พิกัด 1: วัน (คุณต๊ะใช้ ศุกร์=5) -> จันทร์=1, ..., ศุกร์=5, เสาร์=6, อาทิตย์=7
     day_map = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
     day_val = day_map[dt.weekday()]
     day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
     
-    # --- 2. ค่าวันที่ตรงๆ ---
+    # พิกัด 2: วันที่
     date_val = dt.day
     
-    # --- 3. ค่าเดือน (1-12) ---
+    # พิกัด 3: เดือน (1-12)
     month_val = dt.month
     month_names = ["", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", 
                    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"]
     
-    # --- 4. คำนวณข้างขึ้นแรม และหาค่าค่ำ (moon_num) ---
-    ref_date = datetime.date(1900, 1, 1)
+    # พิกัด 4: ข้างขึ้นแรม (คำนวณจากรอบ 29.53)
+    ref_date = date(1900, 1, 1)
     diff = (dt - ref_date).days
     lunar_pos = (diff - 0.5) % 29.530589
-    
     if lunar_pos <= 14.765:
         moon_num = int(lunar_pos) + 1
         phase_text = f"ขึ้น {moon_num} ค่ำ"
         lunar_logic = -7.5  # ขึ้น ลบ 7.5
-        is_waxing = True
     else:
         moon_num = int(lunar_pos - 14.765) + 1
         phase_text = f"แรม {moon_num} ค่ำ"
         lunar_logic = 7.5   # แรม บวก 7.5
-        is_waxing = False
 
-    # --- 5. คำนวณปีนักษัตร (ชวด=1, ฉลู=2...) ---
-    # ปีชวดเริ่มที่รอบปี 1900, 1912, 1924...
+    # พิกัด 5: ปีนักษัตร (ชวด=1, ฉลู=2...)
     zodiac_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
     zodiac_val_map = {"ชวด":1, "ฉลู":2, "ขาล":3, "เถาะ":4, "มะโรง":5, "มะเส็ง":6, "มะเมีย":7, "มะแม":8, "วอก":9, "ระกา":10, "จอ":11, "กุน":12}
     zodiac_name = zodiac_names[dt.year % 12]
-    zodiac_val = zodiac_val_map[zodiac_name]
+    z_val = zodiac_val_map[zodiac_name]
 
-    # --- 6. วิเคราะห์ราศี และธาตุ (ดิน=1, น้ำ=2, ลม=3, ไฟ=4) ---
+    # พิกัด 6: ธาตุ และ ราศี (ดิน=1, น้ำ=2, ลม=3, ไฟ=4)
     m, d = dt.month, dt.day
-    if (m == 4 and d >= 13) or (m == 5 and d <= 13): rasi, elem_text, elem_val = "เมษ", "ไฟ", 4
-    elif (m == 5 and d >= 14) or (m == 6 and d <= 14): rasi, elem_text, elem_val = "พฤษภ", "ดิน", 1
-    elif (m == 6 and d >= 15) or (m == 7 and d <= 15): rasi, elem_text, elem_val = "เมถุน", "ลม", 3
-    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): rasi, elem_text, elem_val = "กรกฎ", "น้ำ", 2
-    elif (m == 8 and d >= 17) or (m == 9 and d <= 16): rasi, elem_text, elem_val = "สิงห์", "ไฟ", 4
-    elif (m == 9 and d >= 17) or (m == 10 and d <= 16): rasi, elem_text, elem_val = "กันย์", "ดิน", 1
-    elif (m == 10 and d >= 17) or (m == 11 and d <= 15): rasi, elem_text, elem_val = "ตุลย์", "ลม", 3
-    elif (m == 11 and d >= 16) or (m == 12 and d <= 15): rasi, elem_text, elem_val = "พิจิก", "น้ำ", 2
-    elif (m == 12 and d >= 16) or (m == 1 and d <= 14): rasi, elem_text, elem_val = "ธนู", "ไฟ", 4
-    elif (m == 1 and d >= 15) or (m == 2 and d <= 12): rasi, elem_text, elem_val = "มังกร", "ดิน", 1
-    elif (m == 12 and d >= 13) or (m == 3 and d <= 13): rasi, elem_text, elem_val = "กุมภ์", "ลม", 3
-    else: rasi, elem_text, elem_val = "มีน", "น้ำ", 2
+    if (m == 4 and d >= 13) or (m == 5 and d <= 13): rasi, e_text, e_val = "เมษ", "ไฟ", 4
+    elif (m == 5 and d >= 14) or (m == 6 and d <= 14): rasi, e_text, e_val = "พฤษภ", "ดิน", 1
+    elif (m == 6 and d >= 15) or (m == 7 and d <= 15): rasi, e_text, e_val = "เมถุน", "ลม", 3
+    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): rasi, e_text, e_val = "กรกฎ", "น้ำ", 2
+    elif (m == 8 and d >= 17) or (m == 9 and d <= 16): rasi, e_text, e_val = "สิงห์", "ไฟ", 4
+    elif (m == 9 and d >= 17) or (m == 10 and d <= 16): rasi, e_text, e_val = "กันย์", "ดิน", 1
+    elif (m == 10 and d >= 17) or (m == 11 and d <= 15): rasi, e_text, e_val = "ตุลย์", "ลม", 3
+    elif (m == 11 and d >= 16) or (m == 12 and d <= 15): rasi, e_text, e_val = "พิจิก", "น้ำ", 2
+    elif (m == 12 and d >= 16) or (m == 1 and d <= 14): rasi, e_text, e_val = "ธนู", "ไฟ", 4
+    elif (m == 1 and d >= 15) or (m == 2 and d <= 12): rasi, e_text, e_val = "มังกร", "ดิน", 1
+    elif (m == 2 and d >= 13) or (m == 3 and d <= 13): rasi, e_text, e_val = "กุมภ์", "ลม", 3
+    else: rasi, e_text, e_val = "มีน", "น้ำ", 2
 
-    # --- 7. คำนวณรหัสลับ (สูตรคุณต๊ะ 6 พิกัด) ---
-    # [วัน + วันที่ + ค่ำ + เดือน + ปีนักษัตร + ธาตุ]
-    base_sum = day_val + date_val + moon_num + month_val + zodiac_val + elem_val
+    # --- คำนวณรหัสผลลัพธ์ (สูตรคุณต๊ะ) ---
+    base_sum = day_val + date_val + moon_num + month_val + z_val + e_val
     final_code = (base_sum + lunar_logic) * 1.618
 
     return {
-        "report": f"""
-        * **วัน:** {day_names[dt.weekday()]} ({day_val})
-        * **วันที่:** {date_val}
-        * **เดือน:** {month_names[month_val]} ({month_val})
-        * **ปีนักษัตร:** {zodiac_name} ({zodiac_val})
-        * **ข้างขึ้น/แรม:** {phase_text} ({'ลบ 7.5' if is_waxing else 'บวก 7.5'})
-        * **ธาตุ:** {elem_text} ({elem_val})
-        * **ราศี:** {rasi}
-        """,
-        "code": round(final_code, 4)
+        "day": day_names[dt.weekday()], "date": date_val, "month": month_names[month_val],
+        "zodiac": zodiac_name, "phase": phase_text, "elem": e_text, "rasi": rasi, "code": round(final_code, 4)
     }
 
-# --- ส่วน UI ของหน้า 3 ---
-elif st.session_state.page == "3":
-    st.markdown("<h2 class='neon-text'>🧠 INTELLIGENCE ENGINE</h2>", unsafe_allow_html=True)
-    
-    # ช่องกรอกแค่วันเดือนปี
-    input_date = st.date_input("เลือกวันที่เพื่อสแกนพิกัด (1960 - 2026)", 
-                               value=datetime.date.today(),
-                               min_value=datetime.date(1960, 1, 1),
-                               max_value=datetime.date(2026, 12, 31))
+# =================================================================
+# 3. NAVIGATION (หน้าจอหลัก)
+# =================================================================
 
-    if st.button("RUN FULL SCAN", use_container_width=True):
-        data = get_synapse_report(input_date)
-        
+# --- หน้า HOME ---
+if st.session_state.page == "HOME":
+    st.markdown(f"<h1 style='color:{st.session_state.main_color}; text-align:center;'>SYNAPSE HUB</h1>", unsafe_allow_html=True)
+    st.write("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🎵 1. DJ STATION", use_container_width=True): st.session_state.page = "1"; st.rerun()
+    with col2:
+        if st.button("🧠 3. INTELLIGENCE CENTER", use_container_width=True): st.session_state.page = "3"; st.rerun()
+
+# --- หน้า 1: DJ STATION ---
+elif st.session_state.page == "1":
+    if st.button("⬅️ กลับ"): st.session_state.page = "HOME"; st.rerun()
+    st.write("### DJ Station Mode")
+
+# --- หน้า 3: INTELLIGENCE CENTER (สมบูรณ์แบบ) ---
+elif st.session_state.page == "3":
+    if st.button("⬅️ กลับหน้าหลัก"): st.session_state.page = "HOME"; st.rerun()
+    st.markdown("<h2 style='text-align:center;'>🧠 INTELLIGENCE ENGINE</h2>", unsafe_allow_html=True)
+    
+    # รับค่าวันที่
+    input_dt = st.date_input("ระบุวันที่ (1960 - 2026)", 
+                            value=date.today(),
+                            min_value=date(1960,1,1),
+                            max_value=date(2026,12,31))
+
+    if st.button("RUN DECODER", use_container_width=True):
+        res = get_synapse_report(input_dt)
         st.write("---")
-        st.markdown(data["report"])
+        # รายงาน 7 หัวข้อที่คุณต๊ะต้องการ
         st.markdown(f"""
-            <div style="text-align:center; padding:20px; border:2px solid var(--primary); border-radius:15px; background:black;">
-                <h1 style="color:cyan; margin:0;">CODE: {data['code']}</h1>
-                <p style="color:gray; margin:0;">SYNAPSE LOGIC v1.618</p>
+        * **วัน:** {res['day']}
+        * **วันที่:** {res['date']}
+        * **เดือน:** {res['month']}
+        * **ปีนักษัตร:** {res['zodiac']}
+        * **ข้างขึ้น/แรม:** {res['phase']}
+        * **ธาตุ:** {res['elem']}
+        * **ราศี:** {res['rasi']}
+        """)
+        
+        st.markdown(f"""
+            <div style="text-align:center; padding:20px; border:2px solid {st.session_state.main_color}; border-radius:15px; background:black;">
+                <h1 style="color:{st.session_state.main_color}; margin:0;">CODE: {res['code']}</h1>
+                <p style="color:gray;">LUNAR BALANCE 1.618</p>
             </div>
         """, unsafe_allow_html=True)
