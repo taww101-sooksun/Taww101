@@ -27,15 +27,19 @@ def get_base64_data(file_path):
 
 
 #2.ตั้งค่าสีและสถานะเริ่มต้น
-ถ้า 'main_color' ไม่อยู่ใน st.session_state: 'main_color' not in st.session_state:
-    st.session_state.main_color = "#00f3ff"session_state.main_color = "#00f3ff"
-ถ้า 'sub_color' ไม่อยู่ใน st.session_state: 'sub_color' not in st.session_state:
-    st.session_state.sub_color = "#ff00de"session_state.sub_color = "#ff00de"
-ถ้า 'page' ไม่อยู่ใน st.session_state: 'page' not in st.session_state:
-    st.session_state.page = "หน้าหลัก"session_state.page = "HOME"
+# --- ตรวจสอบสถานะสีและหน้าจอ (ห้ามมีภาษาไทยในคำสั่ง) ---
+if 'main_color' not in st.session_state:
+    st.session_state.main_color = "#00f3ff"
 
-# 3. GLOBAL CSS & LOGO (หน้ากากทุกหน้า)
-logo_base64 = get_base64_data("logo1.png")get_base64_data("logo1.png")
+if 'sub_color' not in st.session_state:
+    st.session_state.sub_color = "#ff00de"
+
+if 'page' not in st.session_state:
+    st.session_state.page = "HOME"
+
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+
 #การแสดงส่วน :root ใน Style ของคุณต๊ะให้เป็นเช่นนั้น
 # --- ส่วนนี้คือตัวคุมโลโก้ให้แสดงทุกหน้า ---
 logo_b64 = get_base64_data("logo1.png") # ดึงไฟล์รูปโลโก้
