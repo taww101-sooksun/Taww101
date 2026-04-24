@@ -2,38 +2,38 @@ import streamlit as st
 import os
 import pandas as pd
 import math
-import time
-import base64
+เวลานำเข้า
+นำเข้า base64
 import firebase_admin
-from firebase_admin import credentials, db
-from datetime import datetime, date, timedelta
+จาก firebase_admin นำเข้า credentials, db
+จากการนำเข้า datetime , date และ timedelta
 import streamlit.components.v1 as components
-from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
-from streamlit_autorefresh import st_autorefresh
-import hashlib
+จาก streamlit_folium นำเข้า st_folium
+จาก streamlit_js_eval นำเข้า get_geolocation
+จาก streamlit_autorefresh นำเข้า st_autorefresh
+นำเข้า hashlib
 
-# 1. ฟังก์ชันดึงข้อมูล (วางไว้บนสุด)
-def get_base64_data(file_path):
-    try:
-        if os.path.exists(file_path):
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-        return ""
-    except Exception:
-        return ""
+# 1. ฟังก์ชั่นดึงข้อมูล (สีแดงบนสุด)
+def  get_base64_data ( file_path ) :
+    พยายาม :
+        ถ้า os.path.exists ( file_path ) :​​​
+            with  open ( file_path, "rb" )  as f:
+                คืนค่า base64.b64encode ( f.read ( ) ) . decode ( )​
+        กลับ ""return ""
+    ยกเว้นข้อยกเว้น:except Exception:
+        กลับ ""return ""
 
-# 2. ตั้งค่าสีและสถานะเริ่มต้น
-if 'main_color' not in st.session_state:
-    st.session_state.main_color = "#00f3ff"
-if 'sub_color' not in st.session_state:
-    st.session_state.sub_color = "#ff00de"
-if 'page' not in st.session_state:
-    st.session_state.page = "HOME"
+#2.ตั้งค่าสีและสถานะเริ่มต้น
+ถ้า 'main_color' ไม่อยู่ใน st.session_state: 'main_color' not in st.session_state:
+    st.session_state.main_color = "#00f3ff"session_state.main_color = "#00f3ff"
+ถ้า 'sub_color' ไม่อยู่ใน st.session_state: 'sub_color' not in st.session_state:
+    st.session_state.sub_color = "#ff00de"session_state.sub_color = "#ff00de"
+ถ้า 'page' ไม่อยู่ใน st.session_state: 'page' not in st.session_state:
+    st.session_state.page = "หน้าหลัก"session_state.page = "HOME"
 
-# 3. GLOBAL CSS & LOGO (แสดงผลทุกหน้า)
-logo_base64 = get_base64_data("logo1.png")
-# แก้ไขส่วน :root ใน Style ของคุณต๊ะให้เป็นแบบนี้
+# 3. GLOBAL CSS & LOGO (หน้ากากทุกหน้า)
+logo_base64 = get_base64_data("logo1.png")get_base64_data("logo1.png")
+#การแสดงส่วน :root ใน Style ของคุณต๊ะให้เป็นเช่นนั้น
 # --- ส่วนนี้คือตัวคุมโลโก้ให้แสดงทุกหน้า ---
 logo_b64 = get_base64_data("logo1.png") # ดึงไฟล์รูปโลโก้
 
@@ -91,6 +91,24 @@ st.markdown(f"""
         border: 2px solid var(--primary);
         transition: all 0.8s ease;
     }}
+    </style>
+""", unsafe_allow_html=True)
+st.markdown("""
+    <style>
+    /* 1. เอาติ่งข้างล่าง (Footer) ออก */
+    footer {visibility: hidden;}
+    
+    /* 2. เอาแถบเมนู (Header) ข้างบนออก */
+    header {visibility: hidden;}
+    
+    /* 3. เอาปุ่มจุดสามจุด (MainMenu) ออก */
+    #MainMenu {visibility: hidden;}
+    
+    /* แถม: ปรับระยะขอบใหม่ให้เต็มจอหลังจากเอาติ่งออก */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 0rem;
+    }
     </style>
 """, unsafe_allow_html=True)
 
