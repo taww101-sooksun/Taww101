@@ -34,39 +34,29 @@ if 'page' not in st.session_state:
 # 3. GLOBAL CSS & LOGO (แสดงผลทุกหน้า)
 logo_base64 = get_base64_data("logo1.png")
 # แก้ไขส่วน :root ใน Style ของคุณต๊ะให้เป็นแบบนี้
+# --- ส่วนนี้คือตัวคุมโลโก้ให้แสดงทุกหน้า ---
+logo_b64 = get_base64_data("logo1.png") # ดึงไฟล์รูปโลโก้
+
 st.markdown(f"""
     <style>
-    :root {{
-        --primary: {st.session_state.main_color};
-        --secondary: {st.session_state.sub_color};
-        --glow: {st.session_state.get('bg_glow', '#00f3ff')};
-    }}
-
-    /* ทุกปุ่มในทุกห้องจะเปลี่ยนตาม */
-    .stButton>button {{
-        border: 1px solid var(--primary) !important;
-        background: rgba(0,0,0,0.2) !important;
-        color: white !important;
-        box-shadow: 0 0 5px var(--primary);
+    /* ตั้งค่าให้โลโก้อยู่กับที่ (Fixed) ไม่ว่าจะเลื่อนไปหน้าไหน */
+    .global-logo {{
+        position: fixed; 
+        top: 15px;      /* ระยะห่างจากขอบบน */
+        right: 25px;    /* ระยะห่างจากขอบขวา */
+        width: 65px;    /* ขนาดความกว้างโลโก้ */
+        z-index: 10000; /* ตั้งค่าให้อยู่ชั้นบนสุดของทุกอย่าง */
+        filter: drop-shadow(0 0 10px var(--primary)); /* ใส่แสงเรืองแสงตามสีหลัก */
+        animation: pulse 2s infinite alternate; /* ใส่เอฟเฟกต์เต้นตุบๆ */
     }}
     
-    .stButton>button:hover {{
-        border-color: var(--secondary) !important;
-        box-shadow: 0 0 20px var(--secondary) !important;
-    }}
-
-    /* หัวข้อทุกห้องจะเรืองแสงตามสีที่เลือก */
-    .neon-text {{
-        color: var(--primary) !important;
-        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary) !important;
-    }}
-    
-    /* ขอบหน้าจอแอป */
-    .stApp {{
-        border: 2px solid var(--primary);
-        transition: all 0.8s ease;
+    @keyframes pulse {{ 
+        from {{ transform: scale(1); }} 
+        to {{ transform: scale(1.1); }} 
     }}
     </style>
+    
+    <img src="data:image/png;base64,{logo_b64}" class="global-logo">
 """, unsafe_allow_html=True)
 
 
