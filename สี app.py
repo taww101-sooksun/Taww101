@@ -179,103 +179,147 @@ if st.session_state.page == "HOME":
         st.caption("ความสามารถ: เปลี่ยนสีสันของ Interface เพื่อความสวยงามตามใจชอบ")
 
 # --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
-
 elif st.session_state.page == "1":
-    st.markdown("<h2 class='neon-text'>🎵 SYNAPSE ADVANCED PLAYER</h2>", unsafe_allow_html=True)
+    import base64
+    import os
+
+    # 1. ฟังก์ชันดึงข้อมูลไฟล์
+    def get_base64_data(file_path):
+        try:
+            with open(file_path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+        except: return None
+
+    st.markdown("<h2 class='neon-text'>🎧 SYNAPSE DUAL-DECK DJ UNIT</h2>", unsafe_allow_html=True)
     
-    # 1. ส่วนอัปโหลดไฟล์
-    uploaded_file = st.file_uploader("เลือกไฟล์เพลง (MP3)", type=['mp3'])
+    # 2. ค้นหารายชื่อเพลง MP3 ทั้งหมดใน GitHub Root
+    all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
     
-    if uploaded_file:
-        # แปลงไฟล์เป็น Base64 เพื่อให้ JavaScript เล่นได้
-        audio_bytes = uploaded_file.read()
-        b64_audio = base64.b64encode(audio_bytes).decode()
-        
-        # 2. อินเตอร์เฟซเครื่องเล่นเพลง (HTML + JS)
-        player_html = f"""
-        <div style="background: rgba(20,20,20,0.95); border: 2px solid #00f3ff; border-radius: 20px; padding: 25px; text-align: center; font-family: 'Orbitron', sans-serif;">
+    if not all_songs:
+        st.warning("⚠️ ไม่พบไฟล์ MP3 ในระบบ (GitHub Root)")
+    else:
+        # ส่วนเลือกเพลงสำหรับ Deck A และ B
+        col_sel_a, col_sel_b = st.columns(2)
+        with col_sel_a:
+            song_a = st.selectbox("💿 Select Track for DECK A", ["-- Select --"] + all_songs, key="sa")
+        with col_sel_b:
+            song_b = st.selectbox("💿 Select Track for DECK B", ["-- Select --"] + all_songs, key="sb")
+
+        # เตรียมข้อมูล Base64
+        data_a = get_base64_data(song_a) if song_a != "-- Select --" else ""
+        data_b = get_base64_data(song_b) if song_b != "-- Select --" else ""
+
+        # 3. DJ Mixer Interface (HTML + JS)
+        mixer_html = f"""
+        <div style="background: #0a0a0a; border: 3px solid #333; border-radius: 25px; padding: 20px; font-family: 'Orbitron', sans-serif; color: white;">
             
-            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; color: #00f3ff;">
-                <div id="current-time">00:00</div>
-                <div id="remaining-time" style="color: #ff00de;">-00:00</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div style="background: rgba(0, 243, 255, 0.05); border: 2px solid #00f3ff; padding: 15px; border-radius: 20px; text-align: center;">
+                    <h4 style="color: #00f3ff; margin-top:0;">DECK A</h4>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                        <span id="curA">00:00</span>
+                        <span id="remA" style="color: #ff00de;">-00:00</span>
+                    </div>
+                    <input type="range" id="seekA" value="0" style="width: 100%; accent-color: #00f3ff; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 15px;">
+                        <button onclick="play('A')" style="background: #00f3ff; border:none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight:bold;">PLAY</button>
+                        <button onclick="pause('A')" style="background: none; border:1px solid #ff00de; color:#ff00de; padding: 8px 20px; border-radius: 5px; cursor: pointer;">PAUSE</button>
+                    </div>
+                    <small>VOLUME</small>
+                    <input type="range" id="volA" min="0" max="1" step="0.01" value="0.8" style="width: 100%; accent-color: #00f3ff;">
+                </div>
+
+                <div style="background: rgba(255, 0, 222, 0.05); border: 2px solid #ff00de; padding: 15px; border-radius: 20px; text-align: center;">
+                    <h4 style="color: #ff00de; margin-top:0;">DECK B</h4>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                        <span id="curB">00:00</span>
+                        <span id="remB" style="color: #00f3ff;">-00:00</span>
+                    </div>
+                    <input type="range" id="seekB" value="0" style="width: 100%; accent-color: #ff00de; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 15px;">
+                        <button onclick="play('B')" style="background: #ff00de; border:none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight:bold; color: white;">PLAY</button>
+                        <button onclick="pause('B')" style="background: none; border:1px solid #00f3ff; color:#00f3ff; padding: 8px 20px; border-radius: 5px; cursor: pointer;">PAUSE</button>
+                    </div>
+                    <small>VOLUME</small>
+                    <input type="range" id="volB" min="0" max="1" step="0.01" value="0.8" style="width: 100%; accent-color: #ff00de;">
+                </div>
             </div>
 
-            <input type="range" id="seek-bar" value="0" style="width: 100%; cursor: pointer; accent-color: #00f3ff; margin-bottom: 20px;">
-
-            <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;">
-                <button onclick="playAudio()" style="background: none; border: 1px solid #00f3ff; color: #00f3ff; padding: 10px 30px; border-radius: 10px; cursor: pointer;">▶ PLAY</button>
-                <button onclick="pauseAudio()" style="background: none; border: 1px solid #ff00de; color: #ff00de; padding: 10px 30px; border-radius: 10px; cursor: pointer;">⏸ PAUSE</button>
+            <div style="margin-top: 30px; text-align: center; border-top: 1px solid #333; padding-top: 20px;">
+                <button onclick="autoFade()" style="background: linear-gradient(90deg, #00f3ff, #ff00de); border: none; padding: 15px 40px; border-radius: 30px; color: white; font-weight: bold; cursor: pointer; width: 100%; font-family: 'Orbitron'; box-shadow: 0 0 15px rgba(255,0,222,0.4);">
+                    🔄 START 10s CROSSFADE (A ➜ B)
+                </button>
+                <p style="font-size: 10px; color: #666; margin-top: 10px;">ระบบจะทำการค่อยๆ หรี่เสียง Deck A และเร่งเสียง Deck B อัตโนมัติภายใน 10 วินาที</p>
             </div>
 
-            <div style="color: #eee; font-size: 12px; margin-bottom: 5px;">VOLUME CONTROL</div>
-            <input type="range" id="volume-bar" min="0" max="1" step="0.01" value="0.5" style="width: 60%; accent-color: #ff00de; cursor: pointer;">
-
-            <audio id="myAudio">
-                <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
-            </audio>
+            <audio id="audioA"><source src="data:audio/mp3;base64,{data_a}"></audio>
+            <audio id="audioB"><source src="data:audio/mp3;base64,{data_b}"></audio>
 
             <script>
-                const audio = document.getElementById("myAudio");
-                const seekBar = document.getElementById("seek-bar");
-                const volBar = document.getElementById("volume-bar");
-                const curTimeTxt = document.getElementById("current-time");
-                const remTimeTxt = document.getElementById("remaining-time");
+                const audA = document.getElementById('audioA');
+                const audB = document.getElementById('audioB');
+                
+                function play(deck) {{ deck === 'A' ? audA.play() : audB.play(); }}
+                function pause(deck) {{ deck === 'A' ? audA.pause() : audB.pause(); }}
 
-                // เล่นเพลงอัตโนมัติเมื่อโหลด (ถ้า Browser ยอมรับ)
-                window.onload = () => {{
-                    audio.volume = 0.5;
-                    audio.play().catch(() => console.log("Auto-play blocked by browser"));
-                }};
+                // Volume Control
+                document.getElementById('volA').oninput = (e) => audA.volume = e.target.value;
+                document.getElementById('volB').oninput = (e) => audB.volume = e.target.value;
 
-                function playAudio() {{ audio.play(); }}
-                function pauseAudio() {{ audio.pause(); }}
+                // Sync UI
+                function updateUI(aud, curID, remID, seekID) {{
+                    aud.ontimeupdate = () => {{
+                        const cur = aud.currentTime;
+                        const dur = aud.duration;
+                        document.getElementById(seekID).value = (cur/dur)*100 || 0;
+                        
+                        let cM = Math.floor(cur/60), cS = Math.floor(cur%60);
+                        document.getElementById(curID).innerText = (cM<10?'0'+cM:cM)+":"+(cS<10?'0'+cS:cS);
+                        
+                        let r = dur - cur;
+                        if(!isNaN(r)) {{
+                            let rM = Math.floor(r/60), rS = Math.floor(r%60);
+                            document.getElementById(remID).innerText = "-"+(rM<10?'0'+rM:rM)+":"+(rS<10?'0'+rS:rS);
+                        }}
+                    }};
+                }}
+                updateUI(audA, 'curA', 'remA', 'seekA');
+                updateUI(audB, 'curB', 'remB', 'seekB');
 
-                // ปรับระดับเสียง
-                volBar.addEventListener("input", () => {{
-                    audio.volume = volBar.value;
-                }});
-
-                // อัปเดตเวลาและ Progress Bar
-                audio.addEventListener("timeupdate", () => {{
-                    // แถบเลื่อน
-                    const val = (audio.currentTime / audio.duration) * 100;
-                    seekBar.value = val || 0;
-
-                    // คำนวณเวลาเดินหน้า
-                    let curM = Math.floor(audio.currentTime / 60);
-                    let curS = Math.floor(audio.currentTime % 60);
-                    curTimeTxt.innerText = (curM < 10 ? "0"+curM : curM) + ":" + (curS < 10 ? "0"+curS : curS);
-
-                    // คำนวณเวลาถอยหลัง (Remaining)
-                    let rem = audio.duration - audio.currentTime;
-                    if(!isNaN(rem)) {{
-                        let remM = Math.floor(rem / 60);
-                        let remS = Math.floor(rem % 60);
-                        remTimeTxt.innerText = "-" + (remM < 10 ? "0"+remM : remM) + ":" + (remS < 10 ? "0"+remS : remS);
-                    }}
-                }});
-
-                // เลื่อนเพลงเองตามแถบ Progress
-                seekBar.addEventListener("input", () => {{
-                    const time = (seekBar.value / 100) * audio.duration;
-                    audio.currentTime = time;
-                }});
+                // 10s CROSSFADE LOGIC
+                function autoFade() {{
+                    let steps = 100; // 10 วินาที แบ่งเป็น 100 ขั้น
+                    let interval = 100; // ทุกๆ 0.1 วินาที
+                    let volStep = 1 / steps;
+                    
+                    audB.volume = 0;
+                    audB.play();
+                    
+                    let count = 0;
+                    let fade = setInterval(() => {{
+                        if (count >= steps) {{
+                            clearInterval(fade);
+                            audA.pause();
+                        }} else {{
+                            if (audA.volume > volStep) audA.volume -= volStep;
+                            if (audB.volume < (1 - volStep)) audB.volume += volStep;
+                            count++;
+                        }}
+                    }}, interval);
+                }}
             </script>
         </div>
         """
-        components.html(player_html, height=400)
-    else:
-        st.info("💡 กรุณาอัปโหลดไฟล์ .mp3 เพื่อใช้งานเครื่องเล่นเพลงระบบสัมผัส")
+        st.components.v1.html(mixer_html, height=600)
 
-    # ส่วนคลังเพลงเดิม (แสดงลิสต์)
+    # รายชื่อเพลงบอกด้านล่าง
     st.write("---")
-    st.markdown("<h4 style='text-align:center;'>📂 LOCAL PLAYLIST</h4>", unsafe_allow_html=True)
-    songs = [f for f in os.listdir('.') if f.endswith('.mp3')]
-    for s in songs:
-        st.button(f"🎵 {s}", use_container_width=True)
+    st.markdown("#### 🎵 รายชื่อเพลงที่มีในคลัง (GitHub Root)")
+    for i, s in enumerate(all_songs):
+        st.caption(f"{i+1}. {s}")
 
-                
-    
+                                    
+ 
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Studio v.1")
 elif st.session_state.page == "2":
     from streamlit_autorefresh import st_autorefresh
