@@ -874,43 +874,10 @@ elif st.session_state.page == "9":
 
 # --- [ ห้องที่ 10: COLOR MASTER (ปรับแต่งธีมสีระบบ) ] ---
 elif st.session_state.page == "10":
-    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>🎨 COLOR MASTER UI</h2>", unsafe_allow_html=True)
-    st.write("ปรับแต่งรังสีออร่าของแอปพลิเคชัน")
-    
-    # กำหนดค่าสีเริ่มต้นถ้ายังไม่มี
-    if 'custom_theme' not in st.session_state:
-        st.session_state.custom_theme = "#00f3ff"
-        
-    new_color = st.color_picker("เลือกโค้ดสีที่คุณต้องการ (Hex Code):", st.session_state.custom_theme)
-    
-    if st.button("🔥 อัปเดตสีระบบ", use_container_width=True):
-        st.session_state.custom_theme = new_color
-        st.rerun()
-
-    # ยิง CSS เพื่อเปลี่ยนสีกรอบและปุ่มทั้งแอปแบบ Real-time
-    st.markdown(f"""
-        <style>
-        .stApp {{
-            border-top: 5px solid {st.session_state.custom_theme};
-            transition: all 0.5s ease;
-        }}
-        .stButton>button {{
-            border-color: {st.session_state.custom_theme} !important;
-            box-shadow: 0 0 10px {st.session_state.custom_theme} !important;
-        }}
-        hr {{
-            border-bottom: 2px solid {st.session_state.custom_theme} !important;
-        }}
-        </style>
-        <div style="text-align:center; padding: 30px; border: 2px dashed {st.session_state.custom_theme}; border-radius: 10px;">
-            <h3 style="color:{st.session_state.custom_theme}; text-shadow: 0 0 10px {st.session_state.custom_theme};">
-                ตัวอย่างสีที่กำลังใช้งาน
-            </h3>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Interface Control")
-
+    st.markdown("<h2 class='neon-text'>🎨 UI INTERFACE MASTER</h2>", unsafe_allow_html=True)
+    st.session_state.main_color = st.color_picker("PRIMARY NEON", st.session_state.main_color)
+    st.session_state.sub_color = st.color_picker("SECONDARY NEON", st.session_state.sub_color)
+    if st.button("SAVE & RERUN"): st.rerun()
 
 # (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
 
