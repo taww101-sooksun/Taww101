@@ -1,4 +1,4 @@
-import streamlit as st
+Import streamlit as st
 import os
 import pandas as pd
 import math
@@ -12,105 +12,7 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 import hashlib
-# =================================================================
-# 1. INITIAL SYSTEM SETUP (การตั้งค่าระบบหลัก)
-# =================================================================
-st.set_page_config(page_title="SYNAPSE ULTIMATE HUB", layout="wide", initial_sidebar_state="expanded")
 
-def get_base64_data(file_path):
-    try:
-        if os.path.exists(file_path):
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-        return ""
-    except: return ""
-
-# --- SESSION STATE MANAGEMENT ---
-if 'main_color' not in st.session_state: st.session_state.main_color = "#00f3ff"
-if 'sub_color' not in st.session_state: st.session_state.sub_color = "#ff00de"
-if 'page' not in st.session_state: st.session_state.page = "HOME"
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-if 'user' not in st.session_state: st.session_state.user = "Unknown"
-
-# =================================================================
-# 2. CORE LOGIC FUNCTIONS (หัวใจการคำนวณ)
-# =================================================================
-def get_detailed_logic(dt):
-    if dt is None: return None
-    ref_date = date(1900, 1, 1)
-    diff = (dt - ref_date).days
-    lunar_cycle = 29.530589
-    pos = (diff - 0.5) % lunar_cycle
-    day_val = dt.weekday() + 1
-    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-    day_name = day_names[dt.weekday()]
-    if pos <= 14.765:
-        m_num = int(pos) + 1
-        phase = f"ขึ้น {m_num} ค่ำ"
-        res = math.sqrt((day_val**2) + (m_num**2))
-        formula, logic_type = f"√({day_val}² + {m_num}²)", "Vector Energy"
-    else:
-        m_num = int(pos - 14.765) + 1
-        phase = f"แรม {m_num} ค่ำ"
-        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
-        formula, logic_type = f"({day_val} × 1.618) / {m_num}", "Golden Ratio"
-    return {"res": round(res, 4), "phase": phase, "day_name": day_name, "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type}
-
-# =================================================================
-# 3. GLOBAL CSS & LOGO (คุมโทนสีทุกห้อง)
-# =================================================================
-logo_b64 = get_base64_data("logo1.png")
-st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    :root {{ --primary: {st.session_state.main_color}; --secondary: {st.session_state.sub_color}; }}
-    .stApp {{ background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }}
-    header, footer, #MainMenu {{visibility: hidden;}}
-    
-    .global-logo {{
-        position: fixed; top: 15px; right: 25px; width: 65px; z-index: 10000;
-        filter: drop-shadow(0 0 10px var(--primary));
-        animation: pulse 2s infinite alternate;
-    }}
-    @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.1); }} }}
-    
-    .neon-text {{ color: var(--primary); text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary); text-align: center; }}
-    .stButton>button {{
-        border-radius: 12px; border: 1px solid var(--primary);
-        background: rgba(0,0,0,0.3); color: #fff; transition: 0.3s;
-    }}
-    .stButton>button:hover {{ background: var(--primary); box-shadow: 0 0 20px var(--primary); color: #000; }}
-    </style>
-    <img src="data:image/png;base64,{logo_b64}" class="global-logo">
-""", unsafe_allow_html=True)
-
-# =================================================================
-# 4. SIDEBAR CONTROL (เพลงต่อเนื่องและธีม)
-# =================================================================
-with st.sidebar:
-    st.markdown("<h2 class='neon-text'>AGENT CONTROL</h2>", unsafe_allow_html=True)
-    all_mp3 = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
-    
-    st.markdown("### 📻 GLOBAL AUDIO")
-    selected_bg = st.selectbox("Background Music (Non-Stop)", ["OFF"] + all_mp3)
-    if selected_bg != "OFF":
-        bg_data = get_base64_data(selected_bg)
-        st.markdown(f"""
-            <audio id="bgPlayer" autoplay loop controls style="width: 100%; height: 35px;">
-                <source src="data:audio/mp3;base64,{bg_data}" type="audio/mp3">
-            </audio>
-        """, unsafe_allow_html=True)
-
-    st.markdown("---")
-    with st.expander("🎨 THEME COLORS"):
-        st.session_state.main_color = st.color_picker("Primary Neon", st.session_state.main_color)
-        st.session_state.sub_color = st.color_picker("Secondary Neon", st.session_state.sub_color)
-    
-    if st.session_state.logged_in:
-        st.markdown(f"**Agent:** {st.session_state.user}")
-        if st.button("TERMINATE SESSION"):
-            st.session_state.logged_in = False
-            st.rerun()
 # 1. ฟังก์ชันดึงข้อมูล (วางไว้บนสุด)
 def get_base64_data(file_path):
     try:
@@ -356,16 +258,7 @@ if st.session_state.page == "HOME":
 # --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
 elif st.session_state.page == "1":
     st.markdown("<h2 class='neon-text'>🎧 SYNAPSE DJ STATION V.3</h2>", unsafe_allow_html=True)
-    st.markdown("---")
-    with st.expander("🎨 THEME COLORS"):
-        st.session_state.main_color = st.color_picker("Primary Neon", st.session_state.main_color)
-        st.session_state.sub_color = st.color_picker("Secondary Neon", st.session_state.sub_color)
     
-    if st.session_state.logged_in:
-        st.markdown(f"**Agent:** {st.session_state.user}")
-        if st.button("TERMINATE SESSION"):
-            st.session_state.logged_in = False
-            st.rerun()
     all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
     
     col_sel_a, col_sel_b = st.columns(2)
@@ -981,10 +874,43 @@ elif st.session_state.page == "9":
 
 # --- [ ห้องที่ 10: COLOR MASTER (ปรับแต่งธีมสีระบบ) ] ---
 elif st.session_state.page == "10":
-    st.markdown("<h2 class='neon-text'>🎨 UI INTERFACE MASTER</h2>", unsafe_allow_html=True)
-    st.session_state.main_color = st.color_picker("PRIMARY NEON", st.session_state.main_color)
-    st.session_state.sub_color = st.color_picker("SECONDARY NEON", st.session_state.sub_color)
-    if st.button("SAVE & RERUN"): st.rerun()
+    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>🎨 COLOR MASTER UI</h2>", unsafe_allow_html=True)
+    st.write("ปรับแต่งรังสีออร่าของแอปพลิเคชัน")
+    
+    # กำหนดค่าสีเริ่มต้นถ้ายังไม่มี
+    if 'custom_theme' not in st.session_state:
+        st.session_state.custom_theme = "#00f3ff"
+        
+    new_color = st.color_picker("เลือกโค้ดสีที่คุณต้องการ (Hex Code):", st.session_state.custom_theme)
+    
+    if st.button("🔥 อัปเดตสีระบบ", use_container_width=True):
+        st.session_state.custom_theme = new_color
+        st.rerun()
+
+    # ยิง CSS เพื่อเปลี่ยนสีกรอบและปุ่มทั้งแอปแบบ Real-time
+    st.markdown(f"""
+        <style>
+        .stApp {{
+            border-top: 5px solid {st.session_state.custom_theme};
+            transition: all 0.5s ease;
+        }}
+        .stButton>button {{
+            border-color: {st.session_state.custom_theme} !important;
+            box-shadow: 0 0 10px {st.session_state.custom_theme} !important;
+        }}
+        hr {{
+            border-bottom: 2px solid {st.session_state.custom_theme} !important;
+        }}
+        </style>
+        <div style="text-align:center; padding: 30px; border: 2px dashed {st.session_state.custom_theme}; border-radius: 10px;">
+            <h3 style="color:{st.session_state.custom_theme}; text-shadow: 0 0 10px {st.session_state.custom_theme};">
+                ตัวอย่างสีที่กำลังใช้งาน
+            </h3>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Interface Control")
+
 
 # (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
 
@@ -992,3 +918,5 @@ if 'primary_color' not in st.session_state:
     st.session_state.primary_color = "#00f3ff"
 if 'page' not in st.session_state:
     st.session_state.page = "HOME"
+
+มันถูกใจเลยครับ.กลัวผู้ใช่คนเอื่อน
