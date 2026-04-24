@@ -1,238 +1,154 @@
 import streamlit as st
-import datetime
-from datetime import date, timedelta
-import streamlit as st
-import datetime
 from datetime import date, timedelta
 
-# --- ล็อคขอบเขตเวลาตามคำสั่งคุณต๊ะ ---
-MIN_DATE = date(1960, 1, 1)
-MAX_DATE = date(2026, 12, 31)
+# --- ตั้งค่าหน้าจอ ---
+st.set_page_config(page_title="SYNAPSE ULTIMATE SYSTEM", layout="wide")
 
-def get_synapse_report(dt):
+# --- ฟังก์ชันคำนวณพิกัดพื้นฐาน 6 มิติ ---
+def get_base_coordinates(dt):
     if dt is None: return None
-    # (ฟังก์ชันคำนวณเหมือนเดิม แต่ดัก Error ช่วงวันที่)
-    if dt < MIN_DATE or dt > MAX_DATE: return None
     
+    # 1. วัน (จันทร์-อาทิตย์)
     day_map = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
     d_val = day_map[dt.weekday()]
     d_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-    
+
+    # 2. ข้างขึ้นข้างแรม (เกณฑ์ดวงจันทร์ใกล้/ไกล)
     ref = date(1900, 1, 1)
     diff = (dt - ref).days
     lunar_pos = (diff - 0.5) % 29.530589
     if lunar_pos <= 14.765:
         moon_num = int(lunar_pos) + 1
-        phase_text, l_logic = f"ขึ้น {moon_num} ค่ำ", -7.5
+        # ขึ้น = ลบ (ดวงจันทร์ไกล)
+        phase_text, l_logic, l_symbol = f"ขึ้น {moon_num} ค่ำ", -7.5, "(-) ดวงจันทร์ไกล"
     else:
         moon_num = int(lunar_pos - 14.765) + 1
-        phase_text, l_logic = f"แรม {moon_num} ค่ำ", 7.5
+        # แรม = บวก (ดวงจันทร์ใกล้)
+        phase_text, l_logic, l_symbol = f"แรม {moon_num} ค่ำ", 7.5, "(+) ดวงจันทร์ใกล้"
 
+    # 3. ปีนักษัตร
     z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
     z_map = {"ชวด":1, "ฉลู":2, "ขาล":3, "เถาะ":4, "มะโรง":5, "มะเส็ง":6, "มะเมีย":7, "มะแม":8, "วอก":9, "ระกา":10, "จอ":11, "กุน":12}
     z_name = z_names[dt.year % 12]
     zv = z_map.get(z_name, 1)
 
-    m, d = dt.month, dt.day
-    if (m == 5 and d >= 14) or (m == 6 and d <= 14): et, ev = "ดิน", 1
-    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): et, ev = "ไฟ", 4
-    else: et, ev = "ลม", 3
-
-    base_sum = d_val + dt.day + moon_num + dt.month + zv + ev
-    final_code = (base_sum + l_logic) * 1.618
-
-    return {
-        "day": d_names[dt.weekday()], "day_val": d_val, "date": dt.day,
-        "month": dt.month, "zodiac": z_name, "z_val": zv,
-        "phase": phase_text, "elem": et, "e_val": ev, "code": round(final_code, 4)
-    }
-
-st.set_page_config(page_title="SYNAPSE 1960-2026", layout="wide")
-st.title("🧠 Synapse High-Speed Math (1960-2026)")
-
-tab1, tab2 = st.tabs(["👤 ข้อมูลบุคคล", "👥 ข้อมูลคู่ขนาน"])
-
-with tab1:
-    user_dt = st.date_input("เลือกวันเกิดของคุณ (1960-2026)", 
-                           value=date(2000, 1, 1),
-                           min_value=MIN_DATE, max_value=MAX_DATE)
-    if st.button("ประมวลผลพิกัด"):
-        res = get_synapse_report(user_dt)
-        st.success(f"รหัสพิกัดของคุณคือ: {res['code']}")
-        # (เพิ่มส่วนสแกนอดีต-อนาคตตามโค้ดก่อนหน้าได้เลยครับ)
-
-with tab2:
-    col1, col2 = st.columns(2)
-    with col1:
-        dt_a = st.date_input("วันเกิดคนที่ 1", value=date(1980, 1, 1), 
-                            min_value=MIN_DATE, max_value=MAX_DATE, key="a")
-    with col2:
-        dt_b = st.date_input("วันเกิดคนที่ 2", value=date(1990, 1, 1), 
-                            min_value=MIN_DATE, max_value=MAX_DATE, key="b")
-    
-    if st.button("คำนวณคู่ขนาน"):
-        ra = get_synapse_report(dt_a)
-        rb = get_synapse_report(dt_b)
-        res_code = (ra['code'] + rb['code']) / 1.618
-        st.warning(f"CO-RESONANCE CODE: {round(res_code, 4)}")
-
-# =================================================================
-# 1. HIGH-SPEED MATHEMATICS ENGINE (ตัวคำนวณหลัก)
-# =================================================================
-def get_synapse_report(dt):
-    if dt is None: return None
-    
-    # พิกัดฐาน (Base Coordinates)
-    day_map = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
-    d_val = day_map[dt.weekday()]
-    d_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-    
-    # พิกัดจันทรคติ (Lunar Balance ±7.5)
-    ref = date(1900, 1, 1)
-    diff = (dt - ref).days
-    lunar_pos = (diff - 0.5) % 29.530589
-    if lunar_pos <= 14.765:
-        moon_num = int(lunar_pos) + 1
-        phase_text, l_logic = f"ขึ้น {moon_num} ค่ำ", -7.5
-    else:
-        moon_num = int(lunar_pos - 14.765) + 1
-        phase_text, l_logic = f"แรม {moon_num} ค่ำ", 7.5
-
-    # พิกัดจักรราศี & นักษัตร
-    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
-    z_map = {"ชวด":1, "ฉลู":2, "ขาล":3, "เถาะ":4, "มะโรง":5, "มะเส็ง":6, "มะเมีย":7, "มะแม":8, "วอก":9, "ระกา":10, "จอ":11, "กุน":12}
-    z_name = z_names[dt.year % 12]
-    zv = z_map.get(z_name, 1)
-
-    # พิกัดธาตุ (Element Matrix)
+    # 4. ธาตุประจำพิกัด
     m, d = dt.month, dt.day
     if (m == 5 and d >= 14) or (m == 6 and d <= 14): et, ev = "ดิน", 1
     elif (m == 4 and d >= 13) or (m == 5 and d <= 13): et, ev = "ไฟ", 4
     elif (m == 7 and d >= 16) or (m == 8 and d <= 16): et, ev = "น้ำ", 2
     else: et, ev = "ลม", 3
 
-    # สูตร Golden Ratio (1.618)
-    # [วัน + วันที่ + ค่ำ + เดือน + ปี + ธาตุ] 
+    # ตีค่าตัวเลขตามขั้นตอน: (วัน+วันที่+ค่ำ+เดือน+นักษัตร+ธาตุ + ค่าดวงจันทร์) * 1.618
     base_sum = d_val + dt.day + moon_num + dt.month + zv + ev
-    final_code = (base_sum + l_logic) * 1.618
+    raw_code = (base_sum + l_logic) * 1.618
 
     return {
-        "day": d_names[dt.weekday()], "day_val": d_val, "date": dt.day,
+        "day_name": d_names[dt.weekday()], "day_val": d_val, "date": dt.day,
         "month": dt.month, "zodiac": z_name, "z_val": zv,
-        "phase": phase_text, "elem": et, "e_val": ev, "code": round(final_code, 4)
+        "phase": phase_text, "l_logic": l_logic, "l_symbol": l_symbol,
+        "elem": et, "e_val": ev, "raw_code": round(raw_code, 4), "year": dt.year
     }
 
-# =================================================================
-# 2. INTERFACE & NAVIGATION
-# =================================================================
-st.set_page_config(page_title="SYNAPSE ULTIMATE", layout="wide")
+# --- ฟังก์ชันตีความเกณฑ์ตัวเลข (0-9 หน้าสุด) ---
+def interpret_result(value):
+    first_digit = int(str(abs(value)).replace('.', '')[0])
+    if first_digit in [0, 5]:
+        return "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
+    elif 1 <= first_digit <= 4:
+        return "⚠️ ไม่สู้ดี (ต้องระวัง)", "#ff4b4b"
+    else: # 6-9
+        return "🔥 ดีมาก (แนวโน้มพัฒนาสูง)", "#00ff00"
 
-# CSS ตกแต่งให้ดูไฮเทค
-st.markdown("""
-    <style>
-    .report-card { background: #0e1117; padding: 25px; border-radius: 15px; border: 1px solid #00f3ff; margin-bottom: 20px; }
-    .gold-card { background: #0e1117; padding: 25px; border-radius: 15px; border: 1px solid gold; margin-bottom: 20px; }
-    .neon-text { color: #00f3ff; text-shadow: 0 0 10px #00f3ff; }
-    </style>
-""", unsafe_allow_html=True)
+# --- ส่วนหน้าจอแอป ---
+st.markdown("<h1 style='text-align:center; color:#00f3ff;'>🧬 SYNAPSE ULTIMATE SYSTEM</h1>", unsafe_allow_html=True)
 
-st.markdown("<h1 style='text-align:center;' class='neon-text'>🧬 SYNAPSE INTELLIGENCE SYSTEM</h1>", unsafe_allow_html=True)
-st.write("<p style='text-align:center;'>ระบบคำนวณพิกัดมิติคู่ขนานด้วยลอจิกคณิตศาสตร์ความเร็วสูง 1.618</p>", unsafe_allow_html=True)
-
-tab1, tab2 = st.tabs(["👤 วิเคราะห์พิกัดบุคคล", "👥 วิเคราะห์คู่ขนาน (Resonance)"])
+tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล (Single)", "👥 วิเคราะห์คู่ขนาน (Parallel)"])
 
 # -----------------------------------------------------------------
-# TAB 1: วิเคราะห์พิกัดบุคคล
+# TAB 1: บุคคล (บวกอายุ และสแกนไทม์ไลน์)
 # -----------------------------------------------------------------
 with tab1:
-    col_in1, col_in2 = st.columns([1, 2])
-    with col_in1:
-        u_dt = st.date_input("เลือกวันที่ต้องการสแกน (วันเกิด/วันสำคัญ)", value=date.today())
-        run_single = st.button("RUN SINGLE DECODER", use_container_width=True)
+    u_dt = st.date_input("วันเกิดของคุณ (1960-2026)", value=date(1984, 5, 18), 
+                         min_value=date(1960,1,1), max_value=date(2026,12,31), key="u1")
     
-    if run_single:
-        res = get_synapse_report(u_dt)
-        with col_in2:
-            st.markdown(f"""
-            <div class='report-card'>
-                <h2 class='neon-text'>PERSONAL CODE: {res['code']}</h2>
-                <p><b>ถอดรหัสพิกัด 6 มิติ:</b></p>
-                <ul>
-                    <li>พิกัดวาร: {res['day']} ({res['day_val']})</li>
-                    <li>สุริยคติ: วันที่ {res['date']} เดือน {res['month']}</li>
-                    <li>จันทรคติ: {res['phase']} (สมดุลดวงจันทร์)</li>
-                    <li>นักษัตร: ปี{res['zodiac']} (พลังงาน {res['z_val']})</li>
-                    <li>ธาตุสถิต: ธาตุ{res['elem']} (มิติ {res['e_val']})</li>
-                </ul>
-            </div>
-            """, unsafe_allow_html=True)
+    if st.button("ประมวลผลพิกัดบุคคล", key="run_u1"):
+        res = get_base_coordinates(u_dt)
+        age = 2026 - res['year']
+        
+        # สูตร: (รหัสบุคคล + อายุปัจจุบัน) / 1.618
+        personal_code = (res['raw_code'] + age) / 1.618
+        status, color = interpret_result(personal_code)
+        
+        st.markdown(f"""
+        <div style="border:2px solid {color}; padding:20px; border-radius:15px;">
+            <h3>📊 ข้อมูลพิกัด: {res['day_name']}ที่ {res['date']} เดือน {res['month']}</h3>
+            <p><b>ปีนักษัตร:</b> {res['zodiac']} | <b>ธาตุ:</b> {res['elem']}</p>
+            <p><b>สถานะดวงจันทร์:</b> {res['phase']} <b style="color:yellow;">{res['l_symbol']}</b></p>
+            <hr>
+            <h2 style="color:{color};">PERSONAL CODE: {round(personal_code, 4)}</h2>
+            <h4 style="color:{color};">เกณฑ์: {status}</h4>
+        </div>
+        """, unsafe_allow_html=True)
 
-        # สแกนไทม์ไลน์ 730 วัน
+        # สแกนไทม์ไลน์ 365 วัน
         st.write("---")
-        st.subheader("📊 TIMELINE SCANNER (อดีต - อนาคต)")
+        st.subheader("📅 ไทม์ไลน์บุคคล (อดีต 365 - อนาคต 365)")
         past, future = 0, 0
         for i in range(-365, 366):
             if i == 0: continue
-            s_res = get_synapse_report(u_dt + timedelta(days=i))
-            if abs(s_res['code'] - res['code']) < 1.3:
+            s_res = get_base_coordinates(u_dt + timedelta(days=i))
+            if abs(s_res['raw_code'] - res['raw_code']) < 1.6:
                 if i < 0: past += 1
                 else: future += 1
-        
-        c1, c2 = st.columns(2)
-        c1.metric("อดีตที่เคย Sync (365 วัน)", f"{past} ครั้ง")
-        c2.metric("อนาคตที่จะ Sync (365 วัน)", f"{future} ครั้ง")
-        
-        with st.expander("🔍 ที่มาของตัวเลข (Intelligence Briefing)"):
-            st.write(f"เลข {res['code']} มาจากการรวมพิกัดทั้ง 6 มิติ แล้วปรับด้วยค่าความต่างของข้างขึ้นข้างแรม (±7.5) จากนั้นคูณด้วย 1.618 (Golden Ratio) เพื่อหาค่าจุดสมดุลของร่างกายและ DNA ในมิติกาลเวลา")
+        st.write(f"พบจุด Sync อดีต: **{past}** ครั้ง | อนาคต: **{future}** ครั้ง")
 
 # -----------------------------------------------------------------
-# TAB 2: วิเคราะห์คู่ขนาน (Resonance)
+# TAB 2: คู่ขนาน (2 คน)
 # -----------------------------------------------------------------
 with tab2:
     st.markdown("### 🧬 ค้นหาจุดบรรจบของคน 2 คน")
-    c_p1, c_p2 = st.columns(2)
-    with c_p1:
-        dt_a = st.date_input("วันเกิด/พิกัด คนที่ 1", value=date(1990,1,1), key="a")
-    with c_p2:
-        dt_b = st.date_input("วันเกิด/พิกัด คนที่ 2", value=date(1995,1,1), key="b")
-    
-    if st.button("RUN RESONANCE MATCHING", use_container_width=True):
-        res_a = get_synapse_report(dt_a)
-        res_b = get_synapse_report(dt_b)
+    c1, c2 = st.columns(2)
+    with c1:
+        dt_a = st.date_input("วันเกิดคนที่ 1", value=date(1984, 5, 18), key="p1")
+    with c2:
+        dt_b = st.date_input("วันเกิดคนที่ 2", value=date(1996, 8, 17), key="p2")
+
+    if st.button("คำนวณจุดบรรจบคู่ขนาน", key="run_p"):
+        res_a = get_base_coordinates(dt_a)
+        res_b = get_base_coordinates(dt_b)
         
-        # สูตร: (A + B) / 1.618
-        res_code = (res_a['code'] + res_b['code']) / 1.618
+        # ผลรวม 2 คนหาร 1.618
+        res_code = (res_a['raw_code'] + res_b['raw_code']) / 1.618
+        status_p, color_p = interpret_result(res_code)
         
         st.markdown(f"""
-            <div class='gold-card' style='text-align:center;'>
-                <h3 style='color:gold;'>CO-RESONANCE CODE</h3>
-                <h1 style='font-size:60px;'>{round(res_code, 4)}</h1>
-                <p>นี่คือรหัสจุดบรรจบคู่ขนานที่จูนด้วยสัดส่วนทองคำ</p>
-            </div>
+        <div style="text-align:center; padding:30px; border:3px solid gold; border-radius:20px; background:black;">
+            <h2 style="color:gold;">CO-RESONANCE CODE</h2>
+            <h1 style="font-size:60px; color:white;">{round(res_code, 4)}</h1>
+            <h3 style="color:{color_p};">เกณฑ์หน้าสุด: {status_p}</h3>
+        </div>
         """, unsafe_allow_html=True)
 
-        # สแกนหาจุด Sync ร่วมกันในอนาคต
+        # สแกนไทม์ไลน์คู่ขนาน
         st.write("---")
-        st.subheader("📅 พยากรณ์วันบรรจบพิกัดร่วม (Next 365 Days)")
-        future_dates = []
-        for i in range(1, 366):
-            target_dt = date.today() + timedelta(days=i)
-            s_res = get_synapse_report(target_dt)
-            # หาจุดที่วันที่ในอนาคต มีรหัสใกล้เคียงกับรหัสคู่ขนานของเรา
-            if abs(s_res['code'] - res_code) < 1.5:
-                future_dates.append({"วันที่": target_dt.strftime("%d/%m/%Y"), "รหัสวัน": s_res['code']})
+        st.subheader("⏳ สแกนไทม์ไลน์คู่ขนาน (730 วัน)")
+        p_past, p_future = 0, 0
+        for i in range(-365, 366):
+            if i == 0: continue
+            # สแกนหาความถี่ที่ตรงกับรหัสร่วม
+            s_res = get_base_coordinates(date.today() + timedelta(days=i))
+            if abs(s_res['raw_code'] - res_code) < 2.0:
+                if i < 0: p_past += 1
+                else: p_future += 1
         
-        if future_dates:
-            st.write(f"พบจุด Sync ร่วมกันทั้งหมด {len(future_dates)} วัน ในปีหน้า:")
-            st.table(future_dates[:10]) # โชว์ 10 วันแรก
-        
-        with st.expander("📚 ลอจิกการคำนวณคู่ขนาน"):
-            st.markdown(f"""
-            1. **FUSION:** นำรหัสพิกัดเดี่ยวของทั้งคู่มารวมกันเพื่อหาค่าพลังงานรวม
-            2. **STABILIZER:** หารด้วย **1.618** เพื่อบีบอัดพลังงานให้กลับมาอยู่ในจุดที่สมดุลที่สุดตามสัดส่วนธรรมชาติ (ไม่ได้หาร 2 แบบค่าเฉลี่ยทั่วไป)
-            3. **SYNC:** วันที่ปรากฏในตาราง คือวันที่ 'มิติกาลเวลา' มีแรงสั่นสะเทือนตรงกับ 'รหัสร่วม' ของคุณทั้งคู่ เหมาะสำหรับทำกิจกรรมสำคัญร่วมกัน
-            """)
+        st.info(f"ในอดีต 1 ปี พลังงานคู่นี้เคย Sync กัน {p_past} ครั้ง | ในอนาคต 1 ปี จะ Sync กันอีก {p_future} ครั้ง")
 
-# FOOTER
-st.write("---")
-st.markdown("<p style='text-align:center; color:gray;'>High-Speed Math Algorithm | Golden Ratio 1.618 | Synapse Engine v.Ultimate</p>", unsafe_allow_html=True)
+        with st.expander("🔍 อธิบายขั้นตอนการคำนวณ"):
+            st.markdown(f"""
+            1. **ดึงพิกัดมิติ:** วัน + วันที่ + เดือน + นักษัตร + ธาตุ
+            2. **จูนดวงจันทร์:** แรม (+) ใกล้โลก / ขึ้น (-) ไกลโลก
+            3. **ค่าคงที่:** คูณ 1.618 เพื่อหาพิกัดสมดุลรายบุคคล
+            4. **Fusion:** นำรหัส 2 คนมาบวกกันแล้วหาร 1.618 เพื่อหาค่ากลางคู่ขนาน
+            5. **เกณฑ์ตัดสิน:** ใช้ตัวเลขหน้าสุด (0,5 = นิ่ง / 1-4 = ระวัง / 6-9 = ดีมาก)
+            """)
