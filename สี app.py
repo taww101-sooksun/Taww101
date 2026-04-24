@@ -54,7 +54,7 @@ st.markdown(f"""
     <img src="data:image/png;base64,{{logo_base64}}" class="global-logo">
 """, unsafe_allow_html=True)
 audio_data = get_base64_data(selected_bg_music)
-    st.sidebar.markdown(f"""
+st.sidebar.markdown(f"""
         <audio id="bgAudio" autoplay loop controls style="width: 100%; height: 30px;">
             <source src="data:audio/mp3;base64,{audio_data}" type="audio/mp3">
         </audio>
