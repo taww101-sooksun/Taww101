@@ -1,4 +1,4 @@
-Import streamlit as st
+import streamlit as st
 import os
 import pandas as pd
 import math
@@ -880,42 +880,36 @@ elif st.session_state.page == "9":
     except:
         st.warning("ไม่สามารถดึงประวัติได้ ตรวจสอบการเชื่อมต่อ Firebase")
 
+
 # --- [ ห้องที่ 10: COLOR MASTER (ปรับแต่งธีมสีระบบ) ] ---
 elif st.session_state.page == "10":
-    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>🎨 COLOR MASTER UI</h2>", unsafe_allow_html=True)
-    st.write("ปรับแต่งรังสีออร่าของแอปพลิเคชัน")
-    
-    # กำหนดค่าสีเริ่มต้นถ้ายังไม่มี
-    if 'custom_theme' not in st.session_state:
-        st.session_state.custom_theme = "#00f3ff"
-        
-    new_color = st.color_picker("เลือกโค้ดสีที่คุณต้องการ (Hex Code):", st.session_state.custom_theme)
-    
-    if st.button("🔥 อัปเดตสีระบบ", use_container_width=True):
-        st.session_state.custom_theme = new_color
+    st.markdown("<h2 class='neon-text' style='color:var(--primary); text-shadow: 0 0 20px var(--primary);'>🎨 MULTI-COLOR INTERFACE</h2>", unsafe_allow_html=True)
+    st.write("ปรับแต่งรังสีออร่าแยกส่วนของระบบ Synapse")
+
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        st.session_state.main_color = st.color_picker("🔵 สีหลัก (Primary Neon)", st.session_state.main_color)
+        st.session_state.bg_glow = st.color_picker("✨ สีเรืองแสงพื้นหลัง", "#0015ff") # ตัวแปรใหม่
+    with col_c2:
+        st.session_state.sub_color = st.color_picker("🔴 สีรอง (Secondary Neon)", st.session_state.sub_color)
+        st.info("สีที่เลือกจะถูกกระจายไปยังทุกโมดูล (DJ, Radar, Timeline) ทันที")
+
+    if st.button("🔥 APPLY ALL DIMENSIONS (รีเซ็ตสีทั่วแอป)", use_container_width=True):
+        st.balloons()
         st.rerun()
 
-    # ยิง CSS เพื่อเปลี่ยนสีกรอบและปุ่มทั้งแอปแบบ Real-time
+    # ตัวอย่างการแสดงผล
     st.markdown(f"""
-        <style>
-        .stApp {{
-            border-top: 5px solid {st.session_state.custom_theme};
-            transition: all 0.5s ease;
-        }}
-        .stButton>button {{
-            border-color: {st.session_state.custom_theme} !important;
-            box-shadow: 0 0 10px {st.session_state.custom_theme} !important;
-        }}
-        hr {{
-            border-bottom: 2px solid {st.session_state.custom_theme} !important;
-        }}
-        </style>
-        <div style="text-align:center; padding: 30px; border: 2px dashed {st.session_state.custom_theme}; border-radius: 10px;">
-            <h3 style="color:{st.session_state.custom_theme}; text-shadow: 0 0 10px {st.session_state.custom_theme};">
-                ตัวอย่างสีที่กำลังใช้งาน
-            </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
+            <div style="border: 2px solid var(--primary); padding: 20px; text-align: center; border-radius: 10px; box-shadow: 0 0 15px var(--primary);">
+                <b style="color:var(--primary);">PRIMARY UNIT</b>
+            </div>
+            <div style="border: 2px solid var(--secondary); padding: 20px; text-align: center; border-radius: 10px; box-shadow: 0 0 15px var(--secondary);">
+                <b style="color:var(--secondary);">SECONDARY UNIT</b>
+            </div>
         </div>
     """, unsafe_allow_html=True)
+
     
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Interface Control")
 
