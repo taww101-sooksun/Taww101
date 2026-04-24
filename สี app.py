@@ -356,7 +356,16 @@ if st.session_state.page == "HOME":
 # --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
 elif st.session_state.page == "1":
     st.markdown("<h2 class='neon-text'>🎧 SYNAPSE DJ STATION V.3</h2>", unsafe_allow_html=True)
+    st.markdown("---")
+    with st.expander("🎨 THEME COLORS"):
+        st.session_state.main_color = st.color_picker("Primary Neon", st.session_state.main_color)
+        st.session_state.sub_color = st.color_picker("Secondary Neon", st.session_state.sub_color)
     
+    if st.session_state.logged_in:
+        st.markdown(f"**Agent:** {st.session_state.user}")
+        if st.button("TERMINATE SESSION"):
+            st.session_state.logged_in = False
+            st.rerun()
     all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
     
     col_sel_a, col_sel_b = st.columns(2)
