@@ -1,17 +1,20 @@
 import streamlit as st
-import os
-import pandas as pd
-import math
+import os 
+import time
 import base64
 import firebase_admin
-จาก firebase_admin นำเข้า credentials, db
-จากการนำเข้า datetime , date และ timedelta
+from firebase_admin import credentials, db
 import streamlit.components.v1 as components
-จาก streamlit_folium นำเข้า st_folium
-จาก streamlit_js_eval นำเข้า get_geolocation
-จาก streamlit_autorefresh นำเข้า st_autorefresh
-นำเข้า hashlib
-
+import folium
+from folium.features import DivIcon
+from streamlit_folium import st_folium
+from math import radians, cos, sin, asin, sqrt
+import pytz
+from timezonefinder import TimezoneFinder
+from datetime import datetime, date
+import math
+import random
+from streamlit_js_eval import get_geolocation 
 # 1. ฟังก์ชั่นดึงข้อมูล (สีแดงบนสุด)
 def get_base64_data(file_path):
     try:
