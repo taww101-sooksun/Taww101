@@ -12,11 +12,8 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 import hashlib
-import streamlit as st
-import base64
-import os
 
-# 1. ต้องวางฟังก์ชันไว้ตรงนี้ก่อน (ห้ามย้ายไปไหน)
+# 1. ฟังก์ชันดึงข้อมูล (วางไว้บนสุด)
 def get_base64_data(file_path):
     try:
         if os.path.exists(file_path):
@@ -26,52 +23,70 @@ def get_base64_data(file_path):
     except Exception:
         return ""
 
-# 2. ตั้งค่าสีเริ่มต้น
+# 2. ตั้งค่าสีและสถานะเริ่มต้น
 if 'main_color' not in st.session_state:
     st.session_state.main_color = "#00f3ff"
 if 'sub_color' not in st.session_state:
     st.session_state.sub_color = "#ff00de"
+if 'page' not in st.session_state:
+    st.session_state.page = "HOME"
 
-# 3. นำมาใช้งานใน CSS (บรรทัดที่เคย Error)
+# 3. GLOBAL CSS & LOGO (แสดงผลทุกหน้า)
 logo_base64 = get_base64_data("logo1.png")
-
 st.markdown(f"""
     <style>
     :root {{
         --primary: {st.session_state.main_color};
         --secondary: {st.session_state.sub_color};
     }}
-    .stApp {{ background-color: #000; }}
+    .stApp {{ background-color: #000000; color: white; }}
     .global-logo {{
         position: fixed; 
         top: 10px; 
         right: 20px; 
-        width: 50px; 
-        z-index: 1000;
-        filter: drop-shadow(0 0 5px var(--primary));
+        width: 60px; 
+        z-index: 9999;
+        filter: drop-shadow(0 0 10px var(--primary));
+        animation: pulse 2s infinite alternate;
+    }}
+    @keyframes pulse {{
+        from {{ transform: scale(1); filter: drop-shadow(0 0 5px var(--primary)); }}
+        to {{ transform: scale(1.1); filter: drop-shadow(0 0 15px var(--secondary)); }}
+    }}
+    .neon-text {{
+        color: var(--primary);
+        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary);
+        font-family: 'Orbitron', sans-serif;
     }}
     </style>
-    <img src="data:image/png;base64,{{logo_base64}}" class="global-logo">
+    <img src="data:image/png;base64,{logo_base64}" class="global-logo">
 """, unsafe_allow_html=True)
 
- audio_data = get_base64_data(selected_bg_music)
-st.sidebar.markdown(f"""
-        <audio id="bgAudio" autoplay loop controls style="width: 100%; height: 30px;">
-            <source src="data:audio/mp3;base64,{audio_data}" type="audio/mp3">
-        </audio>
-    """, unsafe_allow_html=True)
+# 4. SIDEBAR: ระบบเปลี่ยนสีและเพลงพื้นหลัง (เพื่อให้เพลงเล่นต่อเนื่อง)
+with st.sidebar:
+    st.markdown("<h2 class='neon-text'>CONTROL PANEL</h2>", unsafe_allow_html=True)
+    
+    # ส่วนเปลี่ยนสี
+    with st.expander("🎨 THEME COLORS"):
+        st.session_state.main_color = st.color_picker("Main Neon", st.session_state.main_color)
+        st.session_state.sub_color = st.color_picker("Sub Neon", st.session_state.sub_color)
+    
+    # ส่วนเพลงพื้นหลัง (เล่นต่อเนื่องทุกหน้า)
+    all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
+    selected_bg = st.selectbox("🎵 Background Music", ["Off"] + all_songs)
+    
+    if selected_bg != "Off":
+        bg_audio_data = get_base64_data(selected_bg)
+        st.markdown(f"""
+            <audio id="bgAudio" autoplay loop controls style="width: 100%; height: 40px; margin-top:10px;">
+                <source src="data:audio/mp3;base64,{bg_audio_data}" type="audio/mp3">
+            </audio>
+        """, unsafe_allow_html=True)
 
-# --- 4. หน้าตั้งค่าสี (เปลี่ยนแล้วเปลี่ยนเลยทุกหน้า) ---
-with st.sidebar.expander("🎨 THEME CUSTOMIZE"):
-    st.session_state.main_color = st.color_picker("สีหลัก (Neon 1)", st.session_state.main_color)
-    st.session_state.sub_color = st.color_picker("สีรอง (Neon 2)", st.session_state.sub_color)
-    if st.button("RESET COLOR"):
-        st.session_state.main_color = "#00f3ff"
-        st.session_state.sub_color = "#ff00de"
-        st.rerun()
+# --- 5. การจัดการหน้า (Navigation) เริ่มต่อจากตรงนี้ ---
+# if st.session_state.page == "HOME":
+# elif st.session_state.page == "1":
 
-# --- 5. การจัดการหน้า (Navigation) ---
-# (โค้ดส่วน elif st.session_state.page == "1" ... ของเดิมของคุณต๊ะ)
 
 
 # --- [ หัวใจคำนวณ: ระบบถอดรหัส Lunar ] ---
