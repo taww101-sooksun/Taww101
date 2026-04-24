@@ -92,14 +92,78 @@ def get_synapse_report(dt):
 # =================================================================
 # 3. GLOBAL CSS
 # =================================================================
+# --- ส่วนนี้วางต่อจากรายงานผล res = get_synapse_report(target_dt) ---
+
+st.write("---")
+st.markdown("<h3 class='neon-text'>📊 TIMELINE ANALYTICS (730 DAYS)</h3>", unsafe_allow_html=True)
+
+# 1. คำนวณสถิติ ย้อนหลัง 365 วัน และ อนาคต 365 วัน
+current_code = res['code']
+past_matches = 0
+future_matches = 0
+timeline_data = []
+
+# วงรอบการสแกน (730 วัน)
+for i in range(-365, 366):
+    scan_date = target_dt + timedelta(days=i)
+    scan_res = get_synapse_report(scan_date)
+    
+# --- ส่วนวิเคราะห์เหตุการณ์จากรหัส ---
+def interpret_event(code):
+    suffix = code % 1  # ดึงค่าทศนิยมมาวิเคราะห์
+    if code > 80:
+        return "🔥 PEAK ACTION", "ช่วงเวลาแห่งการพุ่งทะยาน เหมาะกับการตัดสินใจใหญ่"
+    elif suffix > 0.7:
+        return "⚡ SHOCK TRIGGER", "ระวังเหตุการณ์ไม่คาดฝัน หรือการเปลี่ยนแปลงที่รวดเร็ว"
+    elif 0.4 <= suffix <= 0.6:
+        return "💎 GOLDEN SYNC", "พิกัดอยู่ในจุดสมดุลจักรวาล มีโอกาสพบเจอเรื่องดีๆ หรือโชคลาภ"
+    else:
+        return "🛡️ BARRIER MODE", "กาลเวลาหยุดนิ่งเพื่อการตั้งรับ ควรใช้ความรอบคอบเป็นพิเศษ"
+
+# การแสดงผลในแอป
+event_title, event_desc = interpret_event(res['code'])
+
 st.markdown(f"""
-    <style>
-    header, footer, #MainMenu {{visibility: hidden !important;}}
-    .stApp {{background-color: #000; border: 1px solid {st.session_state.main_color};}}
-    .neon-text {{color: {st.session_state.main_color}; text-shadow: 0 0 10px {st.session_state.main_color}; font-weight: bold;}}
-    .stButton>button {{border: 1px solid {st.session_state.main_color}; background: transparent; color: white; border-radius: 10px;}}
-    </style>
+    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-top: 10px; border-left: 5px solid {st.session_state.main_color};">
+        <h4 style="margin:0; color:white;">{event_title}</h4>
+        <p style="margin:0; color:lightgray; font-size: 0.9rem;">{event_desc}</p>
+    </div>
 """, unsafe_allow_html=True)
+
+
+# แสดงผลสถิติเป็น Metric
+col_s1, col_s2, col_s3 = st.columns(3)
+col_s1.metric("PAST SYNC (365d)", f"{past_matches} ครั้ง", "อดีต")
+col_s2.metric("CURRENT CODE", current_code)
+col_s3.metric("FUTURE SYNC (365d)", f"{future_matches} ครั้ง", "ทำนาย")
+
+# 2. ส่วนคำอธิบายระบบ (Intelligence Briefing)
+with st.expander("🔍 HOW IT WORKS? (ลอจิกการคำนวณทั้งหมด)"):
+    st.markdown(f"""
+    ### 🧠 ขั้นตอนการถอดรหัสพิกัดดิจิทัล
+    รหัส **{current_code}** ที่คุณเห็น มาจากการรวบรวมค่าพิกัด 6 มิติ ดังนี้:
+    
+    1. **มิติวาร (วัน):** ดึงค่าพลังงานจากวันทั้ง 7 (จันทร์=1 ถึง อาทิตย์=7) ➜ **ค่าปัจจุบัน: {res['day_val']}**
+    2. **มิติสุริยคติ (วันที่):** เลขวันที่ที่คุณเกิดหรือวันที่เลือก ➜ **ค่าปัจจุบัน: {res['date']}**
+    3. **มิติจันทรคติ (ค่ำ):** คำนวณจากรอบดวงจันทร์ 29.53 วัน เพื่อหาข้างขึ้น/ข้างแรม ➜ **ค่าปัจจุบัน: {res['phase']}**
+    4. **มิติรอบเดือน:** ลำดับของเดือน 1-12 ➜ **ค่าปัจจุบัน: {res['month_val']}**
+    5. **มิติจักรราศี (ปีนักษัตร):** รอบปีนักษัตรทั้ง 12 ปี ➜ **ค่าปัจจุบัน: {res['z_val']} ({res['zodiac']})**
+    6. **มิติธาตุสถิต:** พลังงานจากธาตุ ดิน(1), น้ำ(2), ลม(3), ไฟ(4) ตามช่วงเวลา ➜ **ค่าปัจจุบัน: {res['e_val']} ({res['elem']})**
+    
+    ---
+    ### ⚙️ สูตรการประมวลผล (SYNAPSE FORMULA)
+    ระบบจะนำค่าทั้ง 6 มิติมารวมกันเป็น **"ฐานพลังงาน"**
+    * **ฐานรวม:** ({res['day_val']} + {res['date']} + {res['month_val']} + {res['z_val']} + {res['e_val']} + ค่ำ) = **{int(current_code/1.618 - (7.5 if "แรม" in res['phase'] else -7.5))}**
+    * **ปรับสมดุลจันทรคติ:** หากเป็นข้างขึ้นจะ **ลบ 7.5** | หากเป็นข้างแรมจะ **บวก 7.5** (เพื่อหาจุดสมดุลน้ำขึ้น-น้ำลง)
+    * **คูณค่า Golden Ratio (1.618):** เพื่อขยายสัญญาณพิกัดให้กลายเป็นรหัสลับที่ใช้เชื่อมต่อกับมิติอื่นๆ
+    
+    **สรุป:** รหัสนี้เปรียบเสมือน "ลายนิ้วมือของกาลเวลา" ที่บอกว่าคุณมีความสอดคล้องกับจักรวาลในช่วงเวลานั้นอย่างไร
+    """)
+
+if timeline_data:
+    st.write("📍 **จุดเชื่อมโยงไทม์ไลน์ที่ใกล้เคียงที่สุด:**")
+    st.table(timeline_data)
+
 
 # =================================================================
 # 4. MAIN NAVIGATION
