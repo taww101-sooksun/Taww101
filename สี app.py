@@ -3,6 +3,62 @@ import datetime
 import math
 import hashlib
 from datetime import date, timedelta
+def get_synapse_report(dt):
+    if dt is None: return None
+    
+    # 1. วัน
+    day_map = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
+    day_val = day_map[dt.weekday()]
+    
+    # 3. เดือน
+    month_val = dt.month
+    
+    # 4. ข้างขึ้นแรม
+    ref_date = date(1900, 1, 1)
+    diff = (dt - ref_date).days
+    lunar_pos = (diff - 0.5) % 29.530589
+    if lunar_pos <= 14.765:
+        moon_num = int(lunar_pos) + 1
+        phase_text = f"ขึ้น {moon_num} ค่ำ"
+        lunar_logic = -7.5
+        l_logic_text = "ลบ 7.5"
+    else:
+        moon_num = int(lunar_pos - 14.765) + 1
+        phase_text = f"แรม {moon_num} ค่ำ"
+        lunar_logic = 7.5
+        l_logic_text = "บวก 7.5"
+
+    # 5. ปีนักษัตร
+    zodiac_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+    zodiac_val_map = {"ชวด":1, "ฉลู":2, "ขาล":3, "เถาะ":4, "มะโรง":5, "มะเส็ง":6, "มะเมีย":7, "มะแม":8, "วอก":9, "ระกา":10, "จอ":11, "กุน":12}
+    zodiac_name = zodiac_names[dt.year % 12]
+    z_val = zodiac_val_map[zodiac_name]
+
+    # 6. ธาตุ
+    m, d = dt.month, dt.day
+    # (สมมติลอจิกธาตุพฤษภ=ดิน=1)
+    if (m == 5 and d >= 14) or (m == 6 and d <= 14): rasi, e_text, e_val = "พฤษภ", "ดิน", 1
+    else: rasi, e_text, e_val = "อื่นๆ", "ลม", 3
+
+    base_sum = day_val + dt.day + moon_num + month_val + z_val + e_val
+    final_code = (base_sum + lunar_logic) * 1.618
+
+    # --- สำคัญมาก: ต้องมี Return ค่าพวกนี้ให้ครบ ---
+    return {
+        "day": ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()],
+        "day_val": day_val,
+        "date": dt.day,
+        "month": ["", "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"][dt.month],
+        "month_val": month_val,
+        "zodiac": zodiac_name,
+        "z_val": z_val,
+        "phase": phase_text,
+        "l_logic_text": l_logic_text,
+        "elem": e_text,
+        "e_val": e_val,
+        "rasi": rasi,
+        "code": round(final_code, 4)
+    }
 
 # =================================================================
 # 1. SETUP & CONFIG (ป้องกัน Error บรรทัดแรกๆ)
