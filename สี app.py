@@ -12,14 +12,29 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 import hashlib
+import streamlit as st
+import base64
+import os
 
-# --- 1. SETUP SESSION STATE (เก็บค่าสีและสถานะเพลง) ---
+# 1. ต้องวางฟังก์ชันไว้ตรงนี้ก่อน (ห้ามย้ายไปไหน)
+def get_base64_data(file_path):
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+        return ""
+    except Exception:
+        return ""
+
+# 2. ตั้งค่าสีเริ่มต้น
 if 'main_color' not in st.session_state:
-    st.session_state.main_color = "#00f3ff"  # สีเริ่มต้น (ฟ้า)
+    st.session_state.main_color = "#00f3ff"
 if 'sub_color' not in st.session_state:
-    st.session_state.sub_color = "#ff00de"   # สีรอง (ชมพู)
+    st.session_state.sub_color = "#ff00de"
 
-# --- 2. GLOBAL CSS (คุมสีทุกหน้า) ---
+# 3. นำมาใช้งานใน CSS (บรรทัดที่เคย Error)
+logo_base64 = get_base64_data("logo1.png")
+
 st.markdown(f"""
     <style>
     :root {{
@@ -27,27 +42,19 @@ st.markdown(f"""
         --secondary: {st.session_state.sub_color};
     }}
     .stApp {{ background-color: #000; }}
-    .neon-text {{
-        color: var(--primary);
-        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary);
-        font-family: 'Orbitron'; text-align: center;
-    }}
-    /* โลโก้คงที่ทุกหน้า */
     .global-logo {{
-        position: fixed; top: 10px; right: 20px; width: 50px; z-index: 1000;
+        position: fixed; 
+        top: 10px; 
+        right: 20px; 
+        width: 50px; 
+        z-index: 1000;
         filter: drop-shadow(0 0 5px var(--primary));
     }}
     </style>
-    <img src="data:image/png;base64,{get_base64_data('logo1.png')}" class="global-logo">
+    <img src="data:image/png;base64,{{logo_base64}}" class="global-logo">
 """, unsafe_allow_html=True)
 
-# --- 3. GLOBAL AUDIO PLAYER (ทำให้เพลงไม่ดับ) ---
-# ดึงเพลงจาก GitHub Root มาเตรียมไว้
-all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
-# ส่วนนี้จะซ่อนตัวเล่นไว้ข้างหลัง (Background) เพื่อให้เพลงไหลต่อเนื่อง
-st.sidebar.markdown("### 🎚 GLOBAL CONTROL")
-selected_bg_music = st.sidebar.selectbox("เลือกเพลงพื้นหลัง", ["None"] + all_songs)
-
+ 
 if selected_bg_music != "None":
     audio_data = get_base64_data(selected_bg_music)
     st.sidebar.markdown(f"""
