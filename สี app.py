@@ -919,4 +919,3 @@ if 'primary_color' not in st.session_state:
 if 'page' not in st.session_state:
     st.session_state.page = "HOME"
 
-มันถูกใจเลยครับ.กลัวผู้ใช่คนเอื่อน
