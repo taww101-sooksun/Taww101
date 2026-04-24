@@ -92,6 +92,15 @@ st.markdown(f"""
     }}
     </style>
 """, unsafe_allow_html=True)
+# --- ส่วนจัดการปุ่มย้อนกลับอัตโนมัติ ---
+if st.session_state.page != "HOME":
+    # สร้างคอลัมน์เพื่อให้ปุ่มอยู่ซ้ายสุด
+    col_back, col_empty = st.columns([1, 4])
+    with col_back:
+        if st.button("⬅️ BACK TO MAIN", use_container_width=True):
+            st.session_state.page = "HOME"
+            st.rerun()
+    st.write("---") # ขีดเส้นคั่นให้ดูเป็นระเบียบ
 
 # =================================================================
 # 4. ฟังก์ชันเสริม (Base64 & ลอจิกดวง)
