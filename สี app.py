@@ -11,89 +11,140 @@ from streamlit_folium import st_folium
 from math import radians, cos, sin, asin, sqrt
 import pytz
 from timezonefinder import TimezoneFinder
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 import math
 import random
-import hashlib
-import pandas as pd
 from streamlit_js_eval import get_geolocation 
-
-# =================================================================
-# 1. SETUP สูงสุด (ต้องอยู่บรรทัดแรก และมีที่เดียวเท่านั้น)
-# =================================================================
-st.set_page_config(
-    page_title="SYNAPSE ULTIMATE", 
-    layout="wide", 
-    initial_sidebar_state="expanded"
-)
-
-# --- ลบติ่ง STREAMLIT แบบขุดรากถอนโคน ---
-# ต้องมีท่อนนี้คุมไว้บนสุดเสมอ สีถึงจะไหลไปทุกห้อง
-st.markdown(f"""
-    <style>
-    :root {{
-        --primary: {st.session_state.main_color};
-        --secondary: {st.session_state.sub_color};
-        --glow: {st.session_state.get('bg_glow', '#0015ff')};
-    }}
-    
-    /* สั่งให้ปุ่มทุกอันในโปรแกรมใช้สีจากตัวแปรนี้ */
-    .stButton>button {{
-        border: 1px solid var(--primary) !important;
-        box-shadow: 0 0 5px var(--primary) !important;
-    }}
-    
-    /* สั่งให้หัวข้อ neon-text เปลี่ยนตาม */
-    .neon-text {{
-        color: var(--primary) !important;
-        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary) !important;
-    }}
-    </style>
-""", unsafe_allow_html=True)
-
-# =================================================================
-# 2. ฟังก์ชันดึงข้อมูล (Base64)
-# =================================================================
+# 1. ฟังก์ชั่นดึงข้อมูล (สีแดงบนสุด)
 def get_base64_data(file_path):
     try:
         if os.path.exists(file_path):
             with open(file_path, "rb") as f:
                 return base64.b64encode(f.read()).decode()
         return ""
-    except: return ""
+    except Exception:
+        return ""
 
-# =================================================================
-# 3. INITIAL STATE (เช็คค่าสีและหน้าจอ)
-# =================================================================
-if 'main_color' not in st.session_state: st.session_state.main_color = "#00f3ff"
-if 'sub_color' not in st.session_state: st.session_state.sub_color = "#ff00de"
-if 'bg_glow' not in st.session_state: st.session_state.bg_glow = "#0015ff"
-if 'page' not in st.session_state: st.session_state.page = "HOME"
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
-# =================================================================
-# 4. GLOBAL THEME CSS (เปลี่ยนตามสีที่คุณต๊ะเลือก)
-# =================================================================
-logo_b64 = get_base64_data("logo1.png")
+#2.ตั้งค่าสีและสถานะเริ่มต้น
+# --- ตรวจสอบสถานะสีและหน้าจอ (ห้ามมีภาษาไทยในคำสั่ง) ---
+if 'main_color' not in st.session_state:
+    st.session_state.main_color = "#00f3ff"
 
+if 'sub_color' not in st.session_state:
+    st.session_state.sub_color = "#ff00de"
+
+if 'page' not in st.session_state:
+    st.session_state.page = "HOME"
+
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+
+#การแสดงส่วน :root ใน Style ของคุณต๊ะให้เป็นเช่นนั้น
+# --- ส่วนนี้คือตัวคุมโลโก้ให้แสดงทุกหน้า ---
+logo_b64 = get_base64_data("logo1.png") # ดึงไฟล์รูปโลโก้
+
+st.markdown(f"""
+    <style>
+    /* ตั้งค่าให้โลโก้อยู่กับที่ (Fixed) ไม่ว่าจะเลื่อนไปหน้าไหน */
+    .global-logo {{
+        position: fixed; 
+        top: 15px;      /* ระยะห่างจากขอบบน */
+        right: 25px;    /* ระยะห่างจากขอบขวา */
+        width: 65px;    /* ขนาดความกว้างโลโก้ */
+        z-index: 10000; /* ตั้งค่าให้อยู่ชั้นบนสุดของทุกอย่าง */
+        filter: drop-shadow(0 0 10px var(--primary)); /* ใส่แสงเรืองแสงตามสีหลัก */
+        animation: pulse 2s infinite alternate; /* ใส่เอฟเฟกต์เต้นตุบๆ */
+    }}
+    
+    @keyframes pulse {{ 
+        from {{ transform: scale(1); }} 
+        to {{ transform: scale(1.1); }} 
+    }}
+    </style>
+    
+    <img src="data:image/png;base64,{logo_b64}" class="global-logo">
+""", unsafe_allow_html=True)
+# แก้ไขส่วน :root ใน Style ของคุณต๊ะให้เป็นแบบนี้
 st.markdown(f"""
     <style>
     :root {{
         --primary: {st.session_state.main_color};
         --secondary: {st.session_state.sub_color};
+        --glow: {st.session_state.get('bg_glow', '#00f3ff')};
     }}
-    .stApp {{ 
-        background-color: #000; 
-        color: #fff; 
+
+    /* ทุกปุ่มในทุกห้องจะเปลี่ยนตาม */
+    .stButton>button {{
+        border: 1px solid var(--primary) !important;
+        background: rgba(0,0,0,0.2) !important;
+        color: white !important;
+        box-shadow: 0 0 5px var(--primary);
+    }}
+    
+    .stButton>button:hover {{
+        border-color: var(--secondary) !important;
+        box-shadow: 0 0 20px var(--secondary) !important;
+    }}
+
+    /* หัวข้อทุกห้องจะเรืองแสงตามสีที่เลือก */
+    .neon-text {{
+        color: var(--primary) !important;
+        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary) !important;
+    }}
+    
+    /* ขอบหน้าจอแอป */
+    .stApp {{
         border: 2px solid var(--primary);
-    }}
-    .global-logo {{
-        position: fixed; top: 10px; right: 20px; width: 60px; z-index: 10000;
-        filter: drop-shadow(0 0 8px var(--primary));
+        transition: all 0.8s ease;
     }}
     </style>
-    <img src="data:image/png;base64,{logo_b64}" class="global-logo">
 """, unsafe_allow_html=True)
+st.markdown("""
+    <style>
+    /* 1. เอาติ่งข้างล่าง (Footer) ออก */
+    footer {visibility: hidden;}
+    
+    /* 2. เอาแถบเมนู (Header) ข้างบนออก */
+    header {visibility: hidden;}
+    
+    /* 3. เอาปุ่มจุดสามจุด (MainMenu) ออก */
+    #MainMenu {visibility: hidden;}
+    
+    /* แถม: ปรับระยะขอบใหม่ให้เต็มจอหลังจากเอาติ่งออก */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 0rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
+# 4. SIDEBAR: ระบบเปลี่ยนสีและเพลงพื้นหลัง (เพื่อให้เพลงเล่นต่อเนื่อง)
+with st.sidebar:
+    st.markdown("<h2 class='neon-text'>CONTROL PANEL</h2>", unsafe_allow_html=True)
+    
+    # ส่วนเปลี่ยนสี
+    with st.expander("🎨 THEME COLORS"):
+        st.session_state.main_color = st.color_picker("Main Neon", st.session_state.main_color)
+        st.session_state.sub_color = st.color_picker("Sub Neon", st.session_state.sub_color)
+    
+    # ส่วนเพลงพื้นหลัง (เล่นต่อเนื่องทุกหน้า)
+    all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
+    selected_bg = st.selectbox("🎵 Background Music", ["Off"] + all_songs)
+    
+    if selected_bg != "Off":
+        bg_audio_data = get_base64_data(selected_bg)
+        st.markdown(f"""
+            <audio id="bgAudio" autoplay loop controls style="width: 100%; height: 40px; margin-top:10px;">
+                <source src="data:audio/mp3;base64,{bg_audio_data}" type="audio/mp3">
+            </audio>
+        """, unsafe_allow_html=True)
+
+# --- 5. การจัดการหน้า (Navigation) เริ่มต่อจากตรงนี้ ---
+# if st.session_state.page == "HOME":
+# elif st.session_state.page == "1":
+
 
 
 # --- [ หัวใจคำนวณ: ระบบถอดรหัส Lunar ] ---
@@ -879,49 +930,38 @@ elif st.session_state.page == "9":
     except:
         st.warning("ไม่สามารถดึงประวัติได้ ตรวจสอบการเชื่อมต่อ Firebase")
 
+
 # --- [ ห้องที่ 10: COLOR MASTER (ปรับแต่งธีมสีระบบ) ] ---
 elif st.session_state.page == "10":
-    st.markdown(f"""
-        <h2 class='neon-text' style='color:{st.session_state.main_color}; text-shadow: 0 0 20px {st.session_state.main_color};'>
-            🎨 SYSTEM INTERFACE MASTER
-        </h2>
-    """, unsafe_allow_html=True)
-    
-    st.write("🔧 ปรับแต่งค่าสีรังสีออร่า (Neon Pulse) เพื่อใช้งานทุกโมดูลในระบบ")
+    st.markdown("<h2 class='neon-text' style='color:var(--primary); text-shadow: 0 0 20px var(--primary);'>🎨 MULTI-COLOR INTERFACE</h2>", unsafe_allow_html=True)
+    st.write("ปรับแต่งรังสีออร่าแยกส่วนของระบบ Synapse")
 
-    # ส่วนการเลือกสี
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.session_state.main_color = st.color_picker("🔵 สีหลัก (ปุ่ม/หัวข้อ/Deck A)", st.session_state.main_color)
-    with c2:
-        st.session_state.sub_color = st.color_picker("🔴 สีรอง (เส้นขอบ/Deck B)", st.session_state.sub_color)
-    with c3:
-        st.session_state.bg_glow = st.color_picker("✨ สีเรืองแสง (Glow Effect)", st.session_state.get('bg_glow', '#0015ff'))
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        st.session_state.main_color = st.color_picker("🔵 สีหลัก (Primary Neon)", st.session_state.main_color)
+        st.session_state.bg_glow = st.color_picker("✨ สีเรืองแสงพื้นหลัง", "#0015ff") # ตัวแปรใหม่
+    with col_c2:
+        st.session_state.sub_color = st.color_picker("🔴 สีรอง (Secondary Neon)", st.session_state.sub_color)
+        st.info("สีที่เลือกจะถูกกระจายไปยังทุกโมดูล (DJ, Radar, Timeline) ทันที")
 
-    # ปุ่มบันทึกและกระจายสี
-    if st.button("🔥 ACTIVATE COLOR SYNC (เปลี่ยนสีทุกห้อง)", use_container_width=True):
+    if st.button("🔥 APPLY ALL DIMENSIONS (รีเซ็ตสีทั่วแอป)", use_container_width=True):
         st.balloons()
-        st.toast("⚡ กำลังซิงค์พิกัดสีไปยังทุกโมดูล...")
-        time.sleep(1)
         st.rerun()
 
-    # ส่วนแสดงตัวอย่าง (Preview)
+    # ตัวอย่างการแสดงผล
     st.markdown(f"""
-        <div style="margin-top: 25px; padding: 20px; border: 2px dashed {st.session_state.main_color}; border-radius: 15px; background: rgba(0,0,0,0.5);">
-            <h4 style="color:{st.session_state.main_color}; text-align:center;">ตัวอย่างการแสดงผลในหน้าอื่นๆ</h4>
-            <hr style="border-color:{st.session_state.sub_color};">
-            <div style="display: flex; justify-content: space-around;">
-                <button style="border: 1px solid {st.session_state.main_color}; background: none; color: white; padding: 5px 20px; border-radius: 10px; box-shadow: 0 0 10px {st.session_state.main_color};">ปุ่มสีหลัก</button>
-                <button style="border: 1px solid {st.session_state.sub_color}; background: none; color: white; padding: 5px 20px; border-radius: 10px; box-shadow: 0 0 10px {st.session_state.sub_color};">ปุ่มสีรอง</button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
+            <div style="border: 2px solid var(--primary); padding: 20px; text-align: center; border-radius: 10px; box-shadow: 0 0 15px var(--primary);">
+                <b style="color:var(--primary);">PRIMARY UNIT</b>
             </div>
-            <p style="text-align: center; margin-top: 15px; font-size: 0.8rem; color: #888;">
-                *เมื่อกดยืนยัน สีของ DJ Visualizer และ Radar จะเปลี่ยนตามค่านี้โดยอัตโนมัติ*
-            </p>
+            <div style="border: 2px solid var(--secondary); padding: 20px; text-align: center; border-radius: 10px; box-shadow: 0 0 15px var(--secondary);">
+                <b style="color:var(--secondary);">SECONDARY UNIT</b>
+            </div>
         </div>
     """, unsafe_allow_html=True)
-    
-    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Interface Control v.5")
 
+    
+    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Interface Control")
 
 
 # (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
@@ -930,4 +970,3 @@ if 'primary_color' not in st.session_state:
     st.session_state.primary_color = "#00f3ff"
 if 'page' not in st.session_state:
     st.session_state.page = "HOME"
-
