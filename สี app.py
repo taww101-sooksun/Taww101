@@ -14,14 +14,15 @@ import streamlit.components.v1 as components
 นำเข้า hashlib
 
 # 1. ฟังก์ชั่นดึงข้อมูล (สีแดงบนสุด)
-def  get_base64_data ( file_path ) :
-    พยายาม :
-        ถ้า os.path.exists ( file_path ) :​​​
-            with  open ( file_path, "rb" )  as f:
-                คืนค่า base64.b64encode ( f.read ( ) ) . decode ( )​
-        กลับ ""return ""
-    ยกเว้นข้อยกเว้น:except Exception:
-        กลับ ""return ""
+def get_base64_data(file_path):
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+        return ""
+    except Exception:
+        return ""
+
 
 #2.ตั้งค่าสีและสถานะเริ่มต้น
 ถ้า 'main_color' ไม่อยู่ใน st.session_state: 'main_color' not in st.session_state:
