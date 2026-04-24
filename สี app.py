@@ -68,30 +68,6 @@ with st.sidebar.expander("🎨 THEME CUSTOMIZE"):
 # --- 5. การจัดการหน้า (Navigation) ---
 # (โค้ดส่วน elif st.session_state.page == "1" ... ของเดิมของคุณต๊ะ)
 
-# --- วางไว้บนสุดหลัง import ---
-def get_base64_data(file_path):
-    import base64
-    try:
-        with open(file_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    except: return ""
-
-logo_base64 = get_base64_data("logo1.png")
-
-# CSS สำหรับ Logo ให้ลอยอยู่ทุกหน้า
-st.markdown(f"""
-    <style>
-    .global-logo {{
-        position: fixed;
-        top: 10px;
-        right: 20px;
-        width: 60px;
-        z-index: 9999;
-        filter: drop-shadow(0 0 10px #00f3ff);
-    }}
-    </style>
-    <img src="data:image/png;base64,{logo_base64}" class="global-logo">
-""", unsafe_allow_html=True)
 
 # --- [ หัวใจคำนวณ: ระบบถอดรหัส Lunar ] ---
 def get_detailed_logic(dt):
