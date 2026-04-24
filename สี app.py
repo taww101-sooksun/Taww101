@@ -296,29 +296,7 @@ elif st.session_state.page == "1":
                     let rem = audio.duration - audio.currentTime;
                     if(!isNaN(rem)) {{
                         let remM = Math.floor(rem / 60);
-                        let remS = Math.floor(rem % 60);
-                        remTimeTxt.innerText = "-" + (remM < 10 ? "0"+remM : remM) + ":" + (remS < 10 ? "0"+remS : remS);
-                    }}
-                }});
 
-                // เลื่อนเพลงเองตามแถบ Progress
-                seekBar.addEventListener("input", () => {{
-                    const time = (seekBar.value / 100) * audio.duration;
-                    audio.currentTime = time;
-                }});
-            </script>
-        </div>
-        """
-        components.html(player_html, height=400)
-    else:
-        st.info("💡 กรุณาอัปโหลดไฟล์ .mp3 เพื่อใช้งานเครื่องเล่นเพลงระบบสัมผัส")
-
-    # ส่วนคลังเพลงเดิม (แสดงลิสต์)
-    st.write("---")
-    st.markdown("<h4 style='text-align:center;'>📂 LOCAL PLAYLIST</h4>", unsafe_allow_html=True)
-    songs = [f for f in os.listdir('.') if f.endswith('.mp3')]
-    for s in songs:
-        st.button(f"🎵 {s}", use_container_width=True)
 
     # 3. ส่วนของ Mixer HTML/JS (Deck A & B)
     # ผมรวมโค้ด Mixer ที่มี Visualizer และ Crossfade มาไว้ตรงนี้
