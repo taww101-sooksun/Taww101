@@ -28,41 +28,26 @@ st.set_page_config(
 )
 
 # --- ลบติ่ง STREAMLIT แบบขุดรากถอนโคน ---
-st.markdown("""
+# ต้องมีท่อนนี้คุมไว้บนสุดเสมอ สีถึงจะไหลไปทุกห้อง
+st.markdown(f"""
     <style>
-    /* ซ่อน Header (แถบใสข้างบน) */
-    header[data-testid="stHeader"] {
-        visibility: hidden !important;
-        height: 0px !important;
-    }
+    :root {{
+        --primary: {st.session_state.main_color};
+        --secondary: {st.session_state.sub_color};
+        --glow: {st.session_state.get('bg_glow', '#0015ff')};
+    }}
     
-    /* ซ่อน Footer (Made with Streamlit) */
-    footer {
-        visibility: hidden !important;
-        display: none !important;
-    }
+    /* สั่งให้ปุ่มทุกอันในโปรแกรมใช้สีจากตัวแปรนี้ */
+    .stButton>button {{
+        border: 1px solid var(--primary) !important;
+        box-shadow: 0 0 5px var(--primary) !important;
+    }}
     
-    /* ซ่อนปุ่ม MainMenu (จุด 3 จุด) */
-    #MainMenu {
-        visibility: hidden !important;
-    }
-
-    /* ซ่อนปุ่ม Deploy และสถานะต่างๆ */
-    .stDeployButton {
-        display: none !important;
-    }
-    
-    /* ขยับเนื้อหาขึ้นไปให้สุดหน้าจอ */
-    .block-container {
-        padding-top: 0rem !important;
-        padding-bottom: 0rem !important;
-        max-width: 100% !important;
-    }
-
-    /* ซ่อนแถบสถานะการโหลดรันโค้ดข้างบน */
-    div[data-testid="stStatusWidget"] {
-        visibility: hidden !important;
-    }
+    /* สั่งให้หัวข้อ neon-text เปลี่ยนตาม */
+    .neon-text {{
+        color: var(--primary) !important;
+        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary) !important;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -896,42 +881,47 @@ elif st.session_state.page == "9":
 
 # --- [ ห้องที่ 10: COLOR MASTER (ปรับแต่งธีมสีระบบ) ] ---
 elif st.session_state.page == "10":
-    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>🎨 COLOR MASTER UI</h2>", unsafe_allow_html=True)
-    st.write("ปรับแต่งรังสีออร่าของแอปพลิเคชัน")
+    st.markdown(f"""
+        <h2 class='neon-text' style='color:{st.session_state.main_color}; text-shadow: 0 0 20px {st.session_state.main_color};'>
+            🎨 SYSTEM INTERFACE MASTER
+        </h2>
+    """, unsafe_allow_html=True)
     
-    # กำหนดค่าสีเริ่มต้นถ้ายังไม่มี
-    if 'custom_theme' not in st.session_state:
-        st.session_state.custom_theme = "#00f3ff"
-        
-    new_color = st.color_picker("เลือกโค้ดสีที่คุณต้องการ (Hex Code):", st.session_state.custom_theme)
-    
-    if st.button("🔥 อัปเดตสีระบบ", use_container_width=True):
-        st.session_state.custom_theme = new_color
+    st.write("🔧 ปรับแต่งค่าสีรังสีออร่า (Neon Pulse) เพื่อใช้งานทุกโมดูลในระบบ")
+
+    # ส่วนการเลือกสี
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.session_state.main_color = st.color_picker("🔵 สีหลัก (ปุ่ม/หัวข้อ/Deck A)", st.session_state.main_color)
+    with c2:
+        st.session_state.sub_color = st.color_picker("🔴 สีรอง (เส้นขอบ/Deck B)", st.session_state.sub_color)
+    with c3:
+        st.session_state.bg_glow = st.color_picker("✨ สีเรืองแสง (Glow Effect)", st.session_state.get('bg_glow', '#0015ff'))
+
+    # ปุ่มบันทึกและกระจายสี
+    if st.button("🔥 ACTIVATE COLOR SYNC (เปลี่ยนสีทุกห้อง)", use_container_width=True):
+        st.balloons()
+        st.toast("⚡ กำลังซิงค์พิกัดสีไปยังทุกโมดูล...")
+        time.sleep(1)
         st.rerun()
 
-    # ยิง CSS เพื่อเปลี่ยนสีกรอบและปุ่มทั้งแอปแบบ Real-time
+    # ส่วนแสดงตัวอย่าง (Preview)
     st.markdown(f"""
-        <style>
-        .stApp {{
-            border-top: 5px solid {st.session_state.custom_theme};
-            transition: all 0.5s ease;
-        }}
-        .stButton>button {{
-            border-color: {st.session_state.custom_theme} !important;
-            box-shadow: 0 0 10px {st.session_state.custom_theme} !important;
-        }}
-        hr {{
-            border-bottom: 2px solid {st.session_state.custom_theme} !important;
-        }}
-        </style>
-        <div style="text-align:center; padding: 30px; border: 2px dashed {st.session_state.custom_theme}; border-radius: 10px;">
-            <h3 style="color:{st.session_state.custom_theme}; text-shadow: 0 0 10px {st.session_state.custom_theme};">
-                ตัวอย่างสีที่กำลังใช้งาน
-            </h3>
+        <div style="margin-top: 25px; padding: 20px; border: 2px dashed {st.session_state.main_color}; border-radius: 15px; background: rgba(0,0,0,0.5);">
+            <h4 style="color:{st.session_state.main_color}; text-align:center;">ตัวอย่างการแสดงผลในหน้าอื่นๆ</h4>
+            <hr style="border-color:{st.session_state.sub_color};">
+            <div style="display: flex; justify-content: space-around;">
+                <button style="border: 1px solid {st.session_state.main_color}; background: none; color: white; padding: 5px 20px; border-radius: 10px; box-shadow: 0 0 10px {st.session_state.main_color};">ปุ่มสีหลัก</button>
+                <button style="border: 1px solid {st.session_state.sub_color}; background: none; color: white; padding: 5px 20px; border-radius: 10px; box-shadow: 0 0 10px {st.session_state.sub_color};">ปุ่มสีรอง</button>
+            </div>
+            <p style="text-align: center; margin-top: 15px; font-size: 0.8rem; color: #888;">
+                *เมื่อกดยืนยัน สีของ DJ Visualizer และ Radar จะเปลี่ยนตามค่านี้โดยอัตโนมัติ*
+            </p>
         </div>
     """, unsafe_allow_html=True)
     
-    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Interface Control")
+    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Interface Control v.5")
+
 
 
 # (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
