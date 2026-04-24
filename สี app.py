@@ -226,6 +226,99 @@ elif st.session_state.page == "1":
         <div class="logo-center"></div>
         <h1 class="neon-title-main">SYNAPSE COMMAND CENTER</h1>
     """, unsafe_allow_html=True)
+elif st.session_state.page == "1":
+    st.markdown("<h2 class='neon-text'>🎵 SYNAPSE ADVANCED PLAYER</h2>", unsafe_allow_html=True)
+    
+    # 1. ส่วนอัปโหลดไฟล์
+    uploaded_file = st.file_uploader("เลือกไฟล์เพลง (MP3)", type=['mp3'])
+    
+    if uploaded_file:
+        # แปลงไฟล์เป็น Base64 เพื่อให้ JavaScript เล่นได้
+        audio_bytes = uploaded_file.read()
+        b64_audio = base64.b64encode(audio_bytes).decode()
+        
+        # 2. อินเตอร์เฟซเครื่องเล่นเพลง (HTML + JS)
+        player_html = f"""
+        <div style="background: rgba(20,20,20,0.95); border: 2px solid #00f3ff; border-radius: 20px; padding: 25px; text-align: center; font-family: 'Orbitron', sans-serif;">
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; color: #00f3ff;">
+                <div id="current-time">00:00</div>
+                <div id="remaining-time" style="color: #ff00de;">-00:00</div>
+            </div>
+
+            <input type="range" id="seek-bar" value="0" style="width: 100%; cursor: pointer; accent-color: #00f3ff; margin-bottom: 20px;">
+
+            <div style="display: flex; justify-content: center; gap: 20px; margin-bottom: 20px;">
+                <button onclick="playAudio()" style="background: none; border: 1px solid #00f3ff; color: #00f3ff; padding: 10px 30px; border-radius: 10px; cursor: pointer;">▶ PLAY</button>
+                <button onclick="pauseAudio()" style="background: none; border: 1px solid #ff00de; color: #ff00de; padding: 10px 30px; border-radius: 10px; cursor: pointer;">⏸ PAUSE</button>
+            </div>
+
+            <div style="color: #eee; font-size: 12px; margin-bottom: 5px;">VOLUME CONTROL</div>
+            <input type="range" id="volume-bar" min="0" max="1" step="0.01" value="0.5" style="width: 60%; accent-color: #ff00de; cursor: pointer;">
+
+            <audio id="myAudio">
+                <source src="data:audio/mp3;base64,{b64_audio}" type="audio/mp3">
+            </audio>
+
+            <script>
+                const audio = document.getElementById("myAudio");
+                const seekBar = document.getElementById("seek-bar");
+                const volBar = document.getElementById("volume-bar");
+                const curTimeTxt = document.getElementById("current-time");
+                const remTimeTxt = document.getElementById("remaining-time");
+
+                // เล่นเพลงอัตโนมัติเมื่อโหลด (ถ้า Browser ยอมรับ)
+                window.onload = () => {{
+                    audio.volume = 0.5;
+                    audio.play().catch(() => console.log("Auto-play blocked by browser"));
+                }};
+
+                function playAudio() {{ audio.play(); }}
+                function pauseAudio() {{ audio.pause(); }}
+
+                // ปรับระดับเสียง
+                volBar.addEventListener("input", () => {{
+                    audio.volume = volBar.value;
+                }});
+
+                // อัปเดตเวลาและ Progress Bar
+                audio.addEventListener("timeupdate", () => {{
+                    // แถบเลื่อน
+                    const val = (audio.currentTime / audio.duration) * 100;
+                    seekBar.value = val || 0;
+
+                    // คำนวณเวลาเดินหน้า
+                    let curM = Math.floor(audio.currentTime / 60);
+                    let curS = Math.floor(audio.currentTime % 60);
+                    curTimeTxt.innerText = (curM < 10 ? "0"+curM : curM) + ":" + (curS < 10 ? "0"+curS : curS);
+
+                    // คำนวณเวลาถอยหลัง (Remaining)
+                    let rem = audio.duration - audio.currentTime;
+                    if(!isNaN(rem)) {{
+                        let remM = Math.floor(rem / 60);
+                        let remS = Math.floor(rem % 60);
+                        remTimeTxt.innerText = "-" + (remM < 10 ? "0"+remM : remM) + ":" + (remS < 10 ? "0"+remS : remS);
+                    }}
+                }});
+
+                // เลื่อนเพลงเองตามแถบ Progress
+                seekBar.addEventListener("input", () => {{
+                    const time = (seekBar.value / 100) * audio.duration;
+                    audio.currentTime = time;
+                }});
+            </script>
+        </div>
+        """
+        components.html(player_html, height=400)
+    else:
+        st.info("💡 กรุณาอัปโหลดไฟล์ .mp3 เพื่อใช้งานเครื่องเล่นเพลงระบบสัมผัส")
+
+    # ส่วนคลังเพลงเดิม (แสดงลิสต์)
+    st.write("---")
+    st.markdown("<h4 style='text-align:center;'>📂 LOCAL PLAYLIST</h4>", unsafe_allow_html=True)
+    songs = [f for f in os.listdir('.') if f.endswith('.mp3')]
+    for s in songs:
+        st.button(f"🎵 {s}", use_container_width=True)
 
     # 3. ส่วนของ Mixer HTML/JS (Deck A & B)
     # ผมรวมโค้ด Mixer ที่มี Visualizer และ Crossfade มาไว้ตรงนี้
