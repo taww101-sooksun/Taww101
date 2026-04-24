@@ -13,319 +13,270 @@ from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 import hashlib
 
-# ==========================================
-# 1. INITIAL CONFIG (ตั้งค่าระบบพื้นฐาน)
-# ==========================================
-st.set_page_config(page_title="SYNAPSE ADVANCED HUB", layout="wide", initial_sidebar_state="expanded")
+# =================================================================
+# 1. INITIAL SYSTEM SETUP (การตั้งค่าระบบหลัก)
+# =================================================================
+st.set_page_config(page_title="SYNAPSE ULTIMATE HUB", layout="wide", initial_sidebar_state="expanded")
 
-# --- ฟังก์ชันดึงข้อมูล Base64 (หัวใจของ Media) ---
 def get_base64_data(file_path):
     try:
         if os.path.exists(file_path):
             with open(file_path, "rb") as f:
                 return base64.b64encode(f.read()).decode()
         return ""
-    except Exception:
-        return ""
+    except: return ""
 
-# --- ตรวจสอบสถานะสีและหน้าจอ ---
-if 'main_color' not in st.session_state:
-    st.session_state.main_color = "#00f3ff"
-if 'sub_color' not in st.session_state:
-    st.session_state.sub_color = "#ff00de"
-if 'page' not in st.session_state:
-    st.session_state.page = "HOME"
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
+# --- SESSION STATE MANAGEMENT ---
+if 'main_color' not in st.session_state: st.session_state.main_color = "#00f3ff"
+if 'sub_color' not in st.session_state: st.session_state.sub_color = "#ff00de"
+if 'page' not in st.session_state: st.session_state.page = "HOME"
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+if 'user' not in st.session_state: st.session_state.user = "Unknown"
 
-# ==========================================
-# 2. GLOBAL STYLING & LOGO (คุมทุกห้อง)
-# ==========================================
+# =================================================================
+# 2. CORE LOGIC FUNCTIONS (หัวใจการคำนวณ)
+# =================================================================
+def get_detailed_logic(dt):
+    if dt is None: return None
+    ref_date = date(1900, 1, 1)
+    diff = (dt - ref_date).days
+    lunar_cycle = 29.530589
+    pos = (diff - 0.5) % lunar_cycle
+    day_val = dt.weekday() + 1
+    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+    day_name = day_names[dt.weekday()]
+    if pos <= 14.765:
+        m_num = int(pos) + 1
+        phase = f"ขึ้น {m_num} ค่ำ"
+        res = math.sqrt((day_val**2) + (m_num**2))
+        formula, logic_type = f"√({day_val}² + {m_num}²)", "Vector Energy"
+    else:
+        m_num = int(pos - 14.765) + 1
+        phase = f"แรม {m_num} ค่ำ"
+        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+        formula, logic_type = f"({day_val} × 1.618) / {m_num}", "Golden Ratio"
+    return {"res": round(res, 4), "phase": phase, "day_name": day_name, "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type}
+
+# =================================================================
+# 3. GLOBAL CSS & LOGO (คุมโทนสีทุกห้อง)
+# =================================================================
 logo_b64 = get_base64_data("logo1.png")
-
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    
-    :root {{
-        --primary: {st.session_state.main_color};
-        --secondary: {st.session_state.sub_color};
-    }}
-
-    /* พื้นหลังและตัวอักษรหลัก */
-    .stApp {{
-        background-color: #000000;
-        color: #ffffff;
-        font-family: 'Orbitron', sans-serif;
-    }}
-
-    /* โลโก้คงที่ทุกหน้า */
-    .global-logo {{
-        position: fixed;
-        top: 15px;
-        right: 25px;
-        width: 70px;
-        z-index: 10000;
-        filter: drop-shadow(0 0 10px var(--primary));
-        animation: pulse-glow 2s infinite alternate;
-    }}
-    @keyframes pulse-glow {{
-        from {{ filter: drop-shadow(0 0 5px var(--primary)); transform: scale(1); }}
-        to {{ filter: drop-shadow(0 0 20px var(--secondary)); transform: scale(1.05); }}
-    }}
-
-    /* สไตล์ตัวหนังสือวิ่งและนีออน */
-    .neon-title {{
-        text-align: center;
-        color: #fff;
-        text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary);
-        margin-bottom: 20px;
-    }}
-    
-    /* ซ่อนแถบเดิมของ Streamlit */
+    :root {{ --primary: {st.session_state.main_color}; --secondary: {st.session_state.sub_color}; }}
+    .stApp {{ background-color: #000; color: #fff; font-family: 'Orbitron', sans-serif; }}
     header, footer, #MainMenu {{visibility: hidden;}}
     
-    /* ปุ่มกดย้อนกลับ */
-    .back-btn {{
-        background: none;
-        border: 1px solid var(--primary);
-        color: var(--primary);
-        padding: 5px 15px;
-        border-radius: 10px;
-        cursor: pointer;
+    .global-logo {{
+        position: fixed; top: 15px; right: 25px; width: 65px; z-index: 10000;
+        filter: drop-shadow(0 0 10px var(--primary));
+        animation: pulse 2s infinite alternate;
     }}
+    @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.1); }} }}
+    
+    .neon-text {{ color: var(--primary); text-shadow: 0 0 10px var(--primary), 0 0 20px var(--secondary); text-align: center; }}
+    .stButton>button {{
+        border-radius: 12px; border: 1px solid var(--primary);
+        background: rgba(0,0,0,0.3); color: #fff; transition: 0.3s;
+    }}
+    .stButton>button:hover {{ background: var(--primary); box-shadow: 0 0 20px var(--primary); color: #000; }}
     </style>
     <img src="data:image/png;base64,{logo_b64}" class="global-logo">
 """, unsafe_allow_html=True)
 
-# ==========================================
-# 3. SIDEBAR ENGINE (ตัวควบคุมเพลงต่อเนื่องและสี)
-# ==========================================
+# =================================================================
+# 4. SIDEBAR CONTROL (เพลงต่อเนื่องและธีม)
+# =================================================================
 with st.sidebar:
-    st.markdown(f"<h2 class='neon-title'>SYSTEM CONTROL</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 class='neon-text'>AGENT CONTROL</h2>", unsafe_allow_html=True)
+    all_mp3 = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
     
-    # --- ส่วนที่ 1: เพลงพื้นหลัง (เล่นต่อเนื่องไม่ดับ) ---
-    st.markdown("### 📻 CONTINUOUS AUDIO")
-    all_files = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
-    bg_selection = st.selectbox("เลือกเพลงหลัก (Global Music)", ["OFF"] + all_files)
-    
-    if bg_selection != "OFF":
-        bg_audio_b64 = get_base64_data(bg_selection)
+    st.markdown("### 📻 GLOBAL AUDIO")
+    selected_bg = st.selectbox("Background Music (Non-Stop)", ["OFF"] + all_mp3)
+    if selected_bg != "OFF":
+        bg_data = get_base64_data(selected_bg)
         st.markdown(f"""
-            <div style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 15px; border: 1px solid var(--primary);">
-                <small style="color: var(--primary);">Now Playing: {bg_selection}</small>
-                <audio id="bgPlayer" autoplay loop controls style="width: 100%; height: 35px; margin-top: 5px;">
-                    <source src="data:audio/mp3;base64,{bg_audio_b64}" type="audio/mp3">
-                </audio>
-            </div>
+            <audio id="bgPlayer" autoplay loop controls style="width: 100%; height: 35px;">
+                <source src="data:audio/mp3;base64,{bg_data}" type="audio/mp3">
+            </audio>
         """, unsafe_allow_html=True)
 
-    # --- ส่วนที่ 2: ปรับแต่งธีมสี ---
     st.markdown("---")
-    with st.expander("🎨 THEME CUSTOMIZER (GLOBAL)"):
-        st.session_state.main_color = st.color_picker("Neon Color 1", st.session_state.main_color)
-        st.session_state.sub_color = st.color_picker("Neon Color 2", st.session_state.sub_color)
-        if st.button("SET DEFAULT"):
-            st.session_state.main_color = "#00f3ff"
-            st.session_state.sub_color = "#ff00de"
-            st.rerun()
-
-    # --- ส่วนที่ 3: Logout ---
+    with st.expander("🎨 THEME COLORS"):
+        st.session_state.main_color = st.color_picker("Primary Neon", st.session_state.main_color)
+        st.session_state.sub_color = st.color_picker("Secondary Neon", st.session_state.sub_color)
+    
     if st.session_state.logged_in:
-        st.markdown("---")
-        if st.button("🔴 TERMINATE SESSION"):
+        st.markdown(f"**Agent:** {st.session_state.user}")
+        if st.button("TERMINATE SESSION"):
             st.session_state.logged_in = False
             st.rerun()
 
-# ==========================================
-# 4. LOGIN SYSTEM (หน้าลงทะเบียน)
-# ==========================================
+# =================================================================
+# 5. LOGIN / REGISTER SECTION
+# =================================================================
 if not st.session_state.logged_in:
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("<br><br><br>", unsafe_allow_html=True)
-        st.markdown("<h1 class='neon-title'>AGENT REGISTRATION</h1>", unsafe_allow_html=True)
-        agent_name = st.text_input("ENTER CODE NAME", placeholder="เช่น ต๊ะ101").strip()
-        
+    col_l, col_m, col_r = st.columns([1, 2, 1])
+    with col_m:
+        st.markdown("<br><br><h1 class='neon-text'>INITIALIZE AGENT</h1>", unsafe_allow_html=True)
+        new_agent = st.text_input("NAME:", placeholder="ENTER CODE NAME").strip()
         if st.button("ACTIVATE SYSTEM", use_container_width=True):
-            if agent_name:
-                st.session_state.user = agent_name
+            if new_agent:
+                st.session_state.user = new_agent
                 st.session_state.logged_in = True
                 st.session_state.page = "HOME"
-                st.balloons()
                 st.rerun()
-            else:
-                st.error("กรุณาระบุรหัส AGENT")
     st.stop()
 
-# ==========================================
-# 5. NAVIGATION LOGIC (ปุ่มย้อนกลับ)
-# ==========================================
+# =================================================================
+# 6. MAIN NAVIGATION CONTENT
+# =================================================================
 if st.session_state.page != "HOME":
-    if st.button("⬅️ RETURN TO HUB"):
-        st.session_state.page = "HOME"
-        st.rerun()
+    if st.button("⬅️ BACK TO HUB"):
+        st.session_state.page = "HOME"; st.rerun()
 
-# ==========================================
-# 6. MAIN CONTENT (ห้องการใช้งาน 1-10)
-# ==========================================
-
-# --- [ หน้าแรก: HUB ศูนย์รวม ] ---
+# --- [ PAGE: HOME HUB ] ---
 if st.session_state.page == "HOME":
-    st.markdown("<h1 class='neon-title'>SYNAPSE COMMAND CENTER</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align:center;'>Welcome, Agent <b>{st.session_state.user}</b></p>", unsafe_allow_html=True)
-    
-    # การแบ่ง Grid ปุ่มกด
-    colA, colB = st.columns(2)
-    with colA:
-        if st.button("🎵 1. DJ STATION (ADVANCED)", use_container_width=True): st.session_state.page = "1"; st.rerun()
-        if st.button("💬 2. SECURE RADAR CHAT", use_container_width=True): st.session_state.page = "2"; st.rerun()
+    st.markdown("<h1 class='neon-text'>SYNAPSE HUB</h1>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("🎵 1. DJ STATION (512Hz)", use_container_width=True): st.session_state.page = "1"; st.rerun()
+        if st.button("🛰️ 2. TACTICAL RADAR", use_container_width=True): st.session_state.page = "2"; st.rerun()
         if st.button("🧬 3. LUNAR DECODER", use_container_width=True): st.session_state.page = "3"; st.rerun()
         if st.button("🛰️ 4. PARALLEL SCANNER", use_container_width=True): st.session_state.page = "4"; st.rerun()
         if st.button("🔮 5. DESTINY TIMELINE", use_container_width=True): st.session_state.page = "5"; st.rerun()
-    with colB:
-        if st.button("⚡ 6. VIBRATION SENSOR", use_container_width=True): st.session_state.page = "6"; st.rerun()
+    with c2:
+        if st.button("📳 6. VIBRATION SENSOR", use_container_width=True): st.session_state.page = "6"; st.rerun()
         if st.button("💖 7. DESTINY CHECK", use_container_width=True): st.session_state.page = "7"; st.rerun()
-        if st.button("🔢 8. DAILY SECURITY CODE", use_container_width=True): st.session_state.page = "8"; st.rerun()
-        if st.button("📝 9. SYSTEM MEMORY LOG", use_container_width=True): st.session_state.page = "9"; st.rerun()
-        if st.button("🎨 10. INTERFACE MASTER", use_container_width=True): st.session_state.page = "10"; st.rerun()
+        if st.button("🔢 8. DAILY CODE", use_container_width=True): st.session_state.page = "8"; st.rerun()
+        if st.button("📝 9. MEMORY LOG", use_container_width=True): st.session_state.page = "9"; st.rerun()
+        if st.button("🎨 10. COLOR MASTER", use_container_width=True): st.session_state.page = "10"; st.rerun()
 
-# --- [ ห้องที่ 1: DJ STATION (512Hz Visualizer) ] ---
+# --- [ PAGE 1: DJ STATION ] ---
 elif st.session_state.page == "1":
-    st.markdown("<h2 class='neon-title'>🎧 DUAL-DECK AUDIO UNIT</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 class='neon-text'>🎧 DUAL DECK DJ UNIT</h2>", unsafe_allow_html=True)
+    colA, colB = st.columns(2)
+    with colA: sA = st.selectbox("DECK A", ["--"] + all_mp3, key="sa")
+    with colB: sB = st.selectbox("DECK B", ["--"] + all_mp3, key="sb")
     
-    deck_a_col, deck_b_col = st.columns(2)
-    with deck_a_col:
-        sel_a = st.selectbox("DECK A TRACK", ["-- Select --"] + all_files, key="da")
-    with deck_b_col:
-        sel_b = st.selectbox("DECK B TRACK", ["-- Select --"] + all_files, key="db")
-
-    b64_a = get_base64_data(sel_a) if sel_a != "-- Select --" else ""
-    b64_b = get_base64_data(sel_b) if sel_b != "-- Select --" else ""
-
+    bA, bB = get_base64_data(sA), get_base64_data(sB)
     mixer_html = f"""
-    <div style="background: #000; border: 2px solid #333; border-radius: 20px; padding: 20px;">
-        <marquee style="color: var(--primary); font-size: 12px; margin-bottom: 15px;"> 
-            NOW MONITORING: DECK A [{sel_a}] --- DECK B [{sel_b}] --- UNIT: SYNAPSE-X1
-        </marquee>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div style="border: 1px solid var(--primary); padding: 15px; border-radius: 15px; text-align: center;">
-                <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--primary);">
-                    <span id="curA">00:00</span><span id="remA">-00:00</span>
-                </div>
-                <canvas id="canvasA" style="width: 100%; height: 70px; background: #050505; margin: 10px 0; border-radius: 5px;"></canvas>
-                <input type="range" id="volA" min="0" max="1" step="0.01" value="0.7" style="width: 100%; accent-color: var(--primary);">
-                <div style="margin-top: 15px; display: flex; justify-content: center; gap: 10px;">
-                    <button onclick="playDeck('A')" style="background: var(--primary); border:none; padding:8px 20px; border-radius:5px; font-weight:bold; cursor:pointer;">PLAY</button>
-                    <button onclick="pauseDeck('A')" style="background:none; border:1px solid var(--primary); color:var(--primary); padding:8px 20px; border-radius:5px; cursor:pointer;">PAUSE</button>
-                </div>
+    <div style="background:#000; border:2px solid #333; padding:20px; border-radius:20px;">
+        <marquee style="color:var(--primary);">DJ AGENT: {st.session_state.user} | NOW MIXING: {sA} & {sB}</marquee>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+            <div style="border:1px solid var(--primary); padding:10px; border-radius:15px; text-align:center;">
+                <canvas id="cA" style="width:100%; height:80px; background:#111;"></canvas>
+                <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--primary);"><span id="cA_t">00:00</span><span id="rA_t">-00:00</span></div>
+                <button onclick="pD('A')" style="background:var(--primary); border:none; padding:10px; width:100%; margin-top:10px;">PLAY A</button>
             </div>
-            <div style="border: 1px solid var(--secondary); padding: 15px; border-radius: 15px; text-align: center;">
-                <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--secondary);">
-                    <span id="curB">00:00</span><span id="remB">-00:00</span>
-                </div>
-                <canvas id="canvasB" style="width: 100%; height: 70px; background: #050505; margin: 10px 0; border-radius: 5px;"></canvas>
-                <input type="range" id="volB" min="0" max="1" step="0.01" value="0.7" style="width: 100%; accent-color: var(--secondary);">
-                <div style="margin-top: 15px; display: flex; justify-content: center; gap: 10px;">
-                    <button onclick="playDeck('B')" style="background: var(--secondary); border:none; padding:8px 20px; border-radius:5px; font-weight:bold; cursor:pointer; color: white;">PLAY</button>
-                    <button onclick="pauseDeck('B')" style="background:none; border:1px solid var(--secondary); color:var(--secondary); padding:8px 20px; border-radius:5px; cursor:pointer;">PAUSE</button>
-                </div>
+            <div style="border:1px solid var(--secondary); padding:10px; border-radius:15px; text-align:center;">
+                <canvas id="cB" style="width:100%; height:80px; background:#111;"></canvas>
+                <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--secondary);"><span id="cB_t">00:00</span><span id="rB_t">-00:00</span></div>
+                <button onclick="pD('B')" style="background:var(--secondary); border:none; padding:10px; width:100%; margin-top:10px; color:white;">PLAY B</button>
             </div>
         </div>
-
-        <button onclick="autoFade()" style="width:100%; margin-top:20px; background: linear-gradient(90deg, var(--primary), var(--secondary)); border:none; padding:15px; border-radius:15px; color:white; font-weight:bold; cursor:pointer; font-family:'Orbitron';">
-            🔄 START 10s AUTO-CROSSFADE
-        </button>
-
-        <audio id="audioA" src="data:audio/mp3;base64,{b64_a}"></audio>
-        <audio id="audioB" src="data:audio/mp3;base64,{b64_b}"></audio>
-
+        <audio id="audA" src="data:audio/mp3;base64,{bA}"></audio>
+        <audio id="audB" src="data:audio/mp3;base64,{bB}"></audio>
         <script>
-            const audA = document.getElementById('audioA');
-            const audB = document.getElementById('audioB');
             let ctx = null;
-
-            function setupVisual(audio, canvasId, color) {{
-                if(!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const src = ctx.createMediaElementSource(audio);
-                const analyzer = ctx.createAnalyser();
-                const canvas = document.getElementById(canvasId);
-                const cCtx = canvas.getContext("2d");
-
-                src.connect(analyzer);
-                analyzer.connect(ctx.destination);
-                analyzer.fftSize = 512;
-
-                const buffer = analyzer.frequencyBinCount;
-                const data = new Uint8Array(buffer);
-
-                function render() {{
-                    requestAnimationFrame(render);
-                    analyzer.getByteFrequencyData(data);
-                    cCtx.clearRect(0, 0, canvas.width, canvas.height);
-                    const barW = (canvas.width / buffer) * 2;
-                    let x = 0;
-                    for(let i=0; i<buffer; i++) {{
-                        let h = data[i] / 2.5;
-                        cCtx.fillStyle = color;
-                        cCtx.fillRect(x, canvas.height - h, barW, h);
-                        x += barW + 1;
+            function v(a, cI, color) {{
+                if(!ctx) ctx = new AudioContext();
+                const src = ctx.createMediaElementSource(a);
+                const ana = ctx.createAnalyser();
+                ana.fftSize = 512;
+                src.connect(ana); ana.connect(ctx.destination);
+                const can = document.getElementById(cI);
+                const cc = can.getContext("2d");
+                const buf = ana.frequencyBinCount;
+                const dat = new Uint8Array(buf);
+                function draw() {{
+                    requestAnimationFrame(draw);
+                    ana.getByteFrequencyData(dat);
+                    cc.clearRect(0,0,can.width,can.height);
+                    let bw = (can.width/buf)*2.5; let x=0;
+                    for(let i=0; i<buf; i++) {{
+                        let h = dat[i]/2; cc.fillStyle = color;
+                        cc.fillRect(x, can.height-h, bw, h); x += bw+1;
                     }}
-                }}
-                render();
+                }} draw();
             }}
-
-            let isSetA = false, isSetB = false;
-            function playDeck(d) {{
-                if(ctx && ctx.state === 'suspended') ctx.resume();
-                if(d === 'A') {{ if(!isSetA){{setupVisual(audA, 'canvasA', '{st.session_state.main_color}'); isSetA=true;}} audA.play(); }}
-                else {{ if(!isSetB){{setupVisual(audB, 'canvasB', '{st.session_state.sub_color}'); isSetB=true;}} audB.play(); }}
-            }}
-            function pauseDeck(d) {{ d === 'A' ? audA.pause() : audB.pause(); }}
-
-            function updateTime(aud, curI, remI) {{
-                aud.ontimeupdate = () => {{
-                    let cM = Math.floor(aud.currentTime/60), cS = Math.floor(aud.currentTime%60);
-                    document.getElementById(curI).innerText = (cM<10?'0'+cM:cM)+":"+(cS<10?'0'+cS:cS);
-                    let r = aud.duration - aud.currentTime;
-                    if(!isNaN(r)) {{
-                        let rM = Math.floor(r/60), rS = Math.floor(r%60);
-                        document.getElementById(remI).innerText = "-"+(rM<10?'0'+rM:rM)+":"+(rS<10?'0'+rS:rS);
-                    }}
-                }};
-            }}
-            updateTime(audA, 'curA', 'remA'); updateTime(audB, 'curB', 'remB');
-
-            function autoFade() {{
-                let steps = 100, volStep = 1/steps;
-                audB.volume = 0; audB.play();
-                let count = 0;
-                let fade = setInterval(() => {{
-                    if(count >= steps) {{ clearInterval(fade); audA.pause(); }}
-                    else {{
-                        if(audA.volume > volStep) audA.volume -= volStep;
-                        if(audB.volume < 1-volStep) audB.volume += volStep;
-                        count++;
-                    }}
-                }}, 100);
+            let sA=false, sB=false;
+            function pD(d) {{
+                if(ctx && ctx.state==='suspended') ctx.resume();
+                if(d==='A') {{ if(!sA){{v(document.getElementById('audA'),'cA','{st.session_state.main_color}');sA=true;}} document.getElementById('audA').play(); }}
+                else {{ if(!sB){{v(document.getElementById('audB'),'cB','{st.session_state.sub_color}');sB=true;}} document.getElementById('audB').play(); }}
             }}
         </script>
     </div>
     """
-    components.html(mixer_html, height=580)
-    st.info("💡 หมายเหตุ: กราฟ Visualizer จะเริ่มทำงานเมื่อคุณเลือกเพลงและกด PLAY ครั้งแรก")
+    components.html(mixer_html, height=450)
 
-# --- [ ห้องอื่นๆ (ใส่ตรรกะเดิมของคุณต๊ะลงไปได้เลย) ] ---
+# --- [ PAGE 2: RADAR & CHAT ] ---
 elif st.session_state.page == "2":
-    st.markdown("<h2 class='neon-title'>🛰️ TACTICAL RADAR CHAT</h2>", unsafe_allow_html=True)
-    st.write("ระบบนี้กำลังเชื่อมต่อฐานข้อมูลความปลอดภัย...")
-    # (วางโค้ดหน้า 2 เดิมที่นี่...)
+    st_autorefresh(interval=10000, key="radar_up")
+    st.markdown("<h2 class='neon-text'>🛰️ RADAR & SECURE CHAT</h2>", unsafe_allow_html=True)
+    loc = get_geolocation()
+    lat, lon = 13.7, 100.5
+    if loc: lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
+    
+    import folium
+    m = folium.Map(location=[lat, lon], zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={{x}}&y={{y}}&z={{z}}", attr="Google")
+    folium.Marker([lat, lon], tooltip="YOU", icon=folium.Icon(color='red')).add_to(m)
+    st_folium(m, width="100%", height=300)
 
-# ... (ไปจนถึงห้อง 10) ...
+    st.markdown("---")
+    msg = st.text_input("BROADCAST MESSAGE:")
+    if st.button("SEND SIGNAL"): st.success("SIGNAL SENT TO CLOUD")
 
-# ==========================================
-# 7. FOOTER (ปิดท้ายระบบ)
-# ==========================================
+# --- [ PAGE 3: LUNAR DECODER ] ---
+elif st.session_state.page == "3":
+    st.markdown("<h2 class='neon-text'>🧬 LUNAR CODE DECODER</h2>", unsafe_allow_html=True)
+    dob = st.date_input("SELECT DATE", value=date.today())
+    if dob:
+        d = get_detailed_logic(dob)
+        st.metric("YOUR CODE", d['res'])
+        st.write(f"พิกัด: {d['day_name']} | {d['phase']}")
+        st.code(f"Formula: {d['formula']}")
+
+# --- [ PAGE 5: DESTINY TIMELINE ] ---
+elif st.session_state.page == "5":
+    st.markdown("<h2 class='neon-text'>🔮 DESTINY SCANNER (180 DAYS)</h2>", unsafe_allow_html=True)
+    user_dob = st.date_input("ENTER BIRTHDATE", key="dt5")
+    if user_dob:
+        my_code = get_detailed_logic(user_dob)['res']
+        results = []
+        for i in range(180):
+            target = date.today() + timedelta(days=i)
+            d = get_detailed_logic(target)
+            gap = abs(d['res'] - my_code)
+            status = "NORMAL"
+            if gap < 0.5: status = "💎 DIAMOND"
+            elif 3.8 <= gap <= 4.2: status = "🌀 DHARMA"
+            elif gap > 10.0: status = "🪞 MIRROR"
+            if status != "NORMAL":
+                results.append({"Date": target, "Type": status, "Gap": round(gap,4)})
+        st.table(pd.DataFrame(results))
+
+# --- [ PAGE 8: DAILY CODE ] ---
+elif st.session_state.page == "8":
+    st.markdown("<h2 class='neon-text'>🔢 DAILY SECURITY KEY</h2>", unsafe_allow_html=True)
+    today = date.today().strftime("%Y%m%d")
+    raw = f"{today}_{st.session_state.user}_SYNAPSE"
+    h = hashlib.sha256(raw.encode()).hexdigest()
+    st.write(f"AGENT: {st.session_state.user}")
+    st.code(f"PIN (4): {str(int(h[:4],16))[-4:]}")
+    st.code(f"KEY (6): {str(int(h[4:10],16))[-6:]}")
+
+# --- [ PAGE 10: COLOR MASTER ] ---
+elif st.session_state.page == "10":
+    st.markdown("<h2 class='neon-text'>🎨 UI INTERFACE MASTER</h2>", unsafe_allow_html=True)
+    st.session_state.main_color = st.color_picker("PRIMARY NEON", st.session_state.main_color)
+    st.session_state.sub_color = st.color_picker("SECONDARY NEON", st.session_state.sub_color)
+    if st.button("SAVE & RERUN"): st.rerun()
+
+# =================================================================
+# 7. FOOTER SYSTEM
+# =================================================================
 st.markdown("---")
-st.caption(f"SYNAPSE OS v.4.0 | Current Agent: {st.session_state.user} | Multi-Room Synchronization Enabled")
+st.caption(f"SYNAPSE ULTIMATE v.5.0 | {datetime.now().strftime('%Y-%m-%d %H:%M')}")
