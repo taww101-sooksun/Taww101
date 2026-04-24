@@ -89,133 +89,94 @@ def get_synapse_report(dt):
         "code": round(final_code, 4)
     }
 
-# =================================================================
-# 3. GLOBAL CSS
-# =================================================================
-# --- ส่วนนี้วางต่อจากรายงานผล res = get_synapse_report(target_dt) ---
-
-st.write("---")
-st.markdown("<h3 class='neon-text'>📊 TIMELINE ANALYTICS (730 DAYS)</h3>", unsafe_allow_html=True)
-
-# 1. คำนวณสถิติ ย้อนหลัง 365 วัน และ อนาคต 365 วัน
-current_code = res['code']
-past_matches = 0
-future_matches = 0
-timeline_data = []
-
-# วงรอบการสแกน (730 วัน)
-for i in range(-365, 366):
-    scan_date = target_dt + timedelta(days=i)
-    scan_res = get_synapse_report(scan_date)
-    
-# --- ส่วนวิเคราะห์เหตุการณ์จากรหัส ---
-def interpret_event(code):
-    suffix = code % 1  # ดึงค่าทศนิยมมาวิเคราะห์
-    if code > 80:
-        return "🔥 PEAK ACTION", "ช่วงเวลาแห่งการพุ่งทะยาน เหมาะกับการตัดสินใจใหญ่"
-    elif suffix > 0.7:
-        return "⚡ SHOCK TRIGGER", "ระวังเหตุการณ์ไม่คาดฝัน หรือการเปลี่ยนแปลงที่รวดเร็ว"
-    elif 0.4 <= suffix <= 0.6:
-        return "💎 GOLDEN SYNC", "พิกัดอยู่ในจุดสมดุลจักรวาล มีโอกาสพบเจอเรื่องดีๆ หรือโชคลาภ"
-    else:
-        return "🛡️ BARRIER MODE", "กาลเวลาหยุดนิ่งเพื่อการตั้งรับ ควรใช้ความรอบคอบเป็นพิเศษ"
-
-# การแสดงผลในแอป
-event_title, event_desc = interpret_event(res['code'])
-
-st.markdown(f"""
-    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-top: 10px; border-left: 5px solid {st.session_state.main_color};">
-        <h4 style="margin:0; color:white;">{event_title}</h4>
-        <p style="margin:0; color:lightgray; font-size: 0.9rem;">{event_desc}</p>
-    </div>
-""", unsafe_allow_html=True)
-
-
-# แสดงผลสถิติเป็น Metric
-col_s1, col_s2, col_s3 = st.columns(3)
-col_s1.metric("PAST SYNC (365d)", f"{past_matches} ครั้ง", "อดีต")
-col_s2.metric("CURRENT CODE", current_code)
-col_s3.metric("FUTURE SYNC (365d)", f"{future_matches} ครั้ง", "ทำนาย")
-
-# 2. ส่วนคำอธิบายระบบ (Intelligence Briefing)
-with st.expander("🔍 HOW IT WORKS? (ลอจิกการคำนวณทั้งหมด)"):
-    st.markdown(f"""
-    ### 🧠 ขั้นตอนการถอดรหัสพิกัดดิจิทัล
-    รหัส **{current_code}** ที่คุณเห็น มาจากการรวบรวมค่าพิกัด 6 มิติ ดังนี้:
-    
-    1. **มิติวาร (วัน):** ดึงค่าพลังงานจากวันทั้ง 7 (จันทร์=1 ถึง อาทิตย์=7) ➜ **ค่าปัจจุบัน: {res['day_val']}**
-    2. **มิติสุริยคติ (วันที่):** เลขวันที่ที่คุณเกิดหรือวันที่เลือก ➜ **ค่าปัจจุบัน: {res['date']}**
-    3. **มิติจันทรคติ (ค่ำ):** คำนวณจากรอบดวงจันทร์ 29.53 วัน เพื่อหาข้างขึ้น/ข้างแรม ➜ **ค่าปัจจุบัน: {res['phase']}**
-    4. **มิติรอบเดือน:** ลำดับของเดือน 1-12 ➜ **ค่าปัจจุบัน: {res['month_val']}**
-    5. **มิติจักรราศี (ปีนักษัตร):** รอบปีนักษัตรทั้ง 12 ปี ➜ **ค่าปัจจุบัน: {res['z_val']} ({res['zodiac']})**
-    6. **มิติธาตุสถิต:** พลังงานจากธาตุ ดิน(1), น้ำ(2), ลม(3), ไฟ(4) ตามช่วงเวลา ➜ **ค่าปัจจุบัน: {res['e_val']} ({res['elem']})**
-    
-    ---
-    ### ⚙️ สูตรการประมวลผล (SYNAPSE FORMULA)
-    ระบบจะนำค่าทั้ง 6 มิติมารวมกันเป็น **"ฐานพลังงาน"**
-    * **ฐานรวม:** ({res['day_val']} + {res['date']} + {res['month_val']} + {res['z_val']} + {res['e_val']} + ค่ำ) = **{int(current_code/1.618 - (7.5 if "แรม" in res['phase'] else -7.5))}**
-    * **ปรับสมดุลจันทรคติ:** หากเป็นข้างขึ้นจะ **ลบ 7.5** | หากเป็นข้างแรมจะ **บวก 7.5** (เพื่อหาจุดสมดุลน้ำขึ้น-น้ำลง)
-    * **คูณค่า Golden Ratio (1.618):** เพื่อขยายสัญญาณพิกัดให้กลายเป็นรหัสลับที่ใช้เชื่อมต่อกับมิติอื่นๆ
-    
-    **สรุป:** รหัสนี้เปรียบเสมือน "ลายนิ้วมือของกาลเวลา" ที่บอกว่าคุณมีความสอดคล้องกับจักรวาลในช่วงเวลานั้นอย่างไร
-    """)
-
-if timeline_data:
-    st.write("📍 **จุดเชื่อมโยงไทม์ไลน์ที่ใกล้เคียงที่สุด:**")
-    st.table(timeline_data)
-
-
-# =================================================================
-# 4. MAIN NAVIGATION
-# =================================================================
-
-# --- หน้าแรก HOME ---
-if st.session_state.page == "HOME":
-    st.markdown("<h1 class='neon-text' style='text-align:center;'>SYNAPSE HUB</h1>", unsafe_allow_html=True)
-    st.write("---")
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("🎵 DJ STATION", use_container_width=True): 
-            st.session_state.page = "1"; st.rerun()
-    with c2:
-        if st.button("🧠 INTELLIGENCE CENTER", use_container_width=True): 
-            st.session_state.page = "3"; st.rerun()
-
-# --- หน้า 1: DJ STATION (ตัวอย่าง) ---
-elif st.session_state.page == "1":
-    if st.button("⬅️ BACK"): st.session_state.page = "HOME"; st.rerun()
-    st.write("### 🎧 DJ Station Mode")
-
-# --- หน้า 3: INTELLIGENCE CENTER (ส่วนหลัก) ---
+# --- หน้า 3: INTELLIGENCE CENTER ---
 elif st.session_state.page == "3":
-    if st.button("⬅️ BACK"): st.session_state.page = "HOME"; st.rerun()
+    if st.button("⬅️ BACK"): 
+        st.session_state.page = "HOME"
+        st.rerun()
+        
     st.markdown("<h2 class='neon-text'>🧠 INTELLIGENCE ENGINE</h2>", unsafe_allow_html=True)
     
-    # รับค่าวันที่ (1960 - 2026)
-    target_dt = st.date_input("เลือกวันที่เพื่อสแกนพิกัด", 
-                             value=date.today(),
-                             min_value=date(1960,1,1),
-                             max_value=date(2026,12,31))
+    # 1. รับค่าวันที่จากผู้ใช้
+    input_dt = st.date_input("ระบุวันที่เพื่อสแกนพิกัด", value=date.today(),
+                            min_value=date(1960,1,1), max_value=date(2026,12,31))
 
-    if st.button("RUN DECODER", use_container_width=True):
-        res = get_synapse_report(target_dt)
+    # 2. เริ่มการทำงานเมื่อกดปุ่มเท่านั้น
+    if st.button("RUN DECODER & ANALYTICS", use_container_width=True):
         
-        st.write("---")
-        # รายงาน 7 หัวข้อ (แก้ Error บรรทัด 184 เรียบร้อย)
-        st.markdown(f"""
-        ### 📋 ผลการถอดรหัสพิกัด:
-        * **วัน:** {res['day']} ({res['day_val']})
-        * **วันที่:** {res['date']}
-        * **เดือน:** {res['month']} ({res['month_val']})
-        * **ปีนักษัตร:** {res['zodiac']} ({res['z_val']})
-        * **ข้างขึ้น/แรม:** {res['phase']} ({res['l_logic_text']})
-        * **ธาตุ:** {res['elem']} ({res['e_val']})
-        * **ราศี:** {res['rasi']}
-        """)
+        # ป้องกัน Error โดยการสแกนหาค่า res ก่อน
+        res = get_synapse_report(input_dt)
         
-        st.markdown(f"""
-            <div style="text-align:center; padding:20px; border:2px solid {st.session_state.main_color}; border-radius:15px; background:rgba(0,0,0,0.5);">
-                <h1 style="color:{st.session_state.main_color}; margin:0;">CODE: {res['code']}</h1>
-                <p style="color:gray;">LUNAR BALANCE 1.618</p>
-            </div>
-        """, unsafe_allow_html=True)
+        if res is not None:
+            # ดึงรหัสมาเก็บไว้ในตัวแปร (ตอนนี้ปลอดภัยแล้วเพราะอยู่ในปุ่มกด)
+            current_code = res['code']
+            
+            # --- [ ส่วนวิเคราะห์สัญลักษณ์เหตุการณ์ ] ---
+            suffix = current_code % 1
+            if current_code > 80: 
+                symbol, event, desc = "🔥", "PEAK ACTION", "ช่วงเวลาพลังงานพุ่งพล่าน เหมาะกับการรุกหรือตัดสินใจใหญ่"
+            elif suffix > 0.7: 
+                symbol, event, desc = "⚡", "SHOCK TRIGGER", "ระวังเหตุการณ์ฉับพลัน หรือการเปลี่ยนแปลงกะทันหัน"
+            elif 0.4 <= suffix <= 0.6: 
+                symbol, event, desc = "💎", "GOLDEN SYNC", "พิกัดสมดุลจักรวาล มีเกณฑ์พบเจอโชคลาภหรือโอกาสดี"
+            else: 
+                symbol, event, desc = "🛡️", "BARRIER MODE", "พลังงานหน่วงตัว เน้นการตั้งรับและความรอบคอบ"
+
+            # --- [ ส่วนแสดงรายงาน 7 หัวข้อ ] ---
+            st.write("---")
+            st.markdown(f"### 📋 รายงานวิเคราะห์วันที่: {input_dt}")
+            col_res1, col_res2 = st.columns(2)
+            with col_res1:
+                st.markdown(f"""
+                * **วัน:** {res['day']} ({res['day_val']})
+                * **วันที่:** {res['date']}
+                * **เดือน:** {res['month']} ({res['month_val']})
+                """)
+            with col_res2:
+                st.markdown(f"""
+                * **ปีนักษัตร:** {res['zodiac']} ({res['z_val']})
+                * **ข้างขึ้น/แรม:** {res['phase']}
+                * **ธาตุ/ราศี:** {res['elem']} / {res['rasi']}
+                """)
+
+            # --- [ ส่วนแสดงรหัสลับ (Big Box) ] ---
+            st.markdown(f"""
+                <div style="text-align:center; padding:25px; border:3px solid {st.session_state.main_color}; border-radius:20px; background:rgba(0,0,0,0.6); box-shadow: 0 0 15px {st.session_state.main_color};">
+                    <h1 style="font-size:70px; margin:0;">{symbol}</h1>
+                    <h1 style="color:{st.session_state.main_color}; margin:0; font-family: monospace;">CODE: {current_code}</h1>
+                    <h3 style="color:white; margin:10px 0;">สถานะ: {event}</h3>
+                    <p style="color:#cccccc; font-style: italic;">{desc}</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # --- [ ส่วนคำนวณสถิติ 730 วัน (Time Scanner) ] ---
+            st.write("")
+            st.markdown("### 📊 TIMELINE ANALYTICS (730 DAYS)")
+            
+            with st.spinner("กำลังสแกนหาจุดเชื่อมโยงในไทม์ไลน์..."):
+                past_sync = 0
+                future_sync = 0
+                for i in range(-365, 366):
+                    if i == 0: continue
+                    scan_date = input_dt + timedelta(days=i)
+                    scan_res = get_synapse_report(scan_date)
+                    if scan_res and abs(scan_res['code'] - current_code) < 1.2:
+                        if i < 0: past_sync += 1
+                        else: future_sync += 1
+                
+                col_s1, col_s2 = st.columns(2)
+                col_s1.metric("PAST SYNC (อดีต)", f"{past_sync} ครั้ง", delta="จุดเชื่อมโยง", delta_color="off")
+                col_s2.metric("FUTURE SYNC (อนาคต)", f"{future_sync} ครั้ง", delta="จุดพยากรณ์", delta_color="normal")
+
+            # --- [ ส่วน Intelligence Briefing (อธิบายลอจิก) ] ---
+            with st.expander("🔍 ระบบนี้ทำงานอย่างไร? (EXPLANTION FOR AGENT)"):
+                st.markdown(f"""
+                #### ที่มาของเลขพิกัด {current_code}
+                1. **Data Source (ต้นทาง):** ดึงค่าจากมิติ **วาร (Day)**, **สุริยคติ (Date)**, **จันทรคติ (Phase)**, **นักษัตร (Year)** และ **ธาตุสถิต (Element)**
+                2. **Summation (การรวม):** นำเลขทั้ง 6 จุดมาบวกรวมกันเพื่อหาค่าพลังงานพื้นฐาน
+                3. **Harmonic Balance (สมดุล):** ใช้ค่า **±7.5** (ครึ่งรอบจันทรคติ) เพื่อชดเชยแรงดึงดูดของข้างขึ้นข้างแรม
+                4. **The Golden Ratio (1.618):** คูณด้วยค่าอัตราส่วนทองคำ เพื่อหาจุดที่พิกัดนี้สั่นสะเทือนในระดับเสถียรที่สุด
+                5. **Symmetry Matching:** สแกนย้อนหลังและล่วงหน้า 365 วัน เพื่อเปรียบเทียบว่ารหัสที่ "เหมือนกัน" เคยนำไปสู่เหตุการณ์ใดในอดีต และมีโอกาสเกิดอะไรขึ้นในอนาคต
+                """)
+        else:
+            st.error("ไม่สามารถโหลดข้อมูลพิกัดได้ กรุณาลองใหม่อีกครั้ง")
