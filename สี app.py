@@ -1,6 +1,80 @@
 import streamlit as st
 import datetime
 from datetime import date, timedelta
+import streamlit as st
+import datetime
+from datetime import date, timedelta
+
+# --- ล็อคขอบเขตเวลาตามคำสั่งคุณต๊ะ ---
+MIN_DATE = date(1960, 1, 1)
+MAX_DATE = date(2026, 12, 31)
+
+def get_synapse_report(dt):
+    if dt is None: return None
+    # (ฟังก์ชันคำนวณเหมือนเดิม แต่ดัก Error ช่วงวันที่)
+    if dt < MIN_DATE or dt > MAX_DATE: return None
+    
+    day_map = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 7}
+    d_val = day_map[dt.weekday()]
+    d_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+    
+    ref = date(1900, 1, 1)
+    diff = (dt - ref).days
+    lunar_pos = (diff - 0.5) % 29.530589
+    if lunar_pos <= 14.765:
+        moon_num = int(lunar_pos) + 1
+        phase_text, l_logic = f"ขึ้น {moon_num} ค่ำ", -7.5
+    else:
+        moon_num = int(lunar_pos - 14.765) + 1
+        phase_text, l_logic = f"แรม {moon_num} ค่ำ", 7.5
+
+    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+    z_map = {"ชวด":1, "ฉลู":2, "ขาล":3, "เถาะ":4, "มะโรง":5, "มะเส็ง":6, "มะเมีย":7, "มะแม":8, "วอก":9, "ระกา":10, "จอ":11, "กุน":12}
+    z_name = z_names[dt.year % 12]
+    zv = z_map.get(z_name, 1)
+
+    m, d = dt.month, dt.day
+    if (m == 5 and d >= 14) or (m == 6 and d <= 14): et, ev = "ดิน", 1
+    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): et, ev = "ไฟ", 4
+    else: et, ev = "ลม", 3
+
+    base_sum = d_val + dt.day + moon_num + dt.month + zv + ev
+    final_code = (base_sum + l_logic) * 1.618
+
+    return {
+        "day": d_names[dt.weekday()], "day_val": d_val, "date": dt.day,
+        "month": dt.month, "zodiac": z_name, "z_val": zv,
+        "phase": phase_text, "elem": et, "e_val": ev, "code": round(final_code, 4)
+    }
+
+st.set_page_config(page_title="SYNAPSE 1960-2026", layout="wide")
+st.title("🧠 Synapse High-Speed Math (1960-2026)")
+
+tab1, tab2 = st.tabs(["👤 ข้อมูลบุคคล", "👥 ข้อมูลคู่ขนาน"])
+
+with tab1:
+    user_dt = st.date_input("เลือกวันเกิดของคุณ (1960-2026)", 
+                           value=date(2000, 1, 1),
+                           min_value=MIN_DATE, max_value=MAX_DATE)
+    if st.button("ประมวลผลพิกัด"):
+        res = get_synapse_report(user_dt)
+        st.success(f"รหัสพิกัดของคุณคือ: {res['code']}")
+        # (เพิ่มส่วนสแกนอดีต-อนาคตตามโค้ดก่อนหน้าได้เลยครับ)
+
+with tab2:
+    col1, col2 = st.columns(2)
+    with col1:
+        dt_a = st.date_input("วันเกิดคนที่ 1", value=date(1980, 1, 1), 
+                            min_value=MIN_DATE, max_value=MAX_DATE, key="a")
+    with col2:
+        dt_b = st.date_input("วันเกิดคนที่ 2", value=date(1990, 1, 1), 
+                            min_value=MIN_DATE, max_value=MAX_DATE, key="b")
+    
+    if st.button("คำนวณคู่ขนาน"):
+        ra = get_synapse_report(dt_a)
+        rb = get_synapse_report(dt_b)
+        res_code = (ra['code'] + rb['code']) / 1.618
+        st.warning(f"CO-RESONANCE CODE: {round(res_code, 4)}")
 
 # =================================================================
 # 1. HIGH-SPEED MATHEMATICS ENGINE (ตัวคำนวณหลัก)
