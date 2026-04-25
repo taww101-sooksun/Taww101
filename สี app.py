@@ -1,137 +1,533 @@
 import streamlit as st
-from datetime import date, timedelta
+import base64
+import streamlit as st
+import base64
 
-# --- 1. ฟังก์ชันดึงเลขฐาน (ห้ามเอาออก โชว์ที่มาความจริง) ---
-def get_step_by_step_data(dt):
-    if dt is None: return None
-    day_val = {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}[dt.weekday()]
-    day_name = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()]
-    date_val = dt.day
-    ref = date(1900, 1, 1)
-    diff = (dt - ref).days
-    lunar_pos = (diff - 0.5) % 29.530589
-    if lunar_pos <= 14.765:
-        moon_num = int(lunar_pos) + 1
-        l_logic = -7.5
-        l_type = f"ขึ้น {moon_num} ค่ำ"
-    else:
-        moon_num = int(lunar_pos - 14.765) + 1
-        l_logic = 7.5
-        l_type = f"แรม {moon_num} ค่ำ"
-    month_val = dt.month
-    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
-    z_map = {0:9, 1:10, 2:11, 3:12, 4:1, 5:2, 6:3, 7:4, 8:5, 9:6, 10:7, 11:8}
-    zv = z_map[dt.year % 12]
-    z_name = z_names[dt.year % 12]
-    m, d = dt.month, dt.day
-    if (m == 5 and d >= 14) or (m == 6 and d <= 14): ev, en = 1, "ดิน"
-    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): ev, en = 2, "น้ำ"
-    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): ev, en = 4, "ไฟ"
-    else: ev, en = 3, "ลม"
-    return {
-        "day": day_val, "day_n": day_name, "date": date_val, "moon": moon_num, 
-        "l_logic": l_logic, "l_type": l_type, "month": month_val, "zv": zv, 
-        "zn": z_name, "ev": ev, "en": en, "year": dt.year
-    }
+# ==========================================
+# ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (ย้าย Logo มาตรงกลาง + เพิ่มสี Neon)
+# ==========================================
 
-def get_grade_info(val):
-    s_val = str(abs(val)).replace('.', '').lstrip('0')
-    digit = int(s_val[0]) if s_val else 0
-    if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
-    elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
-    else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
+# ต้องเรียก st.set_page_config() เป็นคำสั่งแรกสุดของ Streamlit
+st.set_page_config(page_title="Synapse Studio Mixer", layout="centered")
 
-# --- 2. หน้าจอแอป ---
-st.set_page_config(page_title="SYNAPSE STEP-BY-STEP", layout="wide")
-st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
+# ฟังก์ชันสำหรับแปลงรูปเป็น Base64 (เพื่อให้รูปโชว์ใน CSS ได้)
+def get_base64_image(image_path):
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except:
+        return "" # ถ้าไม่เจอรูปจะไม่โชว์อะไร
 
-tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล", "👥 วิเคราะห์คู่ขนาน"])
+# โหลด Logo และแปลงเป็น HTML link
+logo_html_link = ""
+logo_base64 = get_base64_image("logo1.png")
+if logo_base64:
+    logo_html_link = f"data:image/png;base64,{logo_base64}"
 
-# --- 👤 TAB 1: วิเคราะห์บุคคล ---
-with tab1:
-    u_birth = st.date_input("กรอกวันเกิดของคุณ", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="single")
-    if u_birth:
-        d = get_step_by_step_data(u_birth)
-        
-        st.markdown("### 🛠 กระดานแยกพิกัดตัวเลข")
-        st.write(f"1. วัน{d['day_n']}: `{d['day']}` | 2. วันที่: `{d['date']}` | 3. {d['l_type']}: `{d['moon']}`")
-        st.write(f"4. เดือน: `{d['month']}` | 5. ปี{d['zn']}: `{d['zv']}` | 6. ธาตุ{d['en']}: `{d['ev']}`")
-        
-        st.write("---")
-        base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
-        raw_code = (base_sum + d['l_logic']) * 1.618
-        days_alive = (date.today() - u_birth).days
-        final_val = (raw_code + days_alive) / 1.618
-        
-        st.write(f"**ขั้นตอนที่ 1 (บวกฐาน):** `{d['day']}+{d['date']}+{d['moon']}+{d['month']}+{d['zv']}+{d['ev']} = {base_sum}`")
-        st.write(f"**ขั้นตอนที่ 2 (คูณ 1.618):** `({base_sum} + {d['l_logic']}) x 1.618 = {round(raw_code, 2)}`")
-        st.write(f"**ขั้นตอนที่ 3 (บวกวันชีวิต/หาร):** `({round(raw_code, 2)} + {days_alive}) / 1.618 = {round(final_val, 4)}`")
+# CSS สำหรับซ่อนส่วนเกิน, แปะ Logo ตรงกลาง, และสไตล์หัวข้อ
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
 
-        digit, grade, color = get_grade_info(final_val)
-        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid {color}; border-radius:15px; text-align:center;">
-            <h1 style="color:{color}; font-size:60px;">{round(final_val, 4)}</h1>
-            <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
-        </div>""", unsafe_allow_html=True)
-
-        # --- 🕒 สแกนไทม์ไลน์บุคคล ---
-        st.write("---")
-        st.subheader("🕒 รายงานการบรรจบของพิกัดบุคคล (730 วัน)")
-        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน", "🗓️ อนาคต 365 วัน"])
-        
-        with t_past:
-            past_results = []
-            for i in range(-365, 0):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit:
-                    past_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
-            st.table(past_results[:10] if past_results else "ไม่พบข้อมูล")
-
-        with t_future:
-            future_results = []
-            for i in range(1, 366):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit:
-                    future_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
-            st.table(future_results[:10] if future_results else "ไม่พบข้อมูล")
-
-# --- 👥 TAB 2: วิเคราะห์คู่ขนาน ---
-with tab2:
-    col1, col2 = st.columns(2)
-    with col1: birth_a = st.date_input("วันเกิดคนที่ 1", value=None, key="ba", min_value=date(1960,1,1))
-    with col2: birth_b = st.date_input("วันเกิดคนที่ 2", value=None, key="bb", min_value=date(1960,1,1))
+    /* 1. ซ่อนเมนูเดิมและ Footer */
+    header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    #MainMenu {{visibility: hidden;}}
     
-    if birth_a and birth_b:
-        d1 = get_step_by_step_data(birth_a)
-        d2 = get_step_by_step_data(birth_b)
-        r1 = ((d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']) + d1['l_logic']) * 1.618
-        r2 = ((d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']) + d2['l_logic']) * 1.618
-        
-        resonance = (r1 + r2) / 1.618
-        digit_p, grade_p, color_p = get_grade_info(resonance)
-        
-        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
-        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid gold; border-radius:15px; text-align:center;">
-            <h1 style="color:white; font-size:60px;">{round(resonance, 4)}</h1>
-            <h2 style="color:{color_p};">เลขหน้าคือ {digit_p} : {grade_p}</h2>
-        </div>""", unsafe_allow_html=True)
+    /* 2. ตั้งค่าพื้นหลังและดันเนื้อหาขึ้นให้สุด */
+    .main {{ background-color: #000000; }}
+    .block-container {{
+        padding-top: 1rem;
+        padding-bottom: 0rem;
+        position: relative; /* เพื่อให้ Logo ลอยเทียบกับกล่องนี้ */
+    }}
 
-        # --- 🕒 สแกนไทม์ไลน์คู่ขนาน ---
-        st.write("---")
-        st.subheader("⏳ จุด Sync คู่ขนานในอนาคต (365 วัน)")
-        p_future = []
-        for i in range(1, 366):
-            target = date.today() + timedelta(days=i)
-            td = get_step_by_step_data(target)
-            t_code = ((td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']) + td['l_logic']) * 1.618
-            t_digit, _, _ = get_grade_info(t_code)
-            if t_digit == digit_p:
-                p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
-        st.table(p_future[:10] if p_future else "ไม่พบข้อมูล")
+    /* 3. [จุดที่แก้ไข] สร้าง Logo ใหม่ไปแปะที่ "ตรงกลางด้านบน" */
+    .block-container::before {{
+        content: "";
+        position: absolute;
+        top: 20px; /* ระยะห่างจากขอบบน */
+        left: 50%; /* เลื่อนมาตรงกลาง */
+        transform: translateX(-50%) scale(1); /* ปรับให้จุดกลางรูปอยู่ตรงกลางหน้าจอเป๊ะ */
+        width: 100px;  /* ปรับขนาด Logo ตามต้องการ (เช่น 120px) */
+        height: 100px;
+        background-image: url("{logo_html_link}");
+        background-size: contain;
+        background-repeat: no-repeat;
+        z-index: 999;
+        
+        /* 4. เอฟเฟกต์แสง Neon Glow และ Animation ให้ Logo (กู้คืนสีสัน) */
+        filter: drop-shadow(0 0 5px #ff00de); /* แสงเริ่มต้นสีชมพู */
+        animation: logo-pulsing 2s infinite alternate; /* เล่น Animation */
+    }}
+
+    /* Animation สำหรับ Logo ขยายเข้า-ออก และแสงวูบวาบ */
+    @keyframes logo-pulsing {{
+        from {{ 
+            filter: drop-shadow(0 0 5px #ff00de); 
+            transform: translateX(-50%) scale(1); 
+        }}
+        to {{ 
+            filter: drop-shadow(0 0 15px #ff00de); /* แสงเข้มขึ้น */
+            transform: translateX(-50%) scale(1.05); /* ขยายใหญ่ขึ้นนิดหน่อย */
+        }}
+    }}
+
+    /* 5. สไตล์หัวข้อแอป Neon (กู้คืนสีสันจัดเต็ม) */
+    .neon-title {{
+        font-family: 'Orbitron', sans-serif;
+        color: #fff;
+        text-align: center;
+        /* แสง Neon สีชมพู-น้ำเงิน-ม่วง สลับกัน */
+        text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #ff00de, 0 0 30px #00f3ff, 0 0 40px #ff00de;
+        font-size: 1.8rem;
+        margin-top: 130px; /* เผื่อพื้นที่ให้ Logo ตรงกลาง */
+        margin-bottom: 10px;
+        letter-spacing: 2px;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# แสดงหัวข้อแอป
+st.markdown('<h1 class="neon-title">SYNAPSE อยู่นิ่งๆ ไม่เจ็บตัว</h1>', unsafe_allow_html=True)
+
+
+# ==========================================
+# ส่วนที่ 2: โค้ด HTML/JS สำหรับ Mixer และ Visualizer (สีสันกู้คืนเต็มสูบ)
+# ==========================================
+
+html_code = """
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: transparent; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
+        
+        /* สไตล์กล่องหลักและกล่องเพลง (เน้นขอบเรืองแสง) */
+        .neon-box { border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(10, 10, 10, 0.95); box-shadow: 0 0 20px rgba(0,243,255,0.1); }
+        .deck-box { border-left: 4px solid; background: rgba(20, 20, 20, 0.8); transition: 0.3s; }
+        .deck-box:hover { background: rgba(30, 30, 30, 1); }
+        
+        /* --- [จุดที่แก้ไข] ย่อขนาดกราฟเสียงให้เล็กลงอีกนิด --- */
+        .visualizer-container { height: 120px; background: #000; border-radius: 12px; border: 1px solid #333; }
+        
+        /* ปุ่มสไตล์ Neon สะท้อนแสง (กู้คืนสี แดง/เขียว/ส้ม) */
+        .btn-neon { transition: 0.2s; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+        .neon-red { border: 2px solid #ff0055; color: #ff0055; text-shadow: 0 0 5px #ff0055; box-shadow: 0 0 10px rgba(255,0,85,0.3); }
+        .neon-red:hover { background: #ff0055; color: white; box-shadow: 0 0 20px #ff0055; }
+        .neon-green { border: 2px solid #00ffcc; color: #00ffcc; text-shadow: 0 0 5px #00ffcc; box-shadow: 0 0 10px rgba(0,255,204,0.3); }
+        .neon-green:hover { background: #00ffcc; color: black; box-shadow: 0 0 20px #00ffcc; }
+        
+        /* แถบเวลา (กู้คืนการไล่เฉดสี ส้ม-ม่วง-น้ำเงิน) */
+        .progress-bg { height: 5px; background: #1a1a1a; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #ff00de, #00f3ff, #ff8c00); transition: width 0.1s linear; }
+    </style>
+</head>
+<body>
+    <div class="max-w-md mx-auto p-5 neon-box rounded-3xl">
+        
+        <canvas id="visualizer" class="visualizer-container w-full mb-5"></canvas>
+
+        <div class="p-4 deck-box border-pink-600 rounded-r-xl mb-3">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-[10px] text-pink-500 font-bold uppercase tracking-widest">Deck A</span>
+                <span id="timeA" class="text-[10px] font-mono text-gray-400">READY</span>
+            </div>
+            <div id="nameA" class="text-xs font-semibold mb-2 truncate text-gray-100">ยังไม่ได้โหลดเพลง A...</div>
+            <input type="file" id="inputA" accept="audio/*" class="hidden" onchange="loadAudio(this.files[0], 'A')">
+            <button onclick="document.getElementById('inputA').click()" class="text-[9px] bg-pink-900/40 px-3 py-1.5 rounded-lg border border-pink-500/50 text-pink-200">เลือกไฟล์ A</button>
+            <div class="progress-bg mt-3"><div id="barA" class="progress-fill"></div></div>
+        </div>
+
+        <div class="p-4 deck-box border-cyan-400 rounded-r-xl mb-5">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Deck B</span>
+                <span id="timeB" class="text-[10px] font-mono text-gray-400">READY</span>
+            </div>
+            <div id="nameB" class="text-xs font-semibold mb-2 truncate text-gray-100">ยังไม่ได้โหลดเพลง B...</div>
+            <input type="file" id="inputB" accept="audio/*" class="hidden" onchange="loadAudio(this.files[0], 'B')">
+            <button onclick="document.getElementById('inputB').click()" class="text-[9px] bg-cyan-900/40 px-3 py-1.5 rounded-lg border border-cyan-500/50 text-cyan-200">เลือกไฟล์ B</button>
+            <div class="progress-bg mt-3"><div id="barB" class="progress-fill" style="background: #00ffcc;"></div></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <button onclick="startPlaying()" id="btn-play" class="btn-neon neon-red py-3 rounded-2xl">Start Mix</button>
+            <button onclick="startCrossfade()" id="btn-fade" class="btn-neon neon-green py-3 rounded-2xl">Crossfade</button>
+        </div>
+    </div>
+
+    <script>
+        let audioCtx, analyser, songA, songB, gainA, gainB, sourceA, sourceB;
+        let isPlaying = false, current = 'A', dataArray;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 128;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                draw();
+            }
+        }
+
+        function draw() {
+            requestAnimationFrame(draw);
+            if (!analyser) return;
+            analyser.getByteFrequencyData(dataArray);
+            const canvas = document.getElementById('visualizer');
+            const ctx = canvas.getContext('2d');
+            
+            // ล้างจอแบบ Fade เพื่อให้เกิดเงาตาม
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const bWidth = (canvas.width / dataArray.length) * 2;
+            let x = 0;
+            for(let i = 0; i < dataArray.length; i++) {
+                let h = (dataArray[i] / 255) * canvas.height;
+                // [กู้คืนสีสัน] สีสะท้อนแสง ส้ม-ม่วง-น้ำเงิน-ส้ม
+                ctx.fillStyle = `hsl(${{280 + i*4}}, 100%, 50%)`;
+                ctx.fillRect(x, canvas.height - h, bWidth - 1, h);
+                x += bWidth;
+            }
+            updateUI();
+        }
+
+        async function loadAudio(file, key) {
+            initAudio();
+            document.getElementById('name'+key).innerText = "Loading: " + file.name;
+            const buffer = await audioCtx.decodeAudioData(await file.arrayBuffer());
+            if(key === 'A') songA = buffer; else songB = buffer;
+            document.getElementById('name'+key).innerText = file.name;
+        }
+
+        function startPlaying() {
+            if (!songA || !songB) return alert("โหลดเพลงให้ครบทั้ง A และ B ก่อนครับอาจารย์!");
+            if (isPlaying) return;
+
+            sourceA = audioCtx.createBufferSource(); sourceA.buffer = songA;
+            gainA = audioCtx.createGain();
+            sourceA.connect(gainA).connect(analyser).connect(audioCtx.destination);
+            
+            sourceB = audioCtx.createBufferSource(); sourceB.buffer = songB;
+            gainB = audioCtx.createGain(); gainB.gain.value = 0;
+            sourceB.connect(gainB).connect(analyser).connect(audioCtx.destination);
+
+            sourceA.start(0); sourceB.start(0);
+            isPlaying = true; startTime = audioCtx.currentTime;
+        }
+
+        function startCrossfade() {
+            if(!isPlaying) return;
+            const now = audioCtx.currentTime;
+            const dur = 5;
+            if(current === 'A') {
+                gainA.gain.linearRampToValueAtTime(1, now); gainA.gain.linearRampToValueAtTime(0, now+dur);
+                gainB.gain.linearRampToValueAtTime(0, now); gainB.gain.linearRampToValueAtTime(1, now+dur);
+                current = 'B';
+            } else {
+                gainB.gain.linearRampToValueAtTime(1, now); gainB.gain.linearRampToValueAtTime(0, now+dur);
+                gainA.gain.linearRampToValueAtTime(0, now); gainA.gain.linearRampToValueAtTime(1, now+dur);
+                current = 'A';
+            }
+        }
+
+        function updateUI() {
+            if(!isPlaying) return;
+            const now = audioCtx.currentTime;
+            if(sourceA && songA) {
+                let remA = songA.duration - (now % songA.duration);
+                document.getElementById('timeA').innerText = "-" + formatTime(remA);
+                document.getElementById('barA').style.width = ((songA.duration - remA)/songA.duration*100) + "%";
+            }
+            if(sourceB && songB) {
+                let remB = songB.duration - (now % songB.duration);
+                document.getElementById('timeB').innerText = "-" + formatTime(remB);
+                document.getElementById('barB').style.width = ((songB.duration - remB)/songB.duration*100) + "%";
+            }
+        }
+
+        function formatTime(sec) {
+            let m = Math.floor(sec/60);
+            let s = Math.floor(sec%60);
+            return (m<10?'0':'')+m+":"+(s<10?'0':'')+s;
+        }
+    </script>
+</body>
+</html>
+"""
+
+# แสดงผล HTML Mixer
+st.components.v1.html(html_code, height=620)
+
+# Footer สไตล์อาจารย์ต๊ะ
+st.markdown("""
+<div style='text-align: center; color: #444; font-size: 11px; margin-top: 10px; font-family: "Inter", sans-serif; letter-spacing: 1px;'>
+    อยู่นิ่งๆ ไม่เจ็บตัว | Command Center | © 2026
+</div>
+""", unsafe_allow_html=True)
+# ==========================================
+# ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (ย้าย Logo มาตรงกลาง + เพิ่มสี Neon)
+# ==========================================
+
+# ต้องเรียก st.set_page_config() เป็นคำสั่งแรกสุดของ Streamlit
+st.set_page_config(page_title="Synapse Studio Mixer", layout="centered")
+
+# ฟังก์ชันสำหรับแปลงรูปเป็น Base64 (เพื่อให้รูปโชว์ใน CSS ได้)
+def get_base64_image(image_path):
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except:
+        return "" # ถ้าไม่เจอรูปจะไม่โชว์อะไร
+
+# โหลด Logo และแปลงเป็น HTML link
+logo_html_link = ""
+logo_base64 = get_base64_image("logo1.png")
+if logo_base64:
+    logo_html_link = f"data:image/png;base64,{logo_base64}"
+
+# CSS สำหรับซ่อนส่วนเกิน, แปะ Logo ตรงกลาง, และสไตล์หัวข้อ
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+    /* 1. ซ่อนเมนูเดิมและ Footer */
+    header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    #MainMenu {{visibility: hidden;}}
+    
+    /* 2. ตั้งค่าพื้นหลังและดันเนื้อหาขึ้นให้สุด */
+    .main {{ background-color: #000000; }}
+    .block-container {{
+        padding-top: 1rem;
+        padding-bottom: 0rem;
+        position: relative; /* เพื่อให้ Logo ลอยเทียบกับกล่องนี้ */
+    }}
+
+    /* 3. [จุดที่แก้ไข] สร้าง Logo ใหม่ไปแปะที่ "ตรงกลางด้านบน" */
+    .block-container::before {{
+        content: "";
+        position: absolute;
+        top: 20px; /* ระยะห่างจากขอบบน */
+        left: 50%; /* เลื่อนมาตรงกลาง */
+        transform: translateX(-50%) scale(1); /* ปรับให้จุดกลางรูปอยู่ตรงกลางหน้าจอเป๊ะ */
+        width: 100px;  /* ปรับขนาด Logo ตามต้องการ (เช่น 120px) */
+        height: 100px;
+        background-image: url("{logo_html_link}");
+        background-size: contain;
+        background-repeat: no-repeat;
+        z-index: 999;
+        
+        /* 4. เอฟเฟกต์แสง Neon Glow และ Animation ให้ Logo (กู้คืนสีสัน) */
+        filter: drop-shadow(0 0 5px #ff00de); /* แสงเริ่มต้นสีชมพู */
+        animation: logo-pulsing 2s infinite alternate; /* เล่น Animation */
+    }}
+
+    /* Animation สำหรับ Logo ขยายเข้า-ออก และแสงวูบวาบ */
+    @keyframes logo-pulsing {{
+        from {{ 
+            filter: drop-shadow(0 0 5px #ff00de); 
+            transform: translateX(-50%) scale(1); 
+        }}
+        to {{ 
+            filter: drop-shadow(0 0 15px #ff00de); /* แสงเข้มขึ้น */
+            transform: translateX(-50%) scale(1.05); /* ขยายใหญ่ขึ้นนิดหน่อย */
+        }}
+    }}
+
+    /* 5. สไตล์หัวข้อแอป Neon (กู้คืนสีสันจัดเต็ม) */
+    .neon-title {{
+        font-family: 'Orbitron', sans-serif;
+        color: #fff;
+        text-align: center;
+        /* แสง Neon สีชมพู-น้ำเงิน-ม่วง สลับกัน */
+        text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #ff00de, 0 0 30px #00f3ff, 0 0 40px #ff00de;
+        font-size: 1.8rem;
+        margin-top: 130px; /* เผื่อพื้นที่ให้ Logo ตรงกลาง */
+        margin-bottom: 10px;
+        letter-spacing: 2px;
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# แสดงหัวข้อแอป
+st.markdown('<h1 class="neon-title">SYNAPSE อยู่นิ่งๆ ไม่เจ็บตัว</h1>', unsafe_allow_html=True)
+
+
+# ==========================================
+# ส่วนที่ 2: โค้ด HTML/JS สำหรับ Mixer และ Visualizer (สีสันกู้คืนเต็มสูบ)
+# ==========================================
+
+html_code = """
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: transparent; color: white; font-family: 'Inter', sans-serif; overflow: hidden; }
+        
+        /* สไตล์กล่องหลักและกล่องเพลง (เน้นขอบเรืองแสง) */
+        .neon-box { border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(10, 10, 10, 0.95); box-shadow: 0 0 20px rgba(0,243,255,0.1); }
+        .deck-box { border-left: 4px solid; background: rgba(20, 20, 20, 0.8); transition: 0.3s; }
+        .deck-box:hover { background: rgba(30, 30, 30, 1); }
+        
+        /* --- [จุดที่แก้ไข] ย่อขนาดกราฟเสียงให้เล็กลงอีกนิด --- */
+        .visualizer-container { height: 120px; background: #000; border-radius: 12px; border: 1px solid #333; }
+        
+        /* ปุ่มสไตล์ Neon สะท้อนแสง (กู้คืนสี แดง/เขียว/ส้ม) */
+        .btn-neon { transition: 0.2s; font-weight: bold; text-transform: uppercase; font-size: 11px; letter-spacing: 1px; }
+        .neon-red { border: 2px solid #ff0055; color: #ff0055; text-shadow: 0 0 5px #ff0055; box-shadow: 0 0 10px rgba(255,0,85,0.3); }
+        .neon-red:hover { background: #ff0055; color: white; box-shadow: 0 0 20px #ff0055; }
+        .neon-green { border: 2px solid #00ffcc; color: #00ffcc; text-shadow: 0 0 5px #00ffcc; box-shadow: 0 0 10px rgba(0,255,204,0.3); }
+        .neon-green:hover { background: #00ffcc; color: black; box-shadow: 0 0 20px #00ffcc; }
+        
+        /* แถบเวลา (กู้คืนการไล่เฉดสี ส้ม-ม่วง-น้ำเงิน) */
+        .progress-bg { height: 5px; background: #1a1a1a; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #ff00de, #00f3ff, #ff8c00); transition: width 0.1s linear; }
+    </style>
+</head>
+<body>
+    <div class="max-w-md mx-auto p-5 neon-box rounded-3xl">
+        
+        <canvas id="visualizer" class="visualizer-container w-full mb-5"></canvas>
+
+        <div class="p-4 deck-box border-pink-600 rounded-r-xl mb-3">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-[10px] text-pink-500 font-bold uppercase tracking-widest">Deck A</span>
+                <span id="timeA" class="text-[10px] font-mono text-gray-400">READY</span>
+            </div>
+            <div id="nameA" class="text-xs font-semibold mb-2 truncate text-gray-100">ยังไม่ได้โหลดเพลง A...</div>
+            <input type="file" id="inputA" accept="audio/*" class="hidden" onchange="loadAudio(this.files[0], 'A')">
+            <button onclick="document.getElementById('inputA').click()" class="text-[9px] bg-pink-900/40 px-3 py-1.5 rounded-lg border border-pink-500/50 text-pink-200">เลือกไฟล์ A</button>
+            <div class="progress-bg mt-3"><div id="barA" class="progress-fill"></div></div>
+        </div>
+
+        <div class="p-4 deck-box border-cyan-400 rounded-r-xl mb-5">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">Deck B</span>
+                <span id="timeB" class="text-[10px] font-mono text-gray-400">READY</span>
+            </div>
+            <div id="nameB" class="text-xs font-semibold mb-2 truncate text-gray-100">ยังไม่ได้โหลดเพลง B...</div>
+            <input type="file" id="inputB" accept="audio/*" class="hidden" onchange="loadAudio(this.files[0], 'B')">
+            <button onclick="document.getElementById('inputB').click()" class="text-[9px] bg-cyan-900/40 px-3 py-1.5 rounded-lg border border-cyan-500/50 text-cyan-200">เลือกไฟล์ B</button>
+            <div class="progress-bg mt-3"><div id="barB" class="progress-fill" style="background: #00ffcc;"></div></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <button onclick="startPlaying()" id="btn-play" class="btn-neon neon-red py-3 rounded-2xl">Start Mix</button>
+            <button onclick="startCrossfade()" id="btn-fade" class="btn-neon neon-green py-3 rounded-2xl">Crossfade</button>
+        </div>
+    </div>
+
+    <script>
+        let audioCtx, analyser, songA, songB, gainA, gainB, sourceA, sourceB;
+        let isPlaying = false, current = 'A', dataArray;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioCtx.createAnalyser();
+                analyser.fftSize = 128;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                draw();
+            }
+        }
+
+        function draw() {
+            requestAnimationFrame(draw);
+            if (!analyser) return;
+            analyser.getByteFrequencyData(dataArray);
+            const canvas = document.getElementById('visualizer');
+            const ctx = canvas.getContext('2d');
+            
+            // ล้างจอแบบ Fade เพื่อให้เกิดเงาตาม
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const bWidth = (canvas.width / dataArray.length) * 2;
+            let x = 0;
+            for(let i = 0; i < dataArray.length; i++) {
+                let h = (dataArray[i] / 255) * canvas.height;
+                // [กู้คืนสีสัน] สีสะท้อนแสง ส้ม-ม่วง-น้ำเงิน-ส้ม
+                ctx.fillStyle = `hsl(${{280 + i*4}}, 100%, 50%)`;
+                ctx.fillRect(x, canvas.height - h, bWidth - 1, h);
+                x += bWidth;
+            }
+            updateUI();
+        }
+
+        async function loadAudio(file, key) {
+            initAudio();
+            document.getElementById('name'+key).innerText = "Loading: " + file.name;
+            const buffer = await audioCtx.decodeAudioData(await file.arrayBuffer());
+            if(key === 'A') songA = buffer; else songB = buffer;
+            document.getElementById('name'+key).innerText = file.name;
+        }
+
+        function startPlaying() {
+            if (!songA || !songB) return alert("โหลดเพลงให้ครบทั้ง A และ B ก่อนครับอาจารย์!");
+            if (isPlaying) return;
+
+            sourceA = audioCtx.createBufferSource(); sourceA.buffer = songA;
+            gainA = audioCtx.createGain();
+            sourceA.connect(gainA).connect(analyser).connect(audioCtx.destination);
+            
+            sourceB = audioCtx.createBufferSource(); sourceB.buffer = songB;
+            gainB = audioCtx.createGain(); gainB.gain.value = 0;
+            sourceB.connect(gainB).connect(analyser).connect(audioCtx.destination);
+
+            sourceA.start(0); sourceB.start(0);
+            isPlaying = true; startTime = audioCtx.currentTime;
+        }
+
+        function startCrossfade() {
+            if(!isPlaying) return;
+            const now = audioCtx.currentTime;
+            const dur = 5;
+            if(current === 'A') {
+                gainA.gain.linearRampToValueAtTime(1, now); gainA.gain.linearRampToValueAtTime(0, now+dur);
+                gainB.gain.linearRampToValueAtTime(0, now); gainB.gain.linearRampToValueAtTime(1, now+dur);
+                current = 'B';
+            } else {
+                gainB.gain.linearRampToValueAtTime(1, now); gainB.gain.linearRampToValueAtTime(0, now+dur);
+                gainA.gain.linearRampToValueAtTime(0, now); gainA.gain.linearRampToValueAtTime(1, now+dur);
+                current = 'A';
+            }
+        }
+
+        function updateUI() {
+            if(!isPlaying) return;
+            const now = audioCtx.currentTime;
+            if(sourceA && songA) {
+                let remA = songA.duration - (now % songA.duration);
+                document.getElementById('timeA').innerText = "-" + formatTime(remA);
+                document.getElementById('barA').style.width = ((songA.duration - remA)/songA.duration*100) + "%";
+            }
+            if(sourceB && songB) {
+                let remB = songB.duration - (now % songB.duration);
+                document.getElementById('timeB').innerText = "-" + formatTime(remB);
+                document.getElementById('barB').style.width = ((songB.duration - remB)/songB.duration*100) + "%";
+            }
+        }
+
+        function formatTime(sec) {
+            let m = Math.floor(sec/60);
+            let s = Math.floor(sec%60);
+            return (m<10?'0':'')+m+":"+(s<10?'0':'')+s;
+        }
+    </script>
+</body>
+</html>
+"""
+
+# แสดงผล HTML Mixer
+st.components.v1.html(html_code, height=620)
+
+# Footer สไตล์อาจารย์ต๊ะ
+st.markdown("""
+<div style='text-align: center; color: #444; font-size: 11px; margin-top: 10px; font-family: "Inter", sans-serif; letter-spacing: 1px;'>
+    อยู่นิ่งๆ ไม่เจ็บตัว | Command Center | © 2026
+</div>
+""", unsafe_allow_html=True)
