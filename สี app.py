@@ -81,6 +81,63 @@ if u_birth:
     st.write(f"**Step 2:** จูนจันทร์และขยายด้วย 1.618 ➔ `{round(raw_code, 4)}`")
     st.write(f"**Step 3:** บวกพิกัดวันชีวิตที่ใช้มา ({days_alive} วัน) แล้วหาร 1.618")
     st.info(f"สูตร: ({round(raw_code, 2)} + {days_alive}) ÷ 1.618 = **{round(final_val, 4)}**")
+if birth_a and birth_b:
+    st.write("---")
+    st.subheader("🧬 การประมวลผลมิติคู่ขนาน (Parallel Step)")
+    
+    # ดึงเลขฐานของทั้ง 2 คน
+    d1 = get_step_by_step_data(birth_a)
+    d2 = get_step_by_step_data(birth_b)
+    
+    # คำนวณรหัสพื้นฐาน (Raw Code) ของแต่ละคนก่อน
+    sum1 = d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']
+    raw1 = (sum1 + d1['l_logic']) * 1.618
+    
+    sum2 = d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']
+    raw2 = (sum2 + d2['l_logic']) * 1.618
+    
+    # โชว์ตารางเปรียบเทียบเลขฐาน
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown(f"**👤 พิกัดคนที่ 1**\n- เลขรวมฐาน: `{sum1}`\n- จูนจันทร์: `{d1['l_logic']}`\n- **รหัสบุคคล: {round(raw1, 2)}**")
+    with col_b:
+        st.markdown(f"**👤 พิกัดคนที่ 2**\n- เลขรวมฐาน: `{sum2}`\n- จูนจันทร์: `{d2['l_logic']}`\n- **รหัสบุคคล: {round(raw2, 2)}**")
+    
+    st.write("---")
+    # ขั้นตอนการรวม (Fusion)
+    parallel_sum = raw1 + raw2
+    resonance_code = parallel_sum / 1.618
+    
+    st.markdown("### ⚙️ ขั้นตอนการรวมพิกัด")
+    st.write(f"**Step 1 (Fusion):** นำรหัสทั้งคู่มาบวกกัน ➔ `{round(raw1, 2)} + {round(raw2, 2)} = {round(parallel_sum, 2)}`")
+    st.write(f"**Step 2 (Resonance):** หารด้วยค่าสมดุลทองคำ ➔ `{round(parallel_sum, 2)} ÷ 1.618 = {round(resonance_code, 4)}`")
+    
+    # วัดเกณฑ์เลขหน้าสุด
+    digit_p, grade_p, color_p = get_grade_info(resonance_code)
+    
+    st.markdown(f"""
+    <div style="background:#000; padding:25px; border:4px solid gold; border-radius:20px; text-align:center;">
+        <h3 style="color:gold; margin:0;">CO-RESONANCE CODE</h3>
+        <h1 style="color:white; font-size:65px; margin:10px 0;">{round(resonance_code, 4)}</h1>
+        <h2 style="color:{color_p};">เลขหน้าสุดคือ {digit_p} : {grade_p}</h2>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # ตารางอนาคต (365 วัน) - โชว์ว่ารหัสนี้จะไป Sync กับวันไหน
+    st.write("🗓️ **จุดนัดพบในอนาคต (วันที่รหัสโลกตรงกับรหัสคู่ขนานคุณ):**")
+    p_future = []
+    for i in range(1, 366):
+        target = date.today() + timedelta(days=i)
+        td = get_step_by_step_data(target)
+        t_sum = td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']
+        t_code = (t_sum + td['l_logic']) * 1.618
+        
+        t_digit, _, _ = get_grade_info(t_code)
+        if t_digit == digit_p:
+            p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
+    
+    if p_future:
+        st.table(p_future[:5]) # โชว์ 5 วันสำคัญในอนาคต
 
     # สรุปผลด้วยเกณฑ์ 0-9 หน้าสุด
     digit, grade, color = get_grade_info(final_val)
