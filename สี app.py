@@ -1,137 +1,349 @@
 import streamlit as st
-from datetime import date, timedelta
+import os
+import base64
+import random
 
-# --- 1. ฟังก์ชันดึงเลขฐาน (ห้ามเอาออก โชว์ที่มาความจริง) ---
-def get_step_by_step_data(dt):
-    if dt is None: return None
-    day_val = {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}[dt.weekday()]
-    day_name = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()]
-    date_val = dt.day
-    ref = date(1900, 1, 1)
-    diff = (dt - ref).days
-    lunar_pos = (diff - 0.5) % 29.530589
-    if lunar_pos <= 14.765:
-        moon_num = int(lunar_pos) + 1
-        l_logic = -7.5
-        l_type = f"ขึ้น {moon_num} ค่ำ"
-    else:
-        moon_num = int(lunar_pos - 14.765) + 1
-        l_logic = 7.5
-        l_type = f"แรม {moon_num} ค่ำ"
-    month_val = dt.month
-    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
-    z_map = {0:9, 1:10, 2:11, 3:12, 4:1, 5:2, 6:3, 7:4, 8:5, 9:6, 10:7, 11:8}
-    zv = z_map[dt.year % 12]
-    z_name = z_names[dt.year % 12]
-    m, d = dt.month, dt.day
-    if (m == 5 and d >= 14) or (m == 6 and d <= 14): ev, en = 1, "ดิน"
-    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): ev, en = 2, "น้ำ"
-    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): ev, en = 4, "ไฟ"
-    else: ev, en = 3, "ลม"
-    return {
-        "day": day_val, "day_n": day_name, "date": date_val, "moon": moon_num, 
-        "l_logic": l_logic, "l_type": l_type, "month": month_val, "zv": zv, 
-        "zn": z_name, "ev": ev, "en": en, "year": dt.year
-    }
+# --- 1. CONFIG & SYSTEM ---
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.7", layout="centered")
 
-def get_grade_info(val):
-    s_val = str(abs(val)).replace('.', '').lstrip('0')
-    digit = int(s_val[0]) if s_val else 0
-    if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
-    elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
-    else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
+def get_base64(file_path):
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+    except: return None
+    return None
 
-# --- 2. หน้าจอแอป ---
-st.set_page_config(page_title="SYNAPSE STEP-BY-STEP", layout="wide")
-st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
+logo_b64 = get_base64("logo1.png")
 
-tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล", "👥 วิเคราะห์คู่ขนาน"])
+# --- 2. GLOBAL STATE ---
+if 'global_song_idx' not in st.session_state:
+    st.session_state.global_song_idx = 0
+if 'is_playing' not in st.session_state:
+    st.session_state.is_playing = False
 
-# --- 👤 TAB 1: วิเคราะห์บุคคล ---
-with tab1:
-    u_birth = st.date_input("กรอกวันเกิดของคุณ", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="single")
-    if u_birth:
-        d = get_step_by_step_data(u_birth)
+room_info = [
+    {"name": "🔥 CORE ROOM", "color1": "#39FF14", "color2": "#00FFDD"},
+    {"name": "🎧 R&B LOUNGE", "color1": "#FF00DE", "color2": "#7000FF"},
+    {"name": "🎤 RAP ZONE", "color1": "#00F3FF", "color2": "#0051FF"},
+    {"name": "🌌 QUANTUM", "color1": "#FF8C00", "color2": "#FF0000"},
+    {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"}
+]
+
+all_music = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+
+# --- 3. UI RENDER (5 ROOMS) ---
+tabs = st.tabs([r["name"] for r in room_info])
+
+for index, tab in enumerate(tabs):
+    with tab:
+        info = room_info[index]
+        c1, c2 = info["color1"], info["color2"]
         
-        st.markdown("### 🛠 กระดานแยกพิกัดตัวเลข")
-        st.write(f"1. วัน{d['day_n']}: `{d['day']}` | 2. วันที่: `{d['date']}` | 3. {d['l_type']}: `{d['moon']}`")
-        st.write(f"4. เดือน: `{d['month']}` | 5. ปี{d['zn']}: `{d['zv']}` | 6. ธาตุ{d['en']}: `{d['ev']}`")
-        
-        st.write("---")
-        base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
-        raw_code = (base_sum + d['l_logic']) * 1.618
-        days_alive = (date.today() - u_birth).days
-        final_val = (raw_code + days_alive) / 1.618
-        
-        st.write(f"**ขั้นตอนที่ 1 (บวกฐาน):** `{d['day']}+{d['date']}+{d['moon']}+{d['month']}+{d['zv']}+{d['ev']} = {base_sum}`")
-        st.write(f"**ขั้นตอนที่ 2 (คูณ 1.618):** `({base_sum} + {d['l_logic']}) x 1.618 = {round(raw_code, 2)}`")
-        st.write(f"**ขั้นตอนที่ 3 (บวกวันชีวิต/หาร):** `({round(raw_code, 2)} + {days_alive}) / 1.618 = {round(final_val, 4)}`")
+        st.markdown(f"""
+            <style>
+            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+            header, footer, #MainMenu {{visibility: hidden;}}
+            .stApp {{ background-color: #000000 !important; }}
+            .logo-img-{index} {{
+                width: 70px; height: 70px; margin: 0 auto;
+                background-image: url("data:image/png;base64,{logo_b64}");
+                background-size: contain; background-repeat: no-repeat;
+                filter: drop-shadow(0 0 15px {c1});
+                animation: pulse 2s infinite alternate;
+            }}
+            @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.1); }} }}
+            .title-{index} {{
+                font-family: 'Orbitron', sans-serif; color: #fff; text-align: center;
+                text-shadow: 0 0 10px {c1}; font-size: 1.4rem; margin-top:10px;
+            }}
+            </style>
+            <div class="logo-img-{index}"></div>
+            <h1 class="title-{index}">{info["name"]}</h1>
+        """, unsafe_allow_html=True)
 
-        digit, grade, color = get_grade_info(final_val)
-        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid {color}; border-radius:15px; text-align:center;">
-            <h1 style="color:{color}; font-size:60px;">{round(final_val, 4)}</h1>
-            <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
-        </div>""", unsafe_allow_html=True)
+        if all_music:
+            current_song_name = all_music[st.session_state.global_song_idx % len(all_music)]
+            song_b64 = get_base64(current_song_name)
+            
+            if song_b64:
+                html_code = f"""
+                <div style="margin-top:5px;">
+                    <canvas id="canvas-{index}" style="width:100%; height:110px; background:#000; border:1px solid {c1}44; border-radius:15px;"></canvas>
+                    <button id="btn-{index}" style="width:100%; padding:15px; margin-top:10px; background:transparent; color:{c1}; border:2px solid {c1}; font-family:'Orbitron'; cursor:pointer; border-radius:10px; font-weight:bold; box-shadow: 0 0 15px {c1}33;">
+                        ACTIVATE {info["name"]} ⚡
+                    </button>
+                    <audio id="audio-{index}" src="data:audio/mp3;base64,{song_b64}"></audio>
+                    <p style="color:{c1}; font-family:'Orbitron'; font-size:12px; text-align:center; margin-top:8px;">
+                        NOW PLAYING: {current_song_name}
+                    </p>
+                </div>
+                <script>
+                    const audio = document.getElementById('audio-{index}');
+                    const btn = document.getElementById('btn-{index}');
+                    const canvas = document.getElementById('canvas-{index}');
+                    const ctx = canvas.getContext('2d');
+                    let audioCtx, analyser, source, dataArray;
 
-        # --- 🕒 สแกนไทม์ไลน์บุคคล ---
-        st.write("---")
-        st.subheader("🕒 รายงานการบรรจบของพิกัดบุคคล (730 วัน)")
-        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน", "🗓️ อนาคต 365 วัน"])
-        
-        with t_past:
-            past_results = []
-            for i in range(-365, 0):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit:
-                    past_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
-            st.table(past_results[:10] if past_results else "ไม่พบข้อมูล")
+                    btn.onclick = function() {{
+                        if (!audioCtx) {{
+                            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                            analyser = audioCtx.createAnalyser();
+                            source = audioCtx.createMediaElementSource(audio);
+                            source.connect(analyser);
+                            analyser.connect(audioCtx.destination);
+                            analyser.fftSize = 256; 
+                            dataArray = new Uint8Array(analyser.frequencyBinCount);
+                            render();
+                        }}
+                        if (audio.paused) {{ audio.play(); btn.innerText = "SYSTEM ONLINE 🟢"; }}
+                        else {{ audio.pause(); btn.innerText = "SYSTEM PAUSED 🔴"; }}
+                    }};
 
-        with t_future:
-            future_results = []
-            for i in range(1, 366):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit:
-                    future_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
-            st.table(future_results[:10] if future_results else "ไม่พบข้อมูล")
+                    function render() {{
+                        requestAnimationFrame(render);
+                        analyser.getByteFrequencyData(dataArray);
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        const bWidth = (canvas.width / dataArray.length) * 2;
+                        let x = 0;
+                        for (let i = 0; i < dataArray.length; i++) {{
+                            let h = (dataArray[i] / 255) * canvas.height;
+                            let grad = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - h);
+                            grad.addColorStop(0, "{c1}"); grad.addColorStop(1, "{c2}");
+                            ctx.fillStyle = grad;
+                            ctx.shadowBlur = 8; ctx.shadowColor = "{c1}";
+                            ctx.fillRect(x, canvas.height - h, bWidth - 1, h);
+                            x += bWidth;
+                        }}
+                    }}
+                    audio.onended = () => {{
+                        // สั่งเปลี่ยนเพลงและเปลี่ยนห้องอัตโนมัติ
+                        window.parent.document.querySelector('button[title="AUTO_NEXT"]').click();
+                    }};
+                </script>
+                """
+                st.components.v1.html(html_code, height=260)
 
-# --- 👥 TAB 2: วิเคราะห์คู่ขนาน ---
-with tab2:
-    col1, col2 = st.columns(2)
-    with col1: birth_a = st.date_input("วันเกิดคนที่ 1", value=None, key="ba", min_value=date(1960,1,1))
-    with col2: birth_b = st.date_input("วันเกิดคนที่ 2", value=None, key="bb", min_value=date(1960,1,1))
+# --- 4. ปุ่มลับสำหรับระบบอัตโนมัติ ---
+if st.button("AUTO_NEXT", key="AUTO_NEXT", help="Invisible Trigger"):
+    st.session_state.global_song_idx = (st.session_state.global_song_idx + 1) % len(all_music)
+    # สั่งให้เปลี่ยนหน้าไปห้องถัดไป (Optional: ถ้าอาจารย์อยากให้อยู่หน้าเดิมก็ตัดบรรทัดนี้ออกได้)
+    # st.rerun() 
+
+# --- 5. คลังเพลง 52 เพลง (โชว์รายชื่อทั้งหมด) ---
+st.write("---")
+st.markdown("<h3 style='font-family:Orbitron; color:#39FF14; text-align:center;'>🎵 GLOBAL PLAYLIST (52 TRACKS)</h3>", unsafe_allow_html=True)
+
+# สร้างปุ่มควบคุมหลัก
+col_a, col_b = st.columns(2)
+with col_a:
+    if st.button("⏭️ SKIP TO NEXT"):
+        st.session_state.global_song_idx += 1
+        st.rerun()
+with col_b:
+    if st.button("🎲 SHUFFLE ALL"):
+        st.session_state.global_song_idx = random.randint(0, len(all_music)-1)
+        st.rerun()
+
+# แสดงรายชื่อเพลงทั้งหมดให้อาจารย์จิ้มเลือก
+with st.container():
+    st.markdown("""
+        <style>
+        .song-list-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
     
-    if birth_a and birth_b:
-        d1 = get_step_by_step_data(birth_a)
-        d2 = get_step_by_step_data(birth_b)
-        r1 = ((d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']) + d1['l_logic']) * 1.618
-        r2 = ((d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']) + d2['l_logic']) * 1.618
-        
-        resonance = (r1 + r2) / 1.618
-        digit_p, grade_p, color_p = get_grade_info(resonance)
-        
-        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
-        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid gold; border-radius:15px; text-align:center;">
-            <h1 style="color:white; font-size:60px;">{round(resonance, 4)}</h1>
-            <h2 style="color:{color_p};">เลขหน้าคือ {digit_p} : {grade_p}</h2>
-        </div>""", unsafe_allow_html=True)
+    with st.expander("📂 ดูรายชื่อเพลงทั้งหมดและเลือกเล่น", expanded=True):
+        for i, song in enumerate(all_music):
+            # เน้นสีเพลงที่กำลังเล่นอยู่
+            is_current = (i == st.session_state.global_song_idx % len(all_music))
+            label = f"▶️ {i+1}. {song}" if is_current else f"▪️ {i+1}. {song}"
+            
+            if st.button(label, key=f"select_{i}", use_container_width=True):
+                st.session_state.global_song_idx = i
+                st.rerun()
 
-        # --- 🕒 สแกนไทม์ไลน์คู่ขนาน ---
-        st.write("---")
-        st.subheader("⏳ จุด Sync คู่ขนานในอนาคต (365 วัน)")
-        p_future = []
-        for i in range(1, 366):
-            target = date.today() + timedelta(days=i)
-            td = get_step_by_step_data(target)
-            t_code = ((td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']) + td['l_logic']) * 1.618
-            t_digit, _, _ = get_grade_info(t_code)
-            if t_digit == digit_p:
-                p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
-        st.table(p_future[:10] if p_future else "ไม่พบข้อมูล")
+st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE OMNI-PLAY V.7")import streamlit as st
+import os
+import base64
+import random
+
+# --- 1. CONFIG & SYSTEM ---
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.7", layout="centered")
+
+def get_base64(file_path):
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+    except: return None
+    return None
+
+logo_b64 = get_base64("logo1.png")
+
+# --- 2. GLOBAL STATE ---
+if 'global_song_idx' not in st.session_state:
+    st.session_state.global_song_idx = 0
+if 'is_playing' not in st.session_state:
+    st.session_state.is_playing = False
+
+room_info = [
+    {"name": "🔥 CORE ROOM", "color1": "#39FF14", "color2": "#00FFDD"},
+    {"name": "🎧 R&B LOUNGE", "color1": "#FF00DE", "color2": "#7000FF"},
+    {"name": "🎤 RAP ZONE", "color1": "#00F3FF", "color2": "#0051FF"},
+    {"name": "🌌 QUANTUM", "color1": "#FF8C00", "color2": "#FF0000"},
+    {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"}
+]
+
+all_music = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+
+# --- 3. UI RENDER (5 ROOMS) ---
+tabs = st.tabs([r["name"] for r in room_info])
+
+for index, tab in enumerate(tabs):
+    with tab:
+        info = room_info[index]
+        c1, c2 = info["color1"], info["color2"]
+        
+        st.markdown(f"""
+            <style>
+            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+            header, footer, #MainMenu {{visibility: hidden;}}
+            .stApp {{ background-color: #000000 !important; }}
+            .logo-img-{index} {{
+                width: 70px; height: 70px; margin: 0 auto;
+                background-image: url("data:image/png;base64,{logo_b64}");
+                background-size: contain; background-repeat: no-repeat;
+                filter: drop-shadow(0 0 15px {c1});
+                animation: pulse 2s infinite alternate;
+            }}
+            @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.1); }} }}
+            .title-{index} {{
+                font-family: 'Orbitron', sans-serif; color: #fff; text-align: center;
+                text-shadow: 0 0 10px {c1}; font-size: 1.4rem; margin-top:10px;
+            }}
+            </style>
+            <div class="logo-img-{index}"></div>
+            <h1 class="title-{index}">{info["name"]}</h1>
+        """, unsafe_allow_html=True)
+
+        if all_music:
+            current_song_name = all_music[st.session_state.global_song_idx % len(all_music)]
+            song_b64 = get_base64(current_song_name)
+            
+            if song_b64:
+                html_code = f"""
+                <div style="margin-top:5px;">
+                    <canvas id="canvas-{index}" style="width:100%; height:110px; background:#000; border:1px solid {c1}44; border-radius:15px;"></canvas>
+                    <button id="btn-{index}" style="width:100%; padding:15px; margin-top:10px; background:transparent; color:{c1}; border:2px solid {c1}; font-family:'Orbitron'; cursor:pointer; border-radius:10px; font-weight:bold; box-shadow: 0 0 15px {c1}33;">
+                        ACTIVATE {info["name"]} ⚡
+                    </button>
+                    <audio id="audio-{index}" src="data:audio/mp3;base64,{song_b64}"></audio>
+                    <p style="color:{c1}; font-family:'Orbitron'; font-size:12px; text-align:center; margin-top:8px;">
+                        NOW PLAYING: {current_song_name}
+                    </p>
+                </div>
+                <script>
+                    const audio = document.getElementById('audio-{index}');
+                    const btn = document.getElementById('btn-{index}');
+                    const canvas = document.getElementById('canvas-{index}');
+                    const ctx = canvas.getContext('2d');
+                    let audioCtx, analyser, source, dataArray;
+
+                    btn.onclick = function() {{
+                        if (!audioCtx) {{
+                            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                            analyser = audioCtx.createAnalyser();
+                            source = audioCtx.createMediaElementSource(audio);
+                            source.connect(analyser);
+                            analyser.connect(audioCtx.destination);
+                            analyser.fftSize = 256; 
+                            dataArray = new Uint8Array(analyser.frequencyBinCount);
+                            render();
+                        }}
+                        if (audio.paused) {{ audio.play(); btn.innerText = "SYSTEM ONLINE 🟢"; }}
+                        else {{ audio.pause(); btn.innerText = "SYSTEM PAUSED 🔴"; }}
+                    }};
+
+                    function render() {{
+                        requestAnimationFrame(render);
+                        analyser.getByteFrequencyData(dataArray);
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        const bWidth = (canvas.width / dataArray.length) * 2;
+                        let x = 0;
+                        for (let i = 0; i < dataArray.length; i++) {{
+                            let h = (dataArray[i] / 255) * canvas.height;
+                            let grad = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - h);
+                            grad.addColorStop(0, "{c1}"); grad.addColorStop(1, "{c2}");
+                            ctx.fillStyle = grad;
+                            ctx.shadowBlur = 8; ctx.shadowColor = "{c1}";
+                            ctx.fillRect(x, canvas.height - h, bWidth - 1, h);
+                            x += bWidth;
+                        }}
+                    }}
+                    audio.onended = () => {{
+                        // สั่งเปลี่ยนเพลงและเปลี่ยนห้องอัตโนมัติ
+                        window.parent.document.querySelector('button[title="AUTO_NEXT"]').click();
+                    }};
+                </script>
+                """
+                st.components.v1.html(html_code, height=260)
+
+# --- 4. ปุ่มลับสำหรับระบบอัตโนมัติ ---
+if st.button("AUTO_NEXT", key="AUTO_NEXT", help="Invisible Trigger"):
+    st.session_state.global_song_idx = (st.session_state.global_song_idx + 1) % len(all_music)
+    # สั่งให้เปลี่ยนหน้าไปห้องถัดไป (Optional: ถ้าอาจารย์อยากให้อยู่หน้าเดิมก็ตัดบรรทัดนี้ออกได้)
+    # st.rerun() 
+
+# --- 5. คลังเพลง 52 เพลง (โชว์รายชื่อทั้งหมด) ---
+st.write("---")
+st.markdown("<h3 style='font-family:Orbitron; color:#39FF14; text-align:center;'>🎵 GLOBAL PLAYLIST (52 TRACKS)</h3>", unsafe_allow_html=True)
+
+# สร้างปุ่มควบคุมหลัก
+col_a, col_b = st.columns(2)
+with col_a:
+    if st.button("⏭️ SKIP TO NEXT"):
+        st.session_state.global_song_idx += 1
+        st.rerun()
+with col_b:
+    if st.button("🎲 SHUFFLE ALL"):
+        st.session_state.global_song_idx = random.randint(0, len(all_music)-1)
+        st.rerun()
+
+# แสดงรายชื่อเพลงทั้งหมดให้อาจารย์จิ้มเลือก
+with st.container():
+    st.markdown("""
+        <style>
+        .song-list-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            padding: 10px;
+            border-radius: 10px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+    
+    with st.expander("📂 ดูรายชื่อเพลงทั้งหมดและเลือกเล่น", expanded=True):
+        for i, song in enumerate(all_music):
+            # เน้นสีเพลงที่กำลังเล่นอยู่
+            is_current = (i == st.session_state.global_song_idx % len(all_music))
+            label = f"▶️ {i+1}. {song}" if is_current else f"▪️ {i+1}. {song}"
+            
+            if st.button(label, key=f"select_{i}", use_container_width=True):
+                st.session_state.global_song_idx = i
+                st.rerun()
+
+st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE OMNI-PLAY V.7")🎵 MUSIC PLAYER
+
+
+ModuleNotFoundError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
+Traceback:
+File "/mount/src/taww101/ส
+   
