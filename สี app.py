@@ -1,348 +1,119 @@
 import streamlit as st
 import os
-import base64
-import random
+import datetime
 
-# --- 1. CONFIG & SYSTEM ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.7", layout="centered")
+# --- 1. SETUP & ลบติ่ง (อยู่นิ่งๆ ไม่เจ็บตัว) ---
+st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
-def get_base64(file_path):
-    try:
-        if os.path.exists(file_path):
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-    except: return None
-    return None
-
-logo_b64 = get_base64("logo1.png")
-
-# --- 2. GLOBAL STATE ---
-if 'global_song_idx' not in st.session_state:
-    st.session_state.global_song_idx = 0
-if 'is_playing' not in st.session_state:
-    st.session_state.is_playing = False
-
-room_info = [
-    {"name": "🔥 CORE ROOM", "color1": "#39FF14", "color2": "#00FFDD"},
-    {"name": "🎧 R&B LOUNGE", "color1": "#FF00DE", "color2": "#7000FF"},
-    {"name": "🎤 RAP ZONE", "color1": "#00F3FF", "color2": "#0051FF"},
-    {"name": "🌌 QUANTUM", "color1": "#FF8C00", "color2": "#FF0000"},
-    {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"}
-]
-
-all_music = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-
-# --- 3. UI RENDER (5 ROOMS) ---
-tabs = st.tabs([r["name"] for r in room_info])
-
-for index, tab in enumerate(tabs):
-    with tab:
-        info = room_info[index]
-        c1, c2 = info["color1"], info["color2"]
-        
-        st.markdown(f"""
-            <style>
-            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-            header, footer, #MainMenu {{visibility: hidden;}}
-            .stApp {{ background-color: #000000 !important; }}
-            .logo-img-{index} {{
-                width: 70px; height: 70px; margin: 0 auto;
-                background-image: url("data:image/png;base64,{logo_b64}");
-                background-size: contain; background-repeat: no-repeat;
-                filter: drop-shadow(0 0 15px {c1});
-                animation: pulse 2s infinite alternate;
-            }}
-            @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.1); }} }}
-            .title-{index} {{
-                font-family: 'Orbitron', sans-serif; color: #fff; text-align: center;
-                text-shadow: 0 0 10px {c1}; font-size: 1.4rem; margin-top:10px;
-            }}
-            </style>
-            <div class="logo-img-{index}"></div>
-            <h1 class="title-{index}">{info["name"]}</h1>
-        """, unsafe_allow_html=True)
-
-        if all_music:
-            current_song_name = all_music[st.session_state.global_song_idx % len(all_music)]
-            song_b64 = get_base64(current_song_name)
-            
-            if song_b64:
-                html_code = f"""
-                <div style="margin-top:5px;">
-                    <canvas id="canvas-{index}" style="width:100%; height:110px; background:#000; border:1px solid {c1}44; border-radius:15px;"></canvas>
-                    <button id="btn-{index}" style="width:100%; padding:15px; margin-top:10px; background:transparent; color:{c1}; border:2px solid {c1}; font-family:'Orbitron'; cursor:pointer; border-radius:10px; font-weight:bold; box-shadow: 0 0 15px {c1}33;">
-                        ACTIVATE {info["name"]} ⚡
-                    </button>
-                    <audio id="audio-{index}" src="data:audio/mp3;base64,{song_b64}"></audio>
-                    <p style="color:{c1}; font-family:'Orbitron'; font-size:12px; text-align:center; margin-top:8px;">
-                        NOW PLAYING: {current_song_name}
-                    </p>
-                </div>
-                <script>
-                    const audio = document.getElementById('audio-{index}');
-                    const btn = document.getElementById('btn-{index}');
-                    const canvas = document.getElementById('canvas-{index}');
-                    const ctx = canvas.getContext('2d');
-                    let audioCtx, analyser, source, dataArray;
-
-                    btn.onclick = function() {{
-                        if (!audioCtx) {{
-                            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                            analyser = audioCtx.createAnalyser();
-                            source = audioCtx.createMediaElementSource(audio);
-                            source.connect(analyser);
-                            analyser.connect(audioCtx.destination);
-                            analyser.fftSize = 256; 
-                            dataArray = new Uint8Array(analyser.frequencyBinCount);
-                            render();
-                        }}
-                        if (audio.paused) {{ audio.play(); btn.innerText = "SYSTEM ONLINE 🟢"; }}
-                        else {{ audio.pause(); btn.innerText = "SYSTEM PAUSED 🔴"; }}
-                    }};
-
-                    function render() {{
-                        requestAnimationFrame(render);
-                        analyser.getByteFrequencyData(dataArray);
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        const bWidth = (canvas.width / dataArray.length) * 2;
-                        let x = 0;
-                        for (let i = 0; i < dataArray.length; i++) {{
-                            let h = (dataArray[i] / 255) * canvas.height;
-                            let grad = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - h);
-                            grad.addColorStop(0, "{c1}"); grad.addColorStop(1, "{c2}");
-                            ctx.fillStyle = grad;
-                            ctx.shadowBlur = 8; ctx.shadowColor = "{c1}";
-                            ctx.fillRect(x, canvas.height - h, bWidth - 1, h);
-                            x += bWidth;
-                        }}
-                    }}
-                    audio.onended = () => {{
-                        // สั่งเปลี่ยนเพลงและเปลี่ยนห้องอัตโนมัติ
-                        window.parent.document.querySelector('button[title="AUTO_NEXT"]').click();
-                    }};
-                </script>
-                """
-                st.components.v1.html(html_code, height=260)
-
-# --- 4. ปุ่มลับสำหรับระบบอัตโนมัติ ---
-if st.button("AUTO_NEXT", key="AUTO_NEXT", help="Invisible Trigger"):
-    st.session_state.global_song_idx = (st.session_state.global_song_idx + 1) % len(all_music)
-    # สั่งให้เปลี่ยนหน้าไปห้องถัดไป (Optional: ถ้าอาจารย์อยากให้อยู่หน้าเดิมก็ตัดบรรทัดนี้ออกได้)
-    # st.rerun() 
-
-# --- 5. คลังเพลง 52 เพลง (โชว์รายชื่อทั้งหมด) ---
-st.write("---")
-st.markdown("<h3 style='font-family:Orbitron; color:#39FF14; text-align:center;'>🎵 GLOBAL PLAYLIST (52 TRACKS)</h3>", unsafe_allow_html=True)
-
-# สร้างปุ่มควบคุมหลัก
-col_a, col_b = st.columns(2)
-with col_a:
-    if st.button("⏭️ SKIP TO NEXT"):
-        st.session_state.global_song_idx += 1
-        st.rerun()
-with col_b:
-    if st.button("🎲 SHUFFLE ALL"):
-        st.session_state.global_song_idx = random.randint(0, len(all_music)-1)
-        st.rerun()
-
-# แสดงรายชื่อเพลงทั้งหมดให้อาจารย์จิ้มเลือก
-with st.container():
+def setup_ui():
     st.markdown("""
         <style>
-        .song-list-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #333;
-            padding: 10px;
-            border-radius: 10px;
+        /* ลบ Header, Footer และเมนูเดิมของ Streamlit */
+        header, footer, #MainMenu {visibility: hidden;}
+        .stApp { background: #000; color: #00f2fe; }
+        
+        /* สไตล์ปุ่มเมนู */
+        .stButton>button {
+            border-radius: 15px;
+            border: 1px solid #00f2fe;
+            background: rgba(0, 242, 254, 0.1);
+            color: white;
+            height: 100px;
+            font-size: 18px;
+            transition: 0.3s;
+        }
+        .stButton>button:hover {
+            background: #00f2fe;
+            color: #000;
+            box-shadow: 0 0 20px #00f2fe;
+        }
+        
+        /* ตัวหนังสือวิ้ง */
+        .neon-text {
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe;
+            font-weight: bold;
         }
         </style>
     """, unsafe_allow_html=True)
-    
-    with st.expander("📂 ดูรายชื่อเพลงทั้งหมดและเลือกเล่น", expanded=True):
-        for i, song in enumerate(all_music):
-            # เน้นสีเพลงที่กำลังเล่นอยู่
-            is_current = (i == st.session_state.global_song_idx % len(all_music))
-            label = f"▶️ {i+1}. {song}" if is_current else f"▪️ {i+1}. {song}"
-            
-            if st.button(label, key=f"select_{i}", use_container_width=True):
-                st.session_state.global_song_idx = i
-                st.rerun()
 
-                st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE OMNI-PLAY V.7")import streamlit as st
-import os
-import base64
-import random
+setup_ui()
 
-# --- 1. CONFIG & SYSTEM ---
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.7", layout="centered")
+# --- 2. การจัดการหน้าจอ (Navigation) ---
+if 'page' not in st.session_state:
+    st.session_state.page = "HOME"
 
-def get_base64(file_path):
-    try:
-        if os.path.exists(file_path):
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-    except: return None
-    return None
-
-logo_b64 = get_base64("logo1.png")
-
-# --- 2. GLOBAL STATE ---
-if 'global_song_idx' not in st.session_state:
-    st.session_state.global_song_idx = 0
-if 'is_playing' not in st.session_state:
-    st.session_state.is_playing = False
-
-room_info = [
-    {"name": "🔥 CORE ROOM", "color1": "#39FF14", "color2": "#00FFDD"},
-    {"name": "🎧 R&B LOUNGE", "color1": "#FF00DE", "color2": "#7000FF"},
-    {"name": "🎤 RAP ZONE", "color1": "#00F3FF", "color2": "#0051FF"},
-    {"name": "🌌 QUANTUM", "color1": "#FF8C00", "color2": "#FF0000"},
-    {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"}
-]
-
-all_music = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-
-# --- 3. UI RENDER (5 ROOMS) ---
-tabs = st.tabs([r["name"] for r in room_info])
-
-for index, tab in enumerate(tabs):
-    with tab:
-        info = room_info[index]
-        c1, c2 = info["color1"], info["color2"]
-        
-        st.markdown(f"""
-            <style>
-            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-            header, footer, #MainMenu {{visibility: hidden;}}
-            .stApp {{ background-color: #000000 !important; }}
-            .logo-img-{index} {{
-                width: 70px; height: 70px; margin: 0 auto;
-                background-image: url("data:image/png;base64,{logo_b64}");
-                background-size: contain; background-repeat: no-repeat;
-                filter: drop-shadow(0 0 15px {c1});
-                animation: pulse 2s infinite alternate;
-            }}
-            @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.1); }} }}
-            .title-{index} {{
-                font-family: 'Orbitron', sans-serif; color: #fff; text-align: center;
-                text-shadow: 0 0 10px {c1}; font-size: 1.4rem; margin-top:10px;
-            }}
-            </style>
-            <div class="logo-img-{index}"></div>
-            <h1 class="title-{index}">{info["name"]}</h1>
-        """, unsafe_allow_html=True)
-
-        if all_music:
-            current_song_name = all_music[st.session_state.global_song_idx % len(all_music)]
-            song_b64 = get_base64(current_song_name)
-            
-            if song_b64:
-                html_code = f"""
-                <div style="margin-top:5px;">
-                    <canvas id="canvas-{index}" style="width:100%; height:110px; background:#000; border:1px solid {c1}44; border-radius:15px;"></canvas>
-                    <button id="btn-{index}" style="width:100%; padding:15px; margin-top:10px; background:transparent; color:{c1}; border:2px solid {c1}; font-family:'Orbitron'; cursor:pointer; border-radius:10px; font-weight:bold; box-shadow: 0 0 15px {c1}33;">
-                        ACTIVATE {info["name"]} ⚡
-                    </button>
-                    <audio id="audio-{index}" src="data:audio/mp3;base64,{song_b64}"></audio>
-                    <p style="color:{c1}; font-family:'Orbitron'; font-size:12px; text-align:center; margin-top:8px;">
-                        NOW PLAYING: {current_song_name}
-                    </p>
-                </div>
-                <script>
-                    const audio = document.getElementById('audio-{index}');
-                    const btn = document.getElementById('btn-{index}');
-                    const canvas = document.getElementById('canvas-{index}');
-                    const ctx = canvas.getContext('2d');
-                    let audioCtx, analyser, source, dataArray;
-
-                    btn.onclick = function() {{
-                        if (!audioCtx) {{
-                            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                            analyser = audioCtx.createAnalyser();
-                            source = audioCtx.createMediaElementSource(audio);
-                            source.connect(analyser);
-                            analyser.connect(audioCtx.destination);
-                            analyser.fftSize = 256; 
-                            dataArray = new Uint8Array(analyser.frequencyBinCount);
-                            render();
-                        }}
-                        if (audio.paused) {{ audio.play(); btn.innerText = "SYSTEM ONLINE 🟢"; }}
-                        else {{ audio.pause(); btn.innerText = "SYSTEM PAUSED 🔴"; }}
-                    }};
-
-                    function render() {{
-                        requestAnimationFrame(render);
-                        analyser.getByteFrequencyData(dataArray);
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        const bWidth = (canvas.width / dataArray.length) * 2;
-                        let x = 0;
-                        for (let i = 0; i < dataArray.length; i++) {{
-                            let h = (dataArray[i] / 255) * canvas.height;
-                            let grad = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - h);
-                            grad.addColorStop(0, "{c1}"); grad.addColorStop(1, "{c2}");
-                            ctx.fillStyle = grad;
-                            ctx.shadowBlur = 8; ctx.shadowColor = "{c1}";
-                            ctx.fillRect(x, canvas.height - h, bWidth - 1, h);
-                            x += bWidth;
-                        }}
-                    }}
-                    audio.onended = () => {{
-                        // สั่งเปลี่ยนเพลงและเปลี่ยนห้องอัตโนมัติ
-                        window.parent.document.querySelector('button[title="AUTO_NEXT"]').click();
-                    }};
-                </script>
-                """
-                st.components.v1.html(html_code, height=260)
-
-# --- 4. ปุ่มลับสำหรับระบบอัตโนมัติ ---
-if st.button("AUTO_NEXT", key="AUTO_NEXT", help="Invisible Trigger"):
-    st.session_state.global_song_idx = (st.session_state.global_song_idx + 1) % len(all_music)
-    # สั่งให้เปลี่ยนหน้าไปห้องถัดไป (Optional: ถ้าอาจารย์อยากให้อยู่หน้าเดิมก็ตัดบรรทัดนี้ออกได้)
-    # st.rerun() 
-
-# --- 5. คลังเพลง 52 เพลง (โชว์รายชื่อทั้งหมด) ---
-st.write("---")
-st.markdown("<h3 style='font-family:Orbitron; color:#39FF14; text-align:center;'>🎵 GLOBAL PLAYLIST (52 TRACKS)</h3>", unsafe_allow_html=True)
-
-# สร้างปุ่มควบคุมหลัก
-col_a, col_b = st.columns(2)
-with col_a:
-    if st.button("⏭️ SKIP TO NEXT"):
-        st.session_state.global_song_idx += 1
-        st.rerun()
-with col_b:
-    if st.button("🎲 SHUFFLE ALL"):
-        st.session_state.global_song_idx = random.randint(0, len(all_music)-1)
+# ฟังก์ชันย้อนกลับ
+if st.session_state.page != "HOME":
+    if st.button("⬅️ กลับหน้าหลัก"):
+        st.session_state.page = "HOME"
         st.rerun()
 
-# แสดงรายชื่อเพลงทั้งหมดให้อาจารย์จิ้มเลือก
-with st.container():
-    st.markdown("""
-        <style>
-        .song-list-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #333;
-            padding: 10px;
-            border-radius: 10px;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+# --- 3. เนื้อหาแต่ละหน้า ---
+
+# [ หน้าแรก: ศูนย์รวม 10 แอป ]
+if st.session_state.page == "HOME":
+    # วาง LOGO แทนที่ติ่ง
+    col_l, col_m, col_r = st.columns([1, 2, 1])
+    with col_m:
+        if os.path.exists("logo1.png"):
+            st.image("logo1.png", use_container_width=True)
+        else:
+            st.markdown("<h1 class='neon-text'>SYNAPSE</h1>", unsafe_allow_html=True)
     
-    with st.expander("📂 ดูรายชื่อเพลงทั้งหมดและเลือกเล่น", expanded=True):
-        for i, song in enumerate(all_music):
-            # เน้นสีเพลงที่กำลังเล่นอยู่
-            is_current = (i == st.session_state.global_song_idx % len(all_music))
-            label = f"▶️ {i+1}. {song}" if is_current else f"▪️ {i+1}. {song}"
-            
-            if st.button(label, key=f"select_{i}", use_container_width=True):
-                st.session_state.global_song_idx = i
-                st.rerun()
-                st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE OMNI-PLAY V.7")🎵 MUSIC PLAYER
+    st.markdown("<h3 style='text-align: center;'>ศูนย์ควบคุมระบบ: เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
+    st.divider()
 
+    # สร้าง Grid 10 แอป (แบ่งเป็น 2 คอลัมน์)
+    c1, c2 = st.columns(2)
 
-ModuleNotFoundError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
-Traceback:
-File "/mount/src/taww101/ส
-   
+    with c1:
+        if st.button("🎵 1. MUSIC PLAYER\nฟังเพลง MP3 จากคลังข้อมูล", use_container_width=True):
+            st.session_state.page = "1"; st.rerun()
+        st.caption("ความสามารถ: เล่นไฟล์เสียง 1.mp3 และระบบควบคุมเสียงผ่านหน้าเว็บ")
+
+        if st.button("🖼️ 3. IMAGE SEARCH\nค้นหาภาพจากดาวเทียม", use_container_width=True):
+            st.session_state.page = "3"; st.rerun()
+        st.caption("ความสามารถ: ดึงรูปภาพจากคลัง Unsplash ตามคำค้นหาที่ต้องการ")
+
+        if st.button("✨ 5. NEON GENERATOR\nสร้างตัวอักษรเรืองแสง", use_container_width=True):
+            st.session_state.page = "5"; st.rerun()
+        st.caption("ความสามารถ: แปลงข้อความธรรมดาให้เป็นศิลปะนีออนวิ้งๆ")
+
+        if st.button("💖 7. DESTINY CHECK\nตรวจดวงชะตาคู่ขนาน", use_container_width=True):
+            st.session_state.page = "7"; st.rerun()
+        st.caption("ความสามารถ: วิเคราะห์ดวงชะตาในมิติที่ 4 ผ่านระบบฐานข้อมูลชื่อ")
+
+        if st.button("📝 9. SYSTEM LOG\nบันทึกข้อมูลการใช้งาน", use_container_width=True):
+            st.session_state.page = "9"; st.rerun()
+        st.caption("ความสามารถ: จดบันทึกข้อความและเหตุการณ์สำคัญลงในหน่วยความจำ")
+
+    with c2:
+        if st.button("💬 2. CHAT SYSTEM\nระบบสื่อสารอัจฉริยะ", use_container_width=True):
+            st.session_state.page = "2"; st.rerun()
+        st.caption("ความสามารถ: โต้ตอบผ่านข้อความกับระบบจัดการ AI")
+
+        if st.button("🎬 4. VIDEO HUB\nศูนย์รวมวิดีโอวงจรปิด", use_container_width=True):
+            st.session_state.page = "4"; st.rerun()
+        st.caption("ความสามารถ: เชื่อมต่อและฉายภาพวิดีโอจาก YouTube หรือ Link ตรง")
+
+        if st.button("🌍 6. WORLD CLOCK\nเวลาโลกแบบเรียลไทม์", use_container_width=True):
+            st.session_state.page = "6"; st.rerun()
+        st.caption("ความสามารถ: ตรวจสอบเวลาปัจจุบันในโซนต่างๆ ทั่วโลก")
+
+        if st.button("🔢 8. DAILY CODE\nรหัสลับประจำวัน", use_container_width=True):
+            st.session_state.page = "8"; st.rerun()
+        st.caption("ความสามารถ: เจนรหัสตัวเลขนำโชคและรหัสรักษาความปลอดภัยรายวัน")
+
+        if st.button("🎨 10. COLOR MASTER\nปรับแต่งธีมสีระบบ", use_container_width=True):
+            st.session_state.page = "10"; st.rerun()
+        st.caption("ความสามารถ: เปลี่ยนสีสันของ Interface เพื่อความสวยงามตามใจชอบ")
+
+# --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
+elif st.session_state.page == "1":
+    st.header("🎵 MUSIC PLAYER")
+    if os.path.exists("1.mp3"): st.audio("1.mp3")
+    else: st.warning("หาไฟล์เพลงไม่เจอ")
+
+# (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
