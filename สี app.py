@@ -1,4 +1,4 @@
-Import streamlit as st
+import streamlit as st
 import os 
 import time
 import base64
@@ -32,7 +32,7 @@ if 'main_color' not in st.session_state:
     st.session_state.main_color = "#00f3ff"
 
 if 'sub_color' not in st.session_state:
-    st.session_state.sub_color = "#ff00de"
+    st. session_state . sub_color = "#ff00de"
 
 if 'page' not in st.session_state:
     st.session_state.page = "HOME"
