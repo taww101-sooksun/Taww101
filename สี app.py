@@ -62,6 +62,37 @@ u_birth = st.date_input("กรอกวันเกิดของคุณ", v
 
 if u_birth:
     d = get_step_by_step_data(u_birth)
+    today = date.today()
+    
+    # คำนวณจำนวนวันที่ใช้ชีวิตมาทั้งหมด (แทนการใช้แค่อายุปี)
+    days_alive = (today - u_birth).days
+    
+    st.markdown("### ⚙️ ขั้นตอนการประมวลผล (พิกัดไหลเวียน)")
+    
+    # Step 1 & 2 เหมือนเดิม (หาค่าพื้นฐานตัวตน)
+    base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
+    raw_code = (base_sum + d['l_logic']) * 1.618
+    
+    # Step 3 เปลี่ยนจาก "อายุ" เป็น "จำนวนวันชีวิต (Days Flow)"
+    # สมมติอายุปัจจุบัน 42 ปี = ประมาณ 15,330 วัน
+    final_val = (raw_code + days_alive) / 1.618
+    
+    st.write(f"**Step 1:** ผลรวมพิกัด 6 มิติ = `{base_sum}`")
+    st.write(f"**Step 2:** จูนจันทร์และขยายด้วย 1.618 ➔ `{round(raw_code, 4)}`")
+    st.write(f"**Step 3:** บวกพิกัดวันชีวิตที่ใช้มา ({days_alive} วัน) แล้วหาร 1.618")
+    st.info(f"สูตร: ({round(raw_code, 2)} + {days_alive}) ÷ 1.618 = **{round(final_val, 4)}**")
+
+    # สรุปผลด้วยเกณฑ์ 0-9 หน้าสุด
+    digit, grade, color = get_grade_info(final_val)
+    st.markdown(f"""
+    <div style="background:#000; padding:20px; border:4px solid {color}; border-radius:15px; text-align:center;">
+        <h1 style="color:{color}; font-size:60px;">{round(final_val, 4)}</h1>
+        <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
+        <p style="color:#888;">*พิกัดนี้จะเปลี่ยนไปในทุกๆ 24 ชม. ตามการหมุนของโลก</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    d = get_step_by_step_data(u_birth)
     
     st.markdown("### 🛠 กระดานแยกพิกัดตัวเลข (Raw Data)")
     st.markdown(f"""
