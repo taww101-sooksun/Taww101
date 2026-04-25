@@ -339,7 +339,7 @@ with st.container():
             if st.button(label, key=f"select_{i}", use_container_width=True):
                 st.session_state.global_song_idx = i
                 st.rerun()
-              b st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE OMNI-PLAY V.7")🎵 MUSIC PLAYER
+                st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE OMNI-PLAY V.7")🎵 MUSIC PLAYER
 
 
 ModuleNotFoundError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
