@@ -340,7 +340,6 @@ with st.container():
                 st.session_state.global_song_idx = i
                 st.rerun() 
 
-    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE OMNI-PLAY V.7")🎵 MUSIC PLAYER
 
 
 ModuleNotFoundError: This app has encountered an error. The original error message is redacted to prevent data leaks. Full error details have been recorded in the logs (if you're on Streamlit Cloud, click on 'Manage app' in the lower right of your app).
