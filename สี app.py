@@ -1,168 +1,156 @@
 import streamlit as st
 import os
+import base64
+import random
+from datetime import date, timedelta
 
-# ตั้งค่าหน้าจอให้กว้างที่สุดและซ่อนเมนู Streamlit ทั้งหมด
-st.set_page_config(page_title="SYNAPSE", layout="wide")
+# --- 1. CONFIG & SYSTEM ---
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.8", layout="wide")
 
-# 1. ลบ Logo/Menu ของ Streamlit และใส่ CSS สำหรับ UI ทั้งหมด (ปรับปรุงใหม่)
-st.markdown("""
-    <style>
-    /* ลบส่วนเกินของ Streamlit */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .block-container {padding: 0px;}
+def get_base64(file_path):
+    try:
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+    except: return None
+    return None
 
-    /* พื้นหลังและธีมหลัก */
-    body {
-        background-color: var(--bg-color, #000);
-        color: var(--text-color, #fff);
-        font-family: 'Arial', sans-serif;
-        overflow-x: hidden;
-    }
+logo_b64 = get_base64("logo1.png")
 
-    /* โครงสร้างส่วนบน (Slogan + Logo) แบบบาลานซ์ */
-    .top-section {
-        display: flex;
-        justify-content: space-around; /* จัดวางให้กระจายตัวบาลานซ์ */
-        align-items: center;
-        padding: 40px 10px;
-        text-align: center;
-    }
+# --- 2. DECODER FUNCTIONS (สูตรคำนวณคุณต๊ะ) ---
+def get_step_by_step_data(dt):
+    if dt is None: return None
+    day_val = {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}[dt.weekday()]
+    day_name = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()]
+    date_val = dt.day
+    ref = date(1900, 1, 1)
+    diff = (dt - ref).days
+    lunar_pos = (diff - 0.5) % 29.530589
+    if lunar_pos <= 14.765:
+        moon_num = int(lunar_pos) + 1
+        l_logic, l_type = -7.5, f"ขึ้น {int(lunar_pos)+1} ค่ำ"
+    else:
+        moon_num = int(lunar_pos - 14.765) + 1
+        l_logic, l_type = 7.5, f"แรม {int(lunar_pos-14.765)+1} ค่ำ"
+    month_val = dt.month
+    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+    z_map = {i: v for i, v in zip(range(12), [9,10,11,12,1,2,3,4,5,6,7,8])}
+    zv, z_name = z_map[dt.year % 12], z_names[dt.year % 12]
+    m, d = dt.month, dt.day
+    if (m == 5 and d >= 14) or (m == 6 and d <= 14): ev, en = 1, "ดิน"
+    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): ev, en = 2, "น้ำ"
+    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): ev, en = 4, "ไฟ"
+    else: ev, en = 3, "ลม"
+    return {"day": day_val, "day_n": day_name, "date": date_val, "moon": moon_num, "l_logic": l_logic, "l_type": l_type, "month": month_val, "zv": zv, "zn": z_name, "ev": ev, "en": en, "year": dt.year}
 
-    .slogan {
-        font-size: 20px;
-        font-weight: bold;
-        text-shadow: 2px 2px 10px var(--neon-color, #ff00ea);
-        width: 150px; /* กำหนดความกว้างคงที่ */
-    }
+def get_grade_info(val):
+    s_val = str(abs(val)).replace('.', '').lstrip('0')
+    digit = int(s_val[0]) if s_val else 0
+    if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
+    elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
+    else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
 
-    .logo-placeholder {
-        width: 200px;
-        height: 200px;
-        border-radius: 50%;
-        border: 2px solid var(--neon-color, #ff00ea);
-        background-color: var(--card-bg, rgba(0,0,0,0.8));
-        box-shadow: 0 0 15px var(--neon-color, #ff00ea);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-size: 24px;
-        font-weight: bold;
-        overflow: hidden;
-    }
+# --- 3. GLOBAL STATE ---
+if 'global_song_idx' not in st.session_state: st.session_state.global_song_idx = 0
 
-    .logo-img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
+room_info = [
+    {"name": "🔥 CORE ROOM", "color1": "#39FF14", "color2": "#00FFDD"},
+    {"name": "🎧 R&B LOUNGE", "color1": "#FF00DE", "color2": "#7000FF"},
+    {"name": "🎤 RAP ZONE", "color1": "#00F3FF", "color2": "#0051FF"},
+    {"name": "🌌 QUANTUM", "color1": "#FF8C00", "color2": "#FF0000"},
+    {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"},
+    {"name": "🔢 DECODER", "color1": "#FFFFFF", "color2": "#444444"}
+]
 
-    /* ตัวหนังสือวิ่ง */
-    .marquee-container {
-        background: rgba(255,255,255,0.1);
-        padding: 10px 0;
-        margin-bottom: 30px;
-    }
+all_music = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
 
-    /* เครื่องเล่นเพลงคู่ A-B (ปรับปรุง Layout ใหม่) */
-    .dual-player {
-        display: flex;
-        justify-content: center;
-        gap: 20px;
-        padding: 20px;
-        flex-wrap: wrap; /* ให้เครื่องเล่นแสดงผลต่อกันบนมือถือ */
-    }
+# --- 4. UI RENDER ---
+tabs = st.tabs([r["name"] for r in room_info])
 
-    .player-box {
-        border: 2px solid var(--neon-color, #ff00ea);
-        border-radius: 20px;
-        padding: 20px;
-        width: 350px;
-        background: var(--card-bg, rgba(0,0,0,0.8));
-        box-shadow: 0 0 20px var(--neon-color, #ff00ea);
-        text-align: center;
-    }
+for index, tab in enumerate(tabs):
+    with tab:
+        info = room_info[index]
+        c1, c2 = info["color1"], info["color2"]
+        
+        # แสดง Logo และหัวข้อ
+        st.markdown(f"""<div style="text-align:center;"><div style="width:70px;height:70px;margin:0 auto;background-image:url('data:image/png;base64,{logo_b64}');background-size:contain;filter:drop-shadow(0 0 15px {c1});animation:pulse 2s infinite alternate;"></div><h1 style="font-family:'Orbitron';color:#fff;text-shadow:0 0 10px {c1};text-align:center;">{info["name"]}</h1></div>""", unsafe_allow_html=True)
 
-    .btn-neon {
-        background: transparent;
-        border: 1px solid var(--neon-color, #ff00ea);
-        color: var(--neon-color, #ff00ea);
-        padding: 10px 20px;
-        margin: 5px;
-        border-radius: 10px;
-        cursor: pointer;
-        transition: 0.3s;
-    }
+        if info["name"] == "🔢 DECODER":
+            # --- ระบบคำนวณ (ห้ามเอาเลขออก) ---
+            sub_tab1, sub_tab2 = st.tabs(["👤 บุคคล", "👥 คู่ขนาน"])
+            with sub_tab1:
+                u_birth = st.date_input("เลือกวันเกิด", value=None, min_value=date(1960,1,1), key="u_in")
+                if u_birth:
+                    d = get_step_by_step_data(u_birth)
+                    st.write(f"**พิกัดฐาน:** วัน{d['day_n']}({d['day']}), วันที่({d['date']}), {d['l_type']}, เดือน({d['month']}), ปี{d['zn']}({d['zv']}), ธาตุ{d['en']}({d['ev']})")
+                    base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
+                    raw_code = (base_sum + d['l_logic']) * 1.618
+                    days_alive = (date.today() - u_birth).days
+                    final_val = (raw_code + days_alive) / 1.618
+                    digit, grade, color = get_grade_info(final_val)
+                    st.write(f"**Step 1-2 (Raw):** ({base_sum} + {d['l_logic']}) * 1.618 = {round(raw_code, 2)}")
+                    st.write(f"**Step 3 (Life Flow):** ({round(raw_code, 2)} + {days_alive} วัน) / 1.618 = {round(final_val, 4)}")
+                    st.markdown(f"<div style='border:4px solid {color};padding:20px;text-align:center;border-radius:15px;'><h1 style='color:{color};font-size:50px;'>{round(final_val, 4)}</h1><h2 style='color:{color};'>เลขหน้า {digit} : {grade}</h2></div>", unsafe_allow_html=True)
+                    
+                    # สแกนไทม์ไลน์
+                    st.write("---")
+                    col_p, col_f = st.columns(2)
+                    with col_p:
+                        st.write("🗓️ อดีต 365 วัน (Sync)")
+                        p_list = []
+                        for i in range(-365, 0):
+                            sd = get_step_by_step_data(date.today() + timedelta(days=i))
+                            s_c = ((sd['day']+sd['date']+sd['moon']+sd['month']+sd['zv']+sd['ev']) + sd['l_logic']) * 1.618
+                            if get_grade_info(s_c)[0] == digit: p_list.append({"วันที่": (date.today()+timedelta(days=i)).strftime("%d/%m/%Y"), "รหัส": round(s_c, 2)})
+                        st.table(p_list[:5])
+                    with col_f:
+                        st.write("🗓️ อนาคต 365 วัน (Sync)")
+                        f_list = []
+                        for i in range(1, 366):
+                            sd = get_step_by_step_data(date.today() + timedelta(days=i))
+                            s_c = ((sd['day']+sd['date']+sd['moon']+sd['month']+sd['zv']+sd['ev']) + sd['l_logic']) * 1.618
+                            if get_grade_info(s_c)[0] == digit: f_list.append({"วันที่": (date.today()+timedelta(days=i)).strftime("%d/%m/%Y"), "รหัส": round(s_c, 2)})
+                        st.table(f_list[:5])
 
-    .btn-neon:hover {
-        background: var(--neon-color, #ff00ea);
-        color: white;
-    }
+            with sub_tab2:
+                c1a, c2a = st.columns(2)
+                with c1a: b1 = st.date_input("คนแรก", value=None, key="b1")
+                with c2a: b2 = st.date_input("คนที่สอง", value=None, key="b2")
+                if b1 and b2:
+                    d1, d2 = get_step_by_step_data(b1), get_step_by_step_data(b2)
+                    r1 = ((d1['day']+d1['date']+d1['moon']+d1['month']+d1['zv']+d1['ev']) + d1['l_logic']) * 1.618
+                    r2 = ((d2['day']+d2['date']+d2['moon']+d2['month']+d2['zv']+d2['ev']) + d2['l_logic']) * 1.618
+                    reso = (r1 + r2) / 1.618
+                    dp, gp, cp = get_grade_info(reso)
+                    st.write(f"**Fusion:** ({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(reso, 4)}")
+                    st.markdown(f"<div style='border:4px solid gold;padding:20px;text-align:center;border-radius:15px;'><h1 style='color:white;font-size:50px;'>{round(reso, 4)}</h1><h2 style='color:{cp};'>เลขหน้า {dp} : {gp}</h2></div>", unsafe_allow_html=True)
 
-    /* ตัวหนังสือใหญ่เล็กผสมกัน */
-    .special-text {
-        font-size: 18px;
-    }
-    .large-text {
-        font-size: 24px;
-        font-weight: bold;
-        color: var(--neon-color, #ff00ea);
-    }
-    </style>
-""", unsafe_allow_html=True)
+        elif all_music:
+            # --- ระบบเพลงเดิม ---
+            current_song = all_music[st.session_state.global_song_idx % len(all_music)]
+            song_b64 = get_base64(current_song)
+            if song_b64:
+                st.components.v1.html(f"""
+                <canvas id="c-{index}" style="width:100%;height:100px;background:#000;border:1px solid {c1}44;border-radius:15px;"></canvas>
+                <button id="b-{index}" style="width:100%;padding:15px;margin-top:10px;background:transparent;color:{c1};border:2px solid {c1};font-family:'Orbitron';border-radius:10px;font-weight:bold;">ACTIVATE {info["name"]}</button>
+                <audio id="a-{index}" src="data:audio/mp3;base64,{song_b64}"></audio>
+                <script>
+                    const a=document.getElementById('a-{index}'), b=document.getElementById('b-{index}'), cv=document.getElementById('c-{index}'), ctx=cv.getContext('2d');
+                    let ac, an, src, da;
+                    b.onclick=()=>{{
+                        if(!ac){{ ac=new AudioContext(); an=ac.createAnalyser(); src=ac.createMediaElementSource(a); src.connect(an); an.connect(ac.destination); da=new Uint8Array(an.frequencyBinCount); render(); }}
+                        if(a.paused){{ a.play(); b.innerText="ONLINE 🟢"; }} else {{ a.pause(); b.innerText="PAUSED 🔴"; }}
+                    }};
+                    function render() {{ requestAnimationFrame(render); an.getByteFrequencyData(da); ctx.clearRect(0,0,cv.width,cv.height); let x=0, bw=(cv.width/da.length)*2; for(let i=0;i<da.length;i++){{ let h=(da[i]/255)*cv.height; ctx.fillStyle="{c1}"; ctx.fillRect(x,cv.height-h,bw-1,h); x+=bw; }} }}
+                </script>
+                """, height=200)
 
-# 2. จัดเตรียมไฟล์เพลง (ดึงไฟล์ .mp3 จากหน้าเดียวกับ .py)
-# ข้อความพิเศษ (ใหญ่เล็กผสมกัน)
-special_text = '<p class="special-text">ยินดีต้อนรับสู่ <span class="large-text">SYNAPSE</span> ศูนย์บัญชาการ<br>อยู่นิ่งๆ ไม่เจ็บตัว</p>'
-# ชื่อเพลงวิ่ง (ตัวอย่าง)
-track_marquee = '🎧 กำลังเล่น: เพลงที่ 1 - Synthwave Paradise | <span class="large-text">SYNAPSE</span> อยู่นิ่งๆ ไม่เจ็บตัว | ...'
-
-# HTML Structure & JavaScript
-st.markdown(f"""
-    <div class="top-section">
-        <div class="slogan">SYNAPSE</div>
-        <div class="logo-placeholder" id="logoCircle">
-            <img src="app/static/logo1.png" class="logo-img" id="logoImg" onerror="this.src='https://via.placeholder.com/200?text=LOGO+1';">
-        </div>
-        <div class="slogan">อยู่นิ่งๆ<br>ไม่เจ็บตัว</div>
-    </div>
-
-    <canvas id="visualizer" style="width: 100%; height: 100px; background: transparent;"></canvas>
-
-    <div class="marquee-container" style="text-align: center;">
-        {special_text}
-    </div>
-
-    <div class="marquee-container">
-        <marquee scrollamount="8" style="font-size: 16px;">
-            {track_marquee}
-        </marquee>
-    </div>
-
-    <div class="dual-player">
-        <div class="player-box" id="boxA">
-            <h3>Player A</h3>
-            <div id="timeA">00:00</div>
-            <button class="btn-neon" onclick="playMusic('A')">PLAY</button>
-            <input type="range" min="0" max="1" step="0.1" value="0.5" onchange="setVol('A', this.value)"> Vol
-        </div>
-        <div class="player-box" id="boxB">
-            <h3>Player B</h3>
-            <div id="timeB">00:00</div>
-            <button class="btn-neon" onclick="playMusic('B')">PLAY</button>
-            <input type="range" min="0" max="1" step="0.1" value="0.5" onchange="setVol('B', this.value)"> Vol
-        </div>
-    </div>
-
-    <script>
-    // *ส่วนนี้จะเป็นโค้ด JavaScript เต็มรูปแบบที่จะจัดการ Visualizer และ Crossfade*
-    // **ตัวอย่าง Logic เพื่อให้เห็นภาพ (จะใส่เต็มในไฟล์ py จริง)**
-    // var audioA = new Audio('song1.mp3'); // ระบบต้องโหลดไฟล์เพลง
-    // var canvas = document.getElementById('visualizer');
-    // ... logic เพื่อดึงคลื่นเสียงมาวาด ...
-    </script>
-""", unsafe_allow_html=True)
-
-# 4. สำหรับสโลแกนใน Streamlit sidebar (ถ้าอยากใช้เพิ่ม)
-# st.sidebar.write("SYNAPSE Command")
+# --- 5. คลังเพลง & คอนโทรล ---
+st.write("---")
+col_next, col_shuf = st.columns(2)
+if col_next.button("⏭️ NEXT TRACK"): st.session_state.global_song_idx += 1; st.rerun()
+if col_shuf.button("🎲 SHUFFLE"): st.session_state.global_song_idx = random.randint(0, len(all_music)-1); st.rerun()
+with st.expander("📂 GLOBAL PLAYLIST (52 TRACKS)"):
+    for i, s in enumerate(all_music):
+        if st.button(f"{'▶️' if i==st.session_state.global_song_idx % len(all_music) else '▪️'} {i+1}. {s}", key=f"s_{i}", use_container_width=True):
+            st.session_state.global_song_idx = i; st.rerun()
