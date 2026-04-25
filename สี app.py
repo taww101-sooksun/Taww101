@@ -1,208 +1,137 @@
 import streamlit as st
-import os
-import datetime
+from datetime import date, timedelta
 
-# --- 1. SETUP & ลบติ่ง (อยู่นิ่งๆ ไม่เจ็บตัว) ---
-st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
+# --- 1. ฟังก์ชันดึงเลขฐาน (ห้ามเอาออก โชว์ที่มาความจริง) ---
+def get_step_by_step_data(dt):
+    if dt is None: return None
+    day_val = {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}[dt.weekday()]
+    day_name = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()]
+    date_val = dt.day
+    ref = date(1900, 1, 1)
+    diff = (dt - ref).days
+    lunar_pos = (diff - 0.5) % 29.530589
+    if lunar_pos <= 14.765:
+        moon_num = int(lunar_pos) + 1
+        l_logic = -7.5
+        l_type = f"ขึ้น {moon_num} ค่ำ"
+    else:
+        moon_num = int(lunar_pos - 14.765) + 1
+        l_logic = 7.5
+        l_type = f"แรม {moon_num} ค่ำ"
+    month_val = dt.month
+    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+    z_map = {0:9, 1:10, 2:11, 3:12, 4:1, 5:2, 6:3, 7:4, 8:5, 9:6, 10:7, 11:8}
+    zv = z_map[dt.year % 12]
+    z_name = z_names[dt.year % 12]
+    m, d = dt.month, dt.day
+    if (m == 5 and d >= 14) or (m == 6 and d <= 14): ev, en = 1, "ดิน"
+    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): ev, en = 2, "น้ำ"
+    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): ev, en = 4, "ไฟ"
+    else: ev, en = 3, "ลม"
+    return {
+        "day": day_val, "day_n": day_name, "date": date_val, "moon": moon_num, 
+        "l_logic": l_logic, "l_type": l_type, "month": month_val, "zv": zv, 
+        "zn": z_name, "ev": ev, "en": en, "year": dt.year
+    }
 
-def setup_ui():
-    st.markdown("""
-        <style>
-        /* ลบ Header, Footer และเมนูเดิมของ Streamlit */
-        header, footer, #MainMenu {visibility: hidden;}
-        .stApp { background: #000; color: #00f2fe; }
+def get_grade_info(val):
+    s_val = str(abs(val)).replace('.', '').lstrip('0')
+    digit = int(s_val[0]) if s_val else 0
+    if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
+    elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
+    else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
+
+# --- 2. หน้าจอแอป ---
+st.set_page_config(page_title="SYNAPSE STEP-BY-STEP", layout="wide")
+st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
+
+tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล", "👥 วิเคราะห์คู่ขนาน"])
+
+# --- 👤 TAB 1: วิเคราะห์บุคคล ---
+with tab1:
+    u_birth = st.date_input("กรอกวันเกิดของคุณ", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="single")
+    if u_birth:
+        d = get_step_by_step_data(u_birth)
         
-        /* สไตล์ปุ่มเมนู */
-        .stButton>button {
-            border-radius: 15px;
-            border: 1px solid #00f2fe;
-            background: rgba(0, 242, 254, 0.1);
-            color: white;
-            height: 100px;
-            font-size: 18px;
-            transition: 0.3s;
-        }
-        .stButton>button:hover {
-            background: #00f2fe;
-            color: #000;
-            box-shadow: 0 0 20px #00f2fe;
-        }
+        st.markdown("### 🛠 กระดานแยกพิกัดตัวเลข")
+        st.write(f"1. วัน{d['day_n']}: `{d['day']}` | 2. วันที่: `{d['date']}` | 3. {d['l_type']}: `{d['moon']}`")
+        st.write(f"4. เดือน: `{d['month']}` | 5. ปี{d['zn']}: `{d['zv']}` | 6. ธาตุ{d['en']}: `{d['ev']}`")
         
-        /* ตัวหนังสือวิ้ง */
-        .neon-text {
-            text-align: center;
-            color: #fff;
-            text-shadow: 0 0 10px #00f2fe, 0 0 20px #00f2fe;
-            font-weight: bold;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+        st.write("---")
+        base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
+        raw_code = (base_sum + d['l_logic']) * 1.618
+        days_alive = (date.today() - u_birth).days
+        final_val = (raw_code + days_alive) / 1.618
+        
+        st.write(f"**ขั้นตอนที่ 1 (บวกฐาน):** `{d['day']}+{d['date']}+{d['moon']}+{d['month']}+{d['zv']}+{d['ev']} = {base_sum}`")
+        st.write(f"**ขั้นตอนที่ 2 (คูณ 1.618):** `({base_sum} + {d['l_logic']}) x 1.618 = {round(raw_code, 2)}`")
+        st.write(f"**ขั้นตอนที่ 3 (บวกวันชีวิต/หาร):** `({round(raw_code, 2)} + {days_alive}) / 1.618 = {round(final_val, 4)}`")
 
-setup_ui()
+        digit, grade, color = get_grade_info(final_val)
+        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid {color}; border-radius:15px; text-align:center;">
+            <h1 style="color:{color}; font-size:60px;">{round(final_val, 4)}</h1>
+            <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
+        </div>""", unsafe_allow_html=True)
 
-# --- 2. การจัดการหน้าจอ (Navigation) ---
-if 'page' not in st.session_state:
-    st.session_state.page = "HOME"
+        # --- 🕒 สแกนไทม์ไลน์บุคคล ---
+        st.write("---")
+        st.subheader("🕒 รายงานการบรรจบของพิกัดบุคคล (730 วัน)")
+        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน", "🗓️ อนาคต 365 วัน"])
+        
+        with t_past:
+            past_results = []
+            for i in range(-365, 0):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    past_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(past_results[:10] if past_results else "ไม่พบข้อมูล")
 
-# ฟังก์ชันย้อนกลับ
-if st.session_state.page != "HOME":
-    if st.button("⬅️ กลับหน้าหลัก"):
-        st.session_state.page = "HOME"
-        st.rerun()
+        with t_future:
+            future_results = []
+            for i in range(1, 366):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    future_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(future_results[:10] if future_results else "ไม่พบข้อมูล")
 
-# --- 3. เนื้อหาแต่ละหน้า ---
-
-# [ หน้าแรก: ศูนย์รวม 10 แอป ]
-if st.session_state.page == "HOME":
-    # วาง LOGO แทนที่ติ่ง
-    col_l, col_m, col_r = st.columns([1, 2, 1])
-    with col_m:
-        if os.path.exists("logo1.png"):
-            st.image("logo1.png", use_container_width=True)
-        else:
-            st.markdown("<h1 class='neon-text'>SYNAPSE</h1>", unsafe_allow_html=True)
-    
-    st.markdown("<h3 style='text-align: center;'>ศูนย์ควบคุมระบบ: เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
-    st.divider()
-
-    # สร้าง Grid 10 แอป (แบ่งเป็น 2 คอลัมน์)
-    c1, c2 = st.columns(2)
-
-    with c1:
-        if st.button("🎵 1. MUSIC PLAYER\nฟังเพลง MP3 จากคลังข้อมูล", use_container_width=True):
-            st.session_state.page = "1"; st.rerun()
-        st.caption("ความสามารถ: เล่นไฟล์เสียง 1.mp3 และระบบควบคุมเสียงผ่านหน้าเว็บ")
-
-        if st.button("🖼️ 3. IMAGE SEARCH\nค้นหาภาพจากดาวเทียม", use_container_width=True):
-            st.session_state.page = "3"; st.rerun()
-        st.caption("ความสามารถ: ดึงรูปภาพจากคลัง Unsplash ตามคำค้นหาที่ต้องการ")
-
-        if st.button("✨ 5. NEON GENERATOR\nสร้างตัวอักษรเรืองแสง", use_container_width=True):
-            st.session_state.page = "5"; st.rerun()
-        st.caption("ความสามารถ: แปลงข้อความธรรมดาให้เป็นศิลปะนีออนวิ้งๆ")
-
-        if st.button("💖 7. DESTINY CHECK\nตรวจดวงชะตาคู่ขนาน", use_container_width=True):
-            st.session_state.page = "7"; st.rerun()
-        st.caption("ความสามารถ: วิเคราะห์ดวงชะตาในมิติที่ 4 ผ่านระบบฐานข้อมูลชื่อ")
-
-        if st.button("📝 9. SYSTEM LOG\nบันทึกข้อมูลการใช้งาน", use_container_width=True):
-            st.session_state.page = "9"; st.rerun()
-        st.caption("ความสามารถ: จดบันทึกข้อความและเหตุการณ์สำคัญลงในหน่วยความจำ")
-
-    with c2:
-        if st.button("💬 2. CHAT SYSTEM\nระบบสื่อสารอัจฉริยะ", use_container_width=True):
-            st.session_state.page = "2"; st.rerun()
-        st.caption("ความสามารถ: โต้ตอบผ่านข้อความกับระบบจัดการ AI")
-
-        if st.button("🎬 4. VIDEO HUB\nศูนย์รวมวิดีโอวงจรปิด", use_container_width=True):
-            st.session_state.page = "4"; st.rerun()
-        st.caption("ความสามารถ: เชื่อมต่อและฉายภาพวิดีโอจาก YouTube หรือ Link ตรง")
-
-        if st.button("🌍 6. WORLD CLOCK\nเวลาโลกแบบเรียลไทม์", use_container_width=True):
-            st.session_state.page = "6"; st.rerun()
-        st.caption("ความสามารถ: ตรวจสอบเวลาปัจจุบันในโซนต่างๆ ทั่วโลก")
-
-        if st.button("🔢 8. DAILY CODE\nรหัสลับประจำวัน", use_container_width=True):
-            st.session_state.page = "8"; st.rerun()
-        st.caption("ความสามารถ: เจนรหัสตัวเลขนำโชคและรหัสรักษาความปลอดภัยรายวัน")
-
-        if st.button("🎨 10. COLOR MASTER\nปรับแต่งธีมสีระบบ", use_container_width=True):
-            st.session_state.page = "10"; st.rerun()
-        st.caption("ความสามารถ: เปลี่ยนสีสันของ Interface เพื่อความสวยงามตามใจชอบ")
-
-# --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
-import streamlit as st
-import os
-import base64
-
-# 1. การตั้งค่าระบบ (System Configuration)
-st.set_page_config(page_title="SYNAPSE MASTER", layout="wide")
-
-def load_local_image(file_path):
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    return None
-
-# เลือกรูปโลโก้ที่สวยที่สุดของพี่
-logo_b64 = load_local_image("โลโก้1.png") 
-
-# 2. ส่วนของ CSS (ความพิเศษด้านดีไซน์)
-st.markdown(f"""
-    <style>
-    .stApp {{ background-color: #000000; color: #ffffff; }}
-    
-    /* เอฟเฟกต์เรืองแสงให้โลโก้ */
-    .logo-container {{
-        text-align: center;
-        padding: 10px;
-        filter: drop-shadow(0 0 15px #ff00ea);
-    }}
-    
-    /* สไตล์การ์ด Deck A/B */
-    .deck-card {{
-        background: rgba(255, 255, 255, 0.05);
-        border: 2px solid #00ff00;
-        border-radius: 15px;
-        padding: 15px;
-        box-shadow: 0 0 10px rgba(0, 255, 0, 0.2);
-        margin-bottom: 10px;
-    }}
-    
-    /* ปรับแต่งปุ่ม Selectbox */
-    div[data-baseweb="select"] > div {{
-        background-color: #111 !important;
-        color: white !important;
-        border: 1px solid #ff00ea !important;
-    }}
-    </style>
-""", unsafe_allow_html=True)
-
-# 3. ส่วนแสดงผล Header
-if logo_b64:
-    st.markdown(f'<div class="logo-container"><img src="data:image/png;base64,{logo_b64}" width="180"></div>', unsafe_allow_html=True)
-
-st.markdown("<h1 style='text-align: center; color: #ff00ea; text-shadow: 0 0 10px #ff00ea;'>SYNAPSE COMMAND CENTER</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #00ff00;'>สโลแกน: อยู่นิ่งๆ ไม่เจ็บตัว</p>", unsafe_allow_html=True)
-
-# 4. ส่วนจัดการไฟล์เพลง (Core Logic)
-songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-
-if songs:
+# --- 👥 TAB 2: วิเคราะห์คู่ขนาน ---
+with tab2:
     col1, col2 = st.columns(2)
+    with col1: birth_a = st.date_input("วันเกิดคนที่ 1", value=None, key="ba", min_value=date(1960,1,1))
+    with col2: birth_b = st.date_input("วันเกิดคนที่ 2", value=None, key="bb", min_value=date(1960,1,1))
     
-    with col1:
-        st.markdown('<div class="deck-card">', unsafe_allow_html=True)
-        st.subheader("🎵 DECK A")
-        song_a = st.selectbox("เลือกแทร็ก", songs, key="deck_a")
-        st.audio(song_a)
-        st.markdown('</div>', unsafe_allow_html=True)
+    if birth_a and birth_b:
+        d1 = get_step_by_step_data(birth_a)
+        d2 = get_step_by_step_data(birth_b)
+        r1 = ((d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']) + d1['l_logic']) * 1.618
+        r2 = ((d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']) + d2['l_logic']) * 1.618
+        
+        resonance = (r1 + r2) / 1.618
+        digit_p, grade_p, color_p = get_grade_info(resonance)
+        
+        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
+        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid gold; border-radius:15px; text-align:center;">
+            <h1 style="color:white; font-size:60px;">{round(resonance, 4)}</h1>
+            <h2 style="color:{color_p};">เลขหน้าคือ {digit_p} : {grade_p}</h2>
+        </div>""", unsafe_allow_html=True)
 
-    with col2:
-        st.markdown('<div class="deck-card" style="border-color: #ff00ea; box-shadow: 0 0 10px rgba(255, 0, 234, 0.2);">', unsafe_allow_html=True)
-        st.subheader("🎵 DECK B")
-        # เลือกเพลงถัดไปให้อัตโนมัติในช่อง B
-        default_b = 1 if len(songs) > 1 else 0
-        song_b = st.selectbox("เลือกแทร็ก", songs, index=default_b, key="deck_b")
-        st.audio(song_b)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # 5. ฟีเจอร์พิเศษ: Global Playlist Navigator
-    with st.expander(f"📂 GLOBAL PLAYLIST ({len(songs)} TRACKS)"):
-        for i, s in enumerate(songs, 1):
-            st.write(f"{i}. {s}")
-
-else:
-    st.error("⚠️ ไม่พบไฟล์เพลงในระบบ กรุณาเช็คโฟลเดอร์บน GitHub")
-
-# 6. แถบสถานะด้านล่าง
-st.markdown(f"""
-    <div style="position: fixed; bottom: 0; left: 0; width: 100%; background: #000; border-top: 1px solid #00ff00; padding: 5px;">
-        <marquee style="color: #00ff00;">
-            SYSTEM ONLINE | {len(songs)} TRACKS READY | PLAYING: {song_a if songs else 'NONE'} & {song_b if songs else 'NONE'} | MASTERED BY TA101
-        </marquee>
-    </div>
-""", unsafe_allow_html=True)
-
-
-# (เพิ่ม elif ไปจนครบหน้า 10 ตามโครงเดิมได้เลยครับ...)
+        # --- 🕒 สแกนไทม์ไลน์คู่ขนาน ---
+        st.write("---")
+        st.subheader("⏳ จุด Sync คู่ขนานในอนาคต (365 วัน)")
+        p_future = []
+        for i in range(1, 366):
+            target = date.today() + timedelta(days=i)
+            td = get_step_by_step_data(target)
+            t_code = ((td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']) + td['l_logic']) * 1.618
+            t_digit, _, _ = get_grade_info(t_code)
+            if t_digit == digit_p:
+                p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
+        st.table(p_future[:10] if p_future else "ไม่พบข้อมูล")
