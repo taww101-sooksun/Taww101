@@ -40,6 +40,57 @@ def get_grade_info(val):
     if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
     elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
     else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
+        # --- 🕒 ส่วนสแกนไทม์ไลน์ (อดีต-อนาคต) เพื่อพิสูจน์ความจริง ---
+        st.write("---")
+        st.subheader("🕒 รายงานการบรรจบของพิกัด (730 วัน)")
+        
+        # สร้าง Tab ย่อยเพื่อดูอดีตและอนาคต
+        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน (ย้อนรอย)", "🗓️ อนาคต 365 วัน (มองข้างหน้า)"])
+        
+        with t_past:
+            st.write("วันในอดีตที่มี 'เลขหน้า' ตรงกับพิกัดปัจจุบันของคุณ:")
+            past_results = []
+            # วนลูปสแกนย้อนหลัง 365 วัน
+            for i in range(-365, 0):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                
+                # เช็คเลขหน้า
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit: # ถ้าเลขหน้าตรงกับปัจจุบัน
+                    past_results.append({
+                        "วันที่": scan_date.strftime("%d/%m/%Y"),
+                        "รหัสพิกัดวันนั้น": round(s_code, 2),
+                        "เลขหน้า": s_digit
+                    })
+            if past_results:
+                st.table(past_results[:10]) # แสดง 10 วันที่เด่นที่สุด
+            else:
+                st.write("ไม่พบจุดบรรจบในรอบปีที่ผ่านมา")
+
+        with t_future:
+            st.write("วันในอนาคตที่พิกัดจะวนมา 'Sync' กับคุณอีกครั้ง:")
+            future_results = []
+            # วนลูปสแกนไปข้างหน้า 365 วัน
+            for i in range(1, 366):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    future_results.append({
+                        "วันที่": scan_date.strftime("%d/%m/%Y"),
+                        "รหัสพิกัด": round(s_code, 2),
+                        "เลขหน้า": s_digit
+                    })
+            if future_results:
+                st.table(future_results[:10])
+            else:
+                st.write("ยังไม่พบจุดบรรจบในเร็วๆ นี้")
 
 # --- 2. หน้าจอแอป ---
 st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
