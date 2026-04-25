@@ -169,7 +169,7 @@ with st.container():
                 st.session_state.global_song_idx = i
                 st.rerun()
 
-st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE OMNI-PLAY V.7")import streamlit as st
+                st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE OMNI-PLAY V.7")import streamlit as st
 import os
 import base64
 import random
