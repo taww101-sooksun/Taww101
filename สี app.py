@@ -40,59 +40,9 @@ def get_grade_info(val):
     if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
     elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
     else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
-        # --- 🕒 ส่วนสแกนไทม์ไลน์ (อดีต-อนาคต) เพื่อพิสูจน์ความจริง ---
-        st.write("---")
-        st.subheader("🕒 รายงานการบรรจบของพิกัด (730 วัน)")
-        
-        # สร้าง Tab ย่อยเพื่อดูอดีตและอนาคต
-        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน (ย้อนรอย)", "🗓️ อนาคต 365 วัน (มองข้างหน้า)"])
-        
-        with t_past:
-            st.write("วันในอดีตที่มี 'เลขหน้า' ตรงกับพิกัดปัจจุบันของคุณ:")
-            past_results = []
-            # วนลูปสแกนย้อนหลัง 365 วัน
-            for i in range(-365, 0):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                
-                # เช็คเลขหน้า
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit: # ถ้าเลขหน้าตรงกับปัจจุบัน
-                    past_results.append({
-                        "วันที่": scan_date.strftime("%d/%m/%Y"),
-                        "รหัสพิกัดวันนั้น": round(s_code, 2),
-                        "เลขหน้า": s_digit
-                    })
-            if past_results:
-                st.table(past_results[:10]) # แสดง 10 วันที่เด่นที่สุด
-            else:
-                st.write("ไม่พบจุดบรรจบในรอบปีที่ผ่านมา")
-
-        with t_future:
-            st.write("วันในอนาคตที่พิกัดจะวนมา 'Sync' กับคุณอีกครั้ง:")
-            future_results = []
-            # วนลูปสแกนไปข้างหน้า 365 วัน
-            for i in range(1, 366):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit:
-                    future_results.append({
-                        "วันที่": scan_date.strftime("%d/%m/%Y"),
-                        "รหัสพิกัด": round(s_code, 2),
-                        "เลขหน้า": s_digit
-                    })
-            if future_results:
-                st.table(future_results[:10])
-            else:
-                st.write("ยังไม่พบจุดบรรจบในเร็วๆ นี้")
 
 # --- 2. หน้าจอแอป ---
+st.set_page_config(page_title="SYNAPSE STEP-BY-STEP", layout="wide")
 st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
 
 tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล", "👥 วิเคราะห์คู่ขนาน"])
@@ -108,11 +58,8 @@ with tab1:
         st.write(f"4. เดือน: `{d['month']}` | 5. ปี{d['zn']}: `{d['zv']}` | 6. ธาตุ{d['en']}: `{d['ev']}`")
         
         st.write("---")
-        # Step 1 & 2: รหัสบุคคล
         base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
         raw_code = (base_sum + d['l_logic']) * 1.618
-        
-        # Step 3: บวกวันชีวิต (ไม่ให้นิ่ง)
         days_alive = (date.today() - u_birth).days
         final_val = (raw_code + days_alive) / 1.618
         
@@ -126,6 +73,35 @@ with tab1:
             <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
         </div>""", unsafe_allow_html=True)
 
+        # --- 🕒 สแกนไทม์ไลน์บุคคล ---
+        st.write("---")
+        st.subheader("🕒 รายงานการบรรจบของพิกัดบุคคล (730 วัน)")
+        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน", "🗓️ อนาคต 365 วัน"])
+        
+        with t_past:
+            past_results = []
+            for i in range(-365, 0):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    past_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(past_results[:10] if past_results else "ไม่พบข้อมูล")
+
+        with t_future:
+            future_results = []
+            for i in range(1, 366):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    future_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(future_results[:10] if future_results else "ไม่พบข้อมูล")
+
 # --- 👥 TAB 2: วิเคราะห์คู่ขนาน ---
 with tab2:
     col1, col2 = st.columns(2)
@@ -135,23 +111,27 @@ with tab2:
     if birth_a and birth_b:
         d1 = get_step_by_step_data(birth_a)
         d2 = get_step_by_step_data(birth_b)
+        r1 = ((d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']) + d1['l_logic']) * 1.618
+        r2 = ((d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']) + d2['l_logic']) * 1.618
         
-        # รหัสคนแรก
-        s1 = d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']
-        r1 = (s1 + d1['l_logic']) * 1.618
-        # รหัสคนที่สอง
-        s2 = d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']
-        r2 = (s2 + d2['l_logic']) * 1.618
-        
-        st.markdown(f"**รหัสคนที่ 1:** `{round(r1, 2)}` | **รหัสคนที่ 2:** `{round(r2, 2)}`")
-        
-        # Fusion
-        p_sum = r1 + r2
-        resonance = p_sum / 1.618
-        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
-        
+        resonance = (r1 + r2) / 1.618
         digit_p, grade_p, color_p = get_grade_info(resonance)
+        
+        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
         st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid gold; border-radius:15px; text-align:center;">
             <h1 style="color:white; font-size:60px;">{round(resonance, 4)}</h1>
             <h2 style="color:{color_p};">เลขหน้าคือ {digit_p} : {grade_p}</h2>
         </div>""", unsafe_allow_html=True)
+
+        # --- 🕒 สแกนไทม์ไลน์คู่ขนาน ---
+        st.write("---")
+        st.subheader("⏳ จุด Sync คู่ขนานในอนาคต (365 วัน)")
+        p_future = []
+        for i in range(1, 366):
+            target = date.today() + timedelta(days=i)
+            td = get_step_by_step_data(target)
+            t_code = ((td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']) + td['l_logic']) * 1.618
+            t_digit, _, _ = get_grade_info(t_code)
+            if t_digit == digit_p:
+                p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
+        st.table(p_future[:10] if p_future else "ไม่พบข้อมูล")
