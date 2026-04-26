@@ -1,321 +1,137 @@
-# =========================================================
-# 🛡️ SYNAPSE COMMAND CENTER - FULL POWER IMPORTS
-# =========================================================
-
 import streamlit as st
-import os
-import time
-import json
-import uuid
-import base64
-import hashlib
-import binascii
-import io
-import math
-import psutil
-from datetime import datetime, date, timedelta
+from datetime import date, timedelta
 
-# --- Data & Math ---
-import pandas as pd
-import numpy as np
-import pytz
-import matplotlib.pyplot as plt
-import networkx as nx
-
-# --- Streamlit Core & Components ---
-import streamlit.components.v1 as components
-from streamlit_player import st_player
-from streamlit_js_eval import streamlit_js_eval
-from streamlit_autorefresh import st_autorefresh
-
-# --- Firebase & Security ---
-import firebase_admin
-from firebase_admin import credentials, firestore, storage, auth
-from firebase_admin import db as realtime_db 
-
-# --- AI & Generative ---
-import google.generativeai as genai
-import replicate
-
-# --- Multimedia & Audio ---
-import librosa
-import soundfile as sf
-from pydub import AudioSegment
-from gtts import gTTS
-try:
-    import moviepy.editor as mp
-except ImportError:
-    import moviepy as mp
-from PIL import Image 
-
-# --- Location & Maps ---
-import folium
-from streamlit_folium import st_folium
-from geopy.geocoders import Nominatim
-from timezonefinder import TimezoneFinder
-import osmnx as ox
-
-# --- Networking ---
-import requests
-
-# --- 1. FIREBASE INITIALIZATION ---
-if not firebase_admin._apps:
-    try:
-        cred_info = dict(st.secrets["firebase_service_account"])
-        cred = credentials.Certificate(cred_info)
-        firebase_admin.initialize_app(cred, {
-            'storageBucket': st.secrets["firebase_config"]["storageBucket"],
-            'databaseURL': st.secrets["firebase_config"].get("databaseURL", "")
-        })
-    except: pass
-# --- [1] ฟังก์ชันคำนวณรหัสความจริง (หัวใจหลัก) ---
-def get_detailed_logic(dt):
+# --- 1. ฟังก์ชันดึงเลขฐาน (ห้ามเอาออก โชว์ที่มาความจริง) ---
+def get_step_by_step_data(dt):
     if dt is None: return None
-    ref_date = date(1900, 1, 1)
-    diff = (dt - ref_date).days
-    lunar_cycle = 29.530589
-    pos = (diff - 0.5) % lunar_cycle
-    day_val = dt.weekday() + 1
-    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-# --- [3] ฟังก์ชันดึงพิกัดจริงจาก Browser ---
-def get_geolocation():
-    # เรียกใช้ streamlit_js_eval ที่พี่ import ไว้แล้ว
-    return streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(success => { return success; })", key="GPS_ENGINE")
-
-# --- [4] ฟังก์ชันคำนวณระยะทางระหว่างจุด (Haversine Formula) ---
-def haversine(lat1, lon1, lat2, lon2):
-    R = 6371  # รัศมีโลก (กม.)
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
-
-    
-    if pos <= 14.765: # ข้างขึ้น
-        m_num = int(pos) + 1
-        phase = f"ขึ้น {m_num} ค่ำ"
-        res = math.sqrt((day_val**2) + (m_num**2))
-        formula = f"√({day_val}² + {m_num}²)"
-        logic_type = "แรงผลักดัน (Vector Energy)"
-    else: # ข้างแรม
-        m_num = int(pos - 14.765) + 1
-        phase = f"แรม {m_num} ค่ำ"
-        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
-        formula = f"({day_val} × 1.618) / {m_num}"
-        logic_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
-
+    day_val = {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}[dt.weekday()]
+    day_name = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()]
+    date_val = dt.day
+    ref = date(1900, 1, 1)
+    diff = (dt - ref).days
+    lunar_pos = (diff - 0.5) % 29.530589
+    if lunar_pos <= 14.765:
+        moon_num = int(lunar_pos) + 1
+        l_logic = -7.5
+        l_type = f"ขึ้น {moon_num} ค่ำ"
+    else:
+        moon_num = int(lunar_pos - 14.765) + 1
+        l_logic = 7.5
+        l_type = f"แรม {moon_num} ค่ำ"
+    month_val = dt.month
+    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+    z_map = {0:9, 1:10, 2:11, 3:12, 4:1, 5:2, 6:3, 7:4, 8:5, 9:6, 10:7, 11:8}
+    zv = z_map[dt.year % 12]
+    z_name = z_names[dt.year % 12]
+    m, d = dt.month, dt.day
+    if (m == 5 and d >= 14) or (m == 6 and d <= 14): ev, en = 1, "ดิน"
+    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): ev, en = 2, "น้ำ"
+    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): ev, en = 4, "ไฟ"
+    else: ev, en = 3, "ลม"
     return {
-        "res": round(res, 4), "phase": phase, "day_name": day_names[dt.weekday()],
-        "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type
+        "day": day_val, "day_n": day_name, "date": date_val, "moon": moon_num, 
+        "l_logic": l_logic, "l_type": l_type, "month": month_val, "zv": zv, 
+        "zn": z_name, "ev": ev, "en": en, "year": dt.year
     }
 
-# --- [2] ฟังก์ชันสแกนแผนที่กาลเวลา (อดีต/อนาคต) ---
-def run_scanner(target_res, base_date, days, mode="future"):
-    results = []
-    for i in range(days + 1):
-        current_date = base_date + timedelta(days=i) if mode == "future" else base_date - timedelta(days=i)
-        d = get_detailed_logic(current_date)
-        gap = abs(target_res - d['res'])
+def get_grade_info(val):
+    s_val = str(abs(val)).replace('.', '').lstrip('0')
+    digit = int(s_val[0]) if s_val else 0
+    if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
+    elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
+    else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
+
+# --- 2. หน้าจอแอป ---
+st.set_page_config(page_title="SYNAPSE STEP-BY-STEP", layout="wide")
+st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
+
+tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล", "👥 วิเคราะห์คู่ขนาน"])
+
+# --- 👤 TAB 1: วิเคราะห์บุคคล ---
+with tab1:
+    u_birth = st.date_input("กรอกวันเกิดของคุณ", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="single")
+    if u_birth:
+        d = get_step_by_step_data(u_birth)
         
-        # จัดลำดับความสำคัญตามที่ลูกพี่สั่ง
-        status = "ปกติ"
-        if gap < 0.5: status = "💎 เพชร (รหัสบรรจบ)"
-        elif 3.8 <= gap <= 4.2: status = "🌀 ธร (สัญญาณสะท้อน)"
-        elif gap > 10.0: status = "⚙️ กงจักร (รหัสแยกตัว)"
+        st.markdown("### 🛠 กระดานแยกพิกัดตัวเลข")
+        st.write(f"1. วัน{d['day_n']}: `{d['day']}` | 2. วันที่: `{d['date']}` | 3. {d['l_type']}: `{d['moon']}`")
+        st.write(f"4. เดือน: `{d['month']}` | 5. ปี{d['zn']}: `{d['zv']}` | 6. ธาตุ{d['en']}: `{d['ev']}`")
         
-        if status != "ปกติ":
-            results.append({
-                "วันที่": current_date.strftime("%d/%m/%Y"),
-                "วัน": d['day_name'],
-                "สถานะพิกัด": status,
-                "Gap": round(gap, 4),
-                "รหัสวันนั้น": d['res']
-            })
-    return pd.DataFrame(results)
+        st.write("---")
+        base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
+        raw_code = (base_sum + d['l_logic']) * 1.618
+        days_alive = (date.today() - u_birth).days
+        final_val = (raw_code + days_alive) / 1.618
+        
+        st.write(f"**ขั้นตอนที่ 1 (บวกฐาน):** `{d['day']}+{d['date']}+{d['moon']}+{d['month']}+{d['zv']}+{d['ev']} = {base_sum}`")
+        st.write(f"**ขั้นตอนที่ 2 (คูณ 1.618):** `({base_sum} + {d['l_logic']}) x 1.618 = {round(raw_code, 2)}`")
+        st.write(f"**ขั้นตอนที่ 3 (บวกวันชีวิต/หาร):** `({round(raw_code, 2)} + {days_alive}) / 1.618 = {round(final_val, 4)}`")
 
-# --- 2. CONFIG & THEME ---
-st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
-primary_neon = "#1F51FF"  # สีทองที่ลูกพี่ชอบ
+        digit, grade, color = get_grade_info(final_val)
+        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid {color}; border-radius:15px; text-align:center;">
+            <h1 style="color:{color}; font-size:60px;">{round(final_val, 4)}</h1>
+            <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
+        </div>""", unsafe_allow_html=True)
 
-# ฟังก์ชันแปลงรูปโลโก้
-def get_base64(file):
-    try:
-        with open(file, "rb") as f: return base64.b64encode(f.read()).decode()
-    except: return None
+        # --- 🕒 สแกนไทม์ไลน์บุคคล ---
+        st.write("---")
+        st.subheader("🕒 รายงานการบรรจบของพิกัดบุคคล (730 วัน)")
+        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน", "🗓️ อนาคต 365 วัน"])
+        
+        with t_past:
+            past_results = []
+            for i in range(-365, 0):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    past_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(past_results[:10] if past_results else "ไม่พบข้อมูล")
 
-logo_data = get_base64("logo1.png")
+        with t_future:
+            future_results = []
+            for i in range(1, 366):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    future_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(future_results[:10] if future_results else "ไม่พบข้อมูล")
 
-# --- 3. CUSTOM CSS (หนา 2px + โยกสะบัด) ---
-st.markdown(f"""
-    <style>
-    #MainMenu, footer, header {{visibility: hidden;}}
-    .stApp {{ background-color: #000; }}
-
-    /* โลโก้เต้น */
-    .logo-container {{
-        display: flex; justify-content: center;
-        animation: logo-dance 3s ease-in-out infinite;
-        margin-bottom: 10px;
-    }}
-    @keyframes logo-dance {{
-        0%, 100% {{ transform: translateY(0); }}
-        50% {{ transform: translateY(-5px); }}
-    }}
-
-    /* สโลแกนนีออนโยกสะบัด */
-    .neon-wrapper {{
-        text-align: center;
-        font-family: 'Courier New', monospace;
-        font-weight: bold;
-        background: linear-gradient(to right, #FF3131, #FFF01F, #00F3FF, #FF44CC);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: rainbow-glow 3s linear infinite, slogan-shake 2s ease-in-out infinite;
-    }}
-    @keyframes slogan-shake {{
-        0%, 100% {{ transform: scale(1) rotate(0); }}
-        50% {{ transform: scale(1.1) rotate(2deg); }}
-    }}
-    @keyframes rainbow-glow {{
-        0% {{ filter: hue-rotate(0deg) drop-shadow(0 0 10px {primary_neon}); }}
-        100% {{ filter: hue-rotate(360deg) drop-shadow(0 0 10px {primary_neon}); }}
-    }}
-
-    /* ปุ่ม UNIT หนา 2px สีทอง */
-    button[kind="secondary"] {{
-        background-color: transparent !important;
-        color: {primary_neon} !important;
-        border: 4px solid {primary_neon} !important;
-        border-radius: 15px !important;
-        height: 70px !important;
-        font-weight: bold !important;
-        box-shadow: 0 0 15px {primary_neon}, inset 0 0 10px {primary_neon} !important;
-        transition: 0.3s;
-    }}
-    button[kind="secondary"]:hover {{
-        background-color: {primary_neon} !important;
-        color: #000 !important;
-        box-shadow: 0 0 30px {primary_neon} !important;
-    }}
-    </style>
-""", unsafe_allow_html=True)
-
-# --- 4. HEADER ---
-if logo_data:
-    st.markdown(f'''
-        <div class="logo-container">
-            <img src="data:image/png;base64,{logo_data}" style="width:150px; filter: drop-shadow(0 0 20px {primary_neon});">
-        </div>''', unsafe_allow_html=True)
-
-st.markdown(f'''
-    <div class="neon-wrapper">
-        <div style="font-size:30px; letter-spacing:4px;">SYNAPSE</div>
-        <div style="font-size:30px; letter-spacing:6px;">อยู่นิ่งๆไม่เจ็บตัว</div>
-    </div>''', unsafe_allow_html=True)
-
-# --- 5. NAVIGATION HUB (11 UNITS SYSTEM) ---
-if 'page' not in st.session_state: st.session_state.page = "HOME"
-
-if st.session_state.page == "HOME":
-    st.write("##")
-    # สร้างปุ่ม 11 ปุ่ม (จัดวางแบบ 3 หรือ 4 คอลัมน์ให้สมดุล)
-    cols = st.columns(3) 
+# --- 👥 TAB 2: วิเคราะห์คู่ขนาน ---
+with tab2:
+    col1, col2 = st.columns(2)
+    with col1: birth_a = st.date_input("วันเกิดคนที่ 1", value=None, key="ba", min_value=date(1960,1,1))
+    with col2: birth_b = st.date_input("วันเกิดคนที่ 2", value=None, key="bb", min_value=date(1960,1,1))
     
-    # กำหนดชื่อและไอคอนทั้ง 11 UNIT
-    unit_names = {
-        1: "🎵 01: DJ STATION",
-        2: "🛰️ 02: TACTICAL RADAR",
-        3: "🔮 03: TRUTH LOGIC",
-        4: "⚡ 04: SENSOR SCAN",
-        5: "🎨 05: UI DESIGNER",
-        6: "💬 06: COMMS CENTER",
-        7: "🛠️ 07: DIY MASTER",
-        8: "🧬 08: SYNAPSE CORE",
-        9: "📹 09: MEDIA STUDIO",
-        10: "💾 10: FIREBASE DB",
-        11: "🏴 11: COMMAND POST"
-    }
-
-    for i in range(1, 12):
-        with cols[(i-1)%3]:
-            btn_label = unit_names.get(i, f"UNIT {i:02d}")
-            if st.button(btn_label, key=f"u{i}", use_container_width=True):
-                st.session_state.page = str(i)
-                st.rerun()
-else:
-    # --- [ปุ่มกลับหน้าหลัก] แถบควบคุมด้านบนในทุกห้อง ---
-    c_back, c_title = st.columns([1, 4])
-    with c_back:
-        if st.button("⬅️ HUB", use_container_width=True):
-            st.session_state.page = "HOME"
-            st.rerun()
-    
-
-    # =========================================================
-    # 📥 โซนจัดการห้องรบ (เพิ่มเติมต่อจากเดิม)
-    # =========================================================
-    
-    elif st.session_state.page == "2":
-        st.markdown("<h2 class='neon-wrapper'>🛰️ UNIT 02: TACTICAL RADAR</h2>", unsafe_allow_html=True)
+    if birth_a and birth_b:
+        d1 = get_step_by_step_data(birth_a)
+        d2 = get_step_by_step_data(birth_b)
+        r1 = ((d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']) + d1['l_logic']) * 1.618
+        r2 = ((d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']) + d2['l_logic']) * 1.618
         
-        # ส่วนแสดงพิกัดจริง
-        col_gps, col_dist = st.columns([2, 1])
-        with col_gps:
-            st.write("### 📍 Live Coordinates")
-            # ดึงข้อมูลจากคำสั่งที่พี่เขียนไว้ (streamlit_js_eval)
-            loc = get_geolocation()
-            if loc:
-                lat = loc['coords']['latitude']
-                lon = loc['coords']['longitude']
-                st.success(f"พบพิกัดปัจจุบัน: {lat}, {lon}")
-                
-                # สร้างแผนที่จริงด้วย Folium
-                m = folium.Map(location=[lat, lon], zoom_start=15, tiles="CartoDB dark_matter")
-                folium.Marker([lat, lon], popup="CURRENT AGENT", icon=folium.Icon(color='red', icon='info-sign')).add_to(m)
-                st_folium(m, width=700, height=400)
-            else:
-                st.warning("📡 กำลังรอสัญญาณ GPS... (กรุณากด Allow Location ใน Browser)")
-
-        with col_dist:
-            st.write("### 📏 Proximity Check")
-            target_lat = st.number_input("Target Lat", value=13.7563) # Default BKK
-            target_lon = st.number_input("Target Lon", value=100.5018)
-            
-            if loc:
-                dist = haversine(lat, lon, target_lat, target_lon)
-                st.metric("ระยะห่างจากเป้าหมาย", f"{dist:.2f} KM")
-                if dist < 1.0: st.error("🚨 ALERT: NEAR TARGET!")
-            else:
-                st.info("ระบุพิกัดเป้าหมายเพื่อคำนวณระยะทางจริง")
-
-    elif st.session_state.page == "3":
-        st.markdown("<h2 class='neon-wrapper'>🔮 UNIT 03: TRUTH LOGIC</h2>", unsafe_allow_html=True)
+        resonance = (r1 + r2) / 1.618
+        digit_p, grade_p, color_p = get_grade_info(resonance)
         
-        c1, c2 = st.columns([1, 2])
-        with c1:
-            target_date = st.date_input("เลือกวันที่ตรวจสอบ", date.today())
-            scan_days = st.slider("ขอบเขตการสแกน (วัน)", 7, 90, 30)
-            
-            logic = get_detailed_logic(target_date)
-            st.write("---")
-            st.subheader(f"รหัสวันนี้: {logic['res']}")
-            st.code(f"สูตร: {logic['formula']}\nประเภท: {logic['type']}\nข้างขึ้น/แรม: {logic['phase']}")
-        
-        with c2:
-            st.write("### 📊 วิเคราะห์แนวโน้มรหัสบรรจบ")
-            scan_data = run_scanner(logic['res'], target_date, scan_days)
-            
-            if not scan_data.empty:
-                # แสดงกราฟความผันผวนของรหัส
-                fig, ax = plt.subplots(figsize=(10, 4))
-                plt.style.use('dark_background')
-                ax.plot(scan_data['วันที่'], scan_data['รหัสวันนั้น'], color=primary_neon, marker='o', markersize=4)
-                ax.set_title("Truth Code Fluctuations", color=primary_neon)
-                plt.xticks(rotation=45)
-                st.pyplot(fig)
-                
-                st.dataframe(scan_data, use_container_width=True)
-            else:
-                st.success("✅ ไม่พบรหัสผิดปกติในระยะที่กำหนด (สถานะ: อยู่นิ่งๆ ไม่เจ็บตัว)")
+        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
+        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid gold; border-radius:15px; text-align:center;">
+            <h1 style="color:white; font-size:60px;">{round(resonance, 4)}</h1>
+            <h2 style="color:{color_p};">เลขหน้าคือ {digit_p} : {grade_p}</h2>
+        </div>""", unsafe_allow_html=True)
 
+        # --- 🕒 สแกนไทม์ไลน์คู่ขนาน ---
+        st.write("---")
+        st.subheader("⏳ จุด Sync คู่ขนานในอนาคต (365 วัน)")
+        p_future = []
+        for i in range(1, 366):
+            target = date.today() + timedelta(days=i)
+            td = get_step_by_step_data(target)
+            t_code = ((td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']) + td['l_logic']) * 1.618
+            t_digit, _, _ = get_grade_info(t_code)
+            if t_digit == digit_p:
+                p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
+        st.table(p_future[:10] if p_future else "ไม่พบข้อมูล")
