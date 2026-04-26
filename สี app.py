@@ -149,31 +149,77 @@ st.markdown(f'''
         <div style="font-size:30px; letter-spacing:6px;">อยู่นิ่งๆไม่เจ็บตัว</div>
     </div>''', unsafe_allow_html=True)
 
-# --- 5. NAVIGATION HUB ---
+# --- 5. NAVIGATION HUB (20 UNITS SYSTEM) ---
 if 'page' not in st.session_state: st.session_state.page = "HOME"
 
 if st.session_state.page == "HOME":
     st.write("##")
+    # สร้างปุ่ม 20 ปุ่มแบบอัตโนมัติ (4 คอลัมน์)
     cols = st.columns(4)
     for i in range(1, 21):
         with cols[(i-1)%4]:
-            if st.button(f"UNIT {i:02d}", key=f"u{i}", use_container_width=True):
+            # ปรับแต่งชื่อปุ่มตามฟังก์ชันหลักที่เราตกลงกัน
+            btn_label = f"UNIT {i:02d}"
+            if i == 1: btn_label = "🎵 UNIT 01: DJ"
+            elif i == 2: btn_label = "🛰️ UNIT 02: RADAR"
+            elif i == 3: btn_label = "🎨 UNIT 03: COLOR"
+            elif i == 4: btn_label = "⚡ UNIT 04: SENSOR"
+            elif i == 5: btn_label = "🔮 UNIT 05: LOGIC"
+
+            if st.button(btn_label, key=f"u{i}", use_container_width=True):
                 st.session_state.page = str(i)
                 st.rerun()
 else:
-    # ปุ่มกลับหน้าหลักแบบเท่ๆ
-    if st.button("⬅️ BACK TO HUB"):
-        st.session_state.page = "HOME"
-        st.rerun()
-    
-    st.markdown(f"### ⚡ UNIT {st.session_state.page} ONLINE")
+    # --- แถบควบคุมด้านบนในทุกห้อง ---
+    c_back, c_title = st.columns([1, 4])
+    with c_back:
+        if st.button("⬅️ HUB"):
+            st.session_state.page = "HOME"
+            st.rerun()
+    with c_title:
+        st.markdown(f"### ⚡ SYSTEM ONLINE : UNIT {st.session_state.page.zfill(2)}")
     st.write("---")
 
-    # --- โซนเขียนโค้ดแต่ละห้อง ---
-    if st.session_state.page == "1":
-        st.write("ระบบเรดาร์ (Radar) ใส่ตรงนี้")
-    elif st.session_state.page == "2":
-        st.write("ระบบสแกนเนอร์ (Scanner) ใส่ตรงนี้")
-    # ... ใส่ให้ครบ 20 ...
+    # =========================================================
+    # 📥 โซนก๊อปวางโค้ดใหม่ (แยกตามเลขห้อง)
+    # =========================================================
 
+    if st.session_state.page == "1":
+        # --- [ วางโค้ดเพลง UNIT 01 ตรงนี้ ] ---
+        st.write("🎧 ระบบเครื่องเสียงกำลังทำงาน...")
+        # ยกไส้ในของหน้า 1 เดิมมาใส่
+
+    elif st.session_state.page == "2":
+        # --- [ วางโค้ด Radar/Chat UNIT 02 ตรงนี้ ] ---
+        st.write("🛰️ กำลังสแกนหา AGENT...")
+
+    elif st.session_state.page == "3":
+        # --- [ วางโค้ดเปลี่ยนสี UNIT 03 ตรงนี้ ] ---
+        st.write("🎨 ระบบปรับแต่ง Interface...")
+
+    elif st.session_state.page == "4":
+        # --- [ วางโค้ดวัดเสียง/สั่น UNIT 04 ตรงนี้ ] ---
+        st.write("⚡ กำลังเตรียมเซนเซอร์...")
+
+    elif st.session_state.page == "5":
+        # --- [ วางโค้ด Quantum Logic HUB UNIT 05 ตรงนี้ ] ---
+        st.write("🔮 กำลังประมวลผลฐานข้อมูล...")
+
+    # --- ห้องที่ 6-20 เตรียมไว้ให้แล้ว พี่แค่ก๊อปโค้ดมาใส่แทนที่ st.info ---
+    elif st.session_state.page == "6":
+        st.info("⌛ UNIT 06: พร้อมสำหรับการติดตั้งโมดูลใหม่")
+        
+    elif st.session_state.page == "7":
+        st.info("⌛ UNIT 07: พร้อมสำหรับการติดตั้งโมดูลใหม่")
+
+    elif st.session_state.page == "8":
+        st.info("⌛ UNIT 08: พร้อมสำหรับการติดตั้งโมดูลใหม่")
+    
+    # ... พี่สามารถเพิ่ม elif ไปเรื่อยๆ จนถึง 20 ได้เลยครับ ...
+    
+    else:
+        st.warning(f"UNIT {st.session_state.page} อยู่ระหว่างการพัฒนาโดย AGENT TA")
+
+# =========================================================
 st.caption(f"SYNAPSE OS v4.2 | {datetime.now().strftime('%H:%M:%S')}")
+
