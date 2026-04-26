@@ -373,9 +373,85 @@ else:
             components.html(mixer_html, height=450)
             st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Sound Module v4.2")
 
-    elif st.session_state.page == "2":
-        # --- [ วางโค้ด Radar/Chat UNIT 02 ตรงนี้ ] ---
-        st.write("🛰️ กำลังสแกนหา AGENT...")
+        elif st.session_state.page == "2":
+        st.markdown("<h2 class='neon-wrapper'>🛰️ UNIT 02: RADAR MONITOR</h2>", unsafe_allow_html=True)
+
+        # --- [1] ดึงพิกัดปัจจุบัน (GPS Detection) ---
+        loc_data = get_geolocation() 
+        my_lat, my_lon = 13.7367, 100.5231 # พิกัดสำรอง
+        if loc_data and 'coords' in loc_data:
+            my_lat = loc_data['coords'].get('latitude', my_lat)
+            my_lon = loc_data['coords'].get('longitude', my_lon)
+
+        # --- [2] อัปเดตพิกัดตัวเองขึ้น Firebase (Broadcast) ---
+        if st.button("📡 BROADCAST MY LOCATION", use_container_width=True):
+            my_id = st.session_state.get('user', 'ADMIN')
+            realtime_db.reference(f'users/{my_id}').update({
+                'lat': my_lat,
+                'lon': my_lon,
+                'ts': time.time()
+            })
+            st.toast("ส่งพิกัดเข้าศูนย์บัญชาการแล้ว", icon="📍")
+
+        # --- [3] ส่วนแสดงแผนที่ดาวเทียม (Google Satellite) ---
+        st.markdown("### 🗺️ LIVE TACTICAL MAP")
+        
+        # สร้างแผนที่ Folium
+        m = folium.Map(
+            location=[my_lat, my_lon], 
+            zoom_start=15, 
+            tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+            attr='Google Satellite'
+        )
+        
+        # ปักหมุดตัวเรา (สีแดง)
+        folium.Marker(
+            [my_lat, my_lon], 
+            icon=folium.Icon(color='red', icon='star'), 
+            tooltip="YOU (COMMANDER)"
+        ).add_to(m)
+
+        # --- [4] สแกนหา Agent อื่นๆ ในฐานข้อมูล ---
+        try:
+            all_users = realtime_db.reference('users').get()
+            if all_users:
+                agent_stats = []
+                for uid, data in all_users.items():
+                    if uid != st.session_state.get('user', 'ADMIN') and 'lat' in data:
+                        u_lat, u_lon = data['lat'], data['lon']
+                        
+                        # คำนวณระยะห่างด้วยสูตร Haversine ที่พี่มี
+                        dist = haversine(my_lat, my_lon, u_lat, u_lon)
+                        
+                        # ปักหมุด Agent อื่นๆ (สีเขียว)
+                        folium.Marker(
+                            [u_lat, u_lon], 
+                            icon=folium.Icon(color='green', icon='info-sign'), 
+                            tooltip=f"AGENT: {uid}"
+                        ).add_to(m)
+                        
+                        # วาดเส้นเชื่อมโยง (Tactical Line)
+                        folium.PolyLine(
+                            [[my_lat, my_lon], [u_lat, u_lon]], 
+                            color=primary_neon, 
+                            weight=2, 
+                            dash_array='10', 
+                            opacity=0.6
+                        ).add_to(m)
+                        
+                        agent_stats.append({"Agent": uid, "Distance (km)": round(dist, 2)})
+
+                # แสดงแผนที่
+                st_folium(m, width="100%", height=400)
+
+                # --- [5] ตารางสรุปพิกัดระยะห่าง ---
+                if agent_stats:
+                    st.markdown("### 📊 PROXIMITY REPORT")
+                    st.table(pd.DataFrame(agent_stats))
+        except Exception as e:
+            st.error(f"🛰️ ระบบสแกนขัดข้อง: {e}")
+            st_folium(m, width="100%", height=400) # แสดงแค่แผนที่ตัวเองถ้าดึงเพื่อนไม่ได้
+
 
     elif st.session_state.page == "3":
         # --- [ วางโค้ดเปลี่ยนสี UNIT 03 ตรงนี้ ] ---
