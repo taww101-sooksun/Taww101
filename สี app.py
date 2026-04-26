@@ -154,42 +154,51 @@ st.markdown(f'''
 if 'page' not in st.session_state: st.session_state.page = "HOME"
 
 if st.session_state.page == "HOME":
-    # 1. ประกาศสีทองนีออน
+    # 1. รหัสสีทองนีออน
     gold_neon = "#FFD700" 
     
-    # 2. วาง CSS ของปุ่มไว้ข้างนอก Loop (ทำครั้งเดียว ไฟติดทุกปุ่ม)
-    css_buttons = ""
-    for i in range(1, 21):
-        css_buttons += f"""
-        div.stButton > button[key="u{i}"] {{
-            color: {gold_neon} !important;
-            border: 4px solid {gold_neon} !important;
+    # 2. CSS แบบล็อคเป้า (ใช้แบคสแลชคลุมปีกกาเพื่อกัน Python Error)
+    st.markdown(f"""
+        <style>
+        /* ล็อคเป้าทุกปุ่มที่มีคำว่า UNIT */
+        button[kind="secondary"] {{
             background-color: transparent !important;
+            color: {gold_neon} !important;
+            border: 4px solid {gold_neon} !important; /* ความหนา 4px */
             border-radius: 15px !important;
-            height: 70px !important;
+            height: 65px !important;
             font-weight: bold !important;
-            font-size: 18px !important;
-            text-transform: uppercase;
-            box-shadow: 0 0 10px {gold_neon}, inset 0 0 5px {gold_neon} !important;
-            transition: 0.3s !important;
+            font-size: 20px !important;
+            text-transform: uppercase !important;
+            /* เพิ่มแสงฟุ้งสีทอง */
+            box-shadow: 0 0 15px {gold_neon}, inset 0 0 10px {gold_neon} !important;
+            transition: all 0.3s ease-in-out !important;
+            margin-bottom: 10px !important;
         }}
-        div.stButton > button[key="u{i}"]:hover {{
-            background-color: {gold_neon} !important;
-            color: #000 !important;
-            box-shadow: 0 0 30px {gold_neon}, 0 0 50px {gold_neon} !important;
-            transform: scale(1.05);
-        }}
-        """
-    
-    st.markdown(f"<style>{css_buttons}</style>", unsafe_allow_html=True)
 
-    # 3. สร้าง Layout ปุ่ม 4 คอลัมน์
+        /* เอฟเฟกต์ตอนเอาเมาส์วาง/กด */
+        button[kind="secondary"]:hover {{
+            background-color: {gold_neon} !important;
+            color: #000000 !important;
+            box-shadow: 0 0 30px {gold_neon}, 0 0 60px {gold_neon} !important;
+            transform: translateY(-3px) !important;
+        }}
+        
+        /* แก้ไขระยะห่างระหว่างคอลัมน์ให้ดูเต็มจอ */
+        [data-testid="column"] {{
+            padding: 5px !important;
+        }}
+        </style>
+    """, unsafe_allow_html=True)
+
+    # 3. สร้างปุ่ม 20 ห้อง (เรียงลำดับ 01-20 ให้สวยๆ)
     cols = st.columns(4)
     for i in range(1, 21):
         with cols[(i-1)%4]:
             if st.button(f"UNIT {i:02d}", key=f"u{i}", use_container_width=True):
                 st.session_state.page = str(i)
                 st.rerun()
+
 
 else:
     # --- ปุ่มกลับ (Back Button) และเนื้อหาในหน้า UNIT ---
