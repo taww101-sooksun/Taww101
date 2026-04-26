@@ -315,7 +315,7 @@ if st.session_state.page == "HOME":
 
 # --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
 elif st.session_state.page == "1":
-    st.markdown("<h2 class='neon-text'>🎧 SYNAPSE DJ STATION V.3</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 class='neon-text'>🎧 SYNAPSE DJ MP3 อยู่นิ้งๆไมเจ็บตัว STATION V.3</h2>", unsafe_allow_html=True)
     
     all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
     
@@ -329,12 +329,12 @@ elif st.session_state.page == "1":
     data_b = get_base64_data(song_b) if song_b != "-- Select --" else ""
 
     mixer_html = f"""
-    <div style="background: #000; border: 2px solid #333; border-radius: 20px; padding: 15px; font-family: 'Orbitron';">
+    <div style="background: #000; border: 4px solid #333; border-radius: 20px; padding: 15px; font-family: 'Orbitron';">
         
         <marquee style="color: #00f3ff; margin-bottom: 10px;"> Now Playing Deck A: {song_a} | Deck B: {song_b} --- Synapse Unit High-Resolution Audio --- </marquee>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div style="border: 1px solid #00f3ff; padding: 10px; border-radius: 15px; text-align: center;">
+            <div style="border: 4px solid #00f3ff; padding: 10px; border-radius: 15px; text-align: center;">
                 <div style="display: flex; justify-content: space-between; font-size: 10px; color: #00f3ff;">
                     <span id="curA">00:00</span><span id="remA">-00:00</span>
                 </div>
@@ -343,20 +343,20 @@ elif st.session_state.page == "1":
                 <input type="range" id="volA" min="0" max="1" step="0.01" value="0.7" style="width: 100%; accent-color: #00f3ff;">
                 <div style="margin-top: 10px;">
                     <button onclick="play('A')" style="background:#00f3ff; border:none; padding:5px 15px; border-radius:5px;">PLAY</button>
-                    <button onclick="pause('A')" style="background:none; border:1px solid #00f3ff; color:#00f3ff; padding:5px 15px; border-radius:5px;">PAUSE</button>
+                    <button onclick="pause('A')" style="background:none; border:1px solid:#FF0738; color:#0F26D3; padding:5px 15px; border-radius:5px;">PAUSE</button>
                 </div>
             </div>
 
-            <div style="border: 1px solid #ff00de; padding: 10px; border-radius: 15px; text-align: center;">
-                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #ff00de;">
+            <div style="border: 1px solid #FF0738; padding: 10px; border-radius: 15px; text-align: center;">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; color: #0F26D3;">
                     <span id="curB">00:00</span><span id="remB">-00:00</span>
                 </div>
                 <canvas id="canvasB" style="width: 100%; height: 50px; background: #111; margin: 5px 0;"></canvas>
 
                 <input type="range" id="volB" min="0" max="1" step="0.01" value="0.7" style="width: 100%; accent-color: #ff00de;">
                 <div style="margin-top: 10px;">
-                    <button onclick="play('B')" style="background:#ff00de; border:none; padding:5px 15px; border-radius:5px; color:white;">PLAY</button>
-                    <button onclick="pause('B')" style="background:none; border:1px solid #ff00de; color:#ff00de; padding:5px 15px; border-radius:5px;">PAUSE</button>
+                    <button onclick="play('B')" style="background:#FEDE10; border:none; padding:5px 15px; border-radius:5px; color:white;">PLAY</button>
+                    <button onclick="pause('B')" style="background:none; border:1px solid #0F26D3; color:#ff00de; padding:5px 15px; border-radius:5px;">PAUSE</button>
                 </div>
             </div>
         </div>
