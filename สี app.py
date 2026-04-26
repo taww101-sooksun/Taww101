@@ -333,7 +333,6 @@ else:
     elif st.session_state.page == "4":
         # --- [ วางโค้ดวัดเสียง/สั่น UNIT 04 ตรงนี้ ] ---
         st.write("⚡ กำลังเตรียมเซนเซอร์...")
-
     elif st.session_state.page == "5":
         st.markdown("<h2 class='neon-wrapper'>🔮 UNIT 05: THE TRUTH SCANNER</h2>", unsafe_allow_html=True)
 
@@ -394,6 +393,28 @@ else:
 
         st.divider()
 
+        # ---------------------------------------------------------
+        # หัวข้อที่ 3: แผนที่พิกัดเวลา (Past & Future Timeline)
+        # ---------------------------------------------------------
+        st.markdown("### 3️⃣ แผนที่พิกัดกาลเวลา (Past & Future)")
+        if dob1:
+            st.write(f"วิเคราะห์รอบเวลาสำหรับรหัส: **{d1['res']}**")
+            
+            tab_back, tab_next = st.tabs(["⏪ สแกนอดีต (365 วัน)", "🔮 สแกนอนาคต (365 วัน)"])
+            
+            with tab_back:
+                past_df = run_scanner(d1['res'], date.today(), 365, mode="past")
+                st.dataframe(past_df, use_container_width=True, hide_index=True)
+            
+            with tab_next:
+                future_df = run_scanner(d1['res'], date.today(), 365, mode="future")
+                st.dataframe(future_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("กรุณากรอกวันเกิด AGENT 1 เพื่อสร้างแผนที่กาลเวลา")
+
+
+                
+            
         # ---------------------------------------------------------
         # หัวข้อที่ 3: แผนที่พิกัดเวลา (Past & Future Timeline)
         # ---------------------------------------------------------
