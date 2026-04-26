@@ -255,167 +255,140 @@ else:
     # 📥 โซนจัดการห้องรบ (UNIT 01 - 11)
     # =========================================================
     if st.session_state.page == "1":
-        # 1. หัวข้อและโลโก้ (ดึงสไตล์จากหน้าหลัก)
-        st.markdown("<h1 class='neon-title-unit'>🎵MP3: SYNAPSE</h1>", unsafe_allow_html=True)
-        
-        # สแกนไฟล์เพลงเตรียมไว้ก่อน
-        music_files = [f for f in os.listdir(".") if f.endswith(".mp3")]
-        
-        if music_files:
-            # เตรียมข้อมูลเพลง (เลือกจาก selectbox ด้านล่าง)
-            song_a = st.session_state.get('cur_a', music_files[0])
-            song_b = st.session_state.get('cur_b', music_files[min(1, len(music_files)-1)])
-            
-            with open(song_a, "rb") as f: b64_a = base64.b64encode(f.read()).decode()
-            with open(song_b, "rb") as f: b64_b = base64.b64encode(f.read()).decode()
+        # --- 1. สไตล์และโลโก้กลางจอ (UNIT 01) ---
+        st.markdown(f"""
+            <style>
+            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+            .logo-img-unit {{
+                width: 100px; height: 100px; margin: 0 auto;
+                background-image: url("data:image/png;base64,{logo_b64}");
+                background-size: contain; background-repeat: no-repeat;
+                filter: drop-shadow(0 0 15px #39FF14);
+                animation: pulse 2s infinite alternate;
+            }}
+            @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.05); }} }}
+            </style>
+            <div class="logo-img-unit"></div>
+            <h2 style='text-align:center; color:#39FF14; font-family:Orbitron; font-size:1.2rem; letter-spacing:3px;'>UNIT 01: SYNAPSE COMMAND</h2>
+        """, unsafe_allow_html=True)
 
-            # 2. เครื่องเสียง (ต่อจากโลโก้/หัวข้อทันที)
-            html_code = f"""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <script src="https://cdn.tailwindcss.com"></script>
-                <style>
-                    body {{ background: transparent; color: white; font-family: 'Orbitron', sans-serif; overflow: hidden; }}
-                    .deck-box {{ border: 3px solid #444; background: #000; border-radius: 25px; padding: 15px; position: relative; }}
-                    
-                    /* ตัวหนังสือวิ่งขนาดใหญ่ */
-                    .marquee-large {{ 
-                        background: #111; border: 2px solid #333; padding: 10px; 
-                        overflow: hidden; border-radius: 10px; margin-bottom: 15px;
-                    }}
-                    .marquee-large p {{ 
-                        display: inline-block; white-space: nowrap; animation: move 8s linear infinite; 
-                        color: #00ff00; font-weight: 500; font-size: 24px; text-shadow: 0 0 10px #00ff00;
-                    }}
-                    @keyframes move {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
-                    
-                    canvas {{ width: 100%; height: 120px; background: #050505; border-radius: 10px; margin-bottom: 15px; }}
-                    .btn-main {{ 
-                        background: linear-gradient(180deg, #333, #000); border: 1px solid #555; 
-                        padding: 12px; border-radius: 12px; font-size: 14px; font-weight: bold; width: 48%; 
-                    }}
-                    .btn-main:active {{ transform: scale(0.5); border-color: #00f3ff; }}
-                    .vol-custom {{ width: 100%; height: 10px; accent-color: #ff00de; }}
-                </style>
-            </head>
-            <body>
-                <div class="grid grid-cols-2 gap-6">
-                    <div class="deck-box" id="boxA">
-                        <div class="marquee-large"><p>{song_a}</p></div>
-                        <canvas id="vizA"></canvas>
-                        <div class="flex justify-between mb-4">
-                            <button onclick="play('A')" class="btn-main text-green-400">PLAY A</button>
-                            <button onclick="stop('A')" class="btn-main text-red-500">STOP</button>
-                        </div>
-                        <input type="range" class="vol-custom" oninput="setVol('A', this.value)" value="80">
-                    </div>
+        # --- 2. ข้อมูลห้องและระบบสลับเพลง ---
+        room_info = [
+            {"name": "🔥 CORE ROOM", "color1": "#39FF14", "color2": "#00FFDD"},
+            {"name": "🎧 R&B LOUNGE", "color1": "#FF00DE", "color2": "#7000FF"},
+            {"name": "🎤 RAP ZONE", "color1": "#00F3FF", "color2": "#0051FF"},
+            {"name": "🌌 QUANTUM", "color1": "#FF8C00", "color2": "#FF0000"},
+            {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"}
+        ]
 
-                    <div class="deck-box" id="boxB">
-                        <div class="marquee-large"><p>{song_b}</p></div>
-                        <canvas id="vizB"></canvas>
-                        <div class="flex justify-between mb-4">
-                            <button onclick="play('B')" class="btn-main text-green-400">PLAY B</button>
-                            <button onclick="stop('B')" class="btn-main text-red-500">STOP</button>
-                        </div>
-                        <input type="range" class="vol-custom" style="accent-color: #00f3ff;" oninput="setVol('B', this.value)" value="80">
-                    </div>
-                </div>
+        # ตรวจสอบเพลงในสารบบ
+        all_music = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
 
-                <script>
-                    let ctx, sA, sB, gA, gB, srcA, srcB, anA, anB, dA, dB;
-                    const colors = ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#8b00ff'];
-
-                    async function init() {{
-                        if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-                        if (!sA) sA = await decode("{b64_a}");
-                        if (!sB) sB = await decode("{b64_b}");
-                        if (!anA) {{
-                            anA = ctx.createAnalyser(); anA.fftSize = 128;
-                            dA = new Uint8Array(anA.frequencyBinCount);
-                            gA = ctx.createGain(); gA.connect(ctx.destination);
-                        }}
-                        if (!anB) {{
-                            anB = ctx.createAnalyser(); anB.fftSize = 512;
-                            dB = new Uint8Array(anB.frequencyBinCount);
-                            gB = ctx.createGain(); gB.connect(ctx.destination);
-                        }}
-                        loop();
-                    }}
-
-                    async function decode(b) {{
-                        const r = await fetch("data:audio/mp3;base64," + b);
-                        return await ctx.decodeAudioData(await r.arrayBuffer());
-                    }}
-
-                    function loop() {{
-                        requestAnimationFrame(loop);
-                        if(anA) {{ anA.getByteFrequencyData(dA); render('vizA', dA); }}
-                        if(anB) {{ anB.getByteFrequencyData(dB); render('vizB', dB); }}
-                    }}
-
-                    function render(id, data) {{
-                        const can = document.getElementById(id);
-                        const c = can.getContext('2d');
-                        c.clearRect(0, 0, can.width, can.height);
-                        let w = can.width / data.length;
-                        for(let i=0; i<data.length; i++) {{
-                            // ปรับตัวคูณความสูง (data[i] * 1.5) ให้เต้นแรงขึ้น
-                            let h = (data[i] / 255) * can.height * 1.5; 
-                            c.fillStyle = colors[i % 7];
-                            c.fillRect(i*w, can.height - h, w-1, h);
-                        }}
-                    }}
-
-                    function play(d) {{
-                        init().then(() => {{
-                            if(d === 'A') {{
-                                if(srcA) srcA.stop();
-                                srcA = ctx.createBufferSource(); srcA.buffer = sA;
-                                srcA.connect(anA).connect(gA); srcA.start(0);
-                            }} else {{
-                                if(srcB) srcB.stop();
-                                srcB = ctx.createBufferSource(); srcB.buffer = sB;
-                                srcB.connect(anB).connect(gB); srcB.start(0);
-                            }}
-                        }});
-                    }}
-
-                    function stop(d) {{
-                        if(d === 'A' && srcA) srcA.stop();
-                        if(d === 'B' && srcB) srcB.stop();
-                    }}
-
-                    function setVol(d, v) {{
-                        init();
-                        if(d === 'A') gA.gain.value = v/100;
-                        if(d === 'B') gB.gain.value = v/100;
-                    }}
-                </script>
-            </body>
-            </html>
-            """
-            st.components.v1.html(html_code, height=450)
-
-            # 3. ช่องเลือกเพลง (ย้ายมาไว้ด้านล่างตามสั่ง)
-            st.markdown("---")
-            st.write("📂 **COMMAND PANEL: เลือกเพลงเข้าประจำการ**")
-            c1, c2 = st.columns(2)
-            with c1:
-                new_a = st.selectbox("💿 เปลี่ยนเพลงเครื่อง A", music_files, key="sel_a_bot")
-                if new_a != song_a:
-                    st.session_state.cur_a = new_a
-                    st.rerun()
-            with c2:
-                new_b = st.selectbox("💿 เปลี่ยนเพลงเครื่อง B", music_files, key="sel_b_bot")
-                if new_b != song_b:
-                    st.session_state.cur_b = new_b
-                    st.rerun()
+        if not all_music:
+            st.error("⚠️ ไม่พบไฟล์เพลง .mp3 ใน Directory หลัก (GitHub)")
         else:
-            st.error("ไม่พบไฟล์เพลง MP3 ในสารบบครับลูกพี่!")
+            # ระบบเลือกห้อง (Tabs)
+            tabs = st.tabs([r["name"] for r in room_info])
+            
+            for i, tab in enumerate(tabs):
+                with tab:
+                    # ดึงเพลงตาม Index ปัจจุบัน
+                    st.session_state.global_song_idx %= len(all_music)
+                    current_song = all_music[st.session_state.global_song_idx]
+                    song_data = get_base64(current_song)
+                    
+                    info = room_info[i]
+                    c1, c2 = info["color1"], info["color2"]
+
+                    # เครื่องเล่นเพลง V.7: กราฟเสียง + Marquee ใหญ่ + ปุ่ม Activate
+                    html_code = f"""
+                    <div style="font-family: 'Orbitron', sans-serif;">
+                        <canvas id="canvas-{i}" style="width:100%; height:120px; background:#000; border:1px solid {c1}44; border-radius:15px;"></canvas>
+                        
+                        <div style="background:rgba(0,0,0,0.8); border:2px solid {c1}; border-radius:8px; margin-top:12px; overflow:hidden; box-shadow: 0 0 15px {c1}33;">
+                            <marquee scrollamount="8" style="color:{c1}; font-size:22px; padding:10px; font-weight:900; text-shadow: 0 0 10px {c1};">
+                                NOW PLAYING 🎵 {current_song} | {info['name']} | SYNAPSE SYSTEM ONLINE | อ.ย.น.ิ.้.ง ๆ .ไ.ม.่.เ.จ.็.บ.ต.ั.ว ⚡
+                            </marquee>
+                        </div>
+
+                        <button id="btn-{i}" style="width:100%; padding:20px; margin-top:15px; background:transparent; color:{c1}; border:2px solid {c1}; cursor:pointer; border-radius:12px; font-weight:bold; box-shadow: 0 0 15px {c1}33; text-transform:uppercase; letter-spacing: 2px; font-size:16px;">
+                            ACTIVATE {info["name"]} ⚡
+                        </button>
+                        
+                        <audio id="audio-{i}" src="data:audio/mp3;base64,{song_data}"></audio>
+                    </div>
+
+                    <script>
+                        const audio = document.getElementById('audio-{i}');
+                        const btn = document.getElementById('btn-{i}');
+                        const canvas = document.getElementById('canvas-{i}');
+                        const ctx = canvas.getContext('2d');
+                        let audioCtx, analyser, source, dataArray;
+
+                        btn.onclick = function() {{
+                            if (!audioCtx) {{
+                                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                                analyser = audioCtx.createAnalyser();
+                                source = audioCtx.createMediaElementSource(audio);
+                                source.connect(analyser);
+                                analyser.connect(audioCtx.destination);
+                                analyser.fftSize = 256; 
+                                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                                render();
+                            }}
+                            if (audio.paused) {{ 
+                                audio.play(); 
+                                btn.innerText = "SYSTEM ONLINE 🟢"; 
+                                btn.style.background = "{c1}22";
+                            }} else {{ 
+                                audio.pause(); 
+                                btn.innerText = "SYSTEM PAUSED 🔴"; 
+                                btn.style.background = "transparent";
+                            }}
+                        }};
+
+                        function render() {{
+                            requestAnimationFrame(render);
+                            analyser.getByteFrequencyData(dataArray);
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            const bWidth = (canvas.width / dataArray.length) * 2.2;
+                            let x = 0;
+                            for (let i = 0; i < dataArray.length; i++) {{
+                                let h = (dataArray[i] / 255) * canvas.height * 1.2;
+                                let grad = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - h);
+                                grad.addColorStop(0, "{c1}"); grad.addColorStop(1, "{c2}");
+                                ctx.fillStyle = grad;
+                                ctx.fillRect(x, canvas.height - h, bWidth - 1, h);
+                                x += bWidth;
+                            }}
+                        }}
+                    </script>
+                    """
+                    st.components.v1.html(html_code, height=350)
+
+            # --- 3. ระบบควบคุมส่วนกลาง (Playlist & Skip) ---
+            st.markdown("---")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("⏭️ SKIP TRACK", use_container_width=True):
+                    st.session_state.global_song_idx += 1
+                    st.rerun()
+            with col2:
+                if st.button("🎲 SHUFFLE", use_container_width=True):
+                    st.session_state.global_song_idx = random.randint(0, len(all_music)-1)
+                    st.rerun()
+
+            with st.expander(f"📂 GLOBAL PLAYLIST ({len(all_music)} TRACKS)", expanded=True):
+                for idx, song in enumerate(all_music):
+                    is_current = (idx == st.session_state.global_song_idx % len(all_music))
+                    label = f"▶️ {idx+1}. {song}" if is_current else f"▪️ {idx+1}. {song}"
+                    if st.button(label, key=f"unit01_tr_{idx}", use_container_width=True):
+                        st.session_state.global_song_idx = idx
+                        st.rerun()
+
+        st.caption("อ.ย.น.ิ.้.ง ๆ .ไ.ม.่.เ.จ.็.บ.ต.ั.ว | UNIT 01 COMMAND")
 
     
-    elif st.session_state.page == "2":
         st.markdown("<h2 class='neon-wrapper'>🛰️ UNIT 02: TACTICAL RADAR</h2>", unsafe_allow_html=True)
         st.info("📡 กำลังสแกนพิกัดดาวเทียมและคำนวณระยะห่าง AGENTS...")
 
