@@ -188,7 +188,7 @@ else:
     # ==========================================
     # 🎵 UNIT 01: DJ STATION (MUSIC PLAYER)
     # ==========================================
-    if st.session_state.page == "1":
+    
         st.markdown("<h2 class='neon-wrapper' style='font-size:30px;'>🎧 SYNAPSE DJ STATION V.3</h2>", unsafe_allow_html=True)
         
         # 1. ดึงรายชื่อไฟล์เพลงในโฟลเดอร์
