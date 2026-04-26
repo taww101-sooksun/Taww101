@@ -334,7 +334,7 @@ elif st.session_state.page == "1":
         <marquee style="color: #00f3ff; margin-bottom: 10px;"> Now Playing Deck A: {song_a} | Deck B: {song_b} --- Synapse Unit High-Resolution Audio --- </marquee>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div style="border: 4px solid #00f3ff; padding: 10px; border-radius: 15px; text-align: center;">
+            <div style="border: 4px solid #0F26D3; padding: 10px; border-radius: 15px; text-align: center;">
                 <div style="display: flex; justify-content: space-between; font-size: 10px; color: #00f3ff;">
                     <span id="curA">00:00</span><span id="remA">-00:00</span>
                 </div>
@@ -347,7 +347,7 @@ elif st.session_state.page == "1":
                 </div>
             </div>
 
-            <div style="border: 1px solid #FF0738; padding: 10px; border-radius: 15px; text-align: center;">
+            <div style="border: 4px solid #FF0738; padding: 10px; border-radius: 15px; text-align: center;">
                 <div style="display: flex; justify-content: space-between; font-size: 10px; color: #0F26D3;">
                     <span id="curB">00:00</span><span id="remB">-00:00</span>
                 </div>
