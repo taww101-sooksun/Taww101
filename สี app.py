@@ -261,7 +261,7 @@ else:
             @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
             .logo-img-unit {{
                 width: 100px; height: 100px; margin: 0 auto;
-                background-image: url("data:image/png;base64,{logo_b64}");
+                
                 background-size: contain; background-repeat: no-repeat;
                 filter: drop-shadow(0 0 15px #39FF14);
                 animation: pulse 2s infinite alternate;
