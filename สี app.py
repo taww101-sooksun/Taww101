@@ -575,6 +575,80 @@ else:
         else:
             st.info("กรุณากรอกวันเกิด AGENT 1 เพื่อสร้างแผนที่กาลเวลา")
 
+    elif page == "6":
+        st.markdown("<h2 class='neon-wrapper'>💬 UNIT 06: TACTICAL COMMS</h2>", unsafe_allow_html=True)
+        
+        # --- [1] ดึงข้อมูลพิกัดเราก่อน ---
+        loc = get_geolocation()
+        my_lat, my_lon = 13.7367, 100.5231
+        if loc and 'coords' in loc:
+            my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
+
+        # --- [2] ส่วนเลือก Agent ที่จะคุยด้วย ---
+        st.markdown("### 🛰️ SCANNING FOR AGENTS...")
+        try:
+            all_users = realtime_db.reference('users').get()
+            if all_users:
+                # กรองรายชื่อ Agent อื่นๆ
+                agent_list = [uid for uid in all_users.keys() if uid != "ADMIN"]
+                
+                if not agent_list:
+                    st.info("🌑 ยังไม่มี Agent อื่นออนไลน์ในขณะนี้")
+                else:
+                    target_agent = st.selectbox("เลือก Agent ที่ต้องการติดต่อ:", agent_list)
+                    
+                    # คำนวณระยะห่างความจริง
+                    target_data = all_users[target_agent]
+                    if 'lat' in target_data:
+                        dist = haversine(my_lat, my_lon, target_data['lat'], target_data['lon'])
+                        
+                        # แสดงผลสถานะความปลอดภัย
+                        col_stat1, col_stat2 = st.columns(2)
+                        with col_stat1:
+                            st.metric("DISTANCE", f"{dist:.2f} KM")
+                        with col_stat2:
+                            status = "🟢 SECURE" if dist < 5 else "🟡 REMOTE"
+                            st.metric("STATUS", status)
+                        
+                        st.divider()
+                        
+                        # --- [3] ระบบแชทความจริง (Real-time Chat) ---
+                        st.markdown(f"### ✉️ SECURE CHANNEL: {target_agent}")
+                        
+                        # ดึงข้อความ
+                        chat_ref = realtime_db.reference(f'chats/ADMIN_{target_agent}')
+                        messages = chat_ref.order_by_child('ts').limit_to_last(10).get()
+                        
+                        # แสดงกล่องข้อความ
+                        chat_container = st.container(height=300)
+                        if messages:
+                            for msg_id, msg_data in messages.items():
+                                align = "right" if msg_data['sender'] == "ADMIN" else "left"
+                                color = primary_neon if msg_data['sender'] == "ADMIN" else "#FF44CC"
+                                chat_container.markdown(f"""
+                                    <div style="text-align: {align}; margin-bottom: 10px;">
+                                        <div style="display: inline-block; padding: 8px 15px; border-radius: 15px; 
+                                                    background: #111; border: 1px solid {color}; color: white;">
+                                            <small style="color: {color};">{msg_data['sender']}:</small><br>{msg_data['text']}
+                                        </div>
+                                    </div>
+                                """, unsafe_allow_html=True)
+
+                        # ส่งข้อความ
+                        new_msg = st.chat_input("พิมพ์ข้อความแจ้งศูนย์บัญชาการ...")
+                        if new_msg:
+                            chat_ref.push({
+                                'sender': "ADMIN",
+                                'text': new_msg,
+                                'ts': time.time()
+                            })
+                            st.rerun()
+            else:
+                st.warning("⚠️ ไม่พบข้อมูลในฐานระบบ")
+        except Exception as e:
+            st.error(f"❌ ระบบ Comms ขัดข้อง: {e}")
+
+        st.caption("🔒 การเชื่อมต่อเข้ารหัสแบบ 256-bit | อยู่นิ่งๆ ไม่เจ็บตัว")
 
 
 
