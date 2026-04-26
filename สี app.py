@@ -62,8 +62,8 @@ import requests
 st.set_page_config(page_title="SYNAPSE", layout="wide")
 
 # >>> [จุดปรับขนาดตัวหนังสือ] <<< 
-synapse_size = "120px"  # ขนาดคำว่า SYNAPSE
-motto_size = "45px"     # ขนาดคำว่า อยู่นิ่งๆ ไม่เจ็บตัว
+synapse_size = "50px"  # ขนาดคำว่า SYNAPSE
+motto_size = "50px"     # ขนาดคำว่า อยู่นิ่งๆ ไม่เจ็บตัว
 slogan_glow_speed = "3s" # ความเร็วการวิ่งของสี
 
 st.markdown(f"""
