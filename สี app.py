@@ -286,7 +286,7 @@ else:
                     }}
                     .marquee-large p {{ 
                         display: inline-block; white-space: nowrap; animation: move 8s linear infinite; 
-                        color: #00ff00; font-weight: 900; font-size: 24px; text-shadow: 0 0 10px #00ff00;
+                        color: #00ff00; font-weight: 500; font-size: 24px; text-shadow: 0 0 10px #00ff00;
                     }}
                     @keyframes move {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
                     
@@ -295,7 +295,7 @@ else:
                         background: linear-gradient(180deg, #333, #000); border: 1px solid #555; 
                         padding: 12px; border-radius: 12px; font-size: 14px; font-weight: bold; width: 48%; 
                     }}
-                    .btn-main:active {{ transform: scale(0.9); border-color: #00f3ff; }}
+                    .btn-main:active {{ transform: scale(0.5); border-color: #00f3ff; }}
                     .vol-custom {{ width: 100%; height: 10px; accent-color: #ff00de; }}
                 </style>
             </head>
@@ -336,7 +336,7 @@ else:
                             gA = ctx.createGain(); gA.connect(ctx.destination);
                         }}
                         if (!anB) {{
-                            anB = ctx.createAnalyser(); anB.fftSize = 128;
+                            anB = ctx.createAnalyser(); anB.fftSize = 512;
                             dB = new Uint8Array(anB.frequencyBinCount);
                             gB = ctx.createGain(); gB.connect(ctx.destination);
                         }}
