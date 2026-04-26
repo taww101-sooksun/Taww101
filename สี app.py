@@ -335,70 +335,89 @@ else:
         st.write("⚡ กำลังเตรียมเซนเซอร์...")
 
     elif st.session_state.page == "5":
-     # ==========================================
-    # 🔮 UNIT 05: QUANTUM LOGIC (สูตรค่าสมดุล & ดาราศาสตร์)
+    # ==========================================
+    # 🔮 UNIT 05: QUANTUM LOGIC - สแกนรหัสความจริง (1960-2026)
     # ==========================================
     
-        st.markdown("<h2 class='neon-wrapper' style='font-size:30px;'>🔮 QUANTUM LOGIC HUB</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 class='neon-wrapper' style='font-size:30px;'>🔮 UNIT 05: QUANTUM LOGIC</h2>", unsafe_allow_html=True)
         
-        tab1, tab2, tab3 = st.tabs(["🌀 ค่าสมดุล Golden Ratio", "🌙 จันทรคติ (Moon Phase)", "🧬 รวมสูตรคำนวณ"])
+        # คัมภีร์อธิบายที่มาของตัวเลข
+        st.markdown("""
+            <div style="background:rgba(0,255,65,0.1); padding:20px; border-radius:15px; border:2px solid #00ff41; margin-bottom:20px;">
+                <h4 style="color:#00ff41; margin-top:0;">📖 คัมภีร์ถอดรหัสความจริง (The Truth Decipher)</h4>
+                <p style="font-size:0.9em; color:#ccc;">ระบบรองรับข้อมูลย้อนหลังตั้งแต่ปี <b>1960</b> ถึงปัจจุบัน <b>2026</b></p>
+                <ul style="font-size:0.85em; color:#00ff41;">
+                    <li><b>เลข 1.618:</b> ค่าเฉลี่ยทองคำ ใช้เพื่อดึงพลังงานที่กระจัดกระจายให้เข้าสู่จุดสมดุล</li>
+                    <li><b>เลข 29.53:</b> รอบโคจรดาราศาสตร์ ใช้หาตำแหน่ง 'ข้างขึ้นข้างแรม' ที่ส่งผลต่ออารมณ์มนุษย์</li>
+                </ul>
+            </div>
+        """, unsafe_allow_html=True)
 
-        with tab1:
-            st.subheader("🌀 อัตราส่วนทองคำ (Golden Ratio: 1.618)")
-            st.write("""
-            **ที่มาของตัวเลข:** เลข **1.618** หรือค่า **Phi (φ)** มาจากลำดับฟีโบนักชี (Fibonacci Sequence) ซึ่งพบได้ในโครงสร้างจักรวาล เช่น เกลียวพายุ, ดอกไม้, หรือสัดส่วนมนุษย์ที่สมบูรณ์แบบ
-            
-            **กรณีการใช้งาน:**
-            1. **การออกแบบ UI:** ใช้คูณความกว้างเพื่อให้ได้ความสูงที่สบายตาที่สุด (เช่น กว้าง 1000px / 1.618 = สูง 618px)
-            2. **จุดสมดุลชีวิต:** ใช้หาจุดกึ่งกลางที่ไม่ใช่แค่ครึ่งเดียว แต่เป็นจุดที่เกิดแรงเหวี่ยงน้อยที่สุดตามหลักสถิติ
-            """)
-            
-            val = st.number_input("ใส่ตัวเลขที่ต้องการหาค่าสมดุล", value=100.0)
-            st.success(f"ค่าสมดุลที่ได้คือ: {val * 1.618:.3f}")
+        # ตั้งค่าขอบเขตวันที่ (ความจริงที่พิสูจน์ได้)
+        min_d = date(1960, 1, 1)
+        max_d = date(2026, 12, 31)
 
-        with tab2:
-            st.subheader("🌙 รอบโคจรดวงจันทร์ (Synodic Month: 29.53)")
-            st.write("""
-            **ที่มาของตัวเลข:** เลข **29.53 วัน** คือระยะเวลาเฉลี่ยที่ดวงจันทร์ใช้ในการกลับมาอยู่ในตำแหน่งเดิมเมื่อเทียบกับดวงอาทิตย์ (จากจันทร์ดับครั้งหนึ่งไปยังอีกครั้งหนึ่ง) ซึ่งคลาดเคลื่อนจาก 30 วันเล็กน้อย
+        col_input1, col_input2 = st.columns(2)
+        
+        with col_input1:
+            st.markdown('<div class="logic-box">', unsafe_allow_html=True)
+            st.write("### 👤 AGENT 1")
+            # ผู้ใช้กรอกช่วง 1960-2026
+            dob1 = st.date_input(
+                "วัน/เดือน/ปี เกิด (1)", 
+                value=None, 
+                min_value=min_d, 
+                max_value=max_d, 
+                key="input_dob1"
+            )
             
-            **การคำนวณข้างขึ้นข้างแรม:**
-            เราใช้ค่าความต่างของวันที่ปัจจุบัน เทียบกับวันที่จันทร์ดับ (New Moon) ล่าสุด แล้วหารด้วย 29.53 เพื่อหาเปอร์เซ็นต์ความเสี้ยวของดวงจันทร์
-            
-            **กรณีการใช้งาน:**
-            - ใช้กำหนดรอบพลังงานความเชื่อ หรือสถิติน้ำขึ้นน้ำลงที่มีผลต่ออารมณ์มนุษย์
-            """)
-            
-            target_date = st.date_input("เลือกวันที่เพื่อเช็คข้างขึ้นข้างแรม", value=datetime.now())
-            # สูตรคำนวณพื้นฐาน (ตัวเลขสมมติเพื่อแสดงตัวอย่างการคิด)
-            base_new_moon = datetime(2024, 1, 11) # วันจันทร์ดับอ้างอิง
-            diff = (datetime.combine(target_date, datetime.min.time()) - base_new_moon).days
-            moon_age = diff % 29.53
-            st.metric("อายุพระจันทร์วันนี้", f"{moon_age:.2f} วัน")
+            if dob1:
+                d1 = get_detailed_logic(dob1)
+                st.metric("REALITY CODE", d1['res'])
+                st.info(f"📍 {d1['day_name']} | {d1['phase']}")
+                with st.expander("🔍 วิธีคำนวณ"):
+                    st.write(f"- วัน{d1['day_name']} = `{d1['day_val']}`")
+                    st.write(f"- {d1['phase']} = `{d1['m_num']}`")
+                    st.write(f"- สูตร: `{d1['formula']}`")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        with tab3:
-            st.subheader("🧬 ตรรกะการบวกลบเลขศาสตร์")
-            st.write("""
-            **ทำไมต้องบวกลบ?**
-            ในระบบ SYNAPSE เรายึดหลักความจริงของ "พลังงานตัวเลข" ดังนี้:
+        with col_input2:
+            st.markdown('<div class="logic-box" style="border-color:#1408BF;">', unsafe_allow_html=True)
+            st.write("### 👤 AGENT 2")
+            # ผู้ใช้กรอกช่วง 1960-2026
+            dob2 = st.date_input(
+                "วัน/เดือน/ปี เกิด (2)", 
+                value=None, 
+                min_value=min_d, 
+                max_value=max_d, 
+                key="input_dob2"
+            )
             
-            1. **การบวก (+):** คือการ 'รวมตัว' หรือสร้างแรงกระเพื่อมใหม่ เช่น (วันเกิด + เดือนเกิด) เพื่อหาค่า Identity
-            2. **การลบ (-):** คือการ 'ตัดส่วนเกิน' เพื่อหาจุดบกพร่อง หรือจุดที่ต้องระวัง (Gap Analysis)
-            3. **การหารด้วยค่าสมดุล:** เพื่อดึงตัวเลขที่สูงเกินไปให้กลับมาอยู่ในเกณฑ์ที่มนุษย์รับได้ (Normalization)
-            
-            **ตัวอย่าง:** หากค่าอารมณ์พุ่งไปที่ 100 การหารด้วย 1.618 จะช่วยให้เรารู้ว่าจุดที่ควร 'หยุดนิ่ง' (ตามสโลแกน) อยู่ที่ระดับไหน
-            """)
-            
-            num_a = st.number_input("ตัวเลขตั้งต้น", value=0)
-            num_b = st.number_input("ตัวเลขตัวแปร", value=0)
-            op = st.selectbox("เลือกกรณีการคำนวณ", ["รวมพลังงาน (+)", "หาจุดหักเห (-)", "หาค่าเฉลี่ยสมดุล (/)"])
-            
-            if st.button("ประมวลผลความจริง"):
-                if op == "รวมพลังงาน (+)": res = num_a + num_b
-                elif op == "หาจุดหักเห (-)": res = num_a - num_b
-                else: res = (num_a + num_b) / 1.618
-                st.code(f"RESULT: {res:.4f}", language="python")
+            if dob2:
+                d2 = get_detailed_logic(dob2)
+                st.metric("REALITY CODE", d2['res'])
+                st.info(f"📍 {d2['day_name']} | {d2['phase']}")
+                with st.expander("🔍 วิธีคำนวณ"):
+                    st.write(f"- วัน{d2['day_name']} = `{d2['day_val']}`")
+                    st.write(f"- {d2['phase']} = `{d2['m_num']}`")
+                    st.write(f"- สูตร: `{d2['formula']}`")
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        st.info("💡 ทุกตัวเลขในห้องนี้อ้างอิงจากค่าจริงทางคณิตศาสตร์และดาราศาสตร์ ไม่มีการสุ่มตัวเลขมั่ว")
+        # วิเคราะห์ Gap ระหว่างบุคคล
+        if dob1 and dob2:
+            st.divider()
+            gap = abs(d1['res'] - d2['res'])
+            st.markdown(f"<h1 style='text-align:center; color:#00ff41; text-shadow: 0 0 20px #00ff41;'>GAP ANALYSIS: {gap:.4f}</h1>", unsafe_allow_html=True)
+            
+            if gap <= 1.0:
+                st.success("💎 ** Twin Code:** พลังงานสมดุลระดับสูง")
+            elif 3.5 <= gap <= 4.5:
+                st.warning("⚠️ ** Parallel Code:** ตรวจพบรหัสคู่ขนาน (สายสัมพันธ์ที่วนกลับมา)")
+            else:
+                st.info("🛰️ ** Independent:** รหัสพลังงานเป็นอิสระต่อกัน")
+        else:
+            st.caption("📡 รอการป้อนข้อมูลพิกัดปี 1960-2026 จากผู้ใช้...")
+
 
 
     # --- ห้องที่ 6-20 เตรียมไว้ให้แล้ว พี่แค่ก๊อปโค้ดมาใส่แทนที่ st.info ---
