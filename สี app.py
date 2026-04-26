@@ -129,21 +129,44 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # =========================================================
-# 🏠 ZONE: HEADER (LOGO DANCE + SLOGAN)
+# 🏠 ZONE: HEADER (LOGO NEON + SLOGAN)
 # =========================================================
 
-# ส่วนหัว: โลโก้เรืองแสง + เต้น + สโลแกน
-st.markdown(f"""
-    <div class="logo-container">
-        <div class="neon-wrapper">
-            <img src="data:image/png;base64,{base64.b64encode(open('logo1.png', 'rb').read()).decode()}" 
-                 style="width:180px; filter: drop-shadow(0 0 20px {primary_neon});">
-            
-            <span class="synapse-title" style="font-size: 80px;">SYNAPSE</span>
-            <span class="motto-text" style="font-size: 40px;">อยู่นิ่งๆ ไม่เจ็บตัว</span>
+# 1. [จุดคุมสีทอง] เปลี่ยนรหัสสีที่นี่ที่เดียวจบครับลูกพี่
+primary_neon = "#FFD700"  # สีทอง Golden Topaz
+
+# 2. เตรียมไฟล์โลโก้ (ดึงเป็น Base64)
+def get_image_base64(file_path):
+    try:
+        with open(file_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except:
+        return None
+
+logo_base64 = get_image_base64("logo1.png")
+
+# 3. แสดงผล LOGO + SYNAPSE แบบเรืองแสง
+if logo_base64:
+    st.markdown(f"""
+        <div class="logo-container">
+            <div class="neon-wrapper">
+                <img src="data:image/png;base64,{logo_base64}" 
+                     style="width:200px; filter: drop-shadow(0 0 20px {primary_neon});">
+                
+                <span class="synapse-title" style="font-size:{synapse_size};">SYNAPSE</span>
+                <span class="motto-text" style="font-size:{motto_size};">อยู่นิ่งๆ ไม่เจ็บตัว</span>
+            </div>
         </div>
-    </div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+else:
+    # ถ้าไม่มีไฟล์โลโก้ ให้โชว์แค่ตัวหนังสือเรืองแสง
+    st.markdown(f"""
+        <div class="neon-wrapper">
+            <span class="synapse-title" style="font-size:{synapse_size};">SYNAPSE</span>
+            <span class="motto-text" style="font-size:{motto_size};">อยู่นิ่งๆ ไม่เจ็บตัว</span>
+        </div>
+    """, unsafe_allow_html=True)
+
 
 
 # =========================================================
