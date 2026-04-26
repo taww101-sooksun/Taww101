@@ -1,13 +1,62 @@
 # =========================================================
-# 🛡️ SYNAPSE COMMAND CENTER - FULL POWER VERSION
+# 🛡️ SYNAPSE COMMAND CENTER - FULL POWER IMPORTS
 # =========================================================
+
 import streamlit as st
 import os
 import time
+import json
+import uuid
 import base64
-from datetime import datetime
+import hashlib
+import binascii
+import io
+import math
+import psutil
+from datetime import datetime, date, timedelta
+
+# --- Data & Math ---
+import pandas as pd
+import numpy as np
+import pytz
+import matplotlib.pyplot as plt
+import networkx as nx
+
+# --- Streamlit Core & Components ---
+import streamlit.components.v1 as components
+from streamlit_player import st_player
+from streamlit_js_eval import streamlit_js_eval
+from streamlit_autorefresh import st_autorefresh
+
+# --- Firebase & Security ---
 import firebase_admin
-from firebase_admin import credentials, firestore, storage
+from firebase_admin import credentials, firestore, storage, auth
+from firebase_admin import db as realtime_db 
+
+# --- AI & Generative ---
+import google.generativeai as genai
+import replicate
+
+# --- Multimedia & Audio ---
+import librosa
+import soundfile as sf
+from pydub import AudioSegment
+from gtts import gTTS
+try:
+    import moviepy.editor as mp
+except ImportError:
+    import moviepy as mp
+from PIL import Image 
+
+# --- Location & Maps ---
+import folium
+from streamlit_folium import st_folium
+from geopy.geocoders import Nominatim
+from timezonefinder import TimezoneFinder
+import osmnx as ox
+
+# --- Networking ---
+import requests
 
 # --- 1. FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
