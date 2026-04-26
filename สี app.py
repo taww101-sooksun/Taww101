@@ -63,7 +63,7 @@ st.set_page_config(page_title="SYNAPSE", layout="wide")
 
 # >>> [จุดปรับขนาดตัวหนังสือสโลแกน] <<< 
 # แก้เลข 35px ให้ใหญ่ขึ้นตามใจชอบเลยครับ
-slogan_font_size = "45px" 
+slogan_font_size = "100px" 
 
 st.markdown(f"""
     <style>
@@ -101,24 +101,24 @@ st.markdown(f"""
     }}
 
     @keyframes rainbow-glow {{
-        0% {{ filter: hue-rotate(0deg) drop-shadow(0 0 8px #00F3FF); }}
+        0% {{ filter: hue-rotate(0deg) drop-shadow(0 0 8px #FEDE10); }}
         100% {{ filter: hue-rotate(360deg) drop-shadow(0 0 8px #00F3FF); }}
     }}
 
     /* ปุ่มย้อนกลับ (Back Button) ดีไซน์นีออน */
     .back-btn {{
-        border: 2px solid #FF3131 !important;
+        border: 4px solid #0F26D3 !important;
         color: #FF3131 !important;
         background-color: transparent !important;
         border-radius: 50px !important;
         padding: 10px 25px !important;
         font-weight: bold !important;
-        box-shadow: 0 0 10px #FF3131;
+        box-shadow: 0 0 10px #FEDE10;
     }}
     .back-btn:hover {{
         background-color: #FF3131 !important;
         color: #000 !important;
-        box-shadow: 0 0 30px #FF3131;
+        box-shadow: 0 0 30px ##FF0738;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -130,7 +130,7 @@ st.markdown(f"""
 # ส่วนของโลโก้เต้น
 st.markdown('<div class="logo-container">', unsafe_allow_html=True)
 try:
-    st.image("logo1.png", width=220)
+    st.image("logo1.png", width=100)
 except:
     st.write("🛸 [ WAITING FOR LOGO ]")
 st.markdown('</div>', unsafe_allow_html=True)
@@ -165,7 +165,7 @@ else:
             st.session_state.page = "HOME"
             st.rerun()
     with col_title:
-        st.markdown(f"<h2 style='color:#00F3FF; text-shadow: 0 0 10px #00F3FF;'>⚡ UNIT {st.session_state.page} ONLINE</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 style='color:#0F26D3; text-shadow: 0 0 10px #FF0738;'>⚡ UNIT {st.session_state.page} ONLINE</h2>", unsafe_allow_html=True)
     
     st.markdown("---")
     
