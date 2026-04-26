@@ -71,7 +71,7 @@ if not firebase_admin._apps:
 
 # --- 2. CONFIG & THEME ---
 st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
-primary_neon = "#FF4500,#E2E2E2"  # สีทองที่ลูกพี่ชอบ
+primary_neon = "#E2E2E2"  # สีทองที่ลูกพี่ชอบ
 
 # ฟังก์ชันแปลงรูปโลโก้
 def get_base64(file):
