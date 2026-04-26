@@ -77,6 +77,20 @@ def get_detailed_logic(dt):
     pos = (diff - 0.5) % lunar_cycle
     day_val = dt.weekday() + 1
     day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+# --- [3] ฟังก์ชันดึงพิกัดจริงจาก Browser ---
+def get_geolocation():
+    # เรียกใช้ streamlit_js_eval ที่พี่ import ไว้แล้ว
+    return streamlit_js_eval(js_expressions="navigator.geolocation.getCurrentPosition(success => { return success; })", key="GPS_ENGINE")
+
+# --- [4] ฟังก์ชันคำนวณระยะทางระหว่างจุด (Haversine Formula) ---
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371  # รัศมีโลก (กม.)
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
     
     if pos <= 14.765: # ข้างขึ้น
         m_num = int(pos) + 1
