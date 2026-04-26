@@ -256,7 +256,7 @@ else:
     # =========================================================
 
         if st.session_state.page == "1":
-    st.markdown("<h1 class='neon-title-unit'>🎵 UNIT 01: DUAL SYNAPSE PLAYER</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='neon-title-unit'>🎵 UNIT 01: DUAL SYNAPSE PLAYER</h1>", unsafe_allow_html=True)
         
         # --- 1. ระบบดึงรายชื่อเพลงจากหน้าเดียวกัน (GitHub Directory) ---
         # สแกนไฟล์ .mp3 ที่อยู่ในโฟลเดอร์เดียวกับหน้าหลัก.py
