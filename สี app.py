@@ -255,7 +255,7 @@ else:
     # 📥 โซนจัดการห้องรบ (เพิ่มเติมต่อจากเดิม)
     # =========================================================
     
-    elif st.session_state.page == "2":
+elif st.session_state.page == "2":
         st.markdown("<h2 class='neon-wrapper'>🛰️ UNIT 02: TACTICAL RADAR</h2>", unsafe_allow_html=True)
         
         # ส่วนแสดงพิกัดจริง
