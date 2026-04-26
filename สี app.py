@@ -1,233 +1,130 @@
 # =========================================================
-# 🛡️ SYNAPSE COMMAND CENTER - FULL POWER IMPORTS
+# 🛡️ SYNAPSE COMMAND CENTER - FULL POWER VERSION
 # =========================================================
-
 import streamlit as st
 import os
 import time
-import json
-import uuid
 import base64
-import hashlib
-import binascii
-import io
-import math
-import psutil
-from datetime import datetime, date, timedelta
-
-# --- Data & Math ---
-import pandas as pd
-import numpy as np
-import pytz
-import matplotlib.pyplot as plt
-import networkx as nx
-
-# --- Streamlit Core & Components ---
-import streamlit.components.v1 as components
-from streamlit_player import st_player
-from streamlit_js_eval import streamlit_js_eval
-from streamlit_autorefresh import st_autorefresh
-
-# --- Firebase & Security ---
+from datetime import datetime
 import firebase_admin
-from firebase_admin import credentials, firestore, storage, auth
-from firebase_admin import db as realtime_db 
+from firebase_admin import credentials, firestore, storage
 
-# --- AI & Generative ---
-import google.generativeai as genai
-import replicate
+# --- 1. FIREBASE INITIALIZATION ---
+if not firebase_admin._apps:
+    try:
+        cred_info = dict(st.secrets["firebase_service_account"])
+        cred = credentials.Certificate(cred_info)
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': st.secrets["firebase_config"]["storageBucket"],
+            'databaseURL': st.secrets["firebase_config"].get("databaseURL", "")
+        })
+    except: pass
 
-# --- Multimedia & Audio ---
-import librosa
-import soundfile as sf
-from pydub import AudioSegment
-from gtts import gTTS
-try:
-    import moviepy.editor as mp
-except ImportError:
-    import moviepy as mp
-from PIL import Image 
+# --- 2. CONFIG & THEME ---
+st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
+primary_neon = "#FFD700"  # สีทองที่ลูกพี่ชอบ
 
-# --- Location & Maps ---
-import folium
-from streamlit_folium import st_folium
-from geopy.geocoders import Nominatim
-from timezonefinder import TimezoneFinder
-import osmnx as ox
+# ฟังก์ชันแปลงรูปโลโก้
+def get_base64(file):
+    try:
+        with open(file, "rb") as f: return base64.b64encode(f.read()).decode()
+    except: return None
 
-# --- Networking ---
-import requests
+logo_data = get_base64("logo1.png")
 
-# --- ปรับแต่ง UI & Animation ---
-st.set_page_config(page_title="SYNAPSE", layout="wide")
-
-# >>> [จุดปรับขนาดตัวหนังสือ] <<< 
-synapse_size = "30px"  # ขนาดคำว่า SYNAPSE
-motto_size = "30px"     # ขนาดคำว่า อยู่นิ่งๆไม่เจ็บตัว
-slogan_glow_speed = "5s" # ความเร็วการวิ่งของสี
-
+# --- 3. CUSTOM CSS (หนา 4px + โยกสะบัด) ---
 st.markdown(f"""
     <style>
-    /* ลบส่วนเกิน Streamlit */
-    #MainMenu {{ visibility: hidden; }}
-    footer {{ visibility: hidden; }}
-    header {{ visibility: hidden; }}
-    .stApp {{ background-color: #000000; }}
+    #MainMenu, footer, header {{visibility: hidden;}}
+    .stApp {{ background-color: #000; }}
 
     /* โลโก้เต้น */
     .logo-container {{
-        display: flex;
-        justify-content: center;
-        animation: logo-dance 2s ease-in-out infinite;
+        display: flex; justify-content: center;
+        animation: logo-dance 3s ease-in-out infinite;
+        margin-bottom: 20px;
     }}
     @keyframes logo-dance {{
-        0% {{ transform: translateY(0px) rotate(0deg); }}
-        50% {{ transform: translateY(-15px) rotate(2deg); }}
-        100% {{ transform: translateY(0px) rotate(0deg); }}
+        0%, 100% {{ transform: translateY(0); }}
+        50% {{ transform: translateY(-15px); }}
     }}
 
-    /* สโลแกน 7 สีสะท้อนแสง */
+    /* สโลแกนนีออนโยกสะบัด */
     .neon-wrapper {{
         text-align: center;
-        font-family: 'Courier New', Courier, monospace;
+        font-family: 'Courier New', monospace;
         font-weight: bold;
-        background: linear-gradient(to right, #FF3131, #FF5E33, #FFF01F, #0FFF50, #00F3FF, #1F51FF, #FF44CC);
+        background: linear-gradient(to right, #FF3131, #FFF01F, #00F3FF, #FF44CC);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        animation: rainbow-glow {slogan_glow_speed} linear infinite;
-        line-height: 1.1;
-        margin-bottom: 40px;
+        animation: rainbow-glow 3s linear infinite, slogan-shake 2s ease-in-out infinite;
     }}
-
-    .synapse-title {{
-        font-size: {synapse_size};
-        letter-spacing: 15px;
-        display: block;
+    @keyframes slogan-shake {{
+        0%, 100% {{ transform: scale(1) rotate(0); }}
+        50% {{ transform: scale(1.1) rotate(2deg); }}
     }}
-
-    .motto-text {{
-        font-size: {motto_size};
-        letter-spacing: 5px;
-        display: block;
-    }}
-
     @keyframes rainbow-glow {{
-        0% {{ filter: hue-rotate(0deg) drop-shadow(0 0 10px #00F3FF); }}
-        100% {{ filter: hue-rotate(360deg) drop-shadow(0 0 10px #00F3FF); }}
+        0% {{ filter: hue-rotate(0deg) drop-shadow(0 0 10px {primary_neon}); }}
+        100% {{ filter: hue-rotate(360deg) drop-shadow(0 0 10px {primary_neon}); }}
     }}
 
-    /* ปุ่มย้อนกลับ */
-    .stButton > button[key="back_home"] {{
-        border: 3px solid #FF3131 !important;
-        color: #FF3131 !important;
+    /* ปุ่ม UNIT หนา 4px สีทอง */
+    button[kind="secondary"] {{
         background-color: transparent !important;
-        border-radius: 50px !important;
+        color: {primary_neon} !important;
+        border: 4px solid {primary_neon} !important;
+        border-radius: 15px !important;
+        height: 70px !important;
         font-weight: bold !important;
-        box-shadow: 0 0 15px #FF3131;
+        box-shadow: 0 0 15px {primary_neon}, inset 0 0 10px {primary_neon} !important;
+        transition: 0.3s;
+    }}
+    button[kind="secondary"]:hover {{
+        background-color: {primary_neon} !important;
+        color: #000 !important;
+        box-shadow: 0 0 30px {primary_neon} !important;
     }}
     </style>
 """, unsafe_allow_html=True)
-# =========================================================
-# 🏠 ZONE: HEADER (LOGO DANCE + NEON SHAKE)
-# =========================================================
 
-primary_neon = "#FFD700"  # สีทอง Golden Topaz
+# --- 4. HEADER ---
+if logo_data:
+    st.markdown(f'''
+        <div class="logo-container">
+            <img src="data:image/png;base64,{logo_data}" style="width:200px; filter: drop-shadow(0 0 20px {primary_neon});">
+        </div>''', unsafe_allow_html=True)
 
-if 'logo_base64' in locals() and logo_base64:
-    # จัดวางแบบเว้นระยะห่างพิเศษ ไม่ให้ทับกันแน่นอน
-    st.markdown(f"""
-        <div style="text-align: center; width: 100%; padding-top: 30px;">
-            
-            <div class="logo-container" style="margin-bottom: 60px !important;">
-                <img src="data:image/png;base64,{logo_base64}" 
-                     style="width:280px; filter: drop-shadow(0 0 25px {primary_neon}); 
-                            border-radius: 20px; position: relative;">
-            </div>
-            
-            <div class="neon-wrapper" style="display: block; margin-top: 20px;">
-                <span class="synapse-title" style="font-size:{synapse_size}; display: block; line-height: 1.2;">SYNAPSE</span>
-                <span class="motto-text" style="font-size:{motto_size}; display: block; line-height: 1.2;">อยู่นิ่งๆ ไม่เจ็บตัว</span>
-            </div>
-            
-        </div>
-    """, unsafe_allow_html=True)
-else:
-    # กรณีหาไฟล์รูปไม่เจอ ให้โชว์แค่ตัวหนังสือโยกๆ
-    st.markdown(f"""
-        <div class="neon-wrapper" style="text-align: center; padding-top: 50px;">
-            <span class="synapse-title" style="font-size:{synapse_size}; display: block;">SYNAPSE</span>
-            <span class="motto-text" style="font-size:{motto_size}; display: block;">อยู่นิ่งๆ ไม่เจ็บตัว</span>
-        </div>
-    """, unsafe_allow_html=True)
+st.markdown(f'''
+    <div class="neon-wrapper">
+        <div style="font-size:50px; letter-spacing:10px;">SYNAPSE</div>
+        <div style="font-size:25px;">อยู่นิ่งๆ ไม่เจ็บตัว</div>
+    </div>''', unsafe_allow_html=True)
 
-# =========================================================
-# 📟 ZONE: NAVIGATION SYSTEM
-# =========================================================
-
+# --- 5. NAVIGATION HUB ---
 if 'page' not in st.session_state: st.session_state.page = "HOME"
 
 if st.session_state.page == "HOME":
-    # 1. รหัสสีทองนีออน
-    gold_neon = "#FF0738" 
-    
-    # 2. CSS แบบล็อคเป้า (ใช้แบคสแลชคลุมปีกกาเพื่อกัน Python Error)
-    st.markdown(f"""
-        <style>
-        /* ล็อคเป้าทุกปุ่มที่มีคำว่า UNIT */
-        button[kind="secondary"] {{
-            background-color: transparent !important;
-            color: {gold_neon} !important;
-            border: 2px solid {gold_neon} !important; /* ความหนา 2px */
-            border-radius: 15px !important;
-            height: 65px !important;
-            font-weight: bold !important;
-            font-size: 20px !important;
-            text-transform: uppercase !important;
-            /* เพิ่มแสงฟุ้งสีทอง */
-            box-shadow: 0 0 15px {gold_neon}, inset 0 0 10px {gold_neon} !important;
-            transition: all 0.3s ease-in-out !important;
-            margin-bottom: 10px !important;
-        }}
-
-        /* เอฟเฟกต์ตอนเอาเมาส์วาง/กด */
-        button[kind="secondary"]:hover {{
-            background-color: {gold_neon} !important;
-            color: #000000 !important;
-            box-shadow: 0 0 30px {gold_neon}, 0 0 60px {gold_neon} !important;
-            transform: translateY(-3px) !important;
-        }}
-        
-        /* แก้ไขระยะห่างระหว่างคอลัมน์ให้ดูเต็มจอ */
-        [data-testid="column"] {{
-            padding: 5px !important;
-        }}
-        </style>
-    """, unsafe_allow_html=True)
-
-    # 3. สร้างปุ่ม 20 ห้อง (เรียงลำดับ 01-20 ให้สวยๆ)
+    st.write("##")
     cols = st.columns(4)
     for i in range(1, 21):
         with cols[(i-1)%4]:
             if st.button(f"UNIT {i:02d}", key=f"u{i}", use_container_width=True):
                 st.session_state.page = str(i)
                 st.rerun()
-
-
 else:
-    # --- ปุ่มกลับ (Back Button) และเนื้อหาในหน้า UNIT ---
-    col_back, col_title = st.columns([1, 4])
-    with col_back:
-        # ใช้ CSS class 'back-btn' ที่เราเขียนไว้ในส่วนหัว
-        if st.button("⬅️ HUB", key="back_home"):
-            st.session_state.page = "HOME"
-            st.rerun()
-    with col_title:
-        st.markdown(f"<h2 style='color:#0F26D3; text-shadow: 0 0 10px #FF0738;'>⚡ UNIT {st.session_state.page} ONLINE</h2>", unsafe_allow_html=True)
+    # ปุ่มกลับหน้าหลักแบบเท่ๆ
+    if st.button("⬅️ BACK TO HUB"):
+        st.session_state.page = "HOME"
+        st.rerun()
     
-    st.markdown("---")
-    
-    # พื้นที่เขียนโค้ดแต่ละห้อง
+    st.markdown(f"### ⚡ UNIT {st.session_state.page} ONLINE")
+    st.write("---")
+
+    # --- โซนเขียนโค้ดแต่ละห้อง ---
     if st.session_state.page == "1":
-        st.write("ระบบ Unit 01 กำลังทำงาน...")
+        st.write("ระบบเรดาร์ (Radar) ใส่ตรงนี้")
+    elif st.session_state.page == "2":
+        st.write("ระบบสแกนเนอร์ (Scanner) ใส่ตรงนี้")
+    # ... ใส่ให้ครบ 20 ...
 
-
+st.caption(f"SYNAPSE OS v4.2 | {datetime.now().strftime('%H:%M:%S')}")
