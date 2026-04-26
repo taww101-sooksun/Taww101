@@ -185,9 +185,145 @@ else:
     # =========================================================
 
     if st.session_state.page == "1":
-        # --- [ วางโค้ดเพลง UNIT 01 ตรงนี้ ] ---
-        st.write("🎧 ระบบเครื่องเสียงกำลังทำงาน...")
-        # ยกไส้ในของหน้า 1 เดิมมาใส่
+            # ==========================================
+    # 🎵 UNIT 01: DJ STATION (MUSIC PLAYER)
+    # ==========================================
+    if st.session_state.page == "1":
+        st.markdown("<h2 class='neon-wrapper' style='font-size:30px;'>🎧 SYNAPSE DJ STATION V.3</h2>", unsafe_allow_html=True)
+        
+        # 1. ดึงรายชื่อไฟล์เพลงในโฟลเดอร์
+        all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
+        
+        if not all_songs:
+            st.warning("⚠️ ไม่พบไฟล์ .mp3 ในระบบ กรุณาอัปโหลดไฟล์เพลงไว้ในโฟลเดอร์เดียวกับโค้ด")
+        else:
+            # 2. ส่วนเลือกเพลงแยก 2 ฝั่ง
+            col_sel_a, col_sel_b = st.columns(2)
+            with col_sel_a:
+                song_a = st.selectbox("💿 DECK A (LEFT)", ["-- Select --"] + all_songs, key="sa")
+            with col_sel_b:
+                song_b = st.selectbox("💿 DECK B (RIGHT)", ["-- Select --"] + all_songs, key="sb")
+
+            # แปลงไฟล์เป็น Base64
+            data_a = get_base64(song_a) if song_a != "-- Select --" else ""
+            data_b = get_base64(song_b) if song_b != "-- Select --" else ""
+
+            # 3. HTML & JS Mixer Engine (Visualizer + Control)
+            mixer_html = f"""
+            <div style="background: #000; border: 2px solid {primary_neon}; border-radius: 20px; padding: 15px; font-family: monospace;">
+                
+                <marquee style="color: {primary_neon}; margin-bottom: 10px;"> 
+                    Now Playing Deck A: {song_a} | Deck B: {song_b} --- Synapse High-Res Audio System --- 
+                </marquee>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div style="border: 1px solid {primary_neon}; padding: 10px; border-radius: 15px; text-align: center;">
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; color: {primary_neon};">
+                            <span id="curA">00:00</span><span id="remA">-00:00</span>
+                        </div>
+                        <canvas id="canvasA" style="width: 100%; height: 60px; background: #111; margin: 5px 0; border-radius:5px;"></canvas>
+                        <input type="range" id="volA" min="0" max="1" step="0.01" value="0.7" style="width: 100%; accent-color: {primary_neon};">
+                        <div style="margin-top: 10px;">
+                            <button onclick="play('A')" style="background:{primary_neon}; border:none; padding:5px 15px; border-radius:5px; color:#000; font-weight:bold; cursor:pointer;">PLAY A</button>
+                            <button onclick="pause('A')" style="background:none; border:1px solid {primary_neon}; color:{primary_neon}; padding:5px 15px; border-radius:5px; cursor:pointer;">PAUSE</button>
+                        </div>
+                    </div>
+
+                    <div style="border: 1px solid #FF44CC; padding: 10px; border-radius: 15px; text-align: center;">
+                        <div style="display: flex; justify-content: space-between; font-size: 10px; color: #FF44CC;">
+                            <span id="curB">00:00</span><span id="remB">-00:00</span>
+                        </div>
+                        <canvas id="canvasB" style="width: 100%; height: 60px; background: #111; margin: 5px 0; border-radius:5px;"></canvas>
+                        <input type="range" id="volB" min="0" max="1" step="0.01" value="0.7" style="width: 100%; accent-color: #FF44CC;">
+                        <div style="margin-top: 10px;">
+                            <button onclick="play('B')" style="background:#FF44CC; border:none; padding:5px 15px; border-radius:5px; color:#fff; font-weight:bold; cursor:pointer;">PLAY B</button>
+                            <button onclick="pause('B')" style="background:none; border:1px solid #FF44CC; color:#FF44CC; padding:5px 15px; border-radius:5px; cursor:pointer;">PAUSE</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:20px; text-align:center;">
+                    <small style="color:#888;">CROSSFADER (A <-> B)</small><br>
+                    <input type="range" id="fader" min="0" max="1" step="0.01" value="0.5" style="width: 80%; accent-color: white;">
+                </div>
+
+                <audio id="audioA" src="data:audio/mp3;base64,{data_a}" crossorigin="anonymous"></audio>
+                <audio id="audioB" src="data:audio/mp3;base64,{data_b}" crossorigin="anonymous"></audio>
+
+                <script>
+                    const audA = document.getElementById('audioA');
+                    const audB = document.getElementById('audioB');
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const fader = document.getElementById('fader');
+                    
+                    function setupVisualizer(audioElem, canvasID, color) {{
+                        const src = ctx.createMediaElementSource(audioElem);
+                        const analyser = ctx.createAnalyser();
+                        const canvas = document.getElementById(canvasID);
+                        const canvasCtx = canvas.getContext("2d");
+
+                        src.connect(analyser);
+                        analyser.connect(ctx.destination);
+                        analyser.fftSize = 256;
+
+                        const bufferLength = analyser.frequencyBinCount;
+                        const dataArray = new Uint8Array(bufferLength);
+
+                        function draw() {{
+                            requestAnimationFrame(draw);
+                            analyser.getByteFrequencyData(dataArray);
+                            canvasCtx.fillStyle = "#111";
+                            canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+                            
+                            const barWidth = (canvas.width / bufferLength) * 2;
+                            let x = 0;
+                            for(let i = 0; i < bufferLength; i++) {{
+                                let barHeight = dataArray[i] / 4;
+                                canvasCtx.fillStyle = color;
+                                canvasCtx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                                x += barWidth + 1;
+                            }}
+                        }}
+                        draw();
+                    }}
+
+                    let setupA = false, setupB = false;
+                    function play(deck) {{
+                        if (ctx.state === 'suspended') ctx.resume();
+                        if (deck === 'A') {{
+                            if(!setupA) {{ setupVisualizer(audA, 'canvasA', '{primary_neon}'); setupA = true; }}
+                            audA.play();
+                        }} else {{
+                            if(!setupB) {{ setupVisualizer(audB, 'canvasB', '#FF44CC'); setupB = true; }}
+                            audB.play();
+                        }}
+                    }}
+                    function pause(deck) {{ deck === 'A' ? audA.pause() : audB.pause(); }}
+
+                    // Link fader to volumes
+                    fader.oninput = () => {{
+                        audA.volume = (1 - fader.value) * document.getElementById('volA').value;
+                        audB.volume = fader.value * document.getElementById('volB').value;
+                    }};
+
+                    function updateTime(aud, curID, remID) {{
+                        aud.ontimeupdate = () => {{
+                            let cM = Math.floor(aud.currentTime/60), cS = Math.floor(aud.currentTime%60);
+                            document.getElementById(curID).innerText = (cM<10?'0'+cM:cM)+":"+(cS<10?'0'+cS:cS);
+                            let r = aud.duration - aud.currentTime;
+                            if(!isNaN(r)) {{
+                                let rM = Math.floor(r/60), rS = Math.floor(r%60);
+                                document.getElementById(remID).innerText = "-"+(rM<10?'0'+rM:rM)+":"+(rS<10?'0'+rS:rS);
+                            }}
+                        }};
+                    }}
+                    updateTime(audA, 'curA', 'remA');
+                    updateTime(audB, 'curB', 'remB');
+                </script>
+            </div>
+            """
+            components.html(mixer_html, height=450)
+            st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Sound Module v4.2")
 
     elif st.session_state.page == "2":
         # --- [ วางโค้ด Radar/Chat UNIT 02 ตรงนี้ ] ---
