@@ -256,7 +256,7 @@ else:
     # =========================================================
 
     if st.session_state.page == "1":
-        st.markdown("<h1 class='neon-title-unit'>🎵 : MP3</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 class='neon-title-unit'>🇹🇭 MP3</h1>", unsafe_allow_html=True)
         
         # --- 1. สแกนไฟล์เพลง (.mp3) จากหน้าหลัก ---
         music_files = [f for f in os.listdir(".") if f.endswith(".mp3")]
