@@ -251,11 +251,12 @@ else:
             st.session_state.page = "HOME"
             st.rerun()
     
+
     # =========================================================
     # 📥 โซนจัดการห้องรบ (เพิ่มเติมต่อจากเดิม)
     # =========================================================
     
-elif st.session_state.page == "2":
+    elif st.session_state.page == "2":
         st.markdown("<h2 class='neon-wrapper'>🛰️ UNIT 02: TACTICAL RADAR</h2>", unsafe_allow_html=True)
         
         # ส่วนแสดงพิกัดจริง
@@ -317,3 +318,4 @@ elif st.session_state.page == "2":
                 st.dataframe(scan_data, use_container_width=True)
             else:
                 st.success("✅ ไม่พบรหัสผิดปกติในระยะที่กำหนด (สถานะ: อยู่นิ่งๆ ไม่เจ็บตัว)")
+
