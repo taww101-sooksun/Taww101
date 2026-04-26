@@ -243,24 +243,29 @@ if st.session_state.page == "HOME":
             if st.button(btn_label, key=f"u{i}", use_container_width=True):
                 st.session_state.page = str(i)
                 st.rerun()
-        # =========================================================
+else:
+    # --- [ปุ่มกลับหน้าหลัก] แถบควบคุมด้านบนในทุกห้อง ---
+    c_back, c_title = st.columns([1, 4])
+    with c_back:
+        if st.button("⬅️ HUB", use_container_width=True):
+            st.session_state.page = "HOME"
+            st.rerun()
+    
+    # =========================================================
     # 📥 โซนจัดการห้องรบ (UNIT 01 - 11)
     # =========================================================
 
     if st.session_state.page == "1":
         st.markdown("<h2 class='neon-wrapper'>🎵 UNIT 01: DJ STATION</h2>", unsafe_allow_html=True)
         st.info("🎧 กำลังโหลดระบบ Mixer และ Visualizer ประสิทธิภาพสูง...")
-        # (โค้ด DJ เดิมของพี่ที่มิกซ์ Deck A/B ใส่ตรงนี้ได้เลย)
 
     elif st.session_state.page == "2":
         st.markdown("<h2 class='neon-wrapper'>🛰️ UNIT 02: TACTICAL RADAR</h2>", unsafe_allow_html=True)
         st.info("📡 กำลังสแกนพิกัดดาวเทียมและคำนวณระยะห่าง AGENTS...")
-        # (โค้ด RADAR ที่มีแผนที่ Folium ใส่ตรงนี้)
 
     elif st.session_state.page == "3":
         st.markdown("<h2 class='neon-wrapper'>🔮 UNIT 03: TRUTH LOGIC</h2>", unsafe_allow_html=True)
         st.info("🧬 ระบบถอดรหัสรหัสความจริงและแผนที่พิกัดกาลเวลา...")
-        # (โค้ดคำนวณรหัสวันเกิด/ข้างขึ้นข้างแรม ใส่ตรงนี้)
 
     elif st.session_state.page == "4":
         st.markdown("<h2 class='neon-wrapper'>⚡ UNIT 04: SENSOR SCAN</h2>", unsafe_allow_html=True)
@@ -293,3 +298,9 @@ if st.session_state.page == "HOME":
     elif st.session_state.page == "11":
         st.markdown("<h2 class='neon-wrapper'>🏴 11: COMMAND POST</h2>", unsafe_allow_html=True)
         st.info("🏁 หน้าสรุปสถานะภารกิจทั้งหมดในศูนย์บัญชาการ...")
+
+# =========================================================
+# 🛰️ FOOTER STATS
+# =========================================================
+st.write("---")
+st.caption(f"SYNAPSE OS v4.2 | AGENT STATUS: ONLINE | {datetime.now().strftime('%H:%M:%S')}")
