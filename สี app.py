@@ -256,9 +256,168 @@ else:
     # =========================================================
 
     if st.session_state.page == "1":
-        st.markdown("<h2 class='neon-wrapper'>🎵 UNIT 01: DJ STATION</h2>", unsafe_allow_html=True)
-        st.info("🎧 กำลังโหลดระบบ Mixer และ Visualizer ประสิทธิภาพสูง...")
+        # ส่วนที่ 1: การตั้งค่าหัวข้อและสไตล์ Neon
+        st.markdown(f"""
+            <style>
+            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+            .neon-title-unit {{
+                font-family: 'Orbitron', sans-serif;
+                color: #fff;
+                text-align: center;
+                text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
+                font-size: 1.8rem;
+                margin-bottom: 20px;
+                letter-spacing: 3px;
+            }}
+            </style>
+            <h1 class="neon-title-unit">🎵 UNIT 01: DJ STATION</h1>
+        """, unsafe_allow_html=True)
 
+        # ส่วนที่ 2: HTML/JS Engine (Auto-Mix + Continuous Play)
+        html_code = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+                body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
+                .neon-card { border: 2px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
+                .visualizer-box { height: 140px; background: #050505; border-radius: 15px; border: 1px solid #222; }
+                .deck { padding: 12px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px; transition: 0.5s; }
+                .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; background: rgba(0,243,255,0.05); }
+                .btn-mix { 
+                    background: linear-gradient(45deg, #ff00de, #00f3ff);
+                    color: white; font-weight: bold; padding: 12px; border-radius: 10px;
+                    text-transform: uppercase; letter-spacing: 2px; transition: 0.3s;
+                    box-shadow: 0 0 15px rgba(255,0,222,0.4);
+                }
+                .btn-mix:hover { transform: scale(1.02); box-shadow: 0 0 25px rgba(0,243,255,0.6); }
+                .progress-bar { height: 4px; background: #222; border-radius: 10px; overflow: hidden; }
+                .progress-inner { height: 100%; width: 0%; background: linear-gradient(90deg, #ff00de, #ff8c00); }
+            </style>
+        </head>
+        <body>
+            <div class="max-w-md mx-auto p-4 neon-card rounded-3xl">
+                <canvas id="scope" class="visualizer-box w-full mb-4"></canvas>
+                <div id="cardA" class="deck">
+                    <div class="flex justify-between text-[10px] mb-1">
+                        <span class="text-pink-500 font-bold">DECK A</span>
+                        <span id="timeA" class="font-mono text-gray-400">00:00</span>
+                    </div>
+                    <input type="file" id="inA" class="hidden" onchange="handleFile(this.files[0], 'A')">
+                    <button onclick="document.getElementById('inA').click()" class="text-[9px] border border-gray-600 px-2 py-1 rounded">LOAD A</button>
+                    <div id="nameA" class="text-[10px] mt-1 truncate text-gray-500">Wait for music...</div>
+                    <div class="progress-bar mt-2"><div id="barA" class="progress-inner"></div></div>
+                </div>
+                <div id="cardB" class="deck">
+                    <div class="flex justify-between text-[10px] mb-1">
+                        <span class="text-cyan-400 font-bold">DECK B</span>
+                        <span id="timeB" class="font-mono text-gray-400">00:00</span>
+                    </div>
+                    <input type="file" id="inB" class="hidden" onchange="handleFile(this.files[0], 'B')">
+                    <button onclick="document.getElementById('inB').click()" class="text-[9px] border border-gray-600 px-2 py-1 rounded">LOAD B</button>
+                    <div id="nameB" class="text-[10px] mt-1 truncate text-gray-500">Wait for music...</div>
+                    <div class="progress-bar mt-2"><div id="barB" class="progress-inner" style="background: #00f3ff;"></div></div>
+                </div>
+                <button onclick="startMix()" class="btn-mix w-full mt-2">🔥 START AUTO-MIX</button>
+                <div id="status" class="text-[9px] text-center mt-3 text-gray-600 uppercase tracking-widest">Engine Ready</div>
+            </div>
+
+            <script>
+                let ctx, analyser, songA, songB, gainA, gainB, sourceA, sourceB;
+                let active = 'A', isPlaying = false, data;
+
+                function init() {
+                    if (!ctx) {
+                        ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        analyser = ctx.createAnalyser();
+                        analyser.fftSize = 256;
+                        data = new Uint8Array(analyser.frequencyBinCount);
+                        render();
+                    }
+                }
+
+                async function handleFile(file, side) {
+                    init();
+                    document.getElementById('name'+side).innerText = "Loading...";
+                    const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
+                    if(side === 'A') songA = buffer; else songB = buffer;
+                    document.getElementById('name'+side).innerText = file.name;
+                }
+
+                function render() {
+                    requestAnimationFrame(render);
+                    if(!analyser) return;
+                    analyser.getByteFrequencyData(data);
+                    const can = document.getElementById('scope');
+                    const c = can.getContext('2d');
+                    c.clearRect(0,0,can.width,can.height);
+                    let bw = (can.width / data.length) * 2.5;
+                    let x = 0;
+                    for(let i=0; i<data.length; i++) {
+                        let h = (data[i]/255) * can.height;
+                        c.fillStyle = `hsl(${(i * 3 + Date.now()/50)%360}, 100%, 50%)`;
+                        c.fillRect(x, can.height - h, bw - 1, h);
+                        x += bw;
+                    }
+                    if(isPlaying) {
+                        updateUI('A', songA);
+                        updateUI('B', songB);
+                    }
+                }
+
+                function startMix() {
+                    if(!songA || !songB) return alert("อาจารย์ โหลดเพลงให้ครบ A/B ก่อน!");
+                    if(isPlaying) return;
+                    sourceA = ctx.createBufferSource(); sourceA.buffer = songA;
+                    gainA = ctx.createGain(); sourceA.connect(gainA).connect(analyser).connect(ctx.destination);
+                    sourceB = ctx.createBufferSource(); sourceB.buffer = songB;
+                    gainB = ctx.createGain(); gainB.gain.value = 0;
+                    sourceB.connect(gainB).connect(analyser).connect(ctx.destination);
+                    sourceA.loop = true; sourceB.loop = true;
+                    sourceA.start(0); sourceB.start(0);
+                    isPlaying = true;
+                    document.getElementById('cardA').classList.add('deck-active');
+                }
+
+                function updateUI(s, buffer) {
+                    let bar = document.getElementById('bar'+s);
+                    let time = document.getElementById('time'+s);
+                    let p = (ctx.currentTime % buffer.duration) / buffer.duration;
+                    bar.style.width = (p * 100) + "%";
+                    let rem = buffer.duration - (ctx.currentTime % buffer.duration);
+                    let m = Math.floor(rem/60), sec = Math.floor(rem%60);
+                    time.innerText = (m<10?'0':'')+m+":"+(sec<10?'0':'')+sec;
+                    if(active === s && rem < 5) crossfade();
+                }
+
+                function crossfade() {
+                    let next = (active === 'A' ? 'B' : 'A');
+                    let now = ctx.currentTime;
+                    let dur = 4;
+                    if(active === 'A') {
+                        gainA.gain.linearRampToValueAtTime(0, now + dur);
+                        gainB.gain.linearRampToValueAtTime(1, now + dur);
+                        document.getElementById('cardA').classList.remove('deck-active');
+                        document.getElementById('cardB').classList.add('deck-active');
+                    } else {
+                        gainB.gain.linearRampToValueAtTime(0, now + dur);
+                        gainA.gain.linearRampToValueAtTime(1, now + dur);
+                        document.getElementById('cardB').classList.remove('deck-active');
+                        document.getElementById('cardA').classList.add('deck-active');
+                    }
+                    active = next;
+                    document.getElementById('status').innerText = "Auto-Mixing: Deck " + active;
+                }
+            </script>
+        </body>
+        </html>
+        """
+        st.components.v1.html(html_code, height=600)
+        st.info("🎧 โหลดเพลงลง Deck A และ B จากนั้นกด Start เพื่อให้ระบบมิกซ์เพลงต่อเนื่องอัตโนมัติ")
+
+    
+    
     elif st.session_state.page == "2":
         st.markdown("<h2 class='neon-wrapper'>🛰️ UNIT 02: TACTICAL RADAR</h2>", unsafe_allow_html=True)
         st.info("📡 กำลังสแกนพิกัดดาวเทียมและคำนวณระยะห่าง AGENTS...")
