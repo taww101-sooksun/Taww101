@@ -128,32 +128,49 @@ st.markdown(f"""
     </style>
 """, unsafe_allow_html=True)
 # =========================================================
-# 🏠 ZONE: HEADER (FIXED & NO OVERLAP)
+# 🏠 ZONE: HEADER (DEBUG MODE - ตามหาโลโก้)
 # =========================================================
 
-primary_neon = "#FFD700" # สีทองของลูกพี่
+primary_neon = "#FFD700" 
 
-# ตรวจสอบก่อนว่ามี logo_base64 ไหม (ป้องกันแอปพัง)
-if 'logo_base64' in locals() and logo_base64:
+# 1. ฟังก์ชันดึงรูปที่ "ถึก" กว่าเดิม
+def get_image_base64(file_path):
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "rb") as img_file:
+                return base64.b64encode(img_file.read()).decode()
+        except Exception as e:
+            st.error(f"เกิดข้อผิดพลาดในการอ่านไฟล์: {e}")
+            return None
+    else:
+        # ถ้าหาไม่เจอ ให้โชว์คำเตือนบนหน้าแอปเลยลูกพี่จะได้รู้
+        st.warning(f"⚠️ ไม่พบไฟล์ชื่อ '{file_path}' ในโฟลเดอร์หลัก")
+        return None
+
+# เรียกใช้งาน
+logo_base64 = get_image_base64("logo1.png")
+
+# 2. ส่วนแสดงผล
+if logo_base64:
     st.markdown(f"""
-        <div style="text-align: center; width: 100%; padding: 20px 0;">
-            <div class="logo-container" style="display: block; margin-bottom: 50px !important;">
+        <div style="text-align: center; width: 100%;">
+            <div class="logo-container" style="margin-bottom: 50px;">
                 <img src="data:image/png;base64,{logo_base64}" 
-                     style="width:220px; filter: drop-shadow(0 0 20px {primary_neon}); position: relative; z-index: 99;">
+                     style="width:220px; filter: drop-shadow(0 0 20px {primary_neon});">
             </div>
             
-            <div class="neon-wrapper" style="display: block; position: relative; z-index: 1;">
-                <span class="synapse-title" style="font-size:{synapse_size}; display: block;">SYNAPSE</span>
-                <span class="motto-text" style="font-size:{motto_size}; display: block;">อยู่นิ่งๆ ไม่เจ็บตัว</span>
+            <div class="neon-wrapper">
+                <span class="synapse-title" style="font-size:{synapse_size};">SYNAPSE</span>
+                <span class="motto-text" style="font-size:{motto_size};">อยู่นิ่งๆ ไม่เจ็บตัว</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
 else:
-    # กรณีหาโลโก้ไม่เจอ
+    # ถ้าโลโก้หาย จะโชว์แค่สโลแกน (และมี Warning ด้านบนบอกสาเหตุ)
     st.markdown(f"""
-        <div class="neon-wrapper" style="text-align: center; width: 100%;">
-            <span class="synapse-title" style="font-size:{synapse_size}; display: block;">SYNAPSE</span>
-            <span class="motto-text" style="font-size:{motto_size}; display: block;">อยู่นิ่งๆ ไม่เจ็บตัว</span>
+        <div class="neon-wrapper" style="text-align: center;">
+            <span class="synapse-title" style="font-size:{synapse_size};">SYNAPSE</span>
+            <span class="motto-text" style="font-size:{motto_size};">อยู่นิ่งๆ ไม่เจ็บตัว</span>
         </div>
     """, unsafe_allow_html=True)
 
