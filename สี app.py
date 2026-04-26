@@ -85,19 +85,53 @@ st.markdown(f"""
         100% {{ transform: translateY(0px) rotate(0deg); }}
     }}
 
-    /* สโลแกน 7 สีสะท้อนแสง + ปรับขนาดได้ */
+    # >>> [จุดปรับขนาดตัวหนังสือ] <<< 
+# ผมแยกขนาดชื่อ SYNAPSE กับ สโลแกนออกจากกันให้เลยครับ จะได้คุมง่าย
+synapse_size = "120px"  # ขนาดคำว่า SYNAPSE
+motto_size = "40px"    # ขนาดคำว่า อยู่นิ่งๆ ไม่เจ็บตัว
+
+st.markdown(f"""
+    <style>
     .neon-slogan {{
         font-family: 'Courier New', Courier, monospace;
-        font-size: {slogan_font_size}; /* ดึงค่าจากตัวแปรด้านบน */
-        font-weight: bold;
         text-align: center;
-        letter-spacing: 10px;
+        font-weight: bold;
+        line-height: 1.2; /* ปรับให้บรรทัดไม่ห่างกันเกินไป */
         background: linear-gradient(to right, #FF3131, #FF5E33, #FFF01F, #0FFF50, #00F3FF, #1F51FF, #FF44CC);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         animation: rainbow-glow 3s linear infinite;
-        text-shadow: 0 0 50px rgba(255,255,255,0.3);
         margin-bottom: 50px;
+    }}
+
+    /* เจาะจงขนาดคำว่า SYNAPSE */
+    .synapse-title {{
+        font-size: {synapse_size};
+        letter-spacing: 15px; /* ระยะห่างตัวอักษร */
+        display: block;
+        text-shadow: 0 0 30px rgba(0, 243, 255, 0.5);
+    }}
+
+    /* เจาะจงขนาดสโลแกน */
+    .motto-text {{
+        font-size: {motto_size};
+        letter-spacing: 5px;
+        display: block;
+        margin-top: 10px;
+    }}
+    
+    /* ... (CSS ส่วนอื่นคงเดิม) ... */
+    </style>
+""", unsafe_allow_html=True)
+
+# --- ตอนแสดงผล (เรียกใช้แบบนี้ครับ) ---
+st.markdown(f'''
+    <div class="neon-slogan">
+        <span class="synapse-title">SYNAPSE</span>
+        <span class="motto-text">อยู่นิ่งๆ ไม่เจ็บตัว</span>
+    </div>
+''', unsafe_allow_html=True)
+
     }}
 
     @keyframes rainbow-glow {{
