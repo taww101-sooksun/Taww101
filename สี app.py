@@ -214,41 +214,82 @@ st.markdown(f'''
         <div style="font-size:30px; letter-spacing:6px;">อยู่นิ่งๆไม่เจ็บตัว</div>
     </div>''', unsafe_allow_html=True)
 
-# --- 5. NAVIGATION HUB (10 UNITS SYSTEM) ---
+# --- 5. NAVIGATION HUB (11 UNITS SYSTEM) ---
 if 'page' not in st.session_state: st.session_state.page = "HOME"
 
 if st.session_state.page == "HOME":
     st.write("##")
-    # สร้างปุ่ม 10 ปุ่มแบบอัตโนมัติ (4 คอลัมน์)
-    cols = st.columns(4)
-    for i in range(1, 21):
-        with cols[(i-1)%4]:
-            # ปรับแต่งชื่อปุ่มตามฟังก์ชันหลักที่เราตกลงกัน
-            btn_label = f"UNIT {i:02d}"
-            if i == 1: btn_label = "🎵 UNIT 01: DJ"
-            elif i == 2: btn_label = "📡 UNIT 02: RADAR"
-            elif i == 3: btn_label = "📝 UNIT 03: COLOR"
-            elif i == 4: btn_label = "⚡ UNIT 04: SENSOR"
-            elif i == 5: btn_label = "🔮 UNIT 05: LOGIC"
-            elif i == 6: btn_label = "🛰️ UNIT 06: RADAR"    
-            elif i == 7: btn_label = "📞 UNIT 07: RADAR"
-            elif i == 8: btn_label = "🎨 UNIT 08: COLOR"
-            elif i == 9: btn_label = "⏱️ UNIT 09: SENSOR"
-            elif i == 10: btn_label = "🖼 UNIT 10: LOGIC"
-            elif i == 11: btn_label = "🏴󠁧󠁢󠁥󠁮󠁧󠁿 UNIT 11: RADAR"
+    # สร้างปุ่ม 11 ปุ่ม (จัดวางแบบ 3 หรือ 4 คอลัมน์ให้สมดุล)
+    cols = st.columns(3) 
+    
+    # กำหนดชื่อและไอคอนทั้ง 11 UNIT
+    unit_names = {
+        1: "🎵 01: DJ STATION",
+        2: "🛰️ 02: TACTICAL RADAR",
+        3: "🔮 03: TRUTH LOGIC",
+        4: "⚡ 04: SENSOR SCAN",
+        5: "🎨 05: UI DESIGNER",
+        6: "💬 06: COMMS CENTER",
+        7: "🛠️ 07: DIY MASTER",
+        8: "🧬 08: SYNAPSE CORE",
+        9: "📹 09: MEDIA STUDIO",
+        10: "💾 10: FIREBASE DB",
+        11: "🏴 11: COMMAND POST"
+    }
 
-            
+    for i in range(1, 12):
+        with cols[(i-1)%3]:
+            btn_label = unit_names.get(i, f"UNIT {i:02d}")
             if st.button(btn_label, key=f"u{i}", use_container_width=True):
                 st.session_state.page = str(i)
                 st.rerun()
-else:
-    # --- แถบควบคุมด้านบนในทุกห้อง ---
-    c_back, c_title = st.columns([1, 4])
-    with c_back:
-        if st.button("⬅️ HUB"):
-            st.session_state.page = "HOME"
-            st.rerun()
-    
+        # =========================================================
+    # 📥 โซนจัดการห้องรบ (UNIT 01 - 11)
     # =========================================================
-    # 📥 โซนก๊อปวางโค้ดใหม่ (แยกตามเลขห้อง)
-    # =========================================================
+
+    if st.session_state.page == "1":
+        st.markdown("<h2 class='neon-wrapper'>🎵 UNIT 01: DJ STATION</h2>", unsafe_allow_html=True)
+        st.info("🎧 กำลังโหลดระบบ Mixer และ Visualizer ประสิทธิภาพสูง...")
+        # (โค้ด DJ เดิมของพี่ที่มิกซ์ Deck A/B ใส่ตรงนี้ได้เลย)
+
+    elif st.session_state.page == "2":
+        st.markdown("<h2 class='neon-wrapper'>🛰️ UNIT 02: TACTICAL RADAR</h2>", unsafe_allow_html=True)
+        st.info("📡 กำลังสแกนพิกัดดาวเทียมและคำนวณระยะห่าง AGENTS...")
+        # (โค้ด RADAR ที่มีแผนที่ Folium ใส่ตรงนี้)
+
+    elif st.session_state.page == "3":
+        st.markdown("<h2 class='neon-wrapper'>🔮 UNIT 03: TRUTH LOGIC</h2>", unsafe_allow_html=True)
+        st.info("🧬 ระบบถอดรหัสรหัสความจริงและแผนที่พิกัดกาลเวลา...")
+        # (โค้ดคำนวณรหัสวันเกิด/ข้างขึ้นข้างแรม ใส่ตรงนี้)
+
+    elif st.session_state.page == "4":
+        st.markdown("<h2 class='neon-wrapper'>⚡ UNIT 04: SENSOR SCAN</h2>", unsafe_allow_html=True)
+        st.info("📶 กำลังเตรียมการเชื่อมต่อเซนเซอร์ตรวจจับความเคลื่อนไหวและเสียง...")
+
+    elif st.session_state.page == "5":
+        st.markdown("<h2 class='neon-wrapper'>🎨 UNIT 05: UI DESIGNER</h2>", unsafe_allow_html=True)
+        st.info("🌈 ระบบปรับแต่งโทนสีนีออนและ CSS Interface ขั้นสูง...")
+
+    elif st.session_state.page == "6":
+        st.markdown("<h2 class='neon-wrapper'>💬 UNIT 06: COMMS CENTER</h2>", unsafe_allow_html=True)
+        st.info("🛰️ ระบบสื่อสารเข้ารหัสพร้อมส่งสัญญาณหาศูนย์บัญชาการ...")
+
+    elif st.session_state.page == "7":
+        st.markdown("<h2 class='neon-wrapper'>🛠️ UNIT 07: DIY MASTER</h2>", unsafe_allow_html=True)
+        st.info("🔧 บันทึกงานช่างและการซ่อมบำรุงเชิงกล (PE Pipe / Blower Maintenance)...")
+
+    elif st.session_state.page == "8":
+        st.markdown("<h2 class='neon-wrapper'>🧬 UNIT 08: SYNAPSE CORE</h2>", unsafe_allow_html=True)
+        st.info("🧠 ระบบประมวลผลกลาง AI และการเขียนโค้ดเชิงลึก...")
+
+    elif st.session_state.page == "9":
+        st.markdown("<h2 class='neon-wrapper'>📹 UNIT 09: MEDIA STUDIO</h2>", unsafe_allow_html=True)
+        st.info("🎬 พื้นที่จัดการ Content และวิดีโอ AI ของ AGENT TA...")
+
+    elif st.session_state.page == "10":
+        st.markdown("<h2 class='neon-wrapper'>💾 UNIT 10: FIREBASE DB</h2>", unsafe_allow_html=True)
+        st.info("📂 ตรวจสอบความปลอดภัยฐานข้อมูล Cloud และไฟล์ในระบบ...")
+
+    elif st.session_state.page == "11":
+        st.markdown("<h2 class='neon-wrapper'>🏴 11: COMMAND POST</h2>", unsafe_allow_html=True)
+        st.info("🏁 หน้าสรุปสถานะภารกิจทั้งหมดในศูนย์บัญชาการ...")
