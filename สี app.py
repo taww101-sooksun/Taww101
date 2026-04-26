@@ -71,7 +71,7 @@ if not firebase_admin._apps:
 
 # --- 2. CONFIG & THEME ---
 st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
-primary_neon = "#E1BEE7"  # สีทองที่ลูกพี่ชอบ
+primary_neon = "#F0E68C"  # สีทองที่ลูกพี่ชอบ
 
 # ฟังก์ชันแปลงรูปโลโก้
 def get_base64(file):
@@ -91,7 +91,7 @@ st.markdown(f"""
     .logo-container {{
         display: flex; justify-content: center;
         animation: logo-dance 3s ease-in-out infinite;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
     }}
     @keyframes logo-dance {{
         0%, 100% {{ transform: translateY(0); }}
@@ -140,13 +140,13 @@ st.markdown(f"""
 if logo_data:
     st.markdown(f'''
         <div class="logo-container">
-            <img src="data:image/png;base64,{logo_data}" style="width:200px; filter: drop-shadow(0 0 20px {primary_neon});">
+            <img src="data:image/png;base64,{logo_data}" style="width:100px; filter: drop-shadow(0 0 20px {primary_neon});">
         </div>''', unsafe_allow_html=True)
 
 st.markdown(f'''
     <div class="neon-wrapper">
-        <div style="font-size:40px; letter-spacing:10px;">SYNAPSE</div>
-        <div style="font-size:40px; letter-spacing:10px;">อยู่นิ่งๆไม่เจ็บตัว</div>
+        <div style="font-size:40px; letter-spacing:4px;">SYNAPSE</div>
+        <div style="font-size:40px; letter-spacing:2px;">อยู่นิ่งๆไม่เจ็บตัว</div>
     </div>''', unsafe_allow_html=True)
 
 # --- 5. NAVIGATION HUB ---
