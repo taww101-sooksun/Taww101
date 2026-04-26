@@ -61,19 +61,20 @@ import requests
 # --- ปรับแต่ง UI & Animation ---
 st.set_page_config(page_title="SYNAPSE", layout="wide")
 
-# >>> [จุดปรับขนาดตัวหนังสือสโลแกน] <<< 
-# แก้เลข 35px ให้ใหญ่ขึ้นตามใจชอบเลยครับ
-slogan_font_size = "100px" 
+# >>> [จุดปรับขนาดตัวหนังสือ] <<< 
+synapse_size = "120px"  # ขนาดคำว่า SYNAPSE
+motto_size = "45px"     # ขนาดคำว่า อยู่นิ่งๆ ไม่เจ็บตัว
+slogan_glow_speed = "3s" # ความเร็วการวิ่งของสี
 
 st.markdown(f"""
     <style>
-    /* ลบติ่ง Streamlit */
-    #MainMenu {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    header {{visibility: hidden;}}
+    /* ลบส่วนเกิน Streamlit */
+    #MainMenu {{ visibility: hidden; }}
+    footer {{ visibility: hidden; }}
+    header {{ visibility: hidden; }}
     .stApp {{ background-color: #000000; }}
 
-    /* โลโก้เต้น (Logo Floating Animation) */
+    /* โลโก้เต้น */
     .logo-container {{
         display: flex;
         justify-content: center;
@@ -85,74 +86,44 @@ st.markdown(f"""
         100% {{ transform: translateY(0px) rotate(0deg); }}
     }}
 
-    # >>> [จุดปรับขนาดตัวหนังสือ] <<< 
-# ผมแยกขนาดชื่อ SYNAPSE กับ สโลแกนออกจากกันให้เลยครับ จะได้คุมง่าย
-synapse_size = "120px"  # ขนาดคำว่า SYNAPSE
-motto_size = "40px"    # ขนาดคำว่า อยู่นิ่งๆ ไม่เจ็บตัว
-
-st.markdown(f"""
-    <style>
-    .neon-slogan {{
-        font-family: 'Courier New', Courier, monospace;
+    /* สโลแกน 7 สีสะท้อนแสง */
+    .neon-wrapper {{
         text-align: center;
+        font-family: 'Courier New', Courier, monospace;
         font-weight: bold;
-        line-height: 1.2; /* ปรับให้บรรทัดไม่ห่างกันเกินไป */
         background: linear-gradient(to right, #FF3131, #FF5E33, #FFF01F, #0FFF50, #00F3FF, #1F51FF, #FF44CC);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        animation: rainbow-glow 3s linear infinite;
-        margin-bottom: 50px;
+        animation: rainbow-glow {slogan_glow_speed} linear infinite;
+        line-height: 1.1;
+        margin-bottom: 40px;
     }}
 
-    /* เจาะจงขนาดคำว่า SYNAPSE */
     .synapse-title {{
         font-size: {synapse_size};
-        letter-spacing: 15px; /* ระยะห่างตัวอักษร */
+        letter-spacing: 15px;
         display: block;
-        text-shadow: 0 0 30px rgba(0, 243, 255, 0.5);
     }}
 
-    /* เจาะจงขนาดสโลแกน */
     .motto-text {{
         font-size: {motto_size};
         letter-spacing: 5px;
         display: block;
-        margin-top: 10px;
-    }}
-    
-    /* ... (CSS ส่วนอื่นคงเดิม) ... */
-    </style>
-""", unsafe_allow_html=True)
-
-# --- ตอนแสดงผล (เรียกใช้แบบนี้ครับ) ---
-st.markdown(f'''
-    <div class="neon-slogan">
-        <span class="synapse-title">SYNAPSE</span>
-        <span class="motto-text">อยู่นิ่งๆ ไม่เจ็บตัว</span>
-    </div>
-''', unsafe_allow_html=True)
-
     }}
 
     @keyframes rainbow-glow {{
-        0% {{ filter: hue-rotate(0deg) drop-shadow(0 0 8px #FEDE10); }}
-        100% {{ filter: hue-rotate(360deg) drop-shadow(0 0 8px #00F3FF); }}
+        0% {{ filter: hue-rotate(0deg) drop-shadow(0 0 10px #00F3FF); }}
+        100% {{ filter: hue-rotate(360deg) drop-shadow(0 0 10px #00F3FF); }}
     }}
 
-    /* ปุ่มย้อนกลับ (Back Button) ดีไซน์นีออน */
-    .back-btn {{
-        border: 4px solid #0F26D3 !important;
-        color: #FF0738 !important;
+    /* ปุ่มย้อนกลับ */
+    .stButton > button[key="back_home"] {{
+        border: 3px solid #FF3131 !important;
+        color: #FF3131 !important;
         background-color: transparent !important;
         border-radius: 50px !important;
-        padding: 10px 25px !important;
         font-weight: bold !important;
-        box-shadow: 0 0 10px #FEDE10;
-    }}
-    .back-btn:hover {{
-        background-color: #FF3131 !important;
-        color: #000 !important;
-        box-shadow: 0 0 30px ##FF0738;
+        box-shadow: 0 0 15px #FF3131;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -161,16 +132,20 @@ st.markdown(f'''
 # 🏠 ZONE: HEADER (LOGO DANCE + SLOGAN)
 # =========================================================
 
-# ส่วนของโลโก้เต้น
 st.markdown('<div class="logo-container">', unsafe_allow_html=True)
 try:
-    st.image("logo1.png", width=100)
+    st.image("logo1.png", width=220)
 except:
-    st.write("🛸 [ WAITING FOR LOGO ]")
+    st.write("")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# สโลแกน (ขนาดตามที่ตั้งไว้ด้านบน)
-st.markdown(f'<p class="neon-slogan">SYNAPSE : อยู่นิ่งๆ ไม่เจ็บตัว</p>', unsafe_allow_html=True)
+# แสดงผลแบบแยกชั้น ความใหญ่สะใจแน่นอน
+st.markdown(f'''
+    <div class="neon-wrapper">
+        <span class="synapse-title">SYNAPSE</span>
+        <span class="motto-text">อยู่นิ่งๆ ไม่เจ็บตัว</span>
+    </div>
+''', unsafe_allow_html=True)
 
 # =========================================================
 # 📟 ZONE: NAVIGATION SYSTEM
