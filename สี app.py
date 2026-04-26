@@ -81,7 +81,7 @@ def get_base64(file):
 
 logo_data = get_base64("logo1.png")
 
-# --- 3. CUSTOM CSS (หนา 4px + โยกสะบัด) ---
+# --- 3. CUSTOM CSS (หนา 2px + โยกสะบัด) ---
 st.markdown(f"""
     <style>
     #MainMenu, footer, header {{visibility: hidden;}}
@@ -117,7 +117,7 @@ st.markdown(f"""
         100% {{ filter: hue-rotate(360deg) drop-shadow(0 0 10px {primary_neon}); }}
     }}
 
-    /* ปุ่ม UNIT หนา 4px สีทอง */
+    /* ปุ่ม UNIT หนา 2px สีทอง */
     button[kind="secondary"] {{
         background-color: transparent !important;
         color: {primary_neon} !important;
@@ -140,7 +140,7 @@ st.markdown(f"""
 if logo_data:
     st.markdown(f'''
         <div class="logo-container">
-            <img src="data:image/png;base64,{logo_data}" style="width:150px; filter: drop-shadow(0 0 20px {primary_neon});">
+            <img src="data:image/png;base64,{logo_data}" style="width:150px; filter: drop-shadow(0 0 10px {primary_neon});">
         </div>''', unsafe_allow_html=True)
 
 st.markdown(f'''
