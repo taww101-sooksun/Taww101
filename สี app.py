@@ -334,82 +334,85 @@ else:
         # --- [ วางโค้ดวัดเสียง/สั่น UNIT 04 ตรงนี้ ] ---
         st.write("⚡ กำลังเตรียมเซนเซอร์...")
 
-    # ==========================================
-    # 🔮 UNIT 05: QUANTUM LOGIC - เครื่องถอดรหัสความจริง
-    # ==========================================
     elif st.session_state.page == "5":
-        st.markdown("<h2 class='neon-wrapper' style='font-size:30px;'>🔮 UNIT 05: THE TRUTH DECODER</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 class='neon-wrapper'>🔮 UNIT 05: THE TRUTH SCANNER</h2>", unsafe_allow_html=True)
+
+        # ---------------------------------------------------------
+        # หัวข้อที่ 1: ตรวจสอบพิกัดวันเดี่ยว (Single Day Decoder)
+        # ---------------------------------------------------------
+        st.markdown("### 1️⃣ ตรวจสอบรหัสความจริงรายวัน (1960-2026)")
+        target_date = st.date_input("เลือกวันที่ที่อยากรู้", value=date.today(), 
+                                    min_value=date(1960,1,1), max_value=date(2026,12,31), key="single_d")
         
-        # ส่วนรับข้อมูลจากผู้ใช้
-        st.markdown('<div class="logic-box" style="border-color:#00ff41;">', unsafe_allow_html=True)
-        st.write("### 📅 ป้อนพิกัดวันเวลา (1960 - 2026)")
-        target_date = st.date_input("เลือก วัน/เดือน/ปี ที่ต้องการถอดรหัส", 
-                                    value=date.today(),
-                                    min_value=date(1960, 1, 1),
-                                    max_value=date(2026, 12, 31))
-        st.markdown('</div>', unsafe_allow_html=True)
-
         if target_date:
-            # --- เริ่มขั้นตอนการถอดรหัส (Step-by-Step Logic) ---
-            st.write("---")
-            st.subheader("🛠️ กระบวนการถอดรหัส (Calculation Steps)")
-
-            # STEP 1: หาฐานวัน
-            day_val = target_date.weekday() + 1
-            day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-            day_name = day_names[target_date.weekday()]
-            
-            st.markdown(f"#### **ขั้นที่ 1: ดึงฐานพลังงานรายวัน**")
-            st.write(f"วัน {day_name} ตามหลักสถิติมีค่าเท่ากับ: `{day_val}`")
-            
-            # STEP 2: คำนวณจันทรคติ (ดวงจันทร์)
-            st.markdown(f"#### **ขั้นที่ 2: คำนวณวงโคจรดวงจันทร์ (29.53)**")
-            ref_date = date(1900, 1, 1)
-            diff_days = (target_date - ref_date).days
-            lunar_cycle = 29.530589
-            pos = (diff_days - 0.5) % lunar_cycle
-            
-            is_waxing = pos <= 14.765
-            m_num = int(pos) + 1 if is_waxing else int(pos - 14.765) + 1
-            phase_text = f"{'ขึ้น' if is_waxing else 'แรม'} {m_num} ค่ำ"
-            
-            st.write(f"- จำนวนวันสะสมจากจุดอ้างอิง: `{diff_days}` วัน")
-            st.write(f"- คำนวณตำแหน่งดวงจันทร์: `{diff_days} ÷ 29.53` เหลือเศษเป็นพิกัด: `{pos:.4f}`")
-            st.info(f"📍 สภาวะปัจจุบัน: **{phase_text}** (ค่าตัวแปรดวงจันทร์ = `{m_num}`)")
-
-            # STEP 3: เข้าสูตรสมดุล (Golden Ratio & Vector)
-            st.markdown(f"#### **ขั้นที่ 3: ประมวลผลผ่านค่าสมดุล (1.618)**")
-            
-            if is_waxing:
-                # สูตร Vector สำหรับข้างขึ้น
-                res = math.sqrt((day_val**2) + (m_num**2))
-                formula_desc = f"ใช้สูตรแรงผลักดัน (Vector Energy): √({day_val}² + {m_num}²)"
-                calc_detail = f"√({day_val**2} + {m_num**2}) = √({day_val**2 + m_num**2})"
-            else:
-                # สูตร Golden Ratio สำหรับข้างแรม
-                res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
-                formula_desc = f"ใช้สูตรสมดุลทองคำ (Golden Ratio): ({day_val} × 1.618) ÷ {m_num}"
-                calc_detail = f"({day_val * 1.618:.3f}) ÷ {m_num}"
-
-            st.write(f"**ตรรกะที่ใช้:** {formula_desc}")
-            st.code(f"คำนวณ: {calc_detail}", language="python")
-
-            # STEP 4: สรุปผลลัพธ์
-            st.markdown(f"#### **ขั้นที่ 4: รหัสความจริงที่ได้ (Final Result)**")
+            d = get_detailed_logic(target_date)
             st.markdown(f"""
-                <div style="text-align:center; padding:20px; border:3px solid #00ff41; border-radius:15px; background:rgba(0,255,65,0.1);">
-                    <h1 style="color:#00ff41; margin:0;">{res:.4f}</h1>
-                    <p style="color:#ccc;">นี่คือ 'รหัสความสั่นสะเทือน' ของวันที่คุณเลือก</p>
+                <div class="logic-box">
+                    <b>วันที่:</b> {target_date.strftime('%d/%m/%Y')} (วัน{d['day_name']}) <br>
+                    <b>สภาวะดาราศาสตร์:</b> {d['phase']} (รอบดวงจันทร์ 29.53)<br>
+                    <b>รหัสที่คำนวณได้:</b> <span style="color:#00ff41; font-size:20px;">{d['res']}</span>
                 </div>
             """, unsafe_allow_html=True)
 
-            # ส่วนวิเคราะห์เพิ่มเติม (เลขเด่น)
-            raw_num = str(res).replace('.', '')
-            if len(raw_num) > 4:
-                st.success(f"🎯 **ตัวเลขถอดรหัสเด่น:** `{raw_num[1:3]}` , `{raw_num[2:4]}`")
+        st.divider()
+
+        # ---------------------------------------------------------
+        # หัวข้อที่ 2: สแกนคู่ขนาน & หาค่า GAP (Double Agent Scan)
+        # ---------------------------------------------------------
+        st.markdown("### 2️⃣ วิเคราะห์รหัสคู่ขนาน & สัญญาณ GAP")
+        c1, c2 = st.columns(2)
+        with c1:
+            dob1 = st.date_input("👤 AGENT 1 (ตัวตั้งต้น)", value=None, min_value=date(1960,1,1), key="u1_p2")
+        with c2:
+            dob2 = st.date_input("👤 AGENT 2 (คู่สแกน)", value=None, min_value=date(1960,1,1), key="u2_p2")
+
+        if dob1 and dob2:
+            d1 = get_detailed_logic(dob1)
+            d2 = get_detailed_logic(dob2)
+            gap = abs(d1['res'] - d2['res'])
+
+            # อธิบายที่มา (แฉความจริง)
+            st.write("🛠️ **ขั้นตอนการถอดรหัส:**")
+            col_ex1, col_ex2 = st.columns(2)
+            with col_ex1:
+                st.info(f"AGENT 1: วัน{d1['day_name']}({d1['day_val']}) {d1['phase']}({d1['m_num']}) \n\n สูตร: {d1['formula']} = {d1['res']}")
+            with col_ex2:
+                st.info(f"AGENT 2: วัน{d2['day_name']}({d2['day_val']}) {d2['phase']}({d2['m_num']}) \n\n สูตร: {d2['formula']} = {d2['res']}")
+
+            # สรุปค่า GAP และความสำคัญ
+            st.markdown(f"<h1 style='text-align:center; color:#00ff41;'>GAP: {gap:.4f}</h1>", unsafe_allow_html=True)
+            
+            # ระบบจัดลำดับความสำคัญ (ธร-เพชร-กงจักร)
+            if gap <= 1.0:
+                st.error("💎 **ระดับ: เพชร (Diamond)** - รหัสแฝด พลังงานสูงสุด")
+            elif 3.8 <= gap <= 4.2:
+                st.warning("🌀 **ระดับ: ธร (Tor)** - รหัสคู่ขนาน สัญญาณสะท้อนรุนแรง")
+            elif gap >= 10.0:
+                st.success("⚙️ **ระดับ: กงจักร (Chakra)** - รหัสตัดขาด พลังงานแยกตัวอิสระ")
+            else:
+                st.write("💡 ระดับ: ปกติ - พลังงานสมดุลทั่วไป")
 
         st.divider()
-        st.caption("อ้างอิงค่าคงที่ดาราศาสตร์ 29.53 และค่าสมดุลจักรวาล 1.618 | อยู่นิ่งๆ ไม่เจ็บตัว")
+
+        # ---------------------------------------------------------
+        # หัวข้อที่ 3: แผนที่พิกัดเวลา (Past & Future Timeline)
+        # ---------------------------------------------------------
+        st.markdown("### 3️⃣ แผนที่พิกัดกาลเวลา (Past & Future)")
+        if dob1:
+            st.write(f"วิเคราะห์รอบเวลาสำหรับรหัส: **{d1['res']}**")
+            
+            tab_back, tab_next = st.tabs(["⏪ สแกนอดีต (365 วัน)", "🔮 สแกนอนาคต (365 วัน)"])
+            
+            with tab_back:
+                past_df = run_scanner(d1['res'], date.today(), 365, mode="past")
+                st.dataframe(past_df, use_container_width=True, hide_index=True)
+            
+            with tab_next:
+                future_df = run_scanner(d1['res'], date.today(), 365, mode="future")
+                st.dataframe(future_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("กรุณากรอกวันเกิด AGENT 1 เพื่อสร้างแผนที่กาลเวลา")
+
 
 
 
