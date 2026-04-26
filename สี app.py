@@ -574,7 +574,7 @@ else:
                 st.dataframe(future_df, use_container_width=True, hide_index=True)
         else:
             st.info("กรุณากรอกวันเกิด AGENT 1 เพื่อสร้างแผนที่กาลเวลา")
-     elif st.session_state.page == "6":
+        elif st.session_state.page == "6":
         st.markdown("<h2 class='neon-wrapper'>💬 UNIT 06: TACTICAL COMMS</h2>", unsafe_allow_html=True)
         
         # --- [1] ดึงข้อมูลพิกัดเราก่อน ---
