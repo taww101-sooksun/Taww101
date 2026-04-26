@@ -176,10 +176,7 @@ else:
         if st.button("⬅️ HUB"):
             st.session_state.page = "HOME"
             st.rerun()
-    with c_title:
-        st.markdown(f"### ⚡ SYSTEM ONLINE : UNIT {st.session_state.page.zfill(2)}")
-    st.write("---")
-
+    
     # =========================================================
     # 📥 โซนก๊อปวางโค้ดใหม่ (แยกตามเลขห้อง)
     # =========================================================
