@@ -338,7 +338,7 @@ else:
      # ==========================================
     # 🔮 UNIT 05: QUANTUM LOGIC (สูตรค่าสมดุล & ดาราศาสตร์)
     # ==========================================
-    elif st.session_state.page == "5":
+    
         st.markdown("<h2 class='neon-wrapper' style='font-size:30px;'>🔮 QUANTUM LOGIC HUB</h2>", unsafe_allow_html=True)
         
         tab1, tab2, tab3 = st.tabs(["🌀 ค่าสมดุล Golden Ratio", "🌙 จันทรคติ (Moon Phase)", "🧬 รวมสูตรคำนวณ"])
