@@ -127,37 +127,35 @@ st.markdown(f"""
     }}
     </style>
 """, unsafe_allow_html=True)
-
 # =========================================================
-# 🏠 ZONE: HEADER (FIX LAYOUT - NO OVERLAP)
+# 🏠 ZONE: HEADER (FIXED & NO OVERLAP)
 # =========================================================
 
 primary_neon = "#FFD700" # สีทองของลูกพี่
 
-if logo_base64:
+# ตรวจสอบก่อนว่ามี logo_base64 ไหม (ป้องกันแอปพัง)
+if 'logo_base64' in locals() and logo_base64:
     st.markdown(f"""
-        <div style="text-align: center; padding-bottom: 20px;">
-            <div class="logo-container" style="margin-bottom: 30px;">
+        <div style="text-align: center; width: 100%; padding: 20px 0;">
+            <div class="logo-container" style="display: block; margin-bottom: 50px !important;">
                 <img src="data:image/png;base64,{logo_base64}" 
-                     style="width:220px; filter: drop-shadow(0 0 20px {primary_neon});">
+                     style="width:220px; filter: drop-shadow(0 0 20px {primary_neon}); position: relative; z-index: 99;">
             </div>
             
-            <div class="neon-wrapper">
-                <span class="synapse-title" style="font-size:{synapse_size};">SYNAPSE</span>
-                <span class="motto-text" style="font-size:{motto_size};">อยู่นิ่งๆ ไม่เจ็บตัว</span>
+            <div class="neon-wrapper" style="display: block; position: relative; z-index: 1;">
+                <span class="synapse-title" style="font-size:{synapse_size}; display: block;">SYNAPSE</span>
+                <span class="motto-text" style="font-size:{motto_size}; display: block;">อยู่นิ่งๆ ไม่เจ็บตัว</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
-
 else:
-    # ถ้าไม่มีไฟล์โลโก้ ให้โชว์แค่ตัวหนังสือเรืองแสง
+    # กรณีหาโลโก้ไม่เจอ
     st.markdown(f"""
-        <div class="neon-wrapper">
-            <span class="synapse-title" style="font-size:{synapse_size};">SYNAPSE</span>
-            <span class="motto-text" style="font-size:{motto_size};">อยู่นิ่งๆ ไม่เจ็บตัว</span>
+        <div class="neon-wrapper" style="text-align: center; width: 100%;">
+            <span class="synapse-title" style="font-size:{synapse_size}; display: block;">SYNAPSE</span>
+            <span class="motto-text" style="font-size:{motto_size}; display: block;">อยู่นิ่งๆ ไม่เจ็บตัว</span>
         </div>
     """, unsafe_allow_html=True)
-
 
 
 # =========================================================
