@@ -155,16 +155,41 @@ if 'page' not in st.session_state: st.session_state.page = "HOME"
 
 if st.session_state.page == "HOME":
     cols = st.columns(4)
-    colors = ["#FF3131", "#FF5E33", "#FFF01F", "#0FFF50", "#00F3FF", "#1F51FF", "#FF44CC"]
+    # รหัสสีทองนีออน (Golden Topaz)
+    gold_neon = "#FFD700" 
     
     for i in range(1, 21):
         with cols[(i-1)%4]:
-            c = colors[(i-1)%7]
-            # ปุ่ม 20 ห้อง
-            st.markdown(f"""<style>div.stButton > button[key="u{i}"] {{ color: {c}; border: 1px solid {c}; box-shadow: 0 0 5px {c}; height: 60px; border-radius: 15px; font-weight: bold; }} div.stButton > button[key="u{i}"]:hover {{ background-color: {c}; color: #000; box-shadow: 0 0 20px {c}; }}</style>""", unsafe_allow_html=True)
+            # ใส่ CSS เฉพาะตัวเพื่อให้ปุ่มหนา 4px และเรืองแสงสีทอง
+            st.markdown(f"""
+                <style>
+                div.stButton > button[key="u{i}"] {{
+                    color: {gold_neon} !important;
+                    border: 4px solid {gold_neon} !important; /* ความหนา 4 ตามสั่ง */
+                    background-color: transparent !important;
+                    border-radius: 15px !important;
+                    height: 70px !important;
+                    font-weight: bold !important;
+                    font-size: 18px !important;
+                    text-transform: uppercase;
+                    /* เอฟเฟกต์นีออนสีทอง */
+                    box-shadow: 0 0 5px {gold_neon}, inset 0 0 5px {gold_neon};
+                    transition: 0.3s;
+                }}
+                
+                div.stButton > button[key="u{i}"]:hover {{
+                    background-color: {gold_neon} !important;
+                    color: #000 !important;
+                    box-shadow: 0 0 20px {gold_neon}, 0 0 40px {gold_neon};
+                    transform: scale(1.05);
+                }}
+                </style>
+            """, unsafe_allow_html=True)
+            
             if st.button(f"UNIT {i:02d}", key=f"u{i}", use_container_width=True):
                 st.session_state.page = str(i)
                 st.rerun()
+
 
 else:
     # --- ปุ่มกลับ (Back Button) แสดงเฉพาะตอนเข้าห้อง ---
