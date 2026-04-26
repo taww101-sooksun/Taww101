@@ -334,89 +334,82 @@ else:
         # --- [ วางโค้ดวัดเสียง/สั่น UNIT 04 ตรงนี้ ] ---
         st.write("⚡ กำลังเตรียมเซนเซอร์...")
 
+    # ==========================================
+    # 🔮 UNIT 05: QUANTUM LOGIC - เครื่องถอดรหัสความจริง
+    # ==========================================
     elif st.session_state.page == "5":
-    # ==========================================
-    # 🔮 UNIT 05: QUANTUM LOGIC - สแกนรหัสความจริง (1960-2026)
-    # ==========================================
-    
-        st.markdown("<h2 class='neon-wrapper' style='font-size:30px;'>🔮 UNIT 05: QUANTUM LOGIC</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 class='neon-wrapper' style='font-size:30px;'>🔮 UNIT 05: THE TRUTH DECODER</h2>", unsafe_allow_html=True)
         
-        # คัมภีร์อธิบายที่มาของตัวเลข
-        st.markdown("""
-            <div style="background:rgba(0,255,65,0.1); padding:20px; border-radius:15px; border:2px solid #00ff41; margin-bottom:20px;">
-                <h4 style="color:#00ff41; margin-top:0;">📖 คัมภีร์ถอดรหัสความจริง (The Truth Decipher)</h4>
-                <p style="font-size:0.9em; color:#ccc;">ระบบรองรับข้อมูลย้อนหลังตั้งแต่ปี <b>1960</b> ถึงปัจจุบัน <b>2026</b></p>
-                <ul style="font-size:0.85em; color:#00ff41;">
-                    <li><b>เลข 1.618:</b> ค่าเฉลี่ยทองคำ ใช้เพื่อดึงพลังงานที่กระจัดกระจายให้เข้าสู่จุดสมดุล</li>
-                    <li><b>เลข 29.53:</b> รอบโคจรดาราศาสตร์ ใช้หาตำแหน่ง 'ข้างขึ้นข้างแรม' ที่ส่งผลต่ออารมณ์มนุษย์</li>
-                </ul>
-            </div>
-        """, unsafe_allow_html=True)
+        # ส่วนรับข้อมูลจากผู้ใช้
+        st.markdown('<div class="logic-box" style="border-color:#00ff41;">', unsafe_allow_html=True)
+        st.write("### 📅 ป้อนพิกัดวันเวลา (1960 - 2026)")
+        target_date = st.date_input("เลือก วัน/เดือน/ปี ที่ต้องการถอดรหัส", 
+                                    value=date.today(),
+                                    min_value=date(1960, 1, 1),
+                                    max_value=date(2026, 12, 31))
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        # ตั้งค่าขอบเขตวันที่ (ความจริงที่พิสูจน์ได้)
-        min_d = date(1960, 1, 1)
-        max_d = date(2026, 12, 31)
+        if target_date:
+            # --- เริ่มขั้นตอนการถอดรหัส (Step-by-Step Logic) ---
+            st.write("---")
+            st.subheader("🛠️ กระบวนการถอดรหัส (Calculation Steps)")
 
-        col_input1, col_input2 = st.columns(2)
-        
-        with col_input1:
-            st.markdown('<div class="logic-box">', unsafe_allow_html=True)
-            st.write("### 👤 AGENT 1")
-            # ผู้ใช้กรอกช่วง 1960-2026
-            dob1 = st.date_input(
-                "วัน/เดือน/ปี เกิด (1)", 
-                value=None, 
-                min_value=min_d, 
-                max_value=max_d, 
-                key="input_dob1"
-            )
+            # STEP 1: หาฐานวัน
+            day_val = target_date.weekday() + 1
+            day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+            day_name = day_names[target_date.weekday()]
             
-            if dob1:
-                d1 = get_detailed_logic(dob1)
-                st.metric("REALITY CODE", d1['res'])
-                st.info(f"📍 {d1['day_name']} | {d1['phase']}")
-                with st.expander("🔍 วิธีคำนวณ"):
-                    st.write(f"- วัน{d1['day_name']} = `{d1['day_val']}`")
-                    st.write(f"- {d1['phase']} = `{d1['m_num']}`")
-                    st.write(f"- สูตร: `{d1['formula']}`")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        with col_input2:
-            st.markdown('<div class="logic-box" style="border-color:#1408BF;">', unsafe_allow_html=True)
-            st.write("### 👤 AGENT 2")
-            # ผู้ใช้กรอกช่วง 1960-2026
-            dob2 = st.date_input(
-                "วัน/เดือน/ปี เกิด (2)", 
-                value=None, 
-                min_value=min_d, 
-                max_value=max_d, 
-                key="input_dob2"
-            )
+            st.markdown(f"#### **ขั้นที่ 1: ดึงฐานพลังงานรายวัน**")
+            st.write(f"วัน {day_name} ตามหลักสถิติมีค่าเท่ากับ: `{day_val}`")
             
-            if dob2:
-                d2 = get_detailed_logic(dob2)
-                st.metric("REALITY CODE", d2['res'])
-                st.info(f"📍 {d2['day_name']} | {d2['phase']}")
-                with st.expander("🔍 วิธีคำนวณ"):
-                    st.write(f"- วัน{d2['day_name']} = `{d2['day_val']}`")
-                    st.write(f"- {d2['phase']} = `{d2['m_num']}`")
-                    st.write(f"- สูตร: `{d2['formula']}`")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # วิเคราะห์ Gap ระหว่างบุคคล
-        if dob1 and dob2:
-            st.divider()
-            gap = abs(d1['res'] - d2['res'])
-            st.markdown(f"<h1 style='text-align:center; color:#00ff41; text-shadow: 0 0 20px #00ff41;'>GAP ANALYSIS: {gap:.4f}</h1>", unsafe_allow_html=True)
+            # STEP 2: คำนวณจันทรคติ (ดวงจันทร์)
+            st.markdown(f"#### **ขั้นที่ 2: คำนวณวงโคจรดวงจันทร์ (29.53)**")
+            ref_date = date(1900, 1, 1)
+            diff_days = (target_date - ref_date).days
+            lunar_cycle = 29.530589
+            pos = (diff_days - 0.5) % lunar_cycle
             
-            if gap <= 1.0:
-                st.success("💎 ** Twin Code:** พลังงานสมดุลระดับสูง")
-            elif 3.5 <= gap <= 4.5:
-                st.warning("⚠️ ** Parallel Code:** ตรวจพบรหัสคู่ขนาน (สายสัมพันธ์ที่วนกลับมา)")
+            is_waxing = pos <= 14.765
+            m_num = int(pos) + 1 if is_waxing else int(pos - 14.765) + 1
+            phase_text = f"{'ขึ้น' if is_waxing else 'แรม'} {m_num} ค่ำ"
+            
+            st.write(f"- จำนวนวันสะสมจากจุดอ้างอิง: `{diff_days}` วัน")
+            st.write(f"- คำนวณตำแหน่งดวงจันทร์: `{diff_days} ÷ 29.53` เหลือเศษเป็นพิกัด: `{pos:.4f}`")
+            st.info(f"📍 สภาวะปัจจุบัน: **{phase_text}** (ค่าตัวแปรดวงจันทร์ = `{m_num}`)")
+
+            # STEP 3: เข้าสูตรสมดุล (Golden Ratio & Vector)
+            st.markdown(f"#### **ขั้นที่ 3: ประมวลผลผ่านค่าสมดุล (1.618)**")
+            
+            if is_waxing:
+                # สูตร Vector สำหรับข้างขึ้น
+                res = math.sqrt((day_val**2) + (m_num**2))
+                formula_desc = f"ใช้สูตรแรงผลักดัน (Vector Energy): √({day_val}² + {m_num}²)"
+                calc_detail = f"√({day_val**2} + {m_num**2}) = √({day_val**2 + m_num**2})"
             else:
-                st.info("🛰️ ** Independent:** รหัสพลังงานเป็นอิสระต่อกัน")
-        else:
-            st.caption("📡 รอการป้อนข้อมูลพิกัดปี 1960-2026 จากผู้ใช้...")
+                # สูตร Golden Ratio สำหรับข้างแรม
+                res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+                formula_desc = f"ใช้สูตรสมดุลทองคำ (Golden Ratio): ({day_val} × 1.618) ÷ {m_num}"
+                calc_detail = f"({day_val * 1.618:.3f}) ÷ {m_num}"
+
+            st.write(f"**ตรรกะที่ใช้:** {formula_desc}")
+            st.code(f"คำนวณ: {calc_detail}", language="python")
+
+            # STEP 4: สรุปผลลัพธ์
+            st.markdown(f"#### **ขั้นที่ 4: รหัสความจริงที่ได้ (Final Result)**")
+            st.markdown(f"""
+                <div style="text-align:center; padding:20px; border:3px solid #00ff41; border-radius:15px; background:rgba(0,255,65,0.1);">
+                    <h1 style="color:#00ff41; margin:0;">{res:.4f}</h1>
+                    <p style="color:#ccc;">นี่คือ 'รหัสความสั่นสะเทือน' ของวันที่คุณเลือก</p>
+                </div>
+            """, unsafe_allow_html=True)
+
+            # ส่วนวิเคราะห์เพิ่มเติม (เลขเด่น)
+            raw_num = str(res).replace('.', '')
+            if len(raw_num) > 4:
+                st.success(f"🎯 **ตัวเลขถอดรหัสเด่น:** `{raw_num[1:3]}` , `{raw_num[2:4]}`")
+
+        st.divider()
+        st.caption("อ้างอิงค่าคงที่ดาราศาสตร์ 29.53 และค่าสมดุลจักรวาล 1.618 | อยู่นิ่งๆ ไม่เจ็บตัว")
 
 
 
