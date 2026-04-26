@@ -71,7 +71,7 @@ if not firebase_admin._apps:
 
 # --- 2. CONFIG & THEME ---
 st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
-primary_neon = "#FF4500"  # สีทองที่ลูกพี่ชอบ
+primary_neon = "#FF4500,#E2E2E2"  # สีทองที่ลูกพี่ชอบ
 
 # ฟังก์ชันแปลงรูปโลโก้
 def get_base64(file):
@@ -140,13 +140,13 @@ st.markdown(f"""
 if logo_data:
     st.markdown(f'''
         <div class="logo-container">
-            <img src="data:image/png;base64,{logo_data}" style="width:150px; filter: drop-shadow(0 0 10px {primary_neon});">
+            <img src="data:image/png;base64,{logo_data}" style="width:150px; filter: drop-shadow(0 0 1px {primary_neon});">
         </div>''', unsafe_allow_html=True)
 
 st.markdown(f'''
     <div class="neon-wrapper">
         <div style="font-size:30px; letter-spacing:4px;">SYNAPSE</div>
-        <div style="font-size:30px; letter-spacing:2px;">อยู่นิ่งๆไม่เจ็บตัว</div>
+        <div style="font-size:30px; letter-spacing:6px;">อยู่นิ่งๆไม่เจ็บตัว</div>
     </div>''', unsafe_allow_html=True)
 
 # --- 5. NAVIGATION HUB ---
