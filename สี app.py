@@ -71,7 +71,7 @@ if not firebase_admin._apps:
 
 # --- 2. CONFIG & THEME ---
 st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
-primary_neon = "#E2E2E2"  # สีทองที่ลูกพี่ชอบ
+primary_neon = "#CCAC00"  # สีทองที่ลูกพี่ชอบ
 
 # ฟังก์ชันแปลงรูปโลโก้
 def get_base64(file):
@@ -95,7 +95,7 @@ st.markdown(f"""
     }}
     @keyframes logo-dance {{
         0%, 100% {{ transform: translateY(0); }}
-        50% {{ transform: translateY(-15px); }}
+        50% {{ transform: translateY(-5px); }}
     }}
 
     /* สโลแกนนีออนโยกสะบัด */
@@ -140,7 +140,7 @@ st.markdown(f"""
 if logo_data:
     st.markdown(f'''
         <div class="logo-container">
-            <img src="data:image/png;base64,{logo_data}" style="width:150px; filter: drop-shadow(0 0 1px {primary_neon});">
+            <img src="data:image/png;base64,{logo_data}" style="width:150px; filter: drop-shadow(0 0 20px {primary_neon});">
         </div>''', unsafe_allow_html=True)
 
 st.markdown(f'''
