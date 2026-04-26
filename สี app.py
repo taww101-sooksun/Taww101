@@ -255,86 +255,89 @@ else:
     # 📥 โซนจัดการห้องรบ (UNIT 01 - 11)
     # =========================================================
 
-    if st.session_state.page == "1":
-        st.markdown("<h1 class='neon-title-unit'>🎵 UNIT 01: DUAL SYNAPSE PLAYER</h1>", unsafe_allow_html=True)
+        if st.session_state.page == "1":
+        st.markdown("<h1 class='neon-title-unit'>🎵 UNIT 01: DUAL BEAT VISUALIZER</h1>", unsafe_allow_html=True)
         
-        # --- 1. ระบบดึงรายชื่อเพลงจากหน้าเดียวกัน (GitHub Directory) ---
-        # สแกนไฟล์ .mp3 ที่อยู่ในโฟลเดอร์เดียวกับหน้าหลัก.py
+        # --- 1. สแกนไฟล์เพลง (.mp3) จากหน้าหลัก ---
         music_files = [f for f in os.listdir(".") if f.endswith(".mp3")]
 
         if music_files:
-            # ส่วนเลือกเพลงสำหรับ 2 ฝั่ง
             col_sel1, col_sel2 = st.columns(2)
             with col_sel1:
-                song_a = st.selectbox("💿 เลือกเพลง DECK A", music_files, key="select_a")
-                # อ่านไฟล์มาแปลงเป็น Base64
+                song_a = st.selectbox("💿 DECK A", music_files, key="select_a")
                 with open(song_a, "rb") as f:
                     b64_a = base64.b64encode(f.read()).decode()
-            
             with col_sel2:
-                # เลือกเพลงที่ 2 เป็นค่าเริ่มต้น (ถ้ามีเพลงมากกว่า 1)
                 default_idx = 1 if len(music_files) > 1 else 0
-                song_b = st.selectbox("💿 เลือกเพลง DECK B", music_files, index=default_idx, key="select_b")
+                song_b = st.selectbox("💿 DECK B", music_files, index=default_idx, key="select_b")
                 with open(song_b, "rb") as f:
                     b64_b = base64.b64encode(f.read()).decode()
 
-            # --- 2. เครื่องเล่นเพลง HTML/JS (2 เครื่องเล่นสมมาตร + ตัวหนังสือวิ่ง) ---
+            # --- 2. เครื่องเล่นเพลง + กราฟเสียงเต้นตามจังหวะ ---
             html_code = f"""
             <!DOCTYPE html>
             <html>
             <head>
                 <script src="https://cdn.tailwindcss.com"></script>
                 <style>
-                    body {{ background: transparent; color: white; font-family: 'Courier New', monospace; overflow: hidden; }}
-                    .deck-container {{ border: 3px solid #333; background: #0a0a0a; border-radius: 15px; padding: 12px; transition: 0.3s; }}
-                    .active-a {{ border-color: #ff00de; box-shadow: 0 0 20px #ff00de; }}
-                    .active-b {{ border-color: #00f3ff; box-shadow: 0 0 20px #00f3ff; }}
+                    body {{ background: transparent; color: white; font-family: 'Courier New', monospace; }}
+                    .deck-box {{ border: 2px solid #333; background: #050505; border-radius: 15px; padding: 12px; }}
+                    .active-a {{ border-color: #ff00de; box-shadow: 0 0 15px #ff00de; }}
+                    .active-b {{ border-color: #00f3ff; box-shadow: 0 0 15px #00f3ff; }}
                     
-                    /* ตัวหนังสือวิ่งกลางจอ */
+                    /* ตัวหนังสือวิ่ง */
                     .marquee {{ background: #000; border: 1px solid #222; padding: 4px; overflow: hidden; border-radius: 5px; margin-bottom: 10px; }}
-                    .marquee p {{ display: inline-block; white-space: nowrap; animation: move 12s linear infinite; color: #ffeb3b; font-weight: bold; font-size: 13px; }}
+                    .marquee p {{ display: inline-block; white-space: nowrap; animation: move 12s linear infinite; color: #00f3ff; font-size: 11px; }}
                     @keyframes move {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
                     
-                    .btn-ctrl {{ border: 1px solid #555; background: #1a1a1a; padding: 8px; border-radius: 8px; font-size: 11px; width: 48%; }}
-                    .btn-ctrl:active {{ transform: scale(0.95); }}
-                    .vol-bar {{ width: 100%; height: 6px; accent-color: #ff00de; cursor: pointer; }}
+                    canvas {{ width: 100%; height: 80px; background: #000; border-radius: 8px; margin-bottom: 10px; border: 1px solid #1a1a1a; }}
+                    .btn-ctrl {{ border: 1px solid #444; background: #111; padding: 6px; border-radius: 6px; font-size: 10px; width: 48%; }}
+                    .vol-bar {{ width: 100%; accent-color: #ff00de; }}
                 </style>
             </head>
             <body>
                 <div class="grid grid-cols-2 gap-4">
-                    <div id="deckA" class="deck-container">
-                        <div class="text-[10px] text-pink-500 font-bold mb-1">UNIT A: MASTER</div>
+                    <div id="boxA" class="deck-box">
                         <div class="marquee"><p>{song_a}</p></div>
-                        <div class="flex justify-between mb-3">
+                        <canvas id="vizA"></canvas>
+                        <div class="flex justify-between mb-2">
                             <button onclick="play('A')" class="btn-ctrl text-green-400">PLAY A</button>
                             <button onclick="stop('A')" class="btn-ctrl text-red-400">STOP</button>
                         </div>
-                        <div class="text-[9px] mb-1">VOLUME</div>
                         <input type="range" class="vol-bar" oninput="setVol('A', this.value)" value="80">
                     </div>
 
-                    <div id="deckB" class="deck-container">
-                        <div class="text-[10px] text-cyan-400 font-bold mb-1">UNIT B: SLAVE</div>
+                    <div id="boxB" class="deck-box">
                         <div class="marquee"><p>{song_b}</p></div>
-                        <div class="flex justify-between mb-3">
+                        <canvas id="vizB"></canvas>
+                        <div class="flex justify-between mb-2">
                             <button onclick="play('B')" class="btn-ctrl text-green-400">PLAY B</button>
                             <button onclick="stop('B')" class="btn-ctrl text-red-400">STOP</button>
                         </div>
-                        <div class="text-[9px] mb-1">VOLUME</div>
                         <input type="range" class="vol-bar" style="accent-color: #00f3ff;" oninput="setVol('B', this.value)" value="80">
                     </div>
                 </div>
 
                 <script>
-                    let ctx, songA, songB, gA, gB, srcA, srcB;
-                    let pA = false, pB = false;
+                    let ctx, songA, songB, gA, gB, srcA, srcB, anaA, anaB;
+                    let dataA, dataB;
 
                     async function init() {{
                         if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
                         if (!songA) songA = await decode("{b64_a}");
                         if (!songB) songB = await decode("{b64_b}");
-                        if (!gA) {{ gA = ctx.createGain(); gA.connect(ctx.destination); gA.gain.value = 0.8; }}
-                        if (!gB) {{ gB = ctx.createGain(); gB.connect(ctx.destination); gB.gain.value = 0.8; }}
+                        
+                        if (!anaA) {{
+                            anaA = ctx.createAnalyser(); anaA.fftSize = 64;
+                            dataA = new Uint8Array(anaA.frequencyBinCount);
+                            gA = ctx.createGain(); gA.connect(ctx.destination);
+                        }}
+                        if (!anaB) {{
+                            anaB = ctx.createAnalyser(); anaB.fftSize = 64;
+                            dataB = new Uint8Array(anaB.frequencyBinCount);
+                            gB = ctx.createGain(); gB.connect(ctx.destination);
+                        }}
+                        draw();
                     }}
 
                     async function decode(b64) {{
@@ -342,40 +345,64 @@ else:
                         return await ctx.decodeAudioData(await r.arrayBuffer());
                     }}
 
+                    function draw() {{
+                        requestAnimationFrame(draw);
+                        if(anaA) {{
+                            anaA.getByteFrequencyData(dataA);
+                            renderViz('vizA', dataA, '#ff00de');
+                        }}
+                        if(anaB) {{
+                            anaB.getByteFrequencyData(dataB);
+                            renderViz('vizB', dataB, '#00f3ff');
+                        }}
+                    }}
+
+                    function renderViz(id, data, color) {{
+                        const can = document.getElementById(id);
+                        const c = can.getContext('2d');
+                        c.clearRect(0, 0, can.width, can.height);
+                        let bw = (can.width / data.length) * 2;
+                        for(let i=0; i<data.length; i++) {{
+                            let h = (data[i]/255) * can.height;
+                            c.fillStyle = color;
+                            c.fillRect(i*bw, can.height - h, bw-2, h);
+                        }}
+                    }}
+
                     function play(side) {{
                         init().then(() => {{
                             if(side === 'A') {{
-                                if(pA) srcA.stop();
+                                if(srcA) srcA.stop();
                                 srcA = ctx.createBufferSource(); srcA.buffer = songA;
-                                srcA.connect(gA); srcA.start(0); pA = true;
-                                document.getElementById('deckA').classList.add('active-a');
+                                srcA.connect(anaA).connect(gA); srcA.start(0);
+                                document.getElementById('boxA').classList.add('active-a');
                             }} else {{
-                                if(pB) srcB.stop();
+                                if(srcB) srcB.stop();
                                 srcB = ctx.createBufferSource(); srcB.buffer = songB;
-                                srcB.connect(gB); srcB.start(0); pB = true;
-                                document.getElementById('deckB').classList.add('active-b');
+                                srcB.connect(anaB).connect(gB); srcB.start(0);
+                                document.getElementById('boxB').classList.add('active-b');
                             }}
                         }});
                     }}
 
                     function stop(side) {{
-                        if(side === 'A' && srcA) {{ srcA.stop(); pA = false; document.getElementById('deckA').classList.remove('active-a'); }}
-                        if(side === 'B' && srcB) {{ srcB.stop(); pB = false; document.getElementById('deckB').classList.remove('active-b'); }}
+                        if(side === 'A' && srcA) {{ srcA.stop(); document.getElementById('boxA').classList.remove('active-a'); }}
+                        if(side === 'B' && srcB) {{ srcB.stop(); document.getElementById('boxB').classList.remove('active-b'); }}
                     }}
 
                     function setVol(side, val) {{
                         init();
-                        if(side === 'A' && gA) gA.gain.value = val / 100;
-                        if(side === 'B' && gB) gB.gain.value = val / 100;
+                        if(side === 'A') gA.gain.value = val/100;
+                        if(side === 'B') gB.gain.value = val/100;
                     }}
                 </script>
             </body>
             </html>
             """
-            st.components.v1.html(html_code, height=280)
-            st.caption(f"📁 พบไฟล์เพลงทั้งหมด {len(music_files)} เพลงในสารบบ")
+            st.components.v1.html(html_code, height=350)
         else:
-            st.warning("⚠️ ไม่พบไฟล์ .mp3 ในโฟลเดอร์หลักบน GitHub ครับพี่")
+            st.warning("ไม่พบไฟล์ .mp3 ในหน้าหลักครับ")
+
 
 
                 
