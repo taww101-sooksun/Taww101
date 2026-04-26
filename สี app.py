@@ -217,10 +217,17 @@ st.markdown(f'''
 # --- 5. NAVIGATION HUB (11 UNITS SYSTEM) ---
 if 'page' not in st.session_state: st.session_state.page = "HOME"
 
+# --- แก้ไขตรงนี้ในไฟล์ของพี่ ---
 if st.session_state.page == "HOME":
-    st.write("##")
-    # สร้างปุ่ม 11 ปุ่ม (จัดวางแบบ 3 หรือ 4 คอลัมน์ให้สมดุล)
-    cols = st.columns(3) 
+    num_cols = 4  # เปลี่ยนเป็น 4 เพื่อให้ช่องเล็กและเรียง 1 2 3 4
+    cols = st.columns(num_cols) 
+    
+    # ... unit_names ...
+
+    for i in range(1, 12):
+        with cols[(i-1) % num_cols]: # ตัวหารต้องตรงกับ num_cols
+            # ... โค้ดเดิม ...
+ 
     
     # กำหนดชื่อและไอคอนทั้ง 11 UNIT
     unit_names = {
