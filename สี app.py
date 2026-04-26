@@ -91,13 +91,13 @@ st.markdown(f"""
         font-size: {slogan_font_size}; /* ดึงค่าจากตัวแปรด้านบน */
         font-weight: bold;
         text-align: center;
-        letter-spacing: 5px;
+        letter-spacing: 10px;
         background: linear-gradient(to right, #FF3131, #FF5E33, #FFF01F, #0FFF50, #00F3FF, #1F51FF, #FF44CC);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        animation: rainbow-glow 5s linear infinite;
-        text-shadow: 0 0 15px rgba(255,255,255,0.3);
-        margin-bottom: 30px;
+        animation: rainbow-glow 3s linear infinite;
+        text-shadow: 0 0 50px rgba(255,255,255,0.3);
+        margin-bottom: 50px;
     }}
 
     @keyframes rainbow-glow {{
@@ -108,7 +108,7 @@ st.markdown(f"""
     /* ปุ่มย้อนกลับ (Back Button) ดีไซน์นีออน */
     .back-btn {{
         border: 4px solid #0F26D3 !important;
-        color: #FF3131 !important;
+        color: #FF0738 !important;
         background-color: transparent !important;
         border-radius: 50px !important;
         padding: 10px 25px !important;
