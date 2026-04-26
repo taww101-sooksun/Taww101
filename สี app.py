@@ -154,47 +154,48 @@ st.markdown(f'''
 if 'page' not in st.session_state: st.session_state.page = "HOME"
 
 if st.session_state.page == "HOME":
-    cols = st.columns(4)
-    # รหัสสีทองนีออน (Golden Topaz)
+    # 1. ประกาศสีทองนีออน
     gold_neon = "#FFD700" 
     
+    # 2. วาง CSS ของปุ่มไว้ข้างนอก Loop (ทำครั้งเดียว ไฟติดทุกปุ่ม)
+    css_buttons = ""
+    for i in range(1, 21):
+        css_buttons += f"""
+        div.stButton > button[key="u{i}"] {{
+            color: {gold_neon} !important;
+            border: 4px solid {gold_neon} !important;
+            background-color: transparent !important;
+            border-radius: 15px !important;
+            height: 70px !important;
+            font-weight: bold !important;
+            font-size: 18px !important;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px {gold_neon}, inset 0 0 5px {gold_neon} !important;
+            transition: 0.3s !important;
+        }}
+        div.stButton > button[key="u{i}"]:hover {{
+            background-color: {gold_neon} !important;
+            color: #000 !important;
+            box-shadow: 0 0 30px {gold_neon}, 0 0 50px {gold_neon} !important;
+            transform: scale(1.05);
+        }}
+        """
+    
+    st.markdown(f"<style>{css_buttons}</style>", unsafe_allow_html=True)
+
+    # 3. สร้าง Layout ปุ่ม 4 คอลัมน์
+    cols = st.columns(4)
     for i in range(1, 21):
         with cols[(i-1)%4]:
-            # ใส่ CSS เฉพาะตัวเพื่อให้ปุ่มหนา 4px และเรืองแสงสีทอง
-            st.markdown(f"""
-                <style>
-                div.stButton > button[key="u{i}"] {{
-                    color: {gold_neon} !important;
-                    border: 4px solid {gold_neon} !important; /* ความหนา 4 ตามสั่ง */
-                    background-color: transparent !important;
-                    border-radius: 15px !important;
-                    height: 70px !important;
-                    font-weight: bold !important;
-                    font-size: 18px !important;
-                    text-transform: uppercase;
-                    /* เอฟเฟกต์นีออนสีทอง */
-                    box-shadow: 0 0 5px {gold_neon}, inset 0 0 5px {gold_neon};
-                    transition: 0.3s;
-                }}
-                
-                div.stButton > button[key="u{i}"]:hover {{
-                    background-color: {gold_neon} !important;
-                    color: #000 !important;
-                    box-shadow: 0 0 20px {gold_neon}, 0 0 40px {gold_neon};
-                    transform: scale(1.05);
-                }}
-                </style>
-            """, unsafe_allow_html=True)
-            
             if st.button(f"UNIT {i:02d}", key=f"u{i}", use_container_width=True):
                 st.session_state.page = str(i)
                 st.rerun()
 
-
 else:
-    # --- ปุ่มกลับ (Back Button) แสดงเฉพาะตอนเข้าห้อง ---
+    # --- ปุ่มกลับ (Back Button) และเนื้อหาในหน้า UNIT ---
     col_back, col_title = st.columns([1, 4])
     with col_back:
+        # ใช้ CSS class 'back-btn' ที่เราเขียนไว้ในส่วนหัว
         if st.button("⬅️ HUB", key="back_home"):
             st.session_state.page = "HOME"
             st.rerun()
@@ -205,6 +206,6 @@ else:
     
     # พื้นที่เขียนโค้ดแต่ละห้อง
     if st.session_state.page == "1":
-        st.write("เขียนความจริงลงไปใน Unit 01...")
+        st.write("ระบบ Unit 01 กำลังทำงาน...")
 
-# =========================================================
+
