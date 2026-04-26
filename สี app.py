@@ -61,20 +61,20 @@ st.markdown("""
     /* ปุ่มกดแบบขอบสะท้อนแสง */
     .stButton>button {
         background-color: transparent;
-        color: #0FFF50; /* เริ่มต้นด้วยสีเขียว Matrix */
-        border: 2px solid #0FFF50;
+        color: #0F26D3; /* เริ่มต้นด้วยสีเขียว Matrix */
+        border: 4px solid #00FF14;
         border-radius: 15px;
         height: 60px;
         font-weight: bold;
         text-transform: uppercase;
-        box-shadow: 0 0 10px #0FFF50;
+        box-shadow: 0 0 10px #FEDE10;
         transition: 0.4s;
     }
 
     .stButton>button:hover {
         background-color: #0FFF50;
         color: #000;
-        box-shadow: 0 0 30px #0FFF50, 0 0 60px #0FFF50;
+        box-shadow: 0 0 30px #0FFF50, 0 0 60px #FF0738;
         transform: scale(1.02);
     }
     </style>
@@ -87,7 +87,7 @@ st.markdown("""
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     try:
-        st.image("logo1.png", width=200)
+        st.image("logo1.png", width=150)
     except:
         st.write("")
 
@@ -114,7 +114,7 @@ if st.session_state.page == "HOME":
                 div.stButton > button[key="u{i}"] {{
                     color: {current_color};
                     border-color: {current_color};
-                    box-shadow: 0 0 5px {current_color};
+                    box-shadow: 0 0 15px {current_color};
                 }}
                 div.stButton > button[key="u{i}"]:hover {{
                     background-color: {current_color};
