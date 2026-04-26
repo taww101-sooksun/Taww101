@@ -254,9 +254,9 @@ else:
     # =========================================================
     # 📥 โซนจัดการห้องรบ (UNIT 01 - 11)
     # =========================================================
-        if st.session_state.page == "1":
+    if st.session_state.page == "1":
         # 1. หัวข้อและโลโก้ (ดึงสไตล์จากหน้าหลัก)
-        
+        st.markdown("<h1 class='neon-title-unit'>🎵 UNIT 01: SYNAPSE SPECTRUM</h1>", unsafe_allow_html=True)
         
         # สแกนไฟล์เพลงเตรียมไว้ก่อน
         music_files = [f for f in os.listdir(".") if f.endswith(".mp3")]
@@ -413,7 +413,6 @@ else:
                     st.rerun()
         else:
             st.error("ไม่พบไฟล์เพลง MP3 ในสารบบครับลูกพี่!")
-
 
     
     elif st.session_state.page == "2":
