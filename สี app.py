@@ -314,7 +314,7 @@ else:
 
 
     
-        elif st.session_state.page == "3":
+    elif st.session_state.page == "3":
         st.markdown("<h2 style='color:#00ff41;'>🔮 UNIT 05: THE TRUTH SCANNER</h2>", unsafe_allow_html=True)
 
         # ---------------------------------------------------------
