@@ -281,12 +281,12 @@ else:
                 <script src="https://cdn.tailwindcss.com"></script>
                 <style>
                     body {{ background: transparent; color: white; font-family: 'Courier New', monospace; }}
-                    .deck-box {{ border: 2px solid #333; background: #050505; border-radius: 15px; padding: 12px; }}
-                    .active-a {{ border-color: #ff00de; box-shadow: 0 0 15px #ff00de; }}
-                    .active-b {{ border-color: #00f3ff; box-shadow: 0 0 15px #00f3ff; }}
+                    .deck-box {{ border: 2px solid #333; background: #310000; border-radius: 15px; padding: 12px; }}
+                    .active-a {{ border-color: #ff00de; box-shadow: 0 0 30px #ff00de; }}
+                    .active-b {{ border-color: #00f3ff; box-shadow: 0 0 30px #00f3ff; }}
                     
                     /* ตัวหนังสือวิ่ง */
-                    .marquee {{ background: #000; border: 1px solid #222; padding: 4px; overflow: hidden; border-radius: 5px; margin-bottom: 10px; }}
+                    .marquee {{ background: #000; border: 1px solid #222; padding: 4px; overflow: hidden; border-radius: 10px; margin-bottom: 10px; }}
                     .marquee p {{ display: inline-block; white-space: nowrap; animation: move 12s linear infinite; color: #00f3ff; font-size: 11px; }}
                     @keyframes move {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
                     
@@ -314,7 +314,7 @@ else:
                             <button onclick="play('B')" class="btn-ctrl text-green-400">PLAY B</button>
                             <button onclick="stop('B')" class="btn-ctrl text-red-400">STOP</button>
                         </div>
-                        <input type="range" class="vol-bar" style="accent-color: #00f3ff;" oninput="setVol('B', this.value)" value="80">
+                        <input type="range" class="vol-bar" style="accent-color: #00f3ff;" oninput="setVol('B', this.value)" value="150">
                     </div>
                 </div>
 
@@ -349,11 +349,11 @@ else:
                         requestAnimationFrame(draw);
                         if(anaA) {{
                             anaA.getByteFrequencyData(dataA);
-                            renderViz('vizA', dataA, '#ff00de');
+                            renderViz('vizA', dataA, '#FF3131');
                         }}
                         if(anaB) {{
                             anaB.getByteFrequencyData(dataB);
-                            renderViz('vizB', dataB, '#00f3ff');
+                            renderViz('vizB', dataB, '#7B00FF');
                         }}
                     }}
 
@@ -399,7 +399,7 @@ else:
             </body>
             </html>
             """
-            st.components.v1.html(html_code, height=350)
+            st.components.v1.html(html_code, height=500)
         else:
             st.warning("ไม่พบไฟล์ .mp3 ในหน้าหลักครับ")
 
