@@ -228,9 +228,6 @@ if st.session_state.page == "HOME":
         with cols[(i-1) % num_cols]: # ตัวหารต้องตรงกับ num_cols
             # ... โค้ดเดิม ...
  
-    
-    # กำหนดชื่อและไอคอนทั้ง 11 UNIT
-    unit_names = {
         1: "🎵 01: DJ STATION",
         2: "🛰️ 02: TACTICAL RADAR",
         3: "🔮 03: TRUTH LOGIC",
