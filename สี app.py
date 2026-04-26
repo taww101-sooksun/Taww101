@@ -62,8 +62,8 @@ import requests
 st.set_page_config(page_title="SYNAPSE", layout="wide")
 
 # >>> [จุดปรับขนาดตัวหนังสือ] <<< 
-synapse_size = "50px"  # ขนาดคำว่า SYNAPSE
-motto_size = "50px"     # ขนาดคำว่า อยู่นิ่งๆ ไม่เจ็บตัว
+synapse_size = "40px"  # ขนาดคำว่า SYNAPSE
+motto_size = "40px"     # ขนาดคำว่า อยู่นิ่งๆ ไม่เจ็บตัว
 slogan_glow_speed = "3s" # ความเร็วการวิ่งของสี
 
 st.markdown(f"""
@@ -164,7 +164,7 @@ if st.session_state.page == "HOME":
         button[kind="secondary"] {{
             background-color: transparent !important;
             color: {gold_neon} !important;
-            border: 4px solid {gold_neon} !important; /* ความหนา 4px */
+            border: 2px solid {gold_neon} !important; /* ความหนา 2px */
             border-radius: 15px !important;
             height: 65px !important;
             font-weight: bold !important;
