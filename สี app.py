@@ -239,7 +239,7 @@ if st.session_state.page == "HOME":
         9: "📹 09: MEDIA STUDIO",
         10: "💾 10: FIREBASE DB",
         11: "🏴 11: COMMAND POST"
-    }
+    
 
     for i in range(1, 12):
         with cols[(i-1)%3]:
