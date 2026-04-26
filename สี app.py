@@ -63,8 +63,8 @@ st.set_page_config(page_title="SYNAPSE", layout="wide")
 
 # >>> [จุดปรับขนาดตัวหนังสือ] <<< 
 synapse_size = "30px"  # ขนาดคำว่า SYNAPSE
-motto_size = "30px"     # ขนาดคำว่า อยู่นิ่งๆ ไม่เจ็บตัว
-slogan_glow_speed = "3s" # ความเร็วการวิ่งของสี
+motto_size = "30px"     # ขนาดคำว่า อยู่นิ่งๆไม่เจ็บตัว
+slogan_glow_speed = "2s" # ความเร็วการวิ่งของสี
 
 st.markdown(f"""
     <style>
@@ -78,7 +78,7 @@ st.markdown(f"""
     .logo-container {{
         display: flex;
         justify-content: center;
-        animation: logo-dance 3s ease-in-out infinite;
+        animation: logo-dance 2s ease-in-out infinite;
     }}
     @keyframes logo-dance {{
         0% {{ transform: translateY(0px) rotate(0deg); }}
@@ -132,20 +132,18 @@ st.markdown(f"""
 # 🏠 ZONE: HEADER (LOGO DANCE + SLOGAN)
 # =========================================================
 
-st.markdown('<div class="logo-container">', unsafe_allow_html=True)
-try:
-    st.image("logo1.png", width=220)
-except:
-    st.write("")
-st.markdown('</div>', unsafe_allow_html=True)
-
-# แสดงผลแบบแยกชั้น ความใหญ่สะใจแน่นอน
-st.markdown(f'''
-    <div class="neon-wrapper">
-        <span class="synapse-title">SYNAPSE</span>
-        <span class="motto-text">อยู่นิ่งๆ ไม่เจ็บตัว</span>
+# ส่วนหัว: โลโก้เรืองแสง + เต้น + สโลแกน
+st.markdown(f"""
+    <div class="logo-container">
+        <div class="neon-wrapper">
+            <img src="data:image/png;base64,{base64.b64encode(open('logo1.png', 'rb').read()).decode()}" 
+                 style="width:180px; filter: drop-shadow(0 0 20px {primary_neon});">
+            
+            <span class="synapse-title" style="font-size: 80px;">SYNAPSE</span>
+            <span class="motto-text" style="font-size: 40px;">อยู่นิ่งๆ ไม่เจ็บตัว</span>
+        </div>
     </div>
-''', unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # =========================================================
 # 📟 ZONE: NAVIGATION SYSTEM
@@ -155,7 +153,7 @@ if 'page' not in st.session_state: st.session_state.page = "HOME"
 
 if st.session_state.page == "HOME":
     # 1. รหัสสีทองนีออน
-    gold_neon = "#FFD700" 
+    gold_neon = "#FF0738" 
     
     # 2. CSS แบบล็อคเป้า (ใช้แบคสแลชคลุมปีกกาเพื่อกัน Python Error)
     st.markdown(f"""
