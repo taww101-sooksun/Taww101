@@ -215,19 +215,18 @@ st.markdown(f'''
     </div>''', unsafe_allow_html=True)
 
 # --- 5. NAVIGATION HUB (11 UNITS SYSTEM) ---
-if 'page' not in st.session_state: st.session_state.page = "HOME"
+if 'page' not in st.session_state: 
+    st.session_state.page = "HOME"
 
-# --- แก้ไขตรงนี้ในไฟล์ของพี่ ---
 if st.session_state.page == "HOME":
-    num_cols = 4  # เปลี่ยนเป็น 4 เพื่อให้ช่องเล็กและเรียง 1 2 3 4
+    st.write("##")
+    
+    # 1. กำหนดจำนวนคอลัมน์ (4 ช่องจะทำให้ปุ่มเล็กลงและเรียงสวย)
+    num_cols = 4 
     cols = st.columns(num_cols) 
     
-    # ... unit_names ...
-
-    for i in range(1, 12):
-        with cols[(i-1) % num_cols]: # ตัวหารต้องตรงกับ num_cols
-            # ... โค้ดเดิม ...
- 
+    # 2. รายชื่อ UNIT (Dictionary)
+    unit_names = {
         1: "🎵 01: DJ STATION",
         2: "🛰️ 02: TACTICAL RADAR",
         3: "🔮 03: TRUTH LOGIC",
@@ -239,21 +238,19 @@ if st.session_state.page == "HOME":
         9: "📹 09: MEDIA STUDIO",
         10: "💾 10: FIREBASE DB",
         11: "🏴 11: COMMAND POST"
-    
+    }
 
+    # 3. ลูปสร้างปุ่ม (ใช้ตัวหารให้ตรงกับ num_cols)
     for i in range(1, 12):
-        with cols[(i-1)%3]:
+        with cols[(i-1) % num_cols]: 
             btn_label = unit_names.get(i, f"UNIT {i:02d}")
             if st.button(btn_label, key=f"u{i}", use_container_width=True):
                 st.session_state.page = str(i)
                 st.rerun()
+
+# --- ส่วนนี้คือประตูเข้าแต่ละห้อง (ไม่ต้องแก้) ---
 else:
-    # --- [ปุ่มกลับหน้าหลัก] แถบควบคุมด้านบนในทุกห้อง ---
-    c_back, c_title = st.columns([1, 4])
-    with c_back:
-        if st.button("⬅️ HUB", use_container_width=True):
-            st.session_state.page = "HOME"
-            st.rerun()
+
     
     # =========================================================
     # 📥 โซนจัดการห้องรบ (UNIT 01 - 11)
