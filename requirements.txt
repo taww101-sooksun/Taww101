@@ -13,7 +13,7 @@ pytz
 geopy
 folium
 streamlit-folium
-firebase_admin
+firebase-admin
 timezonefinder
 streamlit-webrtc
 streamlit-autorefresh
@@ -25,3 +25,7 @@ osmnx
 networkx
 replicate
 moviepy
+Pillow
+scipy
+opencv-python-headless
+python-dotenv
