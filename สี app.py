@@ -373,7 +373,7 @@ else:
             components.html(mixer_html, height=450)
             st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Sound Module v4.2")
 
-        elif st.session_state.page == "2":
+     elif st.session_state.page == "2":
         st.markdown("<h2 class='neon-wrapper'>🛰️ UNIT 02: RADAR MONITOR</h2>", unsafe_allow_html=True)
 
         # --- [1] ดึงพิกัดปัจจุบัน (GPS Detection) ---
