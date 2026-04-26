@@ -64,7 +64,7 @@ st.set_page_config(page_title="SYNAPSE", layout="wide")
 # >>> [จุดปรับขนาดตัวหนังสือ] <<< 
 synapse_size = "30px"  # ขนาดคำว่า SYNAPSE
 motto_size = "30px"     # ขนาดคำว่า อยู่นิ่งๆไม่เจ็บตัว
-slogan_glow_speed = "2s" # ความเร็วการวิ่งของสี
+slogan_glow_speed = "5s" # ความเร็วการวิ่งของสี
 
 st.markdown(f"""
     <style>
