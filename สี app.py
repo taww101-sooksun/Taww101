@@ -251,185 +251,70 @@ else:
             st.session_state.page = "HOME"
             st.rerun()
     
+    #     # =========================================================
+    # 📥 โซนจัดการห้องรบ (เพิ่มเติมต่อจากเดิม)
     # =========================================================
-    # 📥 โซนจัดการห้องรบ (UNIT 01 - 11)
-    # =========================================================
-    if st.session_state.page == "1":
-        # --- 1. สไตล์และโลโก้กลางจอ (UNIT 01) ---
-        st.markdown(f"""
-            <style>
-            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-            .logo-img-unit {{
-                width: 100px; height: 100px; margin: 0 auto;
-                
-                background-size: contain; background-repeat: no-repeat;
-                filter: drop-shadow(0 0 15px #39FF14);
-                animation: pulse 2s infinite alternate;
-            }}
-            @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.05); }} }}
-            </style>
-            <div class="logo-img-unit"></div>
-            <h2 style='text-align:center; color:#39FF14; font-family:Orbitron; font-size:1.2rem; letter-spacing:3px;'>UNIT 01: SYNAPSE COMMAND</h2>
-        """, unsafe_allow_html=True)
-
-        # --- 2. ข้อมูลห้องและระบบสลับเพลง ---
-        room_info = [
-            {"name": "🔥 CORE ROOM", "color1": "#39FF14", "color2": "#00FFDD"},
-            {"name": "🎧 R&B LOUNGE", "color1": "#FF00DE", "color2": "#7000FF"},
-            {"name": "🎤 RAP ZONE", "color1": "#00F3FF", "color2": "#0051FF"},
-            {"name": "🌌 QUANTUM", "color1": "#FF8C00", "color2": "#FF0000"},
-            {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"}
-        ]
-
-        # ตรวจสอบเพลงในสารบบ
-        all_music = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-
-        if not all_music:
-            st.error("⚠️ ไม่พบไฟล์เพลง .mp3 ใน Directory หลัก (GitHub)")
-        else:
-            # ระบบเลือกห้อง (Tabs)
-            tabs = st.tabs([r["name"] for r in room_info])
-            
-            for i, tab in enumerate(tabs):
-                with tab:
-                    # ดึงเพลงตาม Index ปัจจุบัน
-                    st.session_state.global_song_idx %= len(all_music)
-                    current_song = all_music[st.session_state.global_song_idx]
-                    song_data = get_base64(current_song)
-                    
-                    info = room_info[i]
-                    c1, c2 = info["color1"], info["color2"]
-
-                    # เครื่องเล่นเพลง V.7: กราฟเสียง + Marquee ใหญ่ + ปุ่ม Activate
-                    html_code = f"""
-                    <div style="font-family: 'Orbitron', sans-serif;">
-                        <canvas id="canvas-{i}" style="width:100%; height:120px; background:#000; border:1px solid {c1}44; border-radius:15px;"></canvas>
-                        
-                        <div style="background:rgba(0,0,0,0.8); border:2px solid {c1}; border-radius:8px; margin-top:12px; overflow:hidden; box-shadow: 0 0 15px {c1}33;">
-                            <marquee scrollamount="8" style="color:{c1}; font-size:22px; padding:10px; font-weight:900; text-shadow: 0 0 10px {c1};">
-                                NOW PLAYING 🎵 {current_song} | {info['name']} | SYNAPSE SYSTEM ONLINE | อ.ย.น.ิ.้.ง ๆ .ไ.ม.่.เ.จ.็.บ.ต.ั.ว ⚡
-                            </marquee>
-                        </div>
-
-                        <button id="btn-{i}" style="width:100%; padding:20px; margin-top:15px; background:transparent; color:{c1}; border:2px solid {c1}; cursor:pointer; border-radius:12px; font-weight:bold; box-shadow: 0 0 15px {c1}33; text-transform:uppercase; letter-spacing: 2px; font-size:16px;">
-                            ACTIVATE {info["name"]} ⚡
-                        </button>
-                        
-                        <audio id="audio-{i}" src="data:audio/mp3;base64,{song_data}"></audio>
-                    </div>
-
-                    <script>
-                        const audio = document.getElementById('audio-{i}');
-                        const btn = document.getElementById('btn-{i}');
-                        const canvas = document.getElementById('canvas-{i}');
-                        const ctx = canvas.getContext('2d');
-                        let audioCtx, analyser, source, dataArray;
-
-                        btn.onclick = function() {{
-                            if (!audioCtx) {{
-                                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                                analyser = audioCtx.createAnalyser();
-                                source = audioCtx.createMediaElementSource(audio);
-                                source.connect(analyser);
-                                analyser.connect(audioCtx.destination);
-                                analyser.fftSize = 256; 
-                                dataArray = new Uint8Array(analyser.frequencyBinCount);
-                                render();
-                            }}
-                            if (audio.paused) {{ 
-                                audio.play(); 
-                                btn.innerText = "SYSTEM ONLINE 🟢"; 
-                                btn.style.background = "{c1}22";
-                            }} else {{ 
-                                audio.pause(); 
-                                btn.innerText = "SYSTEM PAUSED 🔴"; 
-                                btn.style.background = "transparent";
-                            }}
-                        }};
-
-                        function render() {{
-                            requestAnimationFrame(render);
-                            analyser.getByteFrequencyData(dataArray);
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-                            const bWidth = (canvas.width / dataArray.length) * 2.2;
-                            let x = 0;
-                            for (let i = 0; i < dataArray.length; i++) {{
-                                let h = (dataArray[i] / 255) * canvas.height * 1.2;
-                                let grad = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - h);
-                                grad.addColorStop(0, "{c1}"); grad.addColorStop(1, "{c2}");
-                                ctx.fillStyle = grad;
-                                ctx.fillRect(x, canvas.height - h, bWidth - 1, h);
-                                x += bWidth;
-                            }}
-                        }}
-                    </script>
-                    """
-                    st.components.v1.html(html_code, height=350)
-
-            # --- 3. ระบบควบคุมส่วนกลาง (Playlist & Skip) ---
-            st.markdown("---")
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("⏭️ SKIP TRACK", use_container_width=True):
-                    st.session_state.global_song_idx += 1
-                    st.rerun()
-            with col2:
-                if st.button("🎲 SHUFFLE", use_container_width=True):
-                    st.session_state.global_song_idx = random.randint(0, len(all_music)-1)
-                    st.rerun()
-
-            with st.expander(f"📂 GLOBAL PLAYLIST ({len(all_music)} TRACKS)", expanded=True):
-                for idx, song in enumerate(all_music):
-                    is_current = (idx == st.session_state.global_song_idx % len(all_music))
-                    label = f"▶️ {idx+1}. {song}" if is_current else f"▪️ {idx+1}. {song}"
-                    if st.button(label, key=f"unit01_tr_{idx}", use_container_width=True):
-                        st.session_state.global_song_idx = idx
-                        st.rerun()
-
-        st.caption("อ.ย.น.ิ.้.ง ๆ .ไ.ม.่.เ.จ.็.บ.ต.ั.ว | UNIT 01 COMMAND")
-
     
+    elif st.session_state.page == "2":
         st.markdown("<h2 class='neon-wrapper'>🛰️ UNIT 02: TACTICAL RADAR</h2>", unsafe_allow_html=True)
-        st.info("📡 กำลังสแกนพิกัดดาวเทียมและคำนวณระยะห่าง AGENTS...")
+        
+        # ส่วนแสดงพิกัดจริง
+        col_gps, col_dist = st.columns([2, 1])
+        with col_gps:
+            st.write("### 📍 Live Coordinates")
+            # ดึงข้อมูลจากคำสั่งที่พี่เขียนไว้ (streamlit_js_eval)
+            loc = get_geolocation()
+            if loc:
+                lat = loc['coords']['latitude']
+                lon = loc['coords']['longitude']
+                st.success(f"พบพิกัดปัจจุบัน: {lat}, {lon}")
+                
+                # สร้างแผนที่จริงด้วย Folium
+                m = folium.Map(location=[lat, lon], zoom_start=15, tiles="CartoDB dark_matter")
+                folium.Marker([lat, lon], popup="CURRENT AGENT", icon=folium.Icon(color='red', icon='info-sign')).add_to(m)
+                st_folium(m, width=700, height=400)
+            else:
+                st.warning("📡 กำลังรอสัญญาณ GPS... (กรุณากด Allow Location ใน Browser)")
+
+        with col_dist:
+            st.write("### 📏 Proximity Check")
+            target_lat = st.number_input("Target Lat", value=13.7563) # Default BKK
+            target_lon = st.number_input("Target Lon", value=100.5018)
+            
+            if loc:
+                dist = haversine(lat, lon, target_lat, target_lon)
+                st.metric("ระยะห่างจากเป้าหมาย", f"{dist:.2f} KM")
+                if dist < 1.0: st.error("🚨 ALERT: NEAR TARGET!")
+            else:
+                st.info("ระบุพิกัดเป้าหมายเพื่อคำนวณระยะทางจริง")
 
     elif st.session_state.page == "3":
         st.markdown("<h2 class='neon-wrapper'>🔮 UNIT 03: TRUTH LOGIC</h2>", unsafe_allow_html=True)
-        st.info("🧬 ระบบถอดรหัสรหัสความจริงและแผนที่พิกัดกาลเวลา...")
-
-    elif st.session_state.page == "4":
-        st.markdown("<h2 class='neon-wrapper'>⚡ UNIT 04: SENSOR SCAN</h2>", unsafe_allow_html=True)
-        st.info("📶 กำลังเตรียมการเชื่อมต่อเซนเซอร์ตรวจจับความเคลื่อนไหวและเสียง...")
-
-    elif st.session_state.page == "5":
-        st.markdown("<h2 class='neon-wrapper'>🎨 UNIT 05: UI DESIGNER</h2>", unsafe_allow_html=True)
-        st.info("🌈 ระบบปรับแต่งโทนสีนีออนและ CSS Interface ขั้นสูง...")
-
-    elif st.session_state.page == "6":
-        st.markdown("<h2 class='neon-wrapper'>💬 UNIT 06: COMMS CENTER</h2>", unsafe_allow_html=True)
-        st.info("🛰️ ระบบสื่อสารเข้ารหัสพร้อมส่งสัญญาณหาศูนย์บัญชาการ...")
-
-    elif st.session_state.page == "7":
-        st.markdown("<h2 class='neon-wrapper'>🛠️ UNIT 07: DIY MASTER</h2>", unsafe_allow_html=True)
-        st.info("🔧 บันทึกงานช่างและการซ่อมบำรุงเชิงกล (PE Pipe / Blower Maintenance)...")
-
-    elif st.session_state.page == "8":
-        st.markdown("<h2 class='neon-wrapper'>🧬 UNIT 08: SYNAPSE CORE</h2>", unsafe_allow_html=True)
-        st.info("🧠 ระบบประมวลผลกลาง AI และการเขียนโค้ดเชิงลึก...")
-
-    elif st.session_state.page == "9":
-        st.markdown("<h2 class='neon-wrapper'>📹 UNIT 09: MEDIA STUDIO</h2>", unsafe_allow_html=True)
-        st.info("🎬 พื้นที่จัดการ Content และวิดีโอ AI ของ AGENT TA...")
-
-    elif st.session_state.page == "10":
-        st.markdown("<h2 class='neon-wrapper'>💾 UNIT 10: FIREBASE DB</h2>", unsafe_allow_html=True)
-        st.info("📂 ตรวจสอบความปลอดภัยฐานข้อมูล Cloud และไฟล์ในระบบ...")
-
-    elif st.session_state.page == "11":
-        st.markdown("<h2 class='neon-wrapper'>🏴 11: COMMAND POST</h2>", unsafe_allow_html=True)
-        st.info("🏁 หน้าสรุปสถานะภารกิจทั้งหมดในศูนย์บัญชาการ...")
-
-# =========================================================
-# 🛰️ FOOTER STATS
-# =========================================================
-st.write("---")
-st.caption(f"SYNAPSE OS v4.2 | AGENT STATUS: ONLINE | {datetime.now().strftime('%H:%M:%S')}")
+        
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            target_date = st.date_input("เลือกวันที่ตรวจสอบ", date.today())
+            scan_days = st.slider("ขอบเขตการสแกน (วัน)", 7, 90, 30)
+            
+            logic = get_detailed_logic(target_date)
+            st.write("---")
+            st.subheader(f"รหัสวันนี้: {logic['res']}")
+            st.code(f"สูตร: {logic['formula']}\nประเภท: {logic['type']}\nข้างขึ้น/แรม: {logic['phase']}")
+        
+        with c2:
+            st.write("### 📊 วิเคราะห์แนวโน้มรหัสบรรจบ")
+            scan_data = run_scanner(logic['res'], target_date, scan_days)
+            
+            if not scan_data.empty:
+                # แสดงกราฟความผันผวนของรหัส
+                fig, ax = plt.subplots(figsize=(10, 4))
+                plt.style.use('dark_background')
+                ax.plot(scan_data['วันที่'], scan_data['รหัสวันนั้น'], color=primary_neon, marker='o', markersize=4)
+                ax.set_title("Truth Code Fluctuations", color=primary_neon)
+                plt.xticks(rotation=45)
+                st.pyplot(fig)
+                
+                st.dataframe(scan_data, use_container_width=True)
+            else:
+                st.success("✅ ไม่พบรหัสผิดปกติในระยะที่กำหนด (สถานะ: อยู่นิ่งๆ ไม่เจ็บตัว)")
+                                
