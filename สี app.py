@@ -255,7 +255,7 @@ else:
     # 📥 โซนจัดการห้องรบ (UNIT 01 - 11)
     # =========================================================
 
-        if st.session_state.page == "1":
+    if st.session_state.page == "1":
         st.markdown("<h1 class='neon-title-unit'>🎵 UNIT 01: DUAL BEAT VISUALIZER</h1>", unsafe_allow_html=True)
         
         # --- 1. สแกนไฟล์เพลง (.mp3) จากหน้าหลัก ---
