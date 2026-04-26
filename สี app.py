@@ -68,6 +68,57 @@ if not firebase_admin._apps:
             'databaseURL': st.secrets["firebase_config"].get("databaseURL", "")
         })
     except: pass
+# --- [1] ฟังก์ชันคำนวณรหัสความจริง (หัวใจหลัก) ---
+def get_detailed_logic(dt):
+    if dt is None: return None
+    ref_date = date(1900, 1, 1)
+    diff = (dt - ref_date).days
+    lunar_cycle = 29.530589
+    pos = (diff - 0.5) % lunar_cycle
+    day_val = dt.weekday() + 1
+    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+    
+    if pos <= 14.765: # ข้างขึ้น
+        m_num = int(pos) + 1
+        phase = f"ขึ้น {m_num} ค่ำ"
+        res = math.sqrt((day_val**2) + (m_num**2))
+        formula = f"√({day_val}² + {m_num}²)"
+        logic_type = "แรงผลักดัน (Vector Energy)"
+    else: # ข้างแรม
+        m_num = int(pos - 14.765) + 1
+        phase = f"แรม {m_num} ค่ำ"
+        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+        formula = f"({day_val} × 1.618) / {m_num}"
+        logic_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
+
+    return {
+        "res": round(res, 4), "phase": phase, "day_name": day_names[dt.weekday()],
+        "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type
+    }
+
+# --- [2] ฟังก์ชันสแกนแผนที่กาลเวลา (อดีต/อนาคต) ---
+def run_scanner(target_res, base_date, days, mode="future"):
+    results = []
+    for i in range(days + 1):
+        current_date = base_date + timedelta(days=i) if mode == "future" else base_date - timedelta(days=i)
+        d = get_detailed_logic(current_date)
+        gap = abs(target_res - d['res'])
+        
+        # จัดลำดับความสำคัญตามที่ลูกพี่สั่ง
+        status = "ปกติ"
+        if gap < 0.5: status = "💎 เพชร (รหัสบรรจบ)"
+        elif 3.8 <= gap <= 4.2: status = "🌀 ธร (สัญญาณสะท้อน)"
+        elif gap > 10.0: status = "⚙️ กงจักร (รหัสแยกตัว)"
+        
+        if status != "ปกติ":
+            results.append({
+                "วันที่": current_date.strftime("%d/%m/%Y"),
+                "วัน": d['day_name'],
+                "สถานะพิกัด": status,
+                "Gap": round(gap, 4),
+                "รหัสวันนั้น": d['res']
+            })
+    return pd.DataFrame(results)
 
 # --- 2. CONFIG & THEME ---
 st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
