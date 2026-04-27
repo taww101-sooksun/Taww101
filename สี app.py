@@ -298,7 +298,7 @@ if st.session_state.page == "HOME":
             st.session_state.page = "3"; st.rerun()
         st.caption("ความสามารถ: ดึงรูปภาพจากคลัง Unsplash ตามคำค้นหาที่ต้องการ")
 
-        elif st.session_state.page == "3":
+ elif st.session_state.page == "3":
     st.markdown("<h2 class='neon-text' style='text-align:center;'>🧬 QUANTUM ANALYZER UNIT</h2>", unsafe_allow_html=True)
     
     # แยก 3 หัวใจหลักของการคำนวณไว้ในหน้าเดียว
