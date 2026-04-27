@@ -15,6 +15,24 @@ from datetime import datetime, date
 import math
 import random
 from streamlit_js_eval import get_geolocation 
+import hashlib
+import pandas as pd
+from datetime import timedelta
+
+# --- [ ส่วนเชื่อมต่อ Firebase : แก้ Error บรรทัด 188 ] ---
+if not firebase_admin._apps:
+    try:
+        # ดึงข้อมูลจาก Secrets (ชื่อ 'textkey' ต้องตรงกับในหน้า Settings)
+        import json
+        key_dict = json.loads(st.secrets["textkey"])
+        cred = credentials.Certificate(key_dict)
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': st.secrets["databaseURL"]
+        })
+    except Exception as e:
+        st.error(f"❌ เชื่อมต่อ Firebase ไม่สำเร็จ: {e}")
+        st.stop() # หยุดการทำงานถ้าต่อฐานข้อมูลไม่ได้ เพื่อไม่ให้ Error บานปลาย
+
 # 1. ฟังก์ชั่นดึงข้อมูล (สีแดงบนสุด)
 def get_base64_data(file_path):
     try:
@@ -280,9 +298,66 @@ if st.session_state.page == "HOME":
             st.session_state.page = "3"; st.rerun()
         st.caption("ความสามารถ: ดึงรูปภาพจากคลัง Unsplash ตามคำค้นหาที่ต้องการ")
 
-        if st.button("✨ 3. NEON GENERATOR\nสร้างตัวอักษรเรืองแสง", use_container_width=True):
-            st.session_state.page = "5"; st.rerun()
-        st.caption("ความสามารถ: แปลงข้อความธรรมดาให้เป็นศิลปะนีออนวิ้งๆ")
+        elif st.session_state.page == "3":
+    st.markdown("<h2 class='neon-text' style='text-align:center;'>🧬 QUANTUM ANALYZER UNIT</h2>", unsafe_allow_html=True)
+    
+    # แยก 3 หัวใจหลักของการคำนวณไว้ในหน้าเดียว
+    t1, t2, t3 = st.tabs(["💎 สแกนส่วนตัว", "🤝 ตรวจค่าความต่าง (Gap)", "📅 ตาราง 180 วัน"])
+
+    with t1:
+        st.subheader("พิกัดประจำตัว (Individual Scan)")
+        dob = st.date_input("เลือกวันเกิดของคุณ", value=date(1990,1,1), key="dob_solo")
+        if dob:
+            d = get_detailed_logic(dob)
+            st.metric("YOUR CODE", d['res'])
+            st.info(f"วัน{d['day_name']} | {d['phase']}")
+            st.caption(f"สูตรที่ใช้: {d['formula']} ({d['type']})")
+
+    with t2:
+        st.subheader("พิกัดคู่ขนาน (Gap Analysis)")
+        c1, c2 = st.columns(2)
+        with c1: dob1 = st.date_input("AGENT 1", value=date(1990,1,1), key="g1")
+        with c2: dob2 = st.date_input("AGENT 2", value=date(1990,1,1), key="g2")
+        if dob1 and dob2:
+            r1 = get_detailed_logic(dob1)['res']
+            r2 = get_detailed_logic(dob2)['res']
+            gap = abs(r1 - r2)
+            st.write(f"### ค่าความต่าง (Gap): `{gap:.4f}`")
+            
+            # การอ่านค่าตามหลักความจริง
+            if gap < 0.5: st.success("💎 สถานะ: พิกัดเพชร (ดวงสมพงษ์/บรรจบ)")
+            elif 3.8 <= gap <= 4.2: st.warning("🌀 สถานะ: พิกัดธรรม (แรงดึงดูด/สะท้อน)")
+            elif gap > 10.0: st.info("🪞 สถานะ: พิกัดกระจก (อิสระ/แยกตัว)")
+
+    with t3:
+        st.subheader("พิกัดอนาคต (180 Days Timeline)")
+        user_dob = st.date_input("กรอกวันเกิดเพื่อดูปฏิทิน", value=date(1990,1,1), key="dob_timeline")
+        if user_dob:
+            my_code = get_detailed_logic(user_dob)['res']
+            future_data = []
+            for i in range(180):
+                target_date = date.today() + timedelta(days=i)
+                d_target = get_detailed_logic(target_date)
+                g = abs(d_target['res'] - my_code)
+                
+                status = ""
+                if g < 0.5: status = "💎 เพชร"
+                elif 3.8 <= g <= 4.2: status = "🌀 ธรรม"
+                elif g > 10.0: status = "🪞 กระจก"
+                
+                if status:
+                    future_data.append({
+                        "วันที่": target_date.strftime('%d/%m/%Y'),
+                        "วัน": d_target['day_name'],
+                        "พิกัด": status,
+                        "Gap": round(g, 4)
+                    })
+            
+            if future_data:
+                st.table(pd.DataFrame(future_data))
+            else:
+                st.write("ไม่พบพิกัดพิเศษในช่วง 180 วันนี้")
+
 
         if st.button("💖 4. DESTINY CHECK\nตรวจดวงชะตาคู่ขนาน", use_container_width=True):
             st.session_state.page = "7"; st.rerun()
