@@ -275,118 +275,49 @@ if st.session_state.page != "HOME":
 
 # [ หน้าแรก: ศูนย์รวม 10 แอป ]
 if st.session_state.page == "HOME":
-    # วาง LOGO แทนที่ติ่ง
-    col_l, col_m, col_r = st.columns([1, 2, 1])
-    with col_m:
-        if os.path.exists("logo1.png"):
-            st.image("logo1.png", use_container_width=True)
-        else:
-            st.markdown("<h1 class='neon-text'>SYNAPSE</h1>", unsafe_allow_html=True)
-    
+    # ... (ส่วน LOGO เหมือนเดิม) ...
+
     st.markdown("<h3 style='text-align: center;'>ศูนย์ควบคุมระบบ: เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
     st.divider()
 
-    # สร้าง Grid 10 แอป (แบ่งเป็น 2 คอลัมน์)
     c1, c2 = st.columns(2)
 
     with c1:
-        if st.button("🎵 1. MUSIC PLAYER\nฟังเพลง MP3 จากคลังข้อมูล", use_container_width=True):
+        if st.button("🎵 1. SONIC WAVE\nเครื่องเล่นและผสมสัญญาณเสียง", use_container_width=True):
             st.session_state.page = "1"; st.rerun()
-        st.caption("ความสามารถ: เล่นไฟล์เสียง 1.mp3 และระบบควบคุมเสียงผ่านหน้าเว็บ")
+        st.caption("ระบบ DJ Deck คู่ พร้อม Visualizer")
 
-        if st.button("🖼️ 2. IMAGE SEARCH\nค้นหาภาพจากดาวเทียม", use_container_width=True):
+        if st.button("🧬 2. QUANTUM SCAN\nถอดรหัสพิกัดชีวิต (เดี่ยว/คู่/180 วัน)", use_container_width=True):
             st.session_state.page = "3"; st.rerun()
-        st.caption("ความสามารถ: ดึงรูปภาพจากคลัง Unsplash ตามคำค้นหาที่ต้องการ")
+        st.caption("วิเคราะห์ Gap เพชร/ธรรม/กระจก")
 
-elif st.session_state.page == "3":
-    st.markdown("<h2 class='neon-text' style='text-align:center;'>🧬 QUANTUM ANALYZER UNIT</h2>", unsafe_allow_html=True)
-    
-    # แยก 3 หัวใจหลักของการคำนวณไว้ในหน้าเดียว
-    t1, t2, t3 = st.tabs(["💎 สแกนส่วนตัว", "🤝 ตรวจค่าความต่าง (Gap)", "📅 ตาราง 180 วัน"])
+        if st.button("🛰️ 3. RADAR & CHAT\nพิกัดสนามรบและสื่อสารลับ", use_container_width=True):
+            st.session_state.page = "2"; st.rerun()
+        st.caption("ระบุตำแหน่ง Agent และแชตส่วนตัว")
 
-    with t1:
-        st.subheader("พิกัดประจำตัว (Individual Scan)")
-        dob = st.date_input("เลือกวันเกิดของคุณ", value=date(1990,1,1), key="dob_solo")
-        if dob:
-            d = get_detailed_logic(dob)
-            st.metric("YOUR CODE", d['res'])
-            st.info(f"วัน{d['day_name']} | {d['phase']}")
-            st.caption(f"สูตรที่ใช้: {d['formula']} ({d['type']})")
-
-    with t2:
-        st.subheader("พิกัดคู่ขนาน (Gap Analysis)")
-        c1, c2 = st.columns(2)
-        with c1: dob1 = st.date_input("AGENT 1", value=date(1990,1,1), key="g1")
-        with c2: dob2 = st.date_input("AGENT 2", value=date(1990,1,1), key="g2")
-        if dob1 and dob2:
-            r1 = get_detailed_logic(dob1)['res']
-            r2 = get_detailed_logic(dob2)['res']
-            gap = abs(r1 - r2)
-            st.write(f"### ค่าความต่าง (Gap): `{gap:.4f}`")
-            
-            # การอ่านค่าตามหลักความจริง
-            if gap < 0.5: st.success("💎 สถานะ: พิกัดเพชร (ดวงสมพงษ์/บรรจบ)")
-            elif 3.8 <= gap <= 4.2: st.warning("🌀 สถานะ: พิกัดธรรม (แรงดึงดูด/สะท้อน)")
-            elif gap > 10.0: st.info("🪞 สถานะ: พิกัดกระจก (อิสระ/แยกตัว)")
-
-    with t3:
-        st.subheader("พิกัดอนาคต (180 Days Timeline)")
-        user_dob = st.date_input("กรอกวันเกิดเพื่อดูปฏิทิน", value=date(1990,1,1), key="dob_timeline")
-        if user_dob:
-            my_code = get_detailed_logic(user_dob)['res']
-            future_data = []
-            for i in range(180):
-                target_date = date.today() + timedelta(days=i)
-                d_target = get_detailed_logic(target_date)
-                g = abs(d_target['res'] - my_code)
-                
-                status = ""
-                if g < 0.5: status = "💎 เพชร"
-                elif 3.8 <= g <= 4.2: status = "🌀 ธรรม"
-                elif g > 10.0: status = "🪞 กระจก"
-                
-                if status:
-                    future_data.append({
-                        "วันที่": target_date.strftime('%d/%m/%Y'),
-                        "วัน": d_target['day_name'],
-                        "พิกัด": status,
-                        "Gap": round(g, 4)
-                    })
-            
-            if future_data:
-                st.table(pd.DataFrame(future_data))
-            else:
-                st.write("ไม่พบพิกัดพิเศษในช่วง 180 วันนี้")
-
-
-        if st.button("💖 4. DESTINY CHECK\nตรวจดวงชะตาคู่ขนาน", use_container_width=True):
-            st.session_state.page = "7"; st.rerun()
-        st.caption("ความสามารถ: วิเคราะห์ดวงชะตาในมิติที่ 4 ผ่านระบบฐานข้อมูลชื่อ")
-
-        if st.button("📝 5. SYSTEM LOG\nบันทึกข้อมูลการใช้งาน", use_container_width=True):
+        if st.button("📝 4. MEMORY LOG\nบันทึกเหตุการณ์ลงฐานข้อมูล", use_container_width=True):
             st.session_state.page = "9"; st.rerun()
-        st.caption("ความสามารถ: จดบันทึกข้อความและเหตุการณ์สำคัญลงในหน่วยความจำ")
+        st.caption("Cloud Database Sync (Firebase)")
 
     with c2:
-        if st.button("💬 6. CHAT SYSTEM\nระบบสื่อสารอัจฉริยะ", use_container_width=True):
-            st.session_state.page = "2"; st.rerun()
-        st.caption("ความสามารถ: โต้ตอบผ่านข้อความกับระบบจัดการ AI")
-
-        if st.button("🎬 7. VIDEO HUB\nศูนย์รวมวิดีโอวงจรปิด", use_container_width=True):
-            st.session_state.page = "4"; st.rerun()
-        st.caption("ความสามารถ: เชื่อมต่อและฉายภาพวิดีโอจาก YouTube หรือ Link ตรง")
-
-        if st.button("🌍 8. WORLD CLOCK\nเวลาโลกแบบเรียลไทม์", use_container_width=True):
+        if st.button("⚡ 5. VIBRATION UNIT\nตรวจวัดแรงสั่นและคลื่นความถี่", use_container_width=True):
             st.session_state.page = "6"; st.rerun()
-        st.caption("ความสามารถ: ตรวจสอบเวลาปัจจุบันในโซนต่างๆ ทั่วโลก")
+        st.caption("วัด Hz, dB และ G-Force จริง")
 
-        if st.button("🔢 9. DAILY CODE\nรหัสลับประจำวัน", use_container_width=True):
+        if st.button("🔢 6. DAILY CODE\nรหัสผ่านความปลอดภัยรายวัน", use_container_width=True):
             st.session_state.page = "8"; st.rerun()
-        st.caption("ความสามารถ: เจนรหัสตัวเลขนำโชคและรหัสรักษาความปลอดภัยรายวัน")
+        st.caption("Hash Code เฉพาะ Agent")
 
-        if st.button("🎨 10. COLOR MASTER\nปรับแต่งธีมสีระบบ", use_container_width=True):
+        if st.button("💖 7. SYNC CHECK\nวิเคราะห์ความสมพงษ์มิติที่ 4", use_container_width=True):
+            st.session_state.page = "7"; st.rerun()
+        st.caption("Unicode Hash Matching")
+
+        if st.button("🎨 8. INTERFACE\nปรับแต่งรังสีออร่าของระบบ", use_container_width=True):
             st.session_state.page = "10"; st.rerun()
-        st.caption("ความสามารถ: เปลี่ยนสีสันของ Interface เพื่อความสวยงามตามใจชอบ")
+        st.caption("Custom Neon Theme")
+
+    st.markdown("---")
+    st.markdown("<p style='text-align:center; color:#555;'>อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Command Center</p>", unsafe_allow_html=True)
 
 # --- ส่วนนี้คือที่วางโค้ดของแต่ละแอปย่อย (ทำเหมือนเดิม) ---
 elif st.session_state.page == "1":
@@ -625,36 +556,89 @@ elif st.session_state.page == "2":
         st.error(f"ระบบขัดข้อง: {e}")
 
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Module v.2 (Auto-Update)")
+
 elif st.session_state.page == "3":
-    st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>🧬 PERSONAL CODE DECODER</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 class='neon-text' style='text-align:center;'>🧬 QUANTUM ANALYZER UNIT</h2>", unsafe_allow_html=True)
     
-    # ส่วนรับข้อมูล: ช่วงปี 1960 - 2026
-    dob = st.date_input("📅 ระบุวันเกิดเพื่อถอดรหัส", 
-                        min_value=date(1960, 1, 1), 
-                        max_value=date(2026, 12, 31))
+    # --- แยก 3 หัวใจหลักของการคำนวณด้วย Tabs ---
+    t1, t2, t3 = st.tabs(["💎 สแกนส่วนตัว", "🤝 ตรวจค่าความต่าง (Gap)", "📅 ตาราง 180 วัน"])
 
-    if dob:
-        d = get_detailed_logic(dob)
+    # --- TAB 1: สแกนรายบุคคล ---
+    with t1:
+        st.subheader("พิกัดประจำตัว (Individual Scan)")
+        dob = st.date_input("เลือกวันเกิดของคุณ", value=date(1990,1,1), key="dob_solo")
+        if dob:
+            d = get_detailed_logic(dob)
+            col_m1, col_m2 = st.columns(2)
+            with col_m1:
+                st.metric("YOUR CODE", d['res'])
+            with col_m2:
+                st.info(f"วัน{d['day_name']} | {d['phase']}")
+            
+            with st.expander("📝 ดูสูตรคำนวณ (The Truth)"):
+                st.code(f"สูตรที่ใช้: {d['formula']}\nประเภท: {d['type']}")
+
+    # --- TAB 2: ตรวจความต่างระหว่างสองพิกัด (ดั้งเดิมจากหน้า 4/7) ---
+    with t2:
+        st.subheader("พิกัดคู่ขนาน (Gap Analysis)")
+        c1, c2 = st.columns(2)
+        with c1: 
+            dob1 = st.date_input("AGENT 1 (วันเกิด)", value=date(1990,1,1), key="g1")
+        with c2: 
+            dob2 = st.date_input("AGENT 2 (วันเกิด)", value=date(1991,1,1), key="g2")
+            
+        if dob1 and dob2:
+            r1 = get_detailed_logic(dob1)['res']
+            r2 = get_detailed_logic(dob2)['res']
+            gap = abs(r1 - r2)
+            
+            st.markdown(f"<h3 style='text-align:center;'>ค่าความต่าง (Gap): <span style='color:var(--primary);'>{gap:.4f}</span></h3>", unsafe_allow_html=True)
+            
+            # เกณฑ์การอ่านค่าตามหลักการ "อยู่นิ่งๆ ไม่เจ็บตัว"
+            if gap < 0.5: 
+                st.success("💎 สถานะ: พิกัดเพชร (บรรจบ/โอกาส)")
+            elif 3.8 <= gap <= 4.2: 
+                st.warning("🌀 สถานะ: พิกัดธรรม (สะท้อน/ดึงดูด)")
+            elif gap > 10.0: 
+                st.info("🪞 สถานะ: พิกัดกระจก (แยกตัว/อิสระ)")
+            else:
+                st.write("✨ สถานะ: คลื่นความถี่ปกติ")
+
+    # --- TAB 3: พยากรณ์พิกัดล่วงหน้า (ดั้งเดิมจากหน้า 5) ---
+    with t3:
+        st.subheader("พิกัดอนาคต (180 Days Timeline)")
+        user_dob = st.date_input("กรอกวันเกิดเพื่อสแกนหา 'วันพิเศษ'", value=date(1990,1,1), key="dob_timeline")
         
-        col1, col2 = st.columns([1, 2])
-        with col1:
-            st.metric("YOUR CODE", d['res'])
-        with col2:
-            st.info(f"พิกัด: วัน{d['day_name']} | {d['phase']}")
+        if user_dob:
+            my_code = get_detailed_logic(user_dob)['res']
+            future_data = []
+            
+            # สแกนล่วงหน้า 180 วัน
+            for i in range(180):
+                target_date = date.today() + timedelta(days=i)
+                d_target = get_detailed_logic(target_date)
+                g = abs(d_target['res'] - my_code)
+                
+                status = ""
+                if g < 0.5: status = "💎 เพชร"
+                elif 3.8 <= g <= 4.2: status = "🌀 ธรรม"
+                elif g > 10.0: status = "🪞 กระจก"
+                
+                if status:
+                    future_data.append({
+                        "วันที่": target_date.strftime('%d/%m/%Y'),
+                        "วัน": d_target['day_name'],
+                        "พิกัด": status,
+                        "Gap": round(g, 4)
+                    })
+            
+            if future_data:
+                st.table(pd.DataFrame(future_data))
+            else:
+                st.write("🔍 ไม่พบพิกัดพิเศษ (เพชร/ธรรม/กระจก) ในช่วง 180 วันนี้")
 
-        # --- อธิบายที่มาของตัวเลข (ความจริง) ---
-        st.markdown(f"""
-        <div class="logic-box">
-            <h4>📝 ที่มาของรหัสประจำตัว (The Truth)</h4>
-            <ul>
-                <li><b>เลขฐานวัน ({d['day_val']}):</b> มาจากลำดับวันในสัปดาห์ (จันทร์=1 จนถึง อาทิตย์=7)</li>
-                <li><b>เลขจันทรคติ ({d['m_num']}):</b> คำนวณจากระยะห่างระหว่างวันเกิดกับจุด New Moon ของดาราศาสตร์</li>
-                <li><b>วิธีคำนวณ:</b> ระบบใช้ <b>{d['type']}</b></li>
-                <li><b>สมการที่ใช้จริง:</b> <code>{d['formula']}</code></li>
-            </ul>
-            <p style='font-size:0.8rem; color:#888;'>*หมายเหตุ: ขึ้นค่ำใช้สมการ Vector (ความชัน), แรมค่ำใช้สมการ Golden Ratio (สมดุล)*</p>
-        </div>
-        """, unsafe_allow_html=True)
+    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Quantum Logic Unit v.2")
+
 elif st.session_state.page == "6":
     import streamlit.components.v1 as components
     
