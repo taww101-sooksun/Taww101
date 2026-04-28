@@ -1,131 +1,161 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime, date, timedelta
-import math
+import streamlit.components.v1 as components
+import os
+import base64
 
-# --- CONFIG & STYLING ---
-st.set_page_config(page_title="SYNAPSE : FULL CYCLE SCANNER", layout="wide")
+# ฟังก์ชันช่วยแปลงไฟล์ (ต้องมีอยู่ในโค้ดหลักของคุณ)
+def get_base64(file_path):
+    try:
+        with open(file_path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except Exception:
+        return ""
 
-st.markdown("""
-    <style>
-    .main { background-color: #050a0e; color: #00e5ff; }
-    .stApp { background: linear-gradient(180deg, #050a0e 0%, #101a24 100%); }
-    
-    /* Neon Formula Card */
-    .formula-box {
-        background: rgba(0, 229, 255, 0.03);
-        border-left: 5px solid #00e5ff;
-        border-radius: 10px;
-        padding: 15px;
-        margin: 10px 0;
-    }
-    
-    /* Data Table Styling */
-    .stDataFrame { border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 10px; }
-    
-    h1, h2, h3 { color: #ffffff; text-shadow: 0 0 10px rgba(0, 229, 255, 0.5); }
-    .highlight { color: #ff7f50; font-weight: bold; }
-    </style>
-    """, unsafe_allow_html=True)
+# สมมติค่าตัวแปรเบื้องต้น
+primary_neon = "#00FFCC"
 
-# --- CORE LOGIC (สูตรที่ไม่มั่ว) ---
-def get_synapse_logic(dt):
-    if dt is None: return None
-    ref_date = date(1900, 1, 1)
-    diff = (dt - ref_date).days
-    lunar_cycle = 29.530589
-    pos = (diff - 0.5) % lunar_cycle
-    day_val = dt.weekday() + 1
-    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+if "page" not in st.session_state:
+    st.session_state.page = "1"
+
+if st.session_state.page == "1":
+    st.markdown("<h2 style='color:#00FFCC; font-family:monospace;'>🎧 SYNAPSE DJ STATION V.3</h2>", unsafe_allow_html=True)
     
-    is_waxing = pos <= 14.765
-    m_num = int(pos) + 1 if is_waxing else int(pos - 14.765) + 1
+    all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
     
-    if is_waxing:
-        res = math.sqrt((day_val**2) + (m_num**2))
-        formula = f"√({day_val}² + {m_num}²)"
-        type_text = "Vector Energy (ขึ้น)"
+    if not all_songs:
+        st.warning("⚠️ ไม่พบไฟล์ .mp3 ในระบบ")
     else:
-        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
-        formula = f"({day_val} × 1.618) / {m_num}"
-        type_text = "Golden Ratio (แรม)"
+        col_sel_a, col_sel_b = st.columns(2)
+        with col_sel_a:
+            song_a = st.selectbox("💿 DECK A (LEFT)", ["-- Select --"] + all_songs, key="sa")
+        with col_sel_b:
+            song_b = st.selectbox("💿 DECK B (RIGHT)", ["-- Select --"] + all_songs, key="sb")
 
-    return {
-        "res": round(res, 4), "phase": f"{'ขึ้น' if is_waxing else 'แรม'} {m_num} ค่ำ",
-        "day": day_names[dt.weekday()], "formula": formula, "type": type_text
-    }
+        data_a = get_base64(song_a) if song_a != "-- Select --" else ""
+        data_b = get_base64(song_b) if song_b != "-- Select --" else ""
 
-def run_scanner(target_res, base_date, days, mode="future"):
-    results = []
-    for i in range(days + 1):
-        current_date = base_date + timedelta(days=i) if mode == "future" else base_date - timedelta(days=i)
-        d = get_synapse_logic(current_date)
-        gap = abs(target_res - d['res'])
-        
-        status = "อิสระ"
-        if gap < 0.5: status = "💎 บรรจบ"
-        elif 3.8 <= gap <= 4.2: status = "🌀 สะท้อน (Gap 4)"
-        elif gap > 10.0: status = "🚩 แยกตัว"
-        
-        if status != "อิสระ":
-            results.append({
-                "วันที่": current_date.strftime("%d/%m/%Y"),
-                "วัน": d['day'],
-                "สถานะพิกัด": status,
-                "Gap": round(gap, 4),
-                "รหัสวันนั้น": d['res']
-            })
-    return pd.DataFrame(results)
+        mixer_html = f"""
+        <div style="background: #000; border: 2px solid {primary_neon}; border-radius: 20px; padding: 15px; font-family: monospace; color: white;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div style="border: 1px solid {primary_neon}; padding: 10px; border-radius: 15px; text-align: center;">
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: {primary_neon};">
+                        <span id="curA">00:00</span><span id="remA">-00:00</span>
+                    </div>
+                    <canvas id="canvasA" style="width: 100%; height: 60px; background: #111; margin: 5px 0; border-radius:5px;"></canvas>
+                    <input type="range" id="volA" min="0" max="1" step="0.01" value="0.7" style="width: 100%;">
+                    <div style="margin-top: 10px;">
+                        <button onclick="control('A', 'play')" style="background:{primary_neon}; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">PLAY</button>
+                        <button onclick="control('A', 'pause')" style="background:none; border:1px solid {primary_neon}; color:{primary_neon}; padding:5px 10px; border-radius:5px; cursor:pointer;">PAUSE</button>
+                    </div>
+                </div>
 
-# --- MAIN INTERFACE ---
-st.title("🛰️ SYNAPSE : ระบบสแกนวงจรชีวิต 365 วัน")
-st.write("ตรวจสอบพิกัดรหัสย้อนหลังและล่วงหน้า 1 ปี เพื่อหาจังหวะที่ 'ตรง' กับคุณ")
+                <div style="border: 1px solid #FF44CC; padding: 10px; border-radius: 15px; text-align: center;">
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #FF44CC;">
+                        <span id="curB">00:00</span><span id="remB">-00:00</span>
+                    </div>
+                    <canvas id="canvasB" style="width: 100%; height: 60px; background: #111; margin: 5px 0; border-radius:5px;"></canvas>
+                    <input type="range" id="volB" min="0" max="1" step="0.01" value="0.7" style="width: 100%;">
+                    <div style="margin-top: 10px;">
+                        <button onclick="control('B', 'play')" style="background:#FF44CC; border:none; padding:5px 10px; border-radius:5px; color:white; cursor:pointer;">PLAY</button>
+                        <button onclick="control('B', 'pause')" style="background:none; border:1px solid #FF44CC; color:#FF44CC; padding:5px 10px; border-radius:5px; cursor:pointer;">PAUSE</button>
+                    </div>
+                </div>
+            </div>
 
-# 1. ข้อมูลตั้งต้น
-with st.container():
-    st.subheader("👤 ข้อมูลผู้ใช้งาน")
-    user_dob = st.date_input("เลือกวันเดือนปีเกิดของคุณ", value=None, min_value=date(1920,1,1))
+            <div style="margin-top:20px; text-align:center;">
+                <small>CROSSFADER (A <-> B)</small><br>
+                <input type="range" id="fader" min="0" max="1" step="0.01" value="0.5" style="width: 80%;">
+            </div>
 
-if user_dob:
-    user_data = get_synapse_logic(user_dob)
-    st.markdown(f"""
-        <div class="formula-box">
-            <span style='font-size: 1.2rem;'>รหัสประจำตัวของคุณคือ: <b style='color:#00e5ff;'>{user_data['res']}</b></span><br>
-            พิกัด: {user_data['day']} ({user_data['phase']}) | ระบบ: {user_data['type']}<br>
-            ที่มาตัวเลข: <code>{user_data['formula']}</code>
+            <audio id="audioA" src="data:audio/mp3;base64,{data_a}"></audio>
+            <audio id="audioB" src="data:audio/mp3;base64,{data_b}"></audio>
+
+            <script>
+                const audA = document.getElementById('audioA');
+                const audB = document.getElementById('audioB');
+                const fader = document.getElementById('fader');
+                let audioCtx;
+                let analyserA, analyserB;
+                let sourceA, sourceB;
+
+                function initAudio() {{
+                    if (!audioCtx) {{
+                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                        
+                        // Setup Deck A
+                        analyserA = audioCtx.createAnalyser();
+                        sourceA = audioCtx.createMediaElementSource(audA);
+                        sourceA.connect(analyserA);
+                        analyserA.connect(audioCtx.destination);
+                        
+                        // Setup Deck B
+                        analyserB = audioCtx.createAnalyser();
+                        sourceB = audioCtx.createMediaElementSource(audB);
+                        sourceB.connect(analyserB);
+                        analyserB.connect(audioCtx.destination);
+
+                        startVisualizer('canvasA', analyserA, '{primary_neon}');
+                        startVisualizer('canvasB', analyserB, '#FF44CC');
+                    }}
+                }}
+
+                function startVisualizer(canvasID, analyser, color) {{
+                    const canvas = document.getElementById(canvasID);
+                    const ctx = canvas.getContext('2d');
+                    analyser.fftSize = 64;
+                    const bufferLength = analyser.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+
+                    function draw() {{
+                        requestAnimationFrame(draw);
+                        analyser.getByteFrequencyData(dataArray);
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        let barWidth = (canvas.width / bufferLength) * 2.5;
+                        let x = 0;
+                        for(let i = 0; i < bufferLength; i++) {{
+                            let barHeight = dataArray[i] / 5;
+                            ctx.fillStyle = color;
+                            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                            x += barWidth + 1;
+                        }}
+                    }}
+                    draw();
+                }}
+
+                function control(deck, action) {{
+                    initAudio();
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    const target = (deck === 'A') ? audA : audB;
+                    if (action === 'play') target.play();
+                    else target.pause();
+                }}
+
+                // Volume & Fader Logic
+                function updateVolumes() {{
+                    const volA = document.getElementById('volA').value;
+                    const volB = document.getElementById('volB').value;
+                    const f = parseFloat(fader.value);
+                    audA.volume = volA * (1 - f);
+                    audB.volume = volB * f;
+                }}
+
+                fader.oninput = updateVolumes;
+                document.getElementById('volA').oninput = updateVolumes;
+                document.getElementById('volB').oninput = updateVolumes;
+
+                // Time Update
+                const updateUI = (aud, cur, rem) => {{
+                    aud.ontimeupdate = () => {{
+                        const fmt = s => new Date(s * 1000).toISOString().substr(14, 5);
+                        document.getElementById(cur).innerText = fmt(aud.currentTime);
+                        if(aud.duration) document.getElementById(rem).innerText = "-" + fmt(aud.duration - aud.currentTime);
+                    }};
+                }}
+                updateUI(audA, 'curA', 'remA');
+                updateUI(audB, 'curB', 'remB');
+            </script>
         </div>
-    """, unsafe_allow_html=True)
-
-    st.divider()
-
-    # 2. ส่วนควบคุมการสแกน
-    st.subheader("🔍 ตั้งค่าขอบเขตการสแกน")
-    c1, c2 = st.columns(2)
-    with c1:
-        past_range = st.slider("สแกนย้อนหลัง (วัน)", 0, 365, 180)
-    with c2:
-        future_range = st.slider("สแกนไปข้างหน้า (วัน)", 0, 365, 180)
-
-    # 3. ผลการสแกน
-    tab_past, tab_future = st.tabs([f"⏪ อดีต ({past_range} วัน)", f"🔮 อนาคต ({future_range} วัน)"])
-
-    with tab_past:
-        df_p = run_scanner(user_data['res'], date.today(), past_range, "past")
-        if not df_p.empty:
-            st.write(f"พบพิกัดที่น่าสนใจในอดีต {len(df_p)} จุด")
-            st.dataframe(df_p, use_container_width=True)
-        else:
-            st.write("ไม่พบพิกัดพิเศษในช่วงวันที่เลือก")
-
-    with tab_future:
-        df_f = run_scanner(user_data['res'], date.today(), future_range, "future")
-        if not df_f.empty:
-            st.write(f"พบพิกัดที่น่าสนใจในอนาคต {len(df_f)} จุด")
-            st.dataframe(df_f, use_container_width=True)
-        else:
-            st.write("ไม่พบพิกัดพิเศษในช่วงวันที่เลือก")
-            
-else:
-    st.info("💡 กรุณาระบุวันเกิดของคุณเพื่อเริ่มการสแกนพิกัดย้อนหลังและอนาคต")
-
-st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE ENGINE v3.2")
+        """
+        components.html(mixer_html, height=450)
+        st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Sound Module v4.2")
