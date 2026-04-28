@@ -56,7 +56,7 @@ if loc:
     accuracy = loc['coords'].get('accuracy', 'N/A')
     st.write(f"ความคลาดเคลื่อน: {accuracy} เมตร")
     
-    if accuracy > 1000:
+    if accuracy > 10:
         st.warning("⚠️ สัญญาณ GPS ไม่แม่นยำ (อาจเคลื่อนได้เป็นกิโล) ลองออกไปที่โล่งครับ")
 
 
