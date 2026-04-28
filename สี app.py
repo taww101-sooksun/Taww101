@@ -72,30 +72,25 @@ with tabs[0]:
         st.info("⌛ กำลังรอสัญญาณ GPS... (กรุณากด Allow Location บนเบราว์เซอร์)")
 
 with tabs[1]:
-    try:
-        all_users = db.reference('users').get()
+    all_users = db.reference('users').get()
+    
+    if loc: # เช็กก่อนว่ามีพิกัดเราจริงๆ ไหม
+        my_lat = loc['coords']['latitude']
+        my_lon = loc['coords']['longitude']
         
-        # จุดศูนย์กลางแผนที่ (ถ้าไม่มีพิกัดเรา ให้ใช้กรุงเทพฯ)
-        view_lat, view_lon = 13.75, 100.5
-        if all_users and my_id in all_users:
-            view_lat = all_users[my_id].get('lat', 13.75)
-            view_lon = all_users[my_id].get('lon', 100.5)
+        st.write(f"ตำแหน่งของคุณตอนนี้: {my_lat}, {my_lon}")
 
-        m = folium.Map(location=[view_lat, view_lon], zoom_start=16, 
+        m = folium.Map(location=[my_lat, my_lon], zoom_start=18, 
                        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
                        attr="Google Satellite")
 
+        # วาด Marker คนอื่นๆ
         if all_users:
             for name, info in all_users.items():
                 if isinstance(info, dict) and 'lat' in info and 'lon' in info:
                     color = 'blue' if name == my_id else 'red'
-                    folium.Marker(
-                        [info['lat'], info['lon']], 
-                        popup=name,
-                        tooltip=name,
-                        icon=folium.Icon(color=color, icon='info-sign')
-                    ).add_to(m)
+                    folium.Marker([info['lat'], info['lon']], tooltip=name).add_to(m)
         
-        st_folium(m, width="100%", height=500, key="synapse_map")
-    except Exception as e:
-        st.error(f"Map Error: {e}")
+        st_folium(m, width="100%", height=500)
+    else:
+        st.warning("⚠️ แผนที่ยังไม่พร้อม เพราะระบบยังหาพิกัด GPS ของคุณไม่เจอครับ")
