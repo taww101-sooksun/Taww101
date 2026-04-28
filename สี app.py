@@ -52,7 +52,13 @@ st.audio(music_url, format="audio/mpeg", loop=True)
 
 # --- 4. GEOLOCATION & TABS ---
 loc = get_geolocation()
-tabs = st.tabs(["🚀 CORE", "🛰️ RADAR"])
+if loc:
+    accuracy = loc['coords'].get('accuracy', 'N/A')
+    st.write(f"ความคลาดเคลื่อน: {accuracy} เมตร")
+    
+    if accuracy > 100:
+        st.warning("⚠️ สัญญาณ GPS ไม่แม่นยำ (อาจเคลื่อนได้เป็นกิโล) ลองออกไปที่โล่งครับ")
+
 
 with tabs[0]:
     my_id = st.text_input("ระบุชื่อรหัสของคุณ:", value="Ta101")
