@@ -11,21 +11,44 @@ from datetime import datetime, date, timedelta
 from streamlit_js_eval import get_geolocation
 import streamlit.components.v1 as components
 
-# --- [ 1. CONFIG บนสุด ห้ามย้าย! ] ---
-st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
-
-# --- [ 2. การเชื่อมต่อ FIREBASE ] ---
+# --- [ 2. การเชื่อมต่อ FIREBASE (ฉบับแก้ไขให้ตรงกับ Secrets ของคุณ) ] ---
 if not firebase_admin._apps:
     try:
-        import json
-        key_dict = json.loads(st.secrets["textkey"])
-        cred = credentials.Certificate(key_dict)
+        # ดึงข้อมูลจาก st.secrets โดยตรงตามโครงสร้างที่คุณให้มา
+        cred_info = {
+            "type": st.secrets["firebase_credentials"]["type"],
+            "project_id": st.secrets["firebase_credentials"]["project_id"],
+            "private_key_id": st.secrets["firebase_credentials"]["private_key_id"],
+            "private_key": st.secrets["firebase_credentials"]["private_key"],
+            "client_email": st.secrets["firebase_credentials"]["client_email"],
+            "client_id": st.secrets["firebase_credentials"]["client_id"],
+            "auth_uri": st.secrets["firebase_credentials"]["auth_uri"],
+            "token_uri": st.secrets["firebase_credentials"]["token_uri"],
+            "auth_provider_x509_cert_url": st.secrets["firebase_credentials"]["auth_provider_x509_cert_url"],
+            "client_x509_cert_url": st.secrets["firebase_credentials"]["client_x509_cert_url"]
+        }
+        
+        cred = credentials.Certificate(cred_info)
         firebase_admin.initialize_app(cred, {
-            'databaseURL': st.secrets["databaseURL"]
+            'databaseURL': st.secrets["firebase_db_url"]  # ใช้ชื่อตัวแปรให้ตรงกับที่คุณตั้งไว้
         })
     except Exception as e:
         st.error(f"❌ Firebase Error: {e}")
+        st.info("💡 คำแนะนำ: ตรวจสอบว่าในหน้า Secrets ของ Streamlit ตั้งชื่อหัวข้อว่า [firebase_credentials] และ firebase_db_url ถูกต้องหรือไม่")
         st.stop()
+
+[firebase_credentials]
+type = "service_account"
+project_id = "sooksun1"
+private_key_id = "f459e984d728639556276857f7229e0618073528"
+private_key = "-----BEGIN PRIVATE KEY-----\n...ใส่ยาวๆ ไปจนจบ...\n-----END PRIVATE KEY-----\n"
+client_email = "firebase-adminsdk-fbsvc@sooksun1.iam.gserviceaccount.com"
+client_id = "113271115856417105221"
+auth_uri = "https://accounts.google.com/o/oauth2/auth"
+token_uri = "https://oauth2.googleapis.com/token"
+auth_provider_x509_cert_url = "https://www.googleapis.com/oauth2/v1/certs"
+client_x509_cert_url = "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40sooksun1.iam.gserviceaccount.com"
+
 
 # --- [ 3. ฟังก์ชันการคำนวณ (The Truth) ] ---
 def get_base64_data(file_path):
