@@ -17,10 +17,14 @@ from streamlit_js_eval import get_geolocation
 # ==========================================
 @st.cache_resource
 def init_system():
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
-    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
-    if 'user' not in st.session_state: st.session_state.user = "Ta101"
-    if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    # เช็กและตั้งค่าเริ่มต้นทีละตัวแบบชัวร์ๆ
+    if 'theme_color' not in st.session_state: st.session_state['theme_color'] = "#39FF14"
+    if 'bg_color' not in st.session_state: st.session_state['bg_color'] = "#000000"
+    if 'user' not in st.session_state: st.session_state['user'] = "Ta101"
+    if 'song_index' not in st.session_state: st.session_state['song_index'] = 0
+    
+    # ... ส่วนของ Firebase ...
+
 
     if not firebase_admin._apps:
         try:
