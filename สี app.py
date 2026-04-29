@@ -5,53 +5,39 @@ import base64
 import math
 import time
 import folium
+import firebase_admin
+from firebase_admin import credentials, db
 from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
 from datetime import datetime, date
-import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, db
-import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, db
 
-# --- [ FIREBASE INITIALIZATION ] ---
+# --- [ 1. FIREBASE INITIALIZATION ] ---
 @st.cache_resource
 def init_firebase():
-    # ตรวจสอบว่าแอปถูกสร้างไปหรือยัง
     if not firebase_admin._apps:
         try:
-            # ดึงข้อมูลจาก Secrets ที่คุณพิมพ์ไว้
             fb_creds = dict(st.secrets["firebase_credentials"])
-            
-            # แก้ไขเรื่อง \n ที่อาจจะเพี้ยนตอนเซฟ (สำคัญมาก!)
             if "\\n" in fb_creds["private_key"]:
                 fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
-            
             cred = credentials.Certificate(fb_creds)
             return firebase_admin.initialize_app(cred, {
                 'databaseURL': "https://sooksun1-default-rtdb.firebaseio.com/"
             })
         except Exception as e:
-            st.error(f"❌ เชื่อมต่อ Firebase ไม่สำเร็จ: {e}")
+            st.error(f"❌ Firebase Error: {e}")
             return None
     return firebase_admin.get_app()
 
-# เรียกใช้งาน
 firebase_app = init_firebase()
 
-
-
-# --- [ 1. INITIAL SETUP ] ---
-if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#00ff41"
-if 'user_name' not in st.session_state:
-    st.session_state.user_name = "AGENT_X"
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = "MAIN MENU"
+# --- [ 2. SESSION STATE ] ---
+if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00ff41"
+if 'user_name' not in st.session_state: st.session_state.user_name = "AGENT_X"
+if 'current_page' not in st.session_state: st.session_state.current_page = "MAIN MENU"
 
 st.set_page_config(page_title="SYNAPSE X", layout="wide")
 
-# CSS Style
+# --- [ 3. CSS STYLE ] ---
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
@@ -68,7 +54,7 @@ def go_to(page):
     st.session_state.current_page = page
     st.rerun()
 
-# --- [ 2. INTERFACE LOGIC ] ---
+# --- [ 4. INTERFACE LOGIC ] ---
 
 if st.session_state.current_page == "MAIN MENU":
     st.markdown("<h1 class='neon-title'>SYNAPSE X</h1>", unsafe_allow_html=True)
@@ -84,28 +70,30 @@ if st.session_state.current_page == "MAIN MENU":
     st.caption(f"AGENT: {st.session_state.user_name} | 'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
 else:
-    if st.button("⬅️ BACK TO MENU"):
-        go_to("MAIN MENU")
+    if st.button("⬅️ BACK TO MENU"): go_to("MAIN MENU")
     st.write("---")
 
     # --- PAGE: SETTINGS ---
     if st.session_state.current_page == "SETTINGS":
-        st.markdown(f"<h2 class='neon-title'>SETTINGS</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 class='neon-title'>SETTINGS</h2>", unsafe_allow_html=True)
         st.session_state.user_name = st.text_input("AGENT NAME", value=st.session_state.user_name)
         st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
         if st.button("SAVE"): st.rerun()
 
-    # --- PAGE: MUSIC (กราฟบน รายการล่าง) ---
+    # --- PAGE: MUSIC ---
     elif st.session_state.current_page == "MUSIC":
-        st.markdown(f"<h2 class='neon-title'>🎧 DJ STATION</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 class='neon-title'>🎧 DJ STATION</h2>", unsafe_allow_html=True)
         all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
         if not all_songs: st.error("No .mp3 files found.")
         else:
-            s_a = st.session_state.get('sa', "-- Select --")
-            s_b = st.session_state.get('sb', "-- Select --")
-            def get_b64(f): return base64.b64encode(open(f, "rb").read()).decode() if f != "-- Select --" else ""
-            d_a, d_b = get_b64(s_a), get_b64(s_b)
+            s_a = st.selectbox("DECK A", ["-- Select --"] + all_songs, key="sa")
+            s_b = st.selectbox("DECK B", ["-- Select --"] + all_songs, key="sb")
             
+            def get_b64(f): 
+                if f == "-- Select --": return ""
+                return base64.b64encode(open(f, "rb").read()).decode()
+            
+            d_a, d_b = get_b64(s_a), get_b64(s_b)
             mixer_html = f"""
             <div style="background:#000; border:2px solid {st.session_state.theme_color}; border-radius:20px; padding:15px;">
                 <canvas id="v" style="width:100%; height:150px; background:#050505; border-radius:10px;"></canvas>
@@ -114,7 +102,7 @@ else:
                 <audio id="audB" src="data:audio/mp3;base64,{d_b}"></audio>
                 <script>
                     const a=document.getElementById('audA'), b=document.getElementById('audB');
-                    let ctx, ans, active='A';
+                    let ctx, ans;
                     function play() {{
                         if(!ctx) {{
                             ctx=new(window.AudioContext||window.webkitAudioContext)(); ans=ctx.createAnalyser();
@@ -129,119 +117,46 @@ else:
                         requestAnimationFrame(loop); const d=new Uint8Array(ans.frequencyBinCount); ans.getByteFrequencyData(d);
                         const c=document.getElementById('v').getContext('2d'); c.clearRect(0,0,300,150);
                         for(let i=0;i<d.length;i++) {{ c.fillStyle=`hsl(${{i*5}},100%,50%)`; c.fillRect(i*2, 150-(d[i]/2), 1, d[i]/2); }}
-                        if(a.duration-a.currentTime<7 && b.paused) {{ b.play(); window.gs.A.gain.linearRampToValueAtTime(0, ctx.currentTime+6); window.gs.B.gain.linearRampToValueAtTime(1, ctx.currentTime+6); }}
                     }}
                 </script>
             </div>"""
             components.html(mixer_html, height=250)
-            c1, c2 = st.columns(2)
-            with c1: st.selectbox("DECK A", ["-- Select --"] + all_songs, key="sa")
-            with c2: st.selectbox("DECK B", ["-- Select --"] + all_songs, key="sb")
-            if st.button("🔄 UPDATE"): st.rerun()
-
-
-            st_folium(m, width="100%", height=400, key="radar_map")
-            
-            if st.button("📡 BROADCAST POSITION", use_container_width=True):
-                # ตรงนี้ใส่โค้ด db.reference('users/...').update(...) เพื่อส่งค่าเข้า Firebase
-                st.toast("ส่งพิกัดเข้าฐานข้อมูลแล้ว!")
-
-        with t2: # แชตรวม (โค้ดเดิมของคุณ)
-            st.subheader("Global Communication")
-            # ... ส่วนแชตที่คุณมีอยู่แล้ว ...
-
-        with t3: # แชตลับ (โค้ดเดิมของคุณ)
-            st.subheader("Agent-to-Agent Encryption")
-            # ... ส่วนแชตลับที่คุณมีอยู่แล้ว ...
-    # --- PAGE: GPS & CHAT (ระบบเรดาร์ + แชตส่งไฟล์สมบูรณ์) ---
-    elif st.session_state.current_page == "GPS":
-        st.markdown(f"<h2 class='neon-title'>🛰️ COMMAND CENTER</h2>", unsafe_allow_html=True)
-        
-        # 1. ระบบดึงพิกัด (ต้องติดตั้ง pip install streamlit-js-eval)
-        from streamlit_js_eval import get_geolocation
-        loc = get_geolocation()
-        
-        if loc:
-            my_lat = loc['coords']['latitude']
-            my_lon = loc['coords']['longitude']
-        else:
-            my_lat, my_lon = 13.7367, 100.5231 # พิกัดสำรอง
-            st.info("📡 กำลังซิงค์สัญญาณดาวเทียม (กรุณากด Allow เพื่อใช้พิกัดจริง)...")
-
-        # สร้าง Tab เพื่อแยกส่วนการใช้งาน
-        tab1, tab2, tab3 = st.tabs(["📡 RADAR VIEW", "🌐 PUBLIC CHAT", "🔐 SECURE LINE"])
-
-        # --- [ TAB 1: RADAR (ระบบเรดาร์รวมกลุ่ม) ] ---
-        with tab1:
-            st.subheader("Satellite Reconnaissance")
-            google_hybrid = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-            m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles=google_hybrid, attr='Google Hybrid')
-            
-            # ปักหมุดตัวเรา (แดง)
-            folium.Marker([my_lat, my_lon], popup="YOU", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
-            
-            # แสดงแผนที่
-            st_folium(m, width="100%", height=400, key="map_radar")
-            
-            if st.button("📡 BROADCAST POSITION", use_container_width=True):
-                # โค้ดส่งพิกัดไป Firebase (สมมติว่าใช้ st.session_state.user_name เป็น ID)
-                # db.reference(f'users/{st.session_state.user_name}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-                st.success("ส่งพิกัดเข้าสู่เครือข่ายแล้ว!")
 
     # --- PAGE: GPS & CHAT ---
     elif st.session_state.current_page == "GPS":
-        st.markdown(f"<h2 class='neon-title'>🛰️ COMMAND CENTER</h2>", unsafe_allow_html=True)
-        
-        # 1. ดึงพิกัด
-        from streamlit_js_eval import get_geolocation
+        st.markdown("<h2 class='neon-title'>🛰️ COMMAND CENTER</h2>", unsafe_allow_html=True)
         loc = get_geolocation()
         my_lat, my_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.7367, 100.5231)
 
         tab1, tab2, tab3 = st.tabs(["📡 RADAR VIEW", "🌐 PUBLIC CHAT", "🔐 SECURE LINE"])
 
-        with tab1:
-            st.subheader("Satellite Reconnaissance")
-            
-            # --- จุดสำคัญ: ต้องสร้างตัวแปร m ก่อนเรียกใช้ st_folium ---
-            google_hybrid = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-            m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles=google_hybrid, attr='Google Hybrid')
-            
-            folium.Marker(
-                [my_lat, my_lon], 
-                popup="YOU", 
-                icon=folium.Icon(color='red', icon='user', prefix='fa')
-            ).add_to(m)
-            
-            # เรียกใช้ m ตรงนี้ (เมื่อมั่นใจว่า m ถูกสร้างแล้ว)
+        with tab1: # GPS Map
+            m = folium.Map(location=[my_lat, my_lon], zoom_start=18, 
+                          tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google Hybrid')
+            folium.Marker([my_lat, my_lon], popup="YOU", icon=folium.Icon(color='red')).add_to(m)
             st_folium(m, width="100%", height=400, key="radar_map")
-            
             if st.button("📡 BROADCAST POSITION", use_container_width=True):
-                try:
-                    db.reference(f'users/{st.session_state.user_name}').update({
-                        'lat': my_lat, 'lon': my_lon, 'ts': time.time()
-                    })
-                    st.success("ส่งพิกัดเข้าสู่เครือข่ายแล้ว!")
-                except:
-                    st.error("กรุณาตรวจสอบการเชื่อมต่อ Firebase")
+                db.reference(f'users/{st.session_state.user_name}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
+                st.success("Broadcasted!")
 
-        with tab2:
-            st.subheader("🌐 Public Feed")
-            # ... ส่วนแชตสาธารณะ ...
+        with tab2: # Chat
+            with st.form("chat_form", clear_on_submit=True):
+                msg = st.text_input("Message...")
+                if st.form_submit_button("SEND"):
+                    if msg:
+                        db.reference('public_chat').push({'u': st.session_state.user_name, 'm': msg, 'ts': time.time()})
+                        st.rerun()
+            
+            st.write("---")
+            data = db.reference('public_chat').order_by_key().limit_to_last(10).get()
+            if data:
+                for k, v in reversed(list(data.items())):
+                    st.write(f"**{v.get('u')}**: {v.get('m')}")
 
-        with tab3:
-            st.subheader("🔐 Secure Line")
-            # ... ส่วนแชตลับ ...
-        
-
-        
-
-    # --- PAGE: DECODER ---
     elif st.session_state.current_page == "DECODER":
-        st.markdown(f"<h2 class='neon-title'>COSMIC DECODER</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 class='neon-title'>COSMIC DECODER</h2>", unsafe_allow_html=True)
         st.write("รหัสฐานวัน:", round(date.today().isoweekday() * 1.618, 4))
-        st.write("รหัสจันทรคติ: 29.53")
 
-    # --- PAGE: SENSOR ---
     elif st.session_state.current_page == "SENSOR":
-        st.markdown(f"<h2 class='neon-title'>SENSOR LAB</h2>", unsafe_allow_html=True)
-        st.info("System scanning for G-Force vibrations...")
+        st.markdown("<h2 class='neon-title'>SENSOR LAB</h2>", unsafe_allow_html=True)
+        st.info("System scanning...")
