@@ -14,9 +14,10 @@ from streamlit_js_eval import get_geolocation
 # ==========================================
 # 1. CORE ENGINE & FIREBASE (เสถียรที่สุด)
 # ==========================================
+# --- [ 1. INITIAL SETUP & FIREBASE ] ---
 @st.cache_resource
 def init_system():
-    # Session State Setup
+    # ต้องจองค่าพวกนี้ก่อนที่ CSS ด้านล่างจะเรียกใช้
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
     if 'user' not in st.session_state: st.session_state.user = "Ta101"
@@ -25,10 +26,8 @@ def init_system():
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
-            # ล้างค่าขยะใน Private Key เพื่อกัน Error InvalidByte
             if "private_key" in fb_creds:
                 fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n").strip().strip('"')
-            
             cred = credentials.Certificate(fb_creds)
             firebase_admin.initialize_app(cred, {
                 'databaseURL': st.secrets["firebase_db_url"]
@@ -36,6 +35,35 @@ def init_system():
         except Exception as e:
             st.error(f"🛰️ Firebase Connection Error: {e}")
     return True
+
+# --- สำคัญมาก: ต้องเรียกใช้งานก่อนทำอย่างอื่น ---
+init_system()
+
+# --- [ 2. UI STYLING ] ---
+# ย้ายมาไว้ตรงนี้เพื่อให้แน่ใจว่า st.session_state.bg_color มีค่าแล้ว
+st.set_page_config(page_title="SYNAPSE X", layout="wide")
+
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    .stApp {{ 
+        background-color: {st.session_state.bg_color} !important; 
+        color: #FFFFFF !important; 
+        font-family: 'Orbitron', sans-serif; 
+    }}
+    .stButton>button {{ 
+        border: 2px solid {st.session_state.theme_color} !important; 
+        color: {st.session_state.theme_color} !important; 
+        background: transparent !important; 
+        border-radius: 10px; 
+    }}
+    .stButton>button:hover {{ 
+        background: {st.session_state.theme_color} !important; 
+        color: black !important; 
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
 
 init_system()
 
