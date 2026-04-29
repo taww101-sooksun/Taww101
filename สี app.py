@@ -85,8 +85,8 @@ if menu == "🔐 LOGIN & SETTINGS":
 elif menu == "🎧 ROOM 1: NEON MUSIC":
     st.markdown("<h2 class='neon-text'>MUSIC ROOM</h2>", unsafe_allow_html=True)
     # ใส่โค้ด Mixer เดิมของคุณตรงนี้
-    # --- หน้า MUSIC (DJ STATION V.4 - Visualizer Top) ---
-    elif st.session_state.current_page == "MUSIC":
+    # --- หน้า MUSIC (DJ STATION V.4 - Visualizer Top) ---   
+elif st.session_state.current_page == "MUSIC":
         st.markdown("<h2 class='neon-title'>🎧 SYNAPSE ANALYZER</h2>", unsafe_allow_html=True)
         
         # 1. เตรียมข้อมูลเพลง
