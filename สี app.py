@@ -10,6 +10,54 @@ import streamlit.components.v1 as components
 import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
+# --- [ 1. IMPORT ทั้งหมด ] ---
+import streamlit as st
+import os 
+import base64
+# ... (import อื่นๆ ของคุณ)
+
+# --- [ 2. INITIAL SETUP ฟังก์ชันตั้งค่า ] ---
+def init_system():
+    # จองค่าไว้ในกระเป๋าก่อน
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
+    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
+    if 'user' not in st.session_state: st.session_state.user = "Ta101"
+    if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    
+    # ส่วน Firebase
+    if not firebase_admin._apps:
+        try:
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            if "private_key" in fb_creds:
+                fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n").strip().strip('"')
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': st.secrets["firebase_db_url"]
+            })
+        except Exception as e:
+            pass # หรือ st.error(e)
+
+# --- [ 3. รันฟังก์ชันทันที ] ---
+# ต้องรันตรงนี้เพื่อให้ session_state มีค่า bg_color เตรียมพร้อมไว้
+init_system()
+
+# --- [ 4. UI STYLING (วางไว้หลังรัน init_system) ] ---
+st.set_page_config(page_title="SYNAPSE X", layout="wide")
+
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    .stApp {{ 
+        background-color: {st.session_state.bg_color} !important; 
+        color: #FFFFFF !important; 
+        font-family: 'Orbitron', sans-serif; 
+    }}
+    /* ... CSS อื่นๆ ของคุณ ... */
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- [ 5. ส่วนอื่นๆ ของแอป ] ---
+# def main()...
 
 # ==========================================
 # 1. CORE ENGINE & FIREBASE (เสถียรที่สุด)
