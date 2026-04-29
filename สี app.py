@@ -245,10 +245,10 @@ else:
 
     
 
-    elif st.session_state.current_page == "GPS":
+elif st.session_state.current_page == "GPS":
         st.markdown("<h2 class='neon-title'>GPS RADAR</h2>", unsafe_allow_html=True)
         # ใส่โค้ด GPS ของคุณที่นี่
 
-    elif st.session_state.current_page == "SENSOR":
+elif st.session_state.current_page == "SENSOR":
         st.markdown("<h2 class='neon-title'>SENSOR LAB</h2>", unsafe_allow_html=True)
         # ใส่โค้ด Sensor ของคุณที่นี่
