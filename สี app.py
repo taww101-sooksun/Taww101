@@ -68,8 +68,8 @@ if st.session_state.current_page == "MAIN MENU":
     st.divider()
     st.caption(f"AGENT: {st.session_state.user_name} | 'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-# หน้าลูก (Sub-pages)
-else:
+ # หน้าลูก (Sub-pages)
+ else:
     # ปุ่มกดกลับเมนูหลัก (Home Button)
     if st.button("⬅️ BACK TO MENU"):
         go_to("MAIN MENU")
