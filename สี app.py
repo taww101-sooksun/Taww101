@@ -188,37 +188,50 @@ else:
                 # db.reference(f'users/{st.session_state.user_name}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
                 st.success("ส่งพิกัดเข้าสู่เครือข่ายแล้ว!")
 
-        # --- [ TAB 2: PUBLIC CHAT (ส่งรูป/วิดีโอ) ] ---
+    # --- PAGE: GPS & CHAT ---
+    elif st.session_state.current_page == "GPS":
+        st.markdown(f"<h2 class='neon-title'>🛰️ COMMAND CENTER</h2>", unsafe_allow_html=True)
+        
+        # 1. ดึงพิกัด
+        from streamlit_js_eval import get_geolocation
+        loc = get_geolocation()
+        my_lat, my_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.7367, 100.5231)
+
+        tab1, tab2, tab3 = st.tabs(["📡 RADAR VIEW", "🌐 PUBLIC CHAT", "🔐 SECURE LINE"])
+
+        with tab1:
+            st.subheader("Satellite Reconnaissance")
+            
+            # --- จุดสำคัญ: ต้องสร้างตัวแปร m ก่อนเรียกใช้ st_folium ---
+            google_hybrid = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+            m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles=google_hybrid, attr='Google Hybrid')
+            
+            folium.Marker(
+                [my_lat, my_lon], 
+                popup="YOU", 
+                icon=folium.Icon(color='red', icon='user', prefix='fa')
+            ).add_to(m)
+            
+            # เรียกใช้ m ตรงนี้ (เมื่อมั่นใจว่า m ถูกสร้างแล้ว)
+            st_folium(m, width="100%", height=400, key="radar_map")
+            
+            if st.button("📡 BROADCAST POSITION", use_container_width=True):
+                try:
+                    db.reference(f'users/{st.session_state.user_name}').update({
+                        'lat': my_lat, 'lon': my_lon, 'ts': time.time()
+                    })
+                    st.success("ส่งพิกัดเข้าสู่เครือข่ายแล้ว!")
+                except:
+                    st.error("กรุณาตรวจสอบการเชื่อมต่อ Firebase")
+
         with tab2:
-            st.subheader("🌐 Public & Media")
-            with st.form("media_chat", clear_on_submit=True):
-                msg = st.text_input("พิมพ์ข้อความ...")
-                uploaded_file = st.file_uploader("📸 ส่งรูปภาพหรือคลิป", type=['jpg', 'png', 'mp4'])
-                
-                if st.form_submit_button("📢 ส่งเข้าเครือข่าย"):
-                    if msg or uploaded_file:
-                        # โค้ดส่งไฟล์แบบ Base64 ของคุณ
-                        st.toast("Intelligence Data Transmitted!")
-            
-            st.write("---")
-            st.caption("Feed ล่าสุดจากเครือข่าย...")
-            # ส่วนนี้คุณสามารถใส่ Loop ดึงข้อมูลจาก db.reference('public_chat') มาแสดงผลได้เลย
+            st.subheader("🌐 Public Feed")
+            # ... ส่วนแชตสาธารณะ ...
 
-        # --- [ TAB 3: SECURE LINE (แชตลับสายลับ) ] ---
         with tab3:
-            st.subheader("🔐 Secure Media Chat")
-            # สมมติรายชื่อ AGENT (ดึงจริงจาก Firebase users)
-            target = st.selectbox("🎯 เลือกคู่สาย AGENT:", ["-- เลือกเป้าหมาย --", "AGENT_ALPHA", "AGENT_BETA"])
-            
-            if target != "-- เลือกเป้าหมาย --":
-                with st.form("private_form", clear_on_submit=True):
-                    p_msg = st.text_input(f"🔒 ข้อความลับถึง {target}...")
-                    p_file = st.file_uploader("ส่งไฟล์ลับ", type=['jpg', 'png', 'mp4'])
-                    if st.form_submit_button("🚀 LOCK & SEND"):
-                        st.success("Data Encrypted and Sent.")
-                
-                st.info(f"Connected to {target}. Secure line is active.")
-
+            st.subheader("🔐 Secure Line")
+            # ... ส่วนแชตลับ ...
+        
 
         
 
