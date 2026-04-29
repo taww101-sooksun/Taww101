@@ -68,8 +68,8 @@ if st.session_state.current_page == "MAIN MENU":
     st.divider()
     st.caption(f"AGENT: {st.session_state.user_name} | 'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
- # หน้าลูก (Sub-pages)
- else:
+# หน้าลูก (Sub-pages)
+else:
     # ปุ่มกดกลับเมนูหลัก (Home Button)
     if st.button("⬅️ BACK TO MENU"):
         go_to("MAIN MENU")
@@ -89,8 +89,7 @@ if st.session_state.current_page == "MAIN MENU":
         st.write("1. รหัสฐานวัน:", round(date.today().isoweekday() * 1.618, 4))
         st.write("2. รหัสจันทรคติ: 29.53")
         st.write("3. รหัสสมดุล: ALPHA-01")
-
-    elif menu == "🎧 ROOM 1: NEON MUSIC":
+elif menu == "🎧 ROOM 1: NEON MUSIC":
     st.markdown("<h2 class='neon-text'>🎧 SYNAPSE NEON DJ STATION</h2>", unsafe_allow_html=True)
     
     # ดึงรายชื่อไฟล์ MP3 จากโฟลเดอร์เดียวกัน
@@ -244,6 +243,7 @@ if st.session_state.current_page == "MAIN MENU":
         components.html(mixer_html, height=500)
         st.caption("Tactical Engine: ตรวจพบไฟล์เสียงในระบบ พร้อมสำหรับการ Mix ต่อเนื่อง")
 
+    
 
     elif st.session_state.current_page == "GPS":
         st.markdown("<h2 class='neon-title'>GPS RADAR</h2>", unsafe_allow_html=True)
