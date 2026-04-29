@@ -288,32 +288,139 @@ def room_music():
             dataArray = new Uint8Array(analyser.frequencyBinCount);
             draw();
         }}
-        if (audio.paused) {{ audio.play(); btn.innerText = "[ SIGNAL ACTIVE ]"; btn.style.borderColor = "#ff0000"; btn.style.color = "#ff0000"; }}
-        else {{ audio.pause(); btn.innerText = "[ SIGNAL PAUSED ]"; btn.style.borderColor = "{st.session_state.theme_color}"; btn.style.color = "{st.session_state.theme_color}"; }}
+def room_music():
+    # ส่วนหัวกระพริบ (Neon Title)
+    st.markdown(f"""
+        <h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center; font-family:Orbitron, monospace;'>
+            🎧 SYNAPSE HOLOGRAPHIC STATION
+        </h2>
+    """, unsafe_allow_html=True)
+    
+    # ดึงรายชื่อเพลง
+    songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+    
+    if not songs:
+        st.warning("⚠️ ไม่พบสัญญาณเสียงในหน่วยความจำ")
+        return
+
+    # 1. เลือกเพลงจาก Dropdown (อันเดียวจบ)
+    s_a = st.selectbox("🎯 SELECT SIGNAL SOURCE", ["-- STANDBY --"] + songs, index=st.session_state.song_index + 1)
+    
+    song_b64 = ""
+    song_display_name = "WAITING FOR SIGNAL..."
+    if s_a != "-- STANDBY --":
+        with open(s_a, "rb") as f:
+            song_b64 = base64.b64encode(f.read()).decode()
+        st.session_state.song_index = songs.index(s_a)
+        song_display_name = s_a # ใช้ชื่อเพลงจริง
+
+    # 2. เครื่องเล่นเพลงชุดเดียว (JavaScript) ที่มีทั้ง Marquee วิ่ง และ Visualizer สีรุ้งวาบๆ
+    visualizer_html = f"""
+    <div style="background: #000; border: 3px solid {st.session_state.theme_color}; border-radius: 20px; padding: 15px; box-shadow: 0 0 30px {st.session_state.theme_color}55;">
+        
+        <div style="overflow: hidden; white-space: nowrap; background: #050505; border: 1px solid {st.session_state.theme_color}55; border-radius: 8px; margin-bottom: 10px; padding: 8px;">
+            <p id="marqueeText" style="display: inline-block; padding-left: 100%; font-family: Orbitron, monospace; font-size: 16px; font-weight:bold; color: white; text-shadow: 0 0 10px white; animation: marquee 12s linear infinite;">
+                <span id="rainbowPrefix" style="animation: rainbowText 4s linear infinite;">>>></span> 
+                {song_display_name} 
+                <span id="rainbowSuffix" style="animation: rainbowText 4s linear infinite;"><<< ANALYZING FREQUENCY... SECURE LINE... >>></span>
+            </p>
+        </div>
+
+        <canvas id="canvas" style="width: 100%; height: 220px; background: #000; border-radius: 10px; cursor: pointer;"></canvas>
+        
+        <div style="margin-top: 15px; text-align: center;">
+            <button id="pBtn" style="width: 100%; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron, monospace; font-size: 1.1em; font-weight:bold; cursor: pointer; transition: 0.3s;">
+                [ CLICK TO SYNC HOLOGRAPH SIGNAL ]
+            </button>
+        </div>
+
+        <audio id="audio" src="data:audio/mp3;base64,{song_b64}"></audio>
+    </div>
+
+    <style>
+        @font-face {{
+            font-family: 'Orbitron';
+            src: url('https://fonts.gstatic.com/s/orbitron/v25/yV0XoI70DpAXgz53H5T4H_NqQO07m1U.woff2') format('woff2');
+        }}
+        @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
+        @keyframes rainbowText {{
+            0%, 100% {{ color: #ff0000; text-shadow: 0 0 10px #ff0000; }}
+            16% {{ color: #ff7f00; text-shadow: 0 0 10px #ff7f00; }}
+            33% {{ color: #ffff00; text-shadow: 0 0 10px #ffff00; }}
+            50% {{ color: #00ff00; text-shadow: 0 0 10px #00ff00; }}
+            66% {{ color: #0000ff; text-shadow: 0 0 10px #0000ff; }}
+            83% {{ color: #4b0082; text-shadow: 0 0 10px #4b0082; }}
+        }}
+        #pBtn:hover {{ background: {st.session_state.theme_color}33; box-shadow: 0 0 20px {st.session_state.theme_color}; }}
+    </style>
+
+    <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const audio = document.getElementById('audio');
+    const btn = document.getElementById('pBtn');
+    const marquee = document.getElementById('marqueeText');
+
+    let audioCtx, analyser, source, dataArray;
+
+    btn.onclick = function() {{
+        if (!audioCtx) {{
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            source = audioCtx.createMediaElementSource(audio);
+            source.connect(analyser);
+            analyser.connect(audioCtx.destination);
+            analyser.fftSize = 128; // ปรับความละเอียด Bar
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+            draw();
+        }}
+        if (audio.paused) {{ 
+            audio.play(); 
+            btn.innerText = "[ SIGNAL ACTIVE ]"; 
+            btn.style.borderColor = "#ff0000"; 
+            btn.style.color = "#ff0000"; 
+            marquee.style.animationPlayState = 'running'; // ให้ Marquee วิ่ง
+        }}
+        else {{ 
+            audio.pause(); 
+            btn.innerText = "[ SIGNAL PAUSED ]"; 
+            btn.style.borderColor = "{st.session_state.theme_color}"; 
+            btn.style.color = "{st.session_state.theme_color}";
+            marquee.style.animationPlayState = 'paused'; // หยุด Marquee
+        }}
     }};
 
     function draw() {{
         requestAnimationFrame(draw);
         analyser.getByteFrequencyData(dataArray);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // เอฟเฟกต์ Fade ทิ้งร่องรอย Bar
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        const barWidth = (canvas.width / dataArray.length);
+        const barWidth = (canvas.width / dataArray.length) * 2;
+        let x = 0;
+        
         for (let i = 0; i < dataArray.length; i++) {{
-            const barHeight = dataArray[i] * 0.8;
-            // ใช้สีตาม Theme แต่ไล่ความสว่างแบบ Neon
-            ctx.fillStyle = '{st.session_state.theme_color}';
+            const barHeight = dataArray[i] * 0.9;
+            // สร้างสี Rainbow 7 สี (HSL) วาบๆ ตามลำดับความถี่
+            const hue = (i / dataArray.length) * 360; 
+            ctx.fillStyle = `hsl(${{hue}}, 100%, 50%)`;
             ctx.shadowBlur = 15;
-            ctx.shadowColor = '{st.session_state.theme_color}';
-            ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 4, barHeight);
+            ctx.shadowColor = `hsl(${{hue}}, 100%, 50%)`;
+            
+            // วาด Bar
+            ctx.fillRect(x, canvas.height - barHeight, barWidth - 3, barHeight);
+            
+            x += barWidth;
         }}
     }}
+    // เริ่มต้นให้ Marquee หยุดวิ่งก่อนกด Play
+    window.onload = () => {{ marquee.style.animationPlayState = 'paused'; }}
     </script>
     """
-    components.html(visualizer_html, height=360)
+    components.html(visualizer_html, height=420) # ปรับสูงขึ้นหน่อย
 
     st.markdown("---")
-    st.caption("ระบบตัดเสียงก้องอัตโนมัติ: เชื่อมต่อผ่านช่องทางเดียวเท่านั้น")
+    st.caption("ระบบ SYNAPSE HOLOGRAPH: เสียงคมชัด ไร้สัญญาณสะท้อน")
 
 def room_sensor():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>🎙️ SENSOR LAB</h2>", unsafe_allow_html=True)
