@@ -343,29 +343,33 @@ def room_logic():
 # 4. MAIN LAYOUT
 # ==========================================
 def main():
-    # --- จุดชี้ตาย: เช็คก่อนว่ามีค่าใน session_state ไหม ถ้าไม่มีให้เซตเดี๋ยวนี้เลย ---
-    if 'user' not in st.session_state: 
-        st.session_state['user'] = "Ta101"
-    if 'theme_color' not in st.session_state: 
-        st.session_state['theme_color'] = "#39FF14"
-    if 'bg_color' not in st.session_state: 
-        st.session_state['bg_color'] = "#000000"
+    # 1. เช็คและจองที่ว่างในหน่วยความจำก่อน (สำคัญมาก)
+    if 'user' not in st.session_state: st.session_state['user'] = "Ta101"
+    if 'theme_color' not in st.session_state: st.session_state['theme_color'] = "#39FF14"
+    if 'bg_color' not in st.session_state: st.session_state['bg_color'] = "#000000"
 
     with st.sidebar:
         st.title("⚙️ SYSTEM")
-        # ใช้ .get() ซ้อนไว้อีกชั้นเพื่อความปลอดภัยสูงสุด
-        curr_user = st.session_state.get('user', 'Ta101')
-        st.session_state.user = st.text_input("AGENT ID", curr_user)
         
-        st.session_state.theme_color = st.color_picker("THEME", st.session_state.get('theme_color', "#39FF14"))
-        st.session_state.bg_color = st.color_picker("BACKGROUND", st.session_state.get('bg_color', "#000000"))
+        # 2. ใช้ค่าจากหน่วยความจำเป็นค่าเริ่มต้น แต่ไม่ต้องเอาไปทับทันที
+        new_user = st.text_input("AGENT ID", value=st.session_state['user'])
+        
+        # 3. ตรวจสอบว่ามีการเปลี่ยนค่าจริงๆ ไหม ถ้าเปลี่ยนค่อยอัปเดต (ป้องกัน Loop)
+        if new_user != st.session_state['user']:
+            st.session_state['user'] = new_user
+            st.rerun() # สั่งให้ระบบเริ่มทำงานใหม่ด้วยค่าใหม่
+
+        st.session_state['theme_color'] = st.color_picker("THEME", st.session_state['theme_color'])
+        st.session_state['bg_color'] = st.color_picker("BACKGROUND", st.session_state['bg_color'])
+        
         st.markdown("---")
         st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-    # ส่วนแท็บและการรันห้องต่างๆ (เหมือนเดิม)
+    # ส่วนแท็บ (เหมือนเดิม)
     tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "🎧 MUSIC", "📟 SENSOR", "🧬 LOGIC"])
     rooms = [room_core, room_radar, room_comms, room_music, room_sensor, room_logic]
     
     for i, tab in enumerate(tabs):
         with tab:
             rooms[i]()
+
