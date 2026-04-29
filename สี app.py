@@ -1,130 +1,102 @@
-import streamlit as st
-import pandas as pd
-from datetime import datetime, date
-import math
-
-# --- CONFIG & UI ---
-st.set_page_config(page_title="SYNAPSE: THE TRUTH REVEALED", layout="wide")
-
-st.markdown("""
-    <style>
-    .main { background-color: #050a0e; color: #00ff41; }
-    .logic-box { 
-        background-color: #101a24; 
-        padding: 20px; 
-        border-left: 5px solid #00ff41; 
-        border-radius: 10px;
-        margin-bottom: 20px;
-        color: #f0f0f0;
-    }
-    .math-highlight { color: #00ff41; font-family: 'Courier New', monospace; font-weight: bold; }
-    h1, h2, h3 { color: #00ff41; font-family: 'Courier New', Courier, monospace; }
-    </style>
-    """, unsafe_allow_html=True)
-
-def get_detailed_logic(dt):
-    # 1. ฐานข้อมูลเวลา (Data Origin)
-    ref_date = date(1900, 1, 1)
-    diff = (dt - ref_date).days
+def room_sensor():
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center; font-family:Orbitron;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
     
-    # 2. รอบดวงจันทร์ (Lunar Cycle) - ค่าคงที่จริงทางดาราศาสตร์
-    lunar_cycle = 29.530589
-    pos = (diff - 0.5) % lunar_cycle
-    
-    # 3. ฐานวัน (Day Base) - จันทร์=1 ถึง อาทิตย์=7
-    day_val = dt.weekday() + 1
-    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-    day_name = day_names[dt.weekday()]
-
-    # 4. การคำนวณแยกส่วน (Processing)
-    if pos <= 14.765: # ช่วงข้างขึ้น
-        m_num = int(pos) + 1
-        phase = f"ขึ้น {m_num} ค่ำ"
-        res = math.sqrt((day_val**2) + (m_num**2)) # สูตรพีทาโกรัสหาแรงลัพธ์ (Vector)
-        formula = f"√({day_val}² + {m_num}²)"
-        logic_type = "แรงผลักดัน (Vector Energy)"
-    else: # ช่วงข้างแรม
-        m_num = int(pos - 14.765) + 1
-        phase = f"แรม {m_num} ค่ำ"
-        res = (day_val * 1.618) / (m_num if m_num != 0 else 1) # สัดส่วนทองคำ (Phi)
-        formula = f"({day_val} × 1.618) / {m_num}"
-        logic_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
-
-    return {
-        "res": round(res, 4), "phase": phase, "day_name": day_name,
-        "day_val": day_val, "m_num": m_num, "formula": formula, 
-        "type": logic_type, "diff_days": diff
-    }
-
-# --- MAIN INTERFACE ---
-st.title("🛰️ SYNAPSE : ระบบถอดรหัสความจริงดิจิทัล")
-st.write("วิเคราะห์โครงสร้างตัวเลขจากวงโคจรดาราศาสตร์ 1950 - 2026")
-
-st.divider()
-
-# รับข้อมูล
-dob = st.date_input("📅 เลือกวันเกิดที่ต้องการตรวจสอบความจริง", 
-                   value=date(1990,1,1), 
-                   min_value=date(1950,1,1), 
-                   max_value=date(2026,12,31))
-
-if dob:
-    d = get_detailed_logic(dob)
-    
-    # แสดงผลรหัสหลัก
-    st.metric(label="ค่าความสั่นสะเทือน (Resonance ID)", value=d['res'])
-    
-    # --- ส่วนการอธิบายที่มา (The Breakdown) ---
-    st.subheader("🕵️ เจาะลึกที่มาของตัวเลข (Manual Breakdown)")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown(f"""
-        <div class="logic-box">
-            <h3>1. ฐานข้อมูลเวลา (Time Origin)</h3>
-            <ul>
-                <li><b>นับจากจุดอ้างอิง:</b> 01/01/1900</li>
-                <li><b>จำนวนวันที่ผ่านไป:</b> <span class="math-highlight">{d['diff_days']:,} วัน</span></li>
-                <li><b>รอบดวงจันทร์:</b> <span class="math-highlight">29.53 วัน</span> (Synodic Month)</li>
-                <li><b>ตำแหน่งปัจจุบัน:</b> วัน{d['day_name']} (ค่าพลังงาน = {d['day_val']})</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+    # รวม JS ทั้งหมดไว้ในตัวเดียวเพื่อประสิทธิภาพ
+    all_sensors_js = f"""
+    <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 20px; padding: 20px; font-family: 'Orbitron', monospace; color: white;">
         
-    with col2:
-        st.markdown(f"""
-        <div class="logic-box">
-            <h3>2. สภาวะจันทรคติ (Lunar State)</h3>
-            <ul>
-                <li><b>สถานะ:</b> {d['phase']}</li>
-                <li><b>อิทธิพล:</b> {'แรงดึงดูดรวมตัว (Vector)' if 'ขึ้น' in d['phase'] else 'แรงกระจายสมดุล (Golden Ratio)'}</li>
-                <li><b>สัดส่วนทองคำ:</b> <span class="math-highlight">1.618 (Phi)</span></li>
-                <li><b>ค่าคงที่วงโคจร:</b> {d['m_num']}</li>
-            </ul>
+        <div style="overflow: hidden; white-space: nowrap; background: #0a0a0a; border: 1px solid {st.session_state.theme_color}55; border-radius: 5px; margin-bottom: 15px; padding: 5px;">
+            <p id="mText" style="display: inline-block; padding-left: 100%; font-size: 14px; color: {st.session_state.theme_color}; animation: marquee 15s linear infinite;">
+                SYSTEM ONLINE >>> MONITORING REAL-TIME DATA >>> SONIC & MOTION SCANNER ACTIVE...
+            </p>
         </div>
-        """, unsafe_allow_html=True)
 
-    # แสดงสมการความจริง
-    st.markdown(f"""
-    <div style="text-align:center; padding:30px; background:#001a00; border:2px dashed #00ff41; border-radius:15px;">
-        <h2 style="margin:0;">🧮 สมการความจริง: <span style="color:#ffffff;">{d['formula']}</span></h2>
-        <p style="color:#00ff41; margin-top:10px;">= {d['res']} (พิกัด {d['type']})</p>
+        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <small style="color: {st.session_state.theme_color};">🔊 SONIC ANALYZER</small>
+            <canvas id="visualizer" style="width: 100%; height: 80px; background: #050505; border-radius: 5px; margin: 10px 0;"></canvas>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+                <div><small>VOLUME</small><h2 id="vol_val" style="color: #0f0; margin:0;">0</h2></div>
+                <div><small>PITCH (Hz)</small><h2 id="freq_val" style="color: #00ffff; margin:0;">0</h2></div>
+            </div>
+        </div>
+
+        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px;">
+            <small style="color: {st.session_state.theme_color};">📳 MOTION DETECTOR</small>
+            <div style="text-align: center; margin-top: 10px;">
+                <small>MAGNITUDE (G)</small>
+                <h1 id="mag_val" style="font-size: 45px; color: #f0f; margin:0;">1.000</h1>
+            </div>
+            <div style="display: flex; justify-content: space-around; font-size: 12px; margin-top: 10px; color: #888;">
+                <span>X: <b id="x_v">0</b></span>
+                <span>Y: <b id="y_v">0</b></span>
+                <span>Z: <b id="z_v">0</b></span>
+            </div>
+        </div>
+
+        <button id="startBtn" style="width: 100%; margin-top: 15px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; cursor: pointer; font-weight: bold;">
+            [ INITIALIZE SENSOR ARRAY ]
+        </button>
     </div>
-    """, unsafe_allow_html=True)
 
-    st.divider()
+    <style>
+        @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
+        h2, h1 {{ text-shadow: 0 0 10px currentColor; }}
+    </style>
+
+    <script>
+        const btn = document.getElementById('startBtn');
+        const v_canvas = document.getElementById('visualizer');
+        const v_ctx = v_canvas.getContext('2d');
+        
+        btn.onclick = async () => {{
+            btn.style.display = 'none';
+            
+            // --- AUDIO SYSTEM ---
+            try {{
+                const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
+                const aCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = aCtx.createAnalyser();
+                const source = aCtx.createMediaStreamSource(stream);
+                analyser.fftSize = 128;
+                source.connect(analyser);
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                function updateAudio() {{
+                    requestAnimationFrame(updateAudio);
+                    analyser.getByteFrequencyData(dataArray);
+                    v_ctx.clearRect(0, 0, v_canvas.width, v_canvas.height);
+                    let sum = 0, maxV = 0, maxI = 0;
+                    for (let i = 0; i < dataArray.length; i++) {{
+                        let v = dataArray[i]; sum += v;
+                        if(v > maxV) {{ maxV = v; maxI = i; }}
+                        v_ctx.fillStyle = '{st.session_state.theme_color}';
+                        v_ctx.fillRect(i * (v_canvas.width / dataArray.length), v_canvas.height - v/2, 2, v/2);
+                    }}
+                    document.getElementById('vol_val').innerText = Math.round(sum/dataArray.length);
+                    document.getElementById('freq_val').innerText = (sum/dataArray.length > 5) ? Math.round(maxI * aCtx.sampleRate / analyser.fftSize) : 0;
+                }}
+                updateAudio();
+            }} catch(e) {{ alert("Audio Error: " + e); }}
+
+            // --- MOTION SYSTEM ---
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {{
+                await DeviceMotionEvent.requestPermission();
+            }}
+            window.addEventListener('devicemotion', (e) => {{
+                const acc = e.accelerationIncludingGravity;
+                if (!acc) return;
+                let x = acc.x || 0, y = acc.y || 0, z = acc.z || 0;
+                let mag = Math.sqrt(x*x + y*y + z*z) / 9.80665;
+                document.getElementById('x_v').innerText = x.toFixed(2);
+                document.getElementById('y_v').innerText = y.toFixed(2);
+                document.getElementById('z_v').innerText = z.toFixed(2);
+                document.getElementById('mag_val').innerText = mag.toFixed(3);
+                document.getElementById('mag_val').style.color = (mag > 1.1 || mag < 0.9) ? "#f00" : "#f0f";
+            }});
+        }};
+    </script>
+    """
+    components.html(all_sensors_js, height=550)
     
-    # คำอธิบายเพิ่มเติมสำหรับคนใช้งาน
-    with st.expander("📝 ทำไมต้องใช้ตัวเลขเหล่านี้?"):
-        st.write("""
-        1. **29.53 (Lunar Cycle):** คือคาบการโคจรของดวงจันทร์รอบโลกที่ทำให้เกิดข้างขึ้นข้างแรมจริงๆ ซึ่งส่งผลต่อระดับน้ำและแรงดึงดูดในร่างกายมนุษย์
-        2. **1.618 (Golden Ratio):** คือสัดส่วนที่สวยงามที่สุดในจักรวาล พบได้ตั้งแต่ในดอกไม้ไปจนถึงทางช้างเผือก เราใช้เพื่อหาจุดสมดุลของชีวิต
-        3. **1950 - 2026:** ระบบรองรับข้อมูลย้อนหลังกว่า 70 ปี เพื่อให้ครอบคลุมถึงยุคบรรพบุรุษ จนถึงอนาคตอันใกล้
-        """)
-
-else:
-    st.info("💡 กรุณาเลือกวันเกิดเพื่อเริ่มการถอดรหัส")
-
-st.divider()
-st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE ENGINE v20.3 | BASED ON RAW TRUTH")
+    st.markdown("---")
+    st.info("💡 เคล็ดลับ: วางมือถือนิ่งๆ เพื่อดูแรงโน้มถ่วงโลก (1.00G) หรือลองผิวปากใส่ไมค์เพื่อดูคลื่นความถี่ครับ")
