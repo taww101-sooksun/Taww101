@@ -59,10 +59,13 @@ def room_radar():
     loc = get_geolocation()
     all_users = db.reference('users').get()
     
+    if loc:
+        start_lat = loc['coords']['latitude']
+        start_lon = loc['coords']['longitude']
+    else:
+        st.caption("🛰️ กำลังค้นหาสัญญาณดาวเทียม...") # แสดงข้อความรอ
     start_lat, start_lon = 13.7367, 100.5231
-if loc:
-    start_lat = loc['coords']['latitude']
-    start_lon = loc['coords']['longitude']
+
     else:
         st.caption("🛰️ กำลังค้นหาสัญญาณดาวเทียม...") # แสดงข้อความรอ
 
