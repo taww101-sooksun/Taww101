@@ -3,7 +3,8 @@ import os
 import base64
 import random
 import time
-from datetime import datetime, timedelta
+import math  # <--- เพิ่มตัวนี้
+from datetime import datetime, timedelta, date # <--- เพิ่ม date ตรงนี้
 import firebase_admin
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
@@ -16,7 +17,6 @@ from streamlit_js_eval import get_geolocation
 # ==========================================
 @st.cache_resource
 def init_system():
-    # กำหนดค่าเริ่มต้นใน Session State
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
     if 'user' not in st.session_state: st.session_state.user = "Ta101"
@@ -24,35 +24,30 @@ def init_system():
 
     if not firebase_admin._apps:
         try:
-            # ดึงข้อมูลจาก st.secrets
             fb_creds = dict(st.secrets["firebase_credentials"])
-            # ล้างค่าขึ้นบรรทัดใหม่ใน Private Key ให้ถูกต้องตามฟอร์แมต JSON/RSA
             if "private_key" in fb_creds:
-                fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
-            
+                fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n").strip().strip('"')
             cred = credentials.Certificate(fb_creds)
             firebase_admin.initialize_app(cred, {
                 'databaseURL': st.secrets["firebase_db_url"]
             })
         except Exception as e:
-            # ไม่หยุดการทำงาน แต่แจ้งเตือนให้ทราบความเป็นจริง
-            st.warning(f"⚠️ Firebase Offline: {e}")
-            return False
+            st.error(f"🛰️ Firebase Connection Error: {e}")
     return True
 
-is_connected = init_system()
+init_system()
 
 # ==========================================
-# 2. UI STYLING (ปรับให้ Scannable)
+# 2. UI STYLING
 # ==========================================
 st.set_page_config(page_title="SYNAPSE X", layout="wide")
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
     .stApp {{ background-color: {st.session_state.bg_color} !important; color: #FFFFFF !important; font-family: 'Orbitron', sans-serif; }}
-    .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; border-radius: 10px; transition: 0.3s; }}
-    .stButton>button:hover {{ background: {st.session_state.theme_color} !important; color: black !important; box-shadow: 0 0 15px {st.session_state.theme_color}; }}
-    .neon-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px {st.session_state.theme_color}; margin-bottom: 20px; }}
+    .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; border-radius: 10px; }}
+    .stButton>button:hover {{ background: {st.session_state.theme_color} !important; color: black !important; }}
+    .neon-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px {st.session_state.theme_color}; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -62,60 +57,41 @@ st.markdown(f"""
 
 def room_core():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>🚀 CORE COMMAND</h2>", unsafe_allow_html=True)
-    now = datetime.now() # ใช้ Local Time เพื่อความเป็นจริงของที่อยู่ผู้ใช้
+    now = datetime.utcnow() + timedelta(hours=7)
     st.markdown(f"""
         <div class="neon-box">
             <h1 style="margin:0; color:{st.session_state.theme_color};">{now.strftime('%H:%M:%S')}</h1>
             <p style="margin:0;">AGENT: {st.session_state.user} | 'อยู่นิ่งๆ ไม่เจ็บตัว'</p>
         </div>
     """, unsafe_allow_html=True)
-    
-    # คำนวณ % ของวัน
     seconds = (now.hour * 3600) + (now.minute * 60) + now.second
     progress = seconds / 86400
-    st.write(f"⏳ Day Progress: {progress*100:.2f}%")
-    st.progress(progress)
+    st.write(f"⏳ System Uptime: {progress*100:.2f}%")
+    st.progress(min(progress, 1.0))
 
 def room_radar():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>🛰️ SATELLITE RADAR</h2>", unsafe_allow_html=True)
     loc = get_geolocation()
-    
-    # กรณีไม่มี Firebase จะไม่ดึงข้อมูล
-    all_users = db.reference('users').get() if is_connected else None
-    
-    # พิกัดเริ่มต้น (กรุงเทพฯ) ถ้าหา GPS ไม่เจอ
-    lat, lon = (13.7367, 100.5231)
-    if loc and 'coords' in loc:
-        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-
-    m = folium.Map(location=[lat, lon], zoom_start=16, tiles="https://mt1.google.com/vt/lyrs=y&x={{x}}&y={{y}}&z={{z}}", attr="Google Hybrid")
+    all_users = db.reference('users').get()
+    lat, lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.7367, 100.5231)
+    m = folium.Map(location=[lat, lon], zoom_start=16, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
     folium.Marker([lat, lon], tooltip="YOU", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
-    
     if all_users:
         for uid, data in all_users.items():
-            if uid != st.session_state.user and isinstance(data, dict) and 'lat' in data:
+            if uid != st.session_state.user and data.get('lat'):
                 folium.Marker([data['lat'], data['lon']], tooltip=uid, icon=folium.Icon(color='green')).add_to(m)
-    
-    st_folium(m, width="100%", height=450, key="radar_map")
-    
+    st_folium(m, width="100%", height=450, key="radar")
     if st.button("📡 BROADCAST POSITION", use_container_width=True):
-        if is_connected:
-            db.reference(f'users/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
-            st.toast("Intelligence Data Transmitted!")
-        else:
-            st.error("Connection Offline")
+        db.reference(f'users/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
+        st.toast("Intelligence Data Transmitted!")
 
 def room_comms():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>💬 COMM CENTER</h2>", unsafe_allow_html=True)
-    if not is_connected:
-        st.error("ระบบสื่อสารขัดข้อง: ไม่พบการเชื่อมต่อ Firebase")
-        return
-
     t1, t2 = st.tabs(["🌐 PUBLIC FEED", "📞 SECURE CALL"])
     with t1:
         with st.form("chat_form", clear_on_submit=True):
             col1, col2 = st.columns([4, 1])
-            msg = col1.text_input("Enter Signal...", placeholder="Type message...")
+            msg = col1.text_input("Enter Signal...")
             up_file = col2.file_uploader("📁", type=['jpg', 'png', 'mp4'], label_visibility="collapsed")
             if st.form_submit_button("SEND"):
                 f_b64, f_type = None, None
@@ -123,97 +99,207 @@ def room_comms():
                     f_b64 = base64.b64encode(up_file.getvalue()).decode()
                     f_type = up_file.type
                 if msg or f_b64:
-                    db.reference('public_chat').push({
-                        'u': st.session_state.user, 
-                        'm': msg, 
-                        'f': f_b64, 
-                        'ft': f_type, 
-                        'ts': time.time()
-                    })
+                    db.reference('public_chat').push({'u': st.session_state.user, 'm': msg, 'f': f_b64, 'ft': f_type, 'ts': time.time()})
                     st.rerun()
-
-        # แสดงข้อความ
-        msgs = db.reference('public_chat').order_by_key().limit_to_last(10).get()
+        msgs = db.reference('public_chat').order_by_key().limit_to_last(15).get()
         if msgs:
             for v in reversed(list(msgs.values())):
-                with st.container():
-                    st.markdown(f"**{v.get('u')}**: {v.get('m','')}")
-                    if v.get('f'):
-                        try:
-                            raw = base64.b64decode(v['f'])
-                            if "image" in v['ft']: st.image(raw, width=250)
-                            elif "video" in v['ft']: st.video(raw)
-                        except: st.caption("File Error")
-                    st.divider()
+                st.markdown(f"🟢 **{v.get('u')}**: {v.get('m','')}")
+                if v.get('f'):
+                    raw = base64.b64decode(v['f'])
+                    if "image" in v['ft']: st.image(raw, width=300)
+                    elif "video" in v['ft']: st.video(raw)
     with t2:
-        st.caption("Peer-to-Peer Secure Audio Line")
-        # Logic เดิมของคุณทำงานได้ถ้า PeerJS ID ไม่ซ้ำกัน
-        target = st.text_input("🎯 Target Agent ID to Call:")
+        all_u = db.reference('users').get()
+        friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
+        target = st.selectbox("🎯 Target Agent:", [""] + friends)
         if target:
-            # แทรก Component เดิม
-            pass 
+            call_js = """
+            <div style="background:#111; padding:15px; border:1px solid %s; border-radius:10px; text-align:center;">
+                <button id="cBtn" style="width:100%%; padding:10px; background:#28a745; color:white; border:none; border-radius:5px;">📞 CALL %s</button>
+                <audio id="rAudio" autoplay></audio>
+            </div>
+            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+            <script>
+                const peer = new Peer('%s');
+                peer.on('call', c => { navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{ c.answer(s); c.on('stream',rs=>{document.getElementById('rAudio').srcObject=rs;}); })});
+                document.getElementById('cBtn').onclick = () => {
+                    navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{ const c=peer.call('%s',s); c.on('stream',rs=>{document.getElementById('rAudio').srcObject=rs;}); });
+                };
+            </script>
+            """ % (st.session_state.theme_color, target, st.session_state.user, target)
+            components.html(call_js, height=200)
 
 def room_music():
-    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>🎧 HOLOGRAPHIC STATION</h2>", unsafe_allow_html=True)
-    # ค้นหาไฟล์ .mp3 ในโฟลเดอร์ปัจจุบัน
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>🎧 SYNAPSE HOLOGRAPHIC STATION</h2>", unsafe_allow_html=True)
     songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-    
     if not songs:
-        st.info("📂 วิธีใช้งาน: วางไฟล์ .mp3 ไว้ในโฟลเดอร์เดียวกับโค้ดนี้เพื่อเริ่มเล่น")
+        st.warning("⚠️ ไม่พบสัญญาณเสียงในหน่วยความจำ")
         return
+    s_a = st.selectbox("🎯 SELECT SIGNAL SOURCE", ["-- STANDBY --"] + songs, index=st.session_state.song_index + 1)
+    song_b64 = ""
+    song_name = "WAITING FOR SIGNAL..."
+    if s_a != "-- STANDBY --":
+        with open(s_a, "rb") as f:
+            song_b64 = base64.b64encode(f.read()).decode()
+        st.session_state.song_index = songs.index(s_a)
+        song_name = s_a
 
-    s_a = st.selectbox("🎯 SELECT SIGNAL", songs, index=min(st.session_state.song_index, len(songs)-1))
-    
-    # แปลงไฟล์เป็น Base64 เพื่อส่งเข้า HTML Audio
-    with open(s_a, "rb") as f:
-        song_b64 = base64.b64encode(f.read()).decode()
-    
-    # HTML Visualizer (ปรับปรุงให้ลื่นไหลขึ้น)
     visualizer_html = f"""
-    <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 15px; padding: 15px;">
-        <p style="color:{st.session_state.theme_color}; font-size:12px;">NOW ANALYZING: {s_a}</p>
-        <canvas id="canvas" style="width: 100%; height: 150px;"></canvas>
+    <div style="background: #000; border: 3px solid {st.session_state.theme_color}; border-radius: 20px; padding: 15px; box-shadow: 0 0 30px {st.session_state.theme_color}55;">
+        <div style="overflow: hidden; white-space: nowrap; background: #050505; border: 1px solid {st.session_state.theme_color}55; border-radius: 8px; margin-bottom: 10px; padding: 8px;">
+            <p id="mText" style="display: inline-block; padding-left: 100%; font-family: Orbitron, monospace; font-size: 16px; color: white; animation: marquee 12s linear infinite;">
+                <span style="animation: rainbowText 4s linear infinite;">>>></span> {song_name} <span style="animation: rainbowText 4s linear infinite;"><<< ANALYZING... SECURE LINE... >>></span>
+            </p>
+        </div>
+        <canvas id="canvas" style="width: 100%; height: 220px; background: #000; border-radius: 10px;"></canvas>
+        <button id="pBtn" style="width: 100%; margin-top:10px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; font-weight:bold; cursor: pointer;">[ CLICK TO SYNC ]</button>
         <audio id="audio" src="data:audio/mp3;base64,{song_b64}"></audio>
-        <button id="pBtn" style="width:100%; padding:10px; background:transparent; border:1px solid {st.session_state.theme_color}; color:{st.session_state.theme_color}; cursor:pointer;">[ PLAY / PAUSE ]</button>
     </div>
     <script>
-        const audio = document.getElementById('audio');
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        let aCtx, analyser, source, data;
-
-        document.getElementById('pBtn').onclick = () => {{
-            if(!aCtx) {{
-                aCtx = new AudioContext();
-                analyser = aCtx.createAnalyser();
-                source = aCtx.createMediaElementSource(audio);
-                source.connect(analyser);
-                analyser.connect(aCtx.destination);
-                analyser.fftSize = 64;
-                data = new Uint8Array(analyser.frequencyBinCount);
-                draw();
-            }}
-            audio.paused ? audio.play() : audio.pause();
-        }};
-
-        function draw() {{
-            requestAnimationFrame(draw);
-            analyser.getByteFrequencyData(data);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            data.forEach((v, i) => {{
-                ctx.fillStyle = '{st.session_state.theme_color}';
-                ctx.fillRect(i * 10, canvas.height - v/2, 8, v/2);
-            }});
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const audio = document.getElementById('audio');
+    const btn = document.getElementById('pBtn');
+    let aCtx, ans, src, data;
+    btn.onclick = function() {{
+        if (!aCtx) {{
+            aCtx = new (window.AudioContext || window.webkitAudioContext)();
+            ans = aCtx.createAnalyser();
+            src = aCtx.createMediaElementSource(audio);
+            src.connect(ans); ans.connect(aCtx.destination);
+            ans.fftSize = 128; data = new Uint8Array(ans.frequencyBinCount);
+            draw();
         }}
+        if (audio.paused) {{ audio.play(); btn.innerText = "[ SIGNAL ACTIVE ]"; }}
+        else {{ audio.pause(); btn.innerText = "[ SIGNAL PAUSED ]"; }}
+    }};
+    function draw() {{
+        requestAnimationFrame(draw);
+        ans.getByteFrequencyData(data);
+        ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        let x = 0; const bW = (canvas.width / data.length) * 2;
+        for(let i=0; i<data.length; i++) {{
+            let bH = data[i]*0.9; let h = (i/data.length)*360;
+            ctx.fillStyle = `hsl(${{h}}, 100%, 50%)`;
+            ctx.fillRect(x, canvas.height-bH, bW-2, bH); x += bW;
+        }}
+    }}
     </script>
     """
-    components.html(visualizer_html, height=300)
+    components.html(visualizer_html, height=420)
 
 def room_sensor():
-    # โค้ด Room Sensor เดิมของคุณดีอยู่แล้ว แต่ระวังเรื่อง Permission บน iOS/Safari 
-    # ซึ่งต้องเปิดผ่าน HTTPS เท่านั้นถึงจะใช้งาน DeviceMotion ได้จริง
-    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>📟 SENSOR HUB</h2>", unsafe_allow_html=True)
-    # (Copy ส่วน room_sensor เดิมมาใส่ได้เลยครับ)
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center; font-family:Orbitron;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
+    all_sensors_js = f"""
+    <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 20px; padding: 20px; font-family: 'Orbitron', monospace; color: white;">
+        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <small>🔊 SONIC ANALYZER</small>
+            <canvas id="visualizer" style="width: 100%; height: 80px; background: #050505; border-radius: 5px; margin: 10px 0;"></canvas>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+                <div><small>VOLUME</small><h2 id="vol_val" style="color: #0f0; margin:0;">0</h2></div>
+                <div><small>PITCH (Hz)</small><h2 id="freq_val" style="color: #00ffff; margin:0;">0</h2></div>
+            </div>
+        </div>
+        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px;">
+            <small>📳 MOTION DETECTOR</small>
+            <h1 id="mag_val" style="text-align:center; font-size: 45px; color: #f0f; margin:0;">1.000</h1>
+        </div>
+        <button id="startBtn" style="width: 100%; margin-top: 15px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; cursor: pointer; font-weight: bold;">[ INITIALIZE SENSOR ARRAY ]</button>
+    </div>
+    <script>
+        const btn = document.getElementById('startBtn');
+        const v_canvas = document.getElementById('visualizer');
+        const v_ctx = v_canvas.getContext('2d');
+        btn.onclick = async () => {{
+            btn.style.display = 'none';
+            try {{
+                const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
+                const aCtx = new AudioContext();
+                const analyser = aCtx.createAnalyser();
+                const source = aCtx.createMediaStreamSource(stream);
+                analyser.fftSize = 128; source.connect(analyser);
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                function updateAudio() {{
+                    requestAnimationFrame(updateAudio);
+                    analyser.getByteFrequencyData(dataArray);
+                    v_ctx.clearRect(0, 0, v_canvas.width, v_canvas.height);
+                    let sum = 0;
+                    for (let i = 0; i < dataArray.length; i++) {{
+                        let v = dataArray[i]; sum += v;
+                        v_ctx.fillStyle = '{st.session_state.theme_color}';
+                        v_ctx.fillRect(i * (v_canvas.width / dataArray.length), v_canvas.height - v/2, 2, v/2);
+                    }}
+                    document.getElementById('vol_val').innerText = Math.round(sum/dataArray.length);
+                }}
+                updateAudio();
+            }} catch(e) {{ alert(e); }}
+            window.addEventListener('devicemotion', (e) => {{
+                const acc = e.accelerationIncludingGravity;
+                let mag = Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z) / 9.806;
+                document.getElementById('mag_val').innerText = mag.toFixed(3);
+            }});
+        }};
+    </script>
+    """
+    components.html(all_sensors_js, height=450)
+
+def room_logic():
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>🧬 THE TRUTH DECODER</h2>", unsafe_allow_html=True)
+    
+    def decode_truth(dt):
+        ref_date = date(1900, 1, 1)
+        diff = (dt - ref_date).days
+        lunar_cycle = 29.530589
+        pos = (diff - 0.5) % lunar_cycle
+        day_val = dt.weekday() + 1
+        
+        thai_year = dt.year + 543
+        zodiacs = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+        zodiac = zodiacs[thai_year % 12]
+        
+        elements = {1: "ดิน", 2: "น้ำ", 3: "ไฟ", 4: "ลม", 5: "ทอง", 6: "น้ำ", 7: "ดิน"}
+        element = elements.get(day_val)
+
+        if pos <= 14.765:
+            m_num = int(pos) + 1
+            phase = f"ขึ้น {m_num} ค่ำ"
+            res = math.sqrt((day_val**2) + (m_num**2))
+            formula = f"√({day_val}² + {m_num}²)"
+            p_type = "แรงผลักดัน (Vector)"
+        else:
+            m_num = int(pos - 14.765) + 1
+            phase = f"แรม {m_num} ค่ำ"
+            res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+            formula = f"({day_val} × 1.618) / {m_num}"
+            p_type = "สมดุลสัดส่วนทองคำ (Phi)"
+            
+        return {"res": round(res, 4), "phase": phase, "zodiac": zodiac, "element": element, "formula": formula, "type": p_type, "day_num": day_val, "lunar_num": m_num, "diff": diff}
+
+    st.subheader("🔍 วิเคราะห์พิกัดความจริง (อดีต-อนาคต)")
+    target_date = st.date_input("เลือกวันที่ตรวจสอบ", value=date.today(), min_value=date(1950,1,1), max_value=date(2026,12,31))
+    
+    if target_date:
+        d = decode_truth(target_date)
+        st.markdown(f"""
+            <div style="text-align:center; padding:20px; border:2px solid {st.session_state.theme_color}; border-radius:20px; background:rgba(0,0,0,0.3);">
+                <small>รหัสพิกัดจักรวาล</small>
+                <h1 style="color:{st.session_state.theme_color}; font-size:60px; margin:0;">{d['res']}</h1>
+                <p style="color:#888;">{d['type']}</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        c1, c2 = st.columns(2)
+        with c1:
+            st.info(f"📅 **ฐานวัน ({d['day_num']}):** แรงดึงดูดโลก")
+            st.info(f"🌙 **จันทรคติ ({d['phase']}):** แรงดึงดูดดวงจันทร์")
+        with c2:
+            st.success(f"🐎 **ปีนักษัตร:** ปี{d['zodiac']}")
+            st.success(f"💎 **ธาตุประจำวัน:** ธาตุ{d['element']}")
+
+        if target_date < date.today(): st.warning("⏪ ตรวจสอบรอยเท้าพลังงานใน **'อดีต'**")
+        elif target_date > date.today(): st.error("🔮 ตรวจสอบพิกัดเป้าหมายใน **'อนาคต'**")
+        else: st.success("🟢 พิกัดพลังงานใน **'ปัจจุบัน'**")
 
 # ==========================================
 # 4. MAIN LAYOUT
@@ -225,15 +311,14 @@ def main():
         st.session_state.theme_color = st.color_picker("THEME", st.session_state.theme_color)
         st.session_state.bg_color = st.color_picker("BACKGROUND", st.session_state.bg_color)
         st.markdown("---")
-        if st.button("RESET SYSTEM"):
-            st.rerun()
+        st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-    tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "🎧 MUSIC", "📟 SENSOR"])
-    with tabs[0]: room_core()
-    with tabs[1]: room_radar()
-    with tabs[2]: room_comms()
-    with tabs[3]: room_music()
-    with tabs[4]: room_sensor()
+    tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "🎧 MUSIC", "📟 SENSOR", "🧬 LOGIC"])
+    rooms = [room_core, room_radar, room_comms, room_music, room_sensor, room_logic]
+    
+    for i, tab in enumerate(tabs):
+        with tab:
+            rooms[i]()
 
 if __name__ == "__main__":
     main()
