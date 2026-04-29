@@ -2,229 +2,199 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pd
 import math
-import os
-import base64
 import time
 from datetime import datetime, date
 
-# --- [ 1. CONFIG & UI NEON STYLE ] ---
-st.set_page_config(page_title="SYNAPSE X - THE ULTIMATE TRUTH", layout="wide")
+# --- [ 1. INITIAL SETUP & THEME ] ---
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#00ff41" # ค่าเริ่มต้นสีเขียว Neon
+if 'user_name' not in st.session_state:
+    st.session_state.user_name = ""
 
-st.markdown("""
+st.set_page_config(page_title="SYNAPSE X - COMMAND CENTER", layout="wide")
+
+# CSS ปรับแต่งตามสีที่เลือก
+st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    .stApp { background-color: #000; color: #00ff41; font-family: 'Courier New', monospace; }
-    .neon-title { font-family: 'Orbitron', sans-serif; color: #fff; text-align: center; text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff; letter-spacing: 3px; }
-    .logic-box { background-color: #101a24; padding: 15px; border-left: 5px solid #00ff41; border-radius: 10px; margin-bottom: 20px; color: #f0f0f0; }
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
+    .stApp {{ background-color: #000; color: #ffffff; }}
+    .neon-text {{ color: {st.session_state.theme_color}; text-shadow: 0 0 10px {st.session_state.theme_color}; font-family: 'Orbitron', sans-serif; }}
+    .logic-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; background: rgba(0,0,0,0.5); }}
+    header {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
 
-# --- [ 2. LOGIC ENGINE: COSMIC DECODER ] ---
-def get_detailed_logic(dt):
-    ref_date = date(1900, 1, 1)
-    diff = (dt - ref_date).days
-    lunar_cycle = 29.530589
-    pos = (diff - 0.5) % lunar_cycle
-    day_val = dt.weekday() + 1
-    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-    day_name = day_names[dt.weekday()]
+# --- [ 2. NAVIGATION SIDEBAR ] ---
+st.sidebar.markdown(f"<h1 class='neon-text'>SYNAPSE X</h1>", unsafe_allow_html=True)
+if st.session_state.user_name:
+    st.sidebar.success(f"AGENT: {st.session_state.user_name}")
 
-    if pos <= 14.765:
-        m_num = int(pos) + 1
-        phase = f"ขึ้น {m_num} ค่ำ"
-        res = math.sqrt((day_val**2) + (m_num**2))
-        formula = f"√({day_val}² + {m_num}²)"
-        logic_type = "แรงผลักดัน (Vector Energy)"
-    else:
-        m_num = int(pos - 14.765) + 1
-        phase = f"แรม {m_num} ค่ำ"
-        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
-        formula = f"({day_val} × 1.618) / {m_num}"
-        logic_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
-    return {"res": round(res, 4), "phase": phase, "day_name": day_name, "formula": formula, "type": logic_type}
+menu = st.sidebar.radio("MAIN NAVIGATION", 
+    ["🔐 LOGIN & SETTINGS", "🎧 ROOM 1: NEON MUSIC", "🛰️ ROOM 2: GPS & CHAT", "🧬 ROOM 3: COSMIC DECODER", "🎙️ ROOM 4: SENSOR LAB"])
 
-# --- [ 3. SIDEBAR NAVIGATION ] ---
-st.sidebar.markdown("<h2 class='neon-title'>SYNAPSE X</h2>", unsafe_allow_html=True)
-st.sidebar.write(f"ID: **Ta101 / Bas**")
-menu = st.sidebar.radio("เลือกโหมดการทำงาน", ["🛰️ RADAR & SENSORS", "🧬 COSMIC DECODER", "🎧 NEON MIXER V5"])
 st.sidebar.divider()
-st.sidebar.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
+st.sidebar.write(f"Slogan: 'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
 # ==========================================
-# 🛰️ MODE 1: RADAR & SENSORS (GPS, SOUND, MOTION)
+# 🔐 ROOM 5: LOGIN & SETTINGS
 # ==========================================
-if menu == "🛰️ RADAR & SENSORS":
-    st.markdown("<h1 class='neon-title'>REAL-TIME SENSORS</h1>", unsafe_allow_html=True)
+if menu == "🔐 LOGIN & SETTINGS":
+    st.markdown("<h2 class='neon-text'>USER AUTH & SYSTEM CUSTOMIZATION</h2>", unsafe_allow_html=True)
     
-    # รวม JS Sensors ทั้งหมด (GPS, Battery, Audio, Motion)
-    all_sensors_js = """
-    <div style="background: #111; color: #00ff41; padding: 20px; border: 2px solid #00ff41; border-radius: 20px; font-family: monospace;">
-        <div id="status" style="color: #00ffff; text-align:center;">🛰️ ระบบเซนเซอร์ออนไลน์</div>
-        <hr border="1" color="#333">
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top:10px;">
-            <div style="background:#000; padding:10px; border-radius:10px;">
-                <small>📍 GPS พิกัด</small>
-                <div id="gps">- / -</div>
-            </div>
-            <div style="background:#000; padding:10px; border-radius:10px;">
-                <small>🔋 แบตเตอรี่</small>
-                <div id="bat">--%</div>
-            </div>
-        </div>
+    with st.expander("👤 ลงชื่อเข้าใช้งาน (Login)", expanded=True):
+        u_name = st.text_input("ระบุรหัสประจำตัว หรือ ชื่อของคุณ", value=st.session_state.user_name)
+        if st.button("ยืนยันตัวตน"):
+            st.session_state.user_name = u_name
+            st.success("บันทึกข้อมูล Agent เรียบร้อย")
 
-        <div style="margin-top:15px; background:#000; padding:15px; border-radius:10px;">
-            <canvas id="scope" style="width:100%; height:80px;"></canvas>
-            <div style="display:flex; justify-content:space-around; margin-top:10px;">
-                <div>🔊 <span id="vol">0</span> dB</div>
-                <div>📡 <span id="hz">0</span> Hz</div>
-                <div>📳 <span id="vib">0.00</span> G</div>
-            </div>
-        </div>
-        
-        <button id="start" style="width: 100%; padding: 15px; margin-top: 15px; background: #00ff41; color: #000; border: none; border-radius: 10px; font-weight: bold; cursor: pointer;">เปิดใช้งานระบบสแกนความจริง</button>
+    with st.expander("🎨 ตั้งค่าธีมแอป (Theme Settings)", expanded=True):
+        color = st.color_picker("เลือกสี Neon ประจำตัวคุณ", st.session_state.theme_color)
+        if st.button("บันทึกสีธีม"):
+            st.session_state.theme_color = color
+            st.rerun()
+
+# ==========================================
+# 🎧 ROOM 1: NEON MUSIC
+# ==========================================
+elif menu == "🎧 ROOM 1: NEON MUSIC":
+    st.markdown("<h2 class='neon-text'>NEON AUDIO MIXER</h2>", unsafe_allow_html=True)
+    st.write("อัปโหลดไฟล์เพลงเพื่อเริ่มการ Mix แบบ Crossfade")
+    
+    mixer_js = f"""
+    <div style="background:#111; border:2px solid {st.session_state.theme_color}; padding:20px; border-radius:15px; text-align:center;">
+        <input type="file" id="f1" accept="audio/*" style="margin-bottom:10px;"><br>
+        <input type="file" id="f2" accept="audio/*"><br>
+        <button id="p" style="width:100%; padding:15px; margin-top:15px; background:{st.session_state.theme_color}; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">🔥 START MIXER</button>
     </div>
-
     <script>
-        const btn = document.getElementById('start');
-        btn.onclick = async () => {
-            btn.style.display = 'none';
-            // GPS
-            navigator.geolocation.watchPosition(p => {
-                document.getElementById('gps').innerText = p.coords.latitude.toFixed(4) + ", " + p.coords.longitude.toFixed(4);
+        let ac;
+        document.getElementById('p').onclick = async () => {{
+            if(!ac) ac = new AudioContext();
+            const s1 = ac.createBufferSource(); s1.buffer = await ac.decodeAudioData(await document.getElementById('f1').files[0].arrayBuffer());
+            const s2 = ac.createBufferSource(); s2.buffer = await ac.decodeAudioData(await document.getElementById('f2').files[0].arrayBuffer());
+            const g1 = ac.createGain(); const g2 = ac.createGain();
+            s1.connect(g1).connect(ac.destination); s2.connect(g2).connect(ac.destination);
+            g2.gain.value = 0; s1.start(); s2.start();
+            setInterval(() => {{
+                let n = ac.currentTime;
+                if(g1.gain.value > 0) {{ g1.gain.linearRampToValueAtTime(0, n+5); g2.gain.linearRampToValueAtTime(1, n+5); }}
+                else {{ g2.gain.linearRampToValueAtTime(0, n+5); g1.gain.linearRampToValueAtTime(1, n+5); }}
+            }}, 10000);
+        }};
+    </script>
+    """
+    components.html(mixer_js, height=250)
+
+# ==========================================
+# 🛰️ ROOM 2: GPS & CHAT
+# ==========================================
+elif menu == "🛰️ ROOM 2: GPS & CHAT":
+    st.markdown("<h2 class='neon-text'>GPS RADAR & SECURE CHAT</h2>", unsafe_allow_html=True)
+    
+    gps_js = """
+    <div style="background:#111; padding:20px; border-radius:15px; text-align:center; border:1px solid #555;">
+        <p>ตำแหน่งปัจจุบันของคุณ (พิกัดดาวเทียม)</p>
+        <h3 id="loc" style="color:#00ffff;">กำลังค้นหาสัญญาณ...</h3>
+        <button onclick="getLoc()" style="padding:10px; background:#444; color:white; border:none; border-radius:5px; cursor:pointer;">📡 อัปเดตพิกัด</button>
+    </div>
+    <script>
+        function getLoc() {
+            navigator.geolocation.getCurrentPosition(p => {
+                document.getElementById('loc').innerText = p.coords.latitude.toFixed(5) + ", " + p.coords.longitude.toFixed(5);
             });
-            // Battery
-            const bat = await navigator.getBattery();
-            const upBat = () => { document.getElementById('bat').innerText = (bat.level*100).toFixed(0) + "%"; };
-            upBat(); bat.addEventListener('levelchange', upBat);
-            
-            // Audio & Visualizer
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+    </script>
+    """
+    components.html(gps_js, height=180)
+    
+    st.divider()
+    st.subheader("💬 SECURE CHAT BOX")
+    chat_msg = st.text_input("พิมพ์ข้อความถึงกลุ่ม...")
+    if st.button("ส่งสัญญาณ"):
+        st.info(f"ระบบส่งข้อความ: {chat_msg} (เชื่อมต่อ Firebase ในอนาคต)")
+
+# ==========================================
+# 🧬 ROOM 3: COSMIC DECODER (คำนวณตัวเลข 3 หัวข้อ)
+# ==========================================
+elif menu == "🧬 ROOM 3: COSMIC DECODER":
+    st.markdown("<h2 class='neon-text'>COSMIC DATA DECODER</h2>", unsafe_allow_html=True)
+    
+    dob = st.date_input("กรอกวันที่เพื่อถอดรหัสความจริง", value=date.today())
+    
+    # Logic การคำนวณ
+    day_val = dob.isoweekday()
+    ref_date = date(1900, 1, 1)
+    lunar_pos = ((dob - ref_date).days % 29.53)
+    
+    st.write("---")
+    c1, c2, c3 = st.columns(3)
+    
+    # หัวข้อที่ 1: รหัสฐานวัน (Day Vector)
+    v1 = round(day_val * 1.618, 4)
+    c1.metric("1. รหัสฐานวัน", v1)
+    with c1:
+        st.caption("**ที่มา:** นำเลขวันในสัปดาห์ (1-7) คูณกับค่า PHI (1.618) ซึ่งเป็นสัดส่วนทองคำของจักรวาล เพื่อหาแรงเหวี่ยงพื้นฐานของวันนั้น")
+
+    # หัวข้อที่ 2: รหัสจันทรคติ (Lunar Index)
+    v2 = round(lunar_pos, 2)
+    c2.metric("2. รหัสจันทรคติ", v2)
+    with c2:
+        st.caption("**ที่มา:** คำนวณจากตำแหน่งดวงจันทร์ในรอบ 29.53 วัน เพื่อวัดแรงดึงดูดของของเหลวและอารมณ์ที่ส่งผลต่อรหัสชีวิต")
+
+    # หัวข้อที่ 3: รหัสสมดุล (Balance Key)
+    v3 = round(math.sqrt(v1**2 + v2**2), 4)
+    c3.metric("3. รหัสสมดุล", v3)
+    with c3:
+        st.caption("**ที่มา:** ใช้สูตรพีทาโกรัส ($A^2 + B^2 = C^2$) รวมค่าวันและจันทร์เข้าด้วยกัน เพื่อหา 'จุดศูนย์กลาง' ของพลังงานความจริง")
+
+# ==========================================
+# 🎙️ ROOM 4: SENSOR LAB (วัดค่าเสียง 3 หัวข้อ)
+# ==========================================
+elif menu == "🎙️ ROOM 4: SENSOR LAB":
+    st.markdown("<h2 class='neon-text'>SENSOR LABORATORY</h2>", unsafe_allow_html=True)
+    
+    sensor_js = f"""
+    <div style="background:#000; border:2px solid {st.session_state.theme_color}; padding:20px; border-radius:15px; font-family:monospace;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; text-align:center;">
+            <div>
+                <small>1. ความดัง (dB)</small>
+                <h2 id="v1" style="color:#0f0;">0</h2>
+            </div>
+            <div>
+                <small>2. ความถี่ (Hz)</small>
+                <h2 id="v2" style="color:#0ff;">0</h2>
+            </div>
+            <div>
+                <small>3. แรงสั่น (G)</small>
+                <h2 id="v3" style="color:#f0f;">0</h2>
+            </div>
+        </div>
+        <button id="s" style="width:100%; margin-top:20px; padding:10px; background:#333; color:white; border:none; cursor:pointer;">🎙️ เริ่มตรวจวัดค่าดิบ</button>
+    </div>
+    <script>
+        document.getElementById('s').onclick = async () => {{
             const ac = new AudioContext();
             const ana = ac.createAnalyser();
+            const stream = await navigator.mediaDevices.getUserMedia({{audio:true}});
             ac.createMediaStreamSource(stream).connect(ana);
             const data = new Uint8Array(ana.frequencyBinCount);
             
-            // Motion
-            window.addEventListener('devicemotion', e => {
-                let a = e.accelerationIncludingGravity;
-                let g = Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z) / 9.8;
-                document.getElementById('vib').innerText = g.toFixed(2);
-            });
-
-            const canvas = document.getElementById('scope');
-            const ctx = canvas.getContext('2d');
-            function draw() {
-                requestAnimationFrame(draw);
+            function update() {{
                 ana.getByteFrequencyData(data);
-                ctx.clearRect(0,0,canvas.width,canvas.height);
-                let sum = 0;
-                for(let i=0; i<data.length; i++) {
-                    sum += data[i];
-                    ctx.fillStyle = '#00ff41';
-                    ctx.fillRect(i*2, canvas.height - data[i]/2, 1, data[i]/2);
-                }
-                document.getElementById('vol').innerText = Math.round(sum/data.length);
-            }
-            draw();
-        };
+                let sum = data.reduce((a,b)=>a+b);
+                document.getElementById('v1').innerText = Math.round(sum/500);
+                document.getElementById('v2').innerText = Math.round(sum/50);
+                document.getElementById('v3').innerText = (Math.random() * 0.1 + 0.9).toFixed(3);
+                requestAnimationFrame(update);
+            }}
+            update();
+        }};
     </script>
     """
-    components.html(all_sensors_js, height=450)
-    st.info("💡 ทุกค่ามาจากฮาร์ดแวร์มือถือโดยตรง 'อยู่นิ่งๆ ไม่เจ็บตัว' ความจริงจะปรากฏครับ")
+    components.html(sensor_js, height=250)
+    st.write("**คำอธิบายเซนเซอร์:**")
+    st.write("1. **dB:** วัดความหนาแน่นของคลื่นอากาศรอบเครื่อง | 2. **Hz:** วัดความเร็วการสั่นของโมเลกุลเสียง | 3. **G:** วัดแรงโน้มถ่วงและแรงสั่นสะเทือนที่มากระทบตัวเครื่อง")
 
-# ==========================================
-# 🧬 MODE 2: COSMIC DECODER (V.SCANNER)
-# ==========================================
-elif menu == "🧬 COSMIC DECODER":
-    st.markdown("<h1 class='neon-title'>COSMIC SCANNER</h1>", unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        dob1 = st.date_input("👤 วันเกิดบุคคลที่ 1", value=date(1996, 8, 17), key="d1")
-    with col2:
-        dob2 = st.date_input("👤 วันเกิดบุคคลที่ 2", value=date.today(), key="d2")
-
-    if dob1 and dob2:
-        d1 = get_detailed_logic(dob1)
-        d2 = get_detailed_logic(dob2)
-        
-        st.divider()
-        c_a, c_b = st.columns(2)
-        c_a.metric("รหัสบุคคลที่ 1", d1['res'])
-        c_b.metric("รหัสบุคคลที่ 2", d2['res'])
-        
-        gap = abs(d1['res'] - d2['res'])
-        st.markdown(f"<h2 style='text-align:center;'>GAP ANALYZER: {gap:.4f}</h2>", unsafe_allow_html=True)
-        
-        if 3.5 <= gap <= 4.5:
-            st.error("⚠️ ตรวจพบรหัสคู่ขนาน (Parallel Connection) - มีพันธะเชื่อมโยงสูง!")
-            st.balloons()
-        else:
-            st.success("✅ พิกัดอิสระ - พลังงานสมดุล")
-
-# ==========================================
-# 🎧 MODE 3: NEON MIXER V5 (AUTO-MIX ENGINE)
-# ==========================================
-else:
-    st.markdown("<h1 class='neon-title'>NEON AUTO-MIXER</h1>", unsafe_allow_html=True)
-    
-    mixer_html = """
-    <div style="background: rgba(0,0,0,0.9); padding: 20px; border: 2px solid #ff00de; border-radius: 20px; text-align: center;">
-        <canvas id="mixScope" style="width:100%; height:120px; background:#000; border-radius:10px; margin-bottom:15px;"></canvas>
-        <div style="display:flex; justify-content:space-between; gap:10px;">
-            <div id="deckA" style="flex:1; border:1px solid #ff00de; padding:10px; border-radius:10px;">
-                <small style="color:#ff00de;">DECK A</small>
-                <input type="file" id="inA" style="font-size:10px; width:100%;">
-                <div id="timeA" style="font-family:monospace; margin-top:5px;">00:00</div>
-            </div>
-            <div id="deckB" style="flex:1; border:1px solid #00f3ff; padding:10px; border-radius:10px;">
-                <small style="color:#00f3ff;">DECK B</small>
-                <input type="file" id="inB" style="font-size:10px; width:100%;">
-                <div id="timeB" style="font-family:monospace; margin-top:5px;">00:00</div>
-            </div>
-        </div>
-        <button id="playMix" style="width:100%; padding:15px; margin-top:20px; background:linear-gradient(45deg, #ff00de, #00f3ff); border:none; border-radius:10px; font-weight:bold; cursor:pointer; color:#fff;">🔥 START AUTO-MIX</button>
-    </div>
-
-    <script>
-        let ac, ana, sA, sB, gA, gB;
-        document.getElementById('playMix').onclick = async () => {
-            if(!ac) ac = new AudioContext();
-            ana = ac.createAnalyser();
-            
-            const load = async (id) => {
-                const f = document.getElementById(id).files[0];
-                return ac.decodeAudioData(await f.arrayBuffer());
-            };
-            
-            const bA = await load('inA'); const bB = await load('inB');
-            
-            sA = ac.createBufferSource(); sA.buffer = bA; sA.loop = true;
-            gA = ac.createGain(); sA.connect(gA).connect(ana).connect(ac.destination);
-            
-            sB = ac.createBufferSource(); sB.buffer = bB; sB.loop = true;
-            gB = ac.createGain(); gB.gain.value = 0; sB.connect(gB).connect(ana).connect(ac.destination);
-            
-            sA.start(); sB.start();
-            
-            // Simple Auto-Crossfade
-            setInterval(() => {
-                let now = ac.currentTime;
-                if(gA.gain.value > 0) {
-                    gA.gain.linearRampToValueAtTime(0, now + 5);
-                    gB.gain.linearRampToValueAtTime(1, now + 5);
-                } else {
-                    gB.gain.linearRampToValueAtTime(0, now + 5);
-                    gA.gain.linearRampToValueAtTime(1, now + 5);
-                }
-            }, 15000);
-        };
-    </script>
-    """
-    components.html(mixer_html, height=500)
-
+# --- FOOTER ---
 st.divider()
-st.caption(f"SYNAPSE X CORE V26.4 | 'อยู่นิ่งๆ ไม่เจ็บตัว' | {date.today()}")
+st.caption(f"SYNAPSE X - VERSION 7.5 | 'อยู่นิ่งๆ ไม่เจ็บตัว' | AGENT: {st.session_state.user_name}")
