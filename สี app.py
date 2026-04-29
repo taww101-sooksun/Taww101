@@ -149,20 +149,7 @@ def room_comms():
             """ % (st.session_state.theme_color, st.session_state.user, target, st.session_state.user, target)
             components.html(call_js, height=200)
 
-def room_music():
-    st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>🎧 DJ STATION</h2>", unsafe_allow_html=True)
-    songs = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
-    if songs:
-        s_a = st.selectbox("DECK A", ["-- Select --"] + songs, index=st.session_state.song_index + 1)
-        if s_a != "-- Select --":
-            st.audio(s_a)
-            st.session_state.song_index = songs.index(s_a)
-        
-        st.write("Playlist:")
-        for i, s in enumerate(songs):
-            if st.button(f"🎵 {s}", key=f"play_{i}", use_container_width=True):
-                st.session_state.song_index = i
-                st.rerun()
+
 def room_music():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>🎧 RAINBOW DJ STATION</h2>", unsafe_allow_html=True)
     
