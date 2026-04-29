@@ -38,16 +38,39 @@ def init_system():
 init_system()
 
 # ==========================================
-# 2. UI STYLING
+# 2. UI STYLING (เพิ่มตัวป้องกัน Error)
 # ==========================================
 st.set_page_config(page_title="SYNAPSE X", layout="wide")
+
+# ดึงค่าจาก session_state แบบปลอดภัย ถ้าไม่มีให้ใช้ค่า Default
+theme_clr = st.session_state.get('theme_color', "#39FF14")
+bg_clr = st.session_state.get('bg_color', "#000000")
+
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    .stApp {{ background-color: {st.session_state.bg_color} !important; color: #FFFFFF !important; font-family: 'Orbitron', sans-serif; }}
-    .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; border-radius: 10px; }}
-    .stButton>button:hover {{ background: {st.session_state.theme_color} !important; color: black !important; }}
-    .neon-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px {st.session_state.theme_color}; }}
+    .stApp {{ 
+        background-color: {bg_clr} !important; 
+        color: #FFFFFF !important; 
+        font-family: 'Orbitron', sans-serif; 
+    }}
+    .stButton>button {{ 
+        border: 2px solid {theme_clr} !important; 
+        color: {theme_clr} !important; 
+        background: transparent !important; 
+        border-radius: 10px; 
+    }}
+    .stButton>button:hover {{ 
+        background: {theme_clr} !important; 
+        color: black !important; 
+    }}
+    .neon-box {{ 
+        border: 1px solid {theme_clr}; 
+        padding: 15px; 
+        border-radius: 10px; 
+        text-align: center; 
+        box-shadow: 0 0 10px {theme_clr}; 
+    }}
     </style>
     """, unsafe_allow_html=True)
 
