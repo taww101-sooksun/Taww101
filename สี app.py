@@ -1,107 +1,104 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import pandas as pd
 import math
 from datetime import datetime, date
 
-# --- [ 1. INITIAL SETUP & THEME ] ---
+# --- [ 1. INITIAL SETUP ] ---
 if 'theme_color' not in st.session_state:
     st.session_state.theme_color = "#00ff41"
 if 'user_name' not in st.session_state:
     st.session_state.user_name = ""
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "MAIN MENU"
 
 st.set_page_config(page_title="SYNAPSE X", layout="wide")
 
-# CSS แบบจัดเต็ม: ซ่อน Streamlit Elements แต่เหลือทางออกไว้ให้
+# CSS: ซ่อนทุกอย่างของ Streamlit และแต่ง UI ใหม่ให้เหมือนแอปมือถือ
 st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    header, footer, .stDeployButton {{visibility: hidden; display: none !important;}}
+    [data-testid="stSidebar"] {{display: none;}} /* ปิด Sidebar ไปเลย */
     
-    /* ซ่อนของเดิมของ Streamlit */
-    #MainMenu {{visibility: hidden;}}
-    header {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    .stDeployButton {{display:none;}}
-    
-    /* ปรับแต่งหน้าตาแอป */
     .stApp {{ background-color: #000; color: #ffffff; }}
     
-    [data-testid="stSidebar"] {{
-        background-color: #050505;
-        border-right: 2px solid {st.session_state.theme_color};
-        min-width: 250px !important;
+    .neon-btn {{
+        background-color: #111;
+        border: 2px solid {st.session_state.theme_color};
+        color: {st.session_state.theme_color};
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 10px;
+        cursor: pointer;
+        font-family: 'Orbitron', sans-serif;
+        box-shadow: 0 0 10px {st.session_state.theme_color};
     }}
     
-    /* ปุ่มพิเศษสำหรับเปิด Sidebar ในมือถือ (เผื่อปุ่มเดิมหาย) */
-    .menu-hint {{
-        position: fixed;
-        top: 10px;
-        left: 10px;
-        background: {st.session_state.theme_color};
-        color: black;
-        padding: 5px 10px;
-        border-radius: 5px;
-        font-size: 10px;
-        font-weight: bold;
-        z-index: 999999;
-    }}
-
-    .neon-text {{ 
-        color: {st.session_state.theme_color}; 
-        text-shadow: 0 0 10px {st.session_state.theme_color}; 
-        font-family: 'Orbitron', sans-serif; 
+    .neon-title {{
+        color: {st.session_state.theme_color};
+        text-shadow: 0 0 15px {st.session_state.theme_color};
+        text-align: center;
+        font-family: 'Orbitron', sans-serif;
+        margin-bottom: 30px;
     }}
     </style>
-    <div class="menu-hint">SWIPE FROM LEFT TO OPEN MENU</div>
     """, unsafe_allow_html=True)
 
-# --- [ 2. NAVIGATION SIDEBAR ] ---
-st.sidebar.markdown(f"<h1 class='neon-text'>SYNAPSE X</h1>", unsafe_allow_html=True)
-if st.session_state.user_name:
-    st.sidebar.success(f"AGENT: {st.session_state.user_name}")
+# --- [ 2. NAVIGATION LOGIC ] ---
+def go_to(page):
+    st.session_state.current_page = page
+    st.rerun()
 
-# ใช้ Radio แบบธรรมดาเพื่อให้กดง่ายในมือถือ
-menu = st.sidebar.radio("MAIN NAVIGATION", 
-    ["🔐 LOGIN & SETTINGS", "🎧 ROOM 1: NEON MUSIC", "🛰️ ROOM 2: GPS & CHAT", "🧬 ROOM 3: COSMIC DECODER", "🎙️ ROOM 4: SENSOR LAB"])
+# --- [ 3. PAGE CONTENT ] ---
 
-st.sidebar.divider()
-st.sidebar.write(f"Slogan: 'อยู่นิ่งๆ ไม่เจ็บตัว'")
-
-# --- [ 3. LOGIC แต่ละห้อง ] ---
-
-# ตัวอย่างการเช็กหน้าจอ: ถ้าหน้าจอยังว่าง ให้แสดงคำแนะนำ
-if menu == "🔐 LOGIN & SETTINGS":
-    st.markdown("<h2 class='neon-text'>SETTINGS</h2>", unsafe_allow_html=True)
-    u_name = st.text_input("NAME/ID", value=st.session_state.user_name)
-    if st.button("CONFIRM AGENT"):
-        st.session_state.user_name = u_name
-        st.success("AGENT SAVED")
+# หน้าเมนูหลัก (ใช้แทน Sidebar)
+if st.session_state.current_page == "MAIN MENU":
+    st.markdown("<h1 class='neon-title'>SYNAPSE X</h1>", unsafe_allow_html=True)
     
-    color = st.color_picker("NEON COLOR", st.session_state.theme_color)
-    if st.button("SAVE THEME"):
-        st.session_state.theme_color = color
-        st.rerun()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔐 SETTINGS", use_container_width=True): go_to("SETTINGS")
+        if st.button("🛰️ GPS & CHAT", use_container_width=True): go_to("GPS")
+    with col2:
+        if st.button("🎧 MUSIC", use_container_width=True): go_to("MUSIC")
+        if st.button("🧬 DECODER", use_container_width=True): go_to("DECODER")
+    
+    if st.button("🎙️ SENSOR LAB", use_container_width=True): go_to("SENSOR")
+    
+    st.divider()
+    st.caption(f"AGENT: {st.session_state.user_name} | 'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-elif menu == "🎧 ROOM 1: NEON MUSIC":
-    st.markdown("<h2 class='neon-text'>MUSIC ROOM</h2>", unsafe_allow_html=True)
-    # ใส่โค้ด Mixer เดิมของคุณตรงนี้
+# หน้าลูก (Sub-pages)
+else:
+    # ปุ่มกดกลับเมนูหลัก (Home Button)
+    if st.button("⬅️ BACK TO MENU"):
+        go_to("MAIN MENU")
+    st.write("---")
 
-elif menu == "🛰️ ROOM 2: GPS & CHAT":
-    st.markdown("<h2 class='neon-text'>GPS & CHAT</h2>", unsafe_allow_html=True)
-    # ใส่โค้ด GPS เดิมของคุณตรงนี้
+    if st.session_state.current_page == "SETTINGS":
+        st.markdown("<h2 class='neon-title'>SETTINGS</h2>", unsafe_allow_html=True)
+        st.session_state.user_name = st.text_input("AGENT NAME", value=st.session_state.user_name)
+        color = st.color_picker("NEON COLOR", st.session_state.theme_color)
+        if st.button("SAVE THEME"):
+            st.session_state.theme_color = color
+            st.rerun()
 
-elif menu == "🧬 ROOM 3: COSMIC DECODER":
-    st.markdown("<h2 class='neon-text'>DECODER</h2>", unsafe_allow_html=True)
-    # ส่วนคำนวณ 3 หัวข้อ
-    c1, c2, c3 = st.columns(3)
-    c1.metric("รหัสฐานวัน", round(date.today().isoweekday() * 1.618, 4))
-    c2.metric("รหัสจันทรคติ", "29.53")
-    c3.metric("รหัสสมดุล", "ALPHA-01")
+    elif st.session_state.current_page == "DECODER":
+        st.markdown("<h2 class='neon-title'>COSMIC DECODER</h2>", unsafe_allow_html=True)
+        # ฟังก์ชันคำนวณ 3 หัวข้อ (เดิม)
+        st.write("1. รหัสฐานวัน:", round(date.today().isoweekday() * 1.618, 4))
+        st.write("2. รหัสจันทรคติ: 29.53")
+        st.write("3. รหัสสมดุล: ALPHA-01")
 
-elif menu == "🎙️ ROOM 4: SENSOR LAB":
-    st.markdown("<h2 class='neon-text'>SENSOR</h2>", unsafe_allow_html=True)
-    # ใส่โค้ด Sensor เดิมของคุณตรงนี้
+    elif st.session_state.current_page == "MUSIC":
+        st.markdown("<h2 class='neon-title'>NEON MUSIC</h2>", unsafe_allow_html=True)
+        st.info("ระบบเครื่องเล่นเพลงพร้อมทำงาน...")
+        # ใส่โค้ด Mixer ของคุณที่นี่
 
-# --- FOOTER ---
-st.divider()
-st.caption(f"SYNAPSE X | VERSION 7.6 | AGENT: {st.session_state.user_name}")
+    elif st.session_state.current_page == "GPS":
+        st.markdown("<h2 class='neon-title'>GPS RADAR</h2>", unsafe_allow_html=True)
+        # ใส่โค้ด GPS ของคุณที่นี่
+
+    elif st.session_state.current_page == "SENSOR":
+        st.markdown("<h2 class='neon-title'>SENSOR LAB</h2>", unsafe_allow_html=True)
+        # ใส่โค้ด Sensor ของคุณที่นี่
