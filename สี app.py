@@ -7,6 +7,23 @@ import time
 import folium
 from streamlit_folium import st_folium
 from datetime import datetime, date
+import streamlit as st
+import firebase_admin
+from firebase_admin import credentials, db
+
+# เชื่อมต่อ Firebase โดยดึงข้อมูลจาก Secrets
+if not firebase_admin._apps:
+    # ดึง Dictionary ของ credentials จาก Secrets ตรงๆ
+    fb_creds = dict(st.secrets["firebase_credentials"])
+    
+    # แก้ไขเรื่องขึ้นบรรทัดใหม่ใน Private Key (บางครั้งตอนเซฟใน Cloud มันอาจจะเพี้ยน)
+    if "\\n" in fb_creds["private_key"]:
+        fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
+        
+    cred = credentials.Certificate(fb_creds)
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': st.secrets["firebase_config"]["databaseURL"]
+    })
 
 # --- [ 1. INITIAL SETUP ] ---
 if 'theme_color' not in st.session_state:
