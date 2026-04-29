@@ -284,7 +284,4 @@ else:
                 st.info(f"Connected to {target}'s secure line.")
 
 
-    # 5. หน้า SENSOR
-    elif st.session_state.current_page == "SENSOR":
-        st.markdown(f"<h2 class='neon-title' style='color:{st.session_state.theme_color}'>SENSOR LAB</h2>", unsafe_allow_html=True)
-        st.info("ระบบวัดค่าความสั่นสะเทือน (G-Force)")
+
