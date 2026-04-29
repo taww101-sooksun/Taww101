@@ -66,8 +66,6 @@ def room_radar():
         st.caption("🛰️ กำลังค้นหาสัญญาณดาวเทียม...") # แสดงข้อความรอ
     start_lat, start_lon = 13.7367, 100.5231
 
-    else:
-        st.caption("🛰️ กำลังค้นหาสัญญาณดาวเทียม...") # แสดงข้อความรอ
 
     tile_url = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
     m = folium.Map(location=[start_lat, start_lon], zoom_start=15, tiles=tile_url, attr="Google Satellite")
