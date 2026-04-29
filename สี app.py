@@ -90,7 +90,7 @@ else:
         st.write("2. รหัสจันทรคติ: 29.53")
         st.write("3. รหัสสมดุล: ALPHA-01")
 
-   elif menu == "🎧 ROOM 1: NEON MUSIC":
+    elif menu == "🎧 ROOM 1: NEON MUSIC":
     st.markdown("<h2 class='neon-text'>🎧 SYNAPSE NEON DJ STATION</h2>", unsafe_allow_html=True)
     
     # ดึงรายชื่อไฟล์ MP3 จากโฟลเดอร์เดียวกัน
