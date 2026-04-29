@@ -13,16 +13,46 @@ if 'user_name' not in st.session_state:
 
 st.set_page_config(page_title="SYNAPSE X - COMMAND CENTER", layout="wide")
 
-# CSS ปรับแต่งตามสีที่เลือก
+# CSS ปรับแต่งเพื่อซ่อนส่วนประกอบของ Streamlit ออกให้หมด
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    .stApp {{ background-color: #000; color: #ffffff; }}
-    .neon-text {{ color: {st.session_state.theme_color}; text-shadow: 0 0 10px {st.session_state.theme_color}; font-family: 'Orbitron', sans-serif; }}
-    .logic-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; background: rgba(0,0,0,0.5); }}
+    
+    /* 1. ซ่อน Header, Footer และปุ่มเมนูเดิมของ Streamlit */
+    #MainMenu {{visibility: hidden;}}
     header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    .stDeployButton {{display:none;}}
+    #stDecoration {{display:none;}}
+    
+    /* 2. ตั้งค่าพื้นหลังและสีตัวอักษร */
+    .stApp {{ 
+        background-color: #000; 
+        color: #ffffff; 
+    }}
+    
+    /* 3. ปรับแต่ง Sidebar ให้ดูเป็นสไตล์ Synapse */
+    [data-testid="stSidebar"] {{
+        background-color: #050505;
+        border-right: 1px solid {st.session_state.theme_color};
+    }}
+    
+    /* 4. สไตล์ตัวอักษร Neon */
+    .neon-text {{ 
+        color: {st.session_state.theme_color}; 
+        text-shadow: 0 0 10px {st.session_state.theme_color}; 
+        font-family: 'Orbitron', sans-serif; 
+    }}
+    
+    .logic-box {{ 
+        border: 1px solid {st.session_state.theme_color}; 
+        padding: 15px; 
+        border-radius: 10px; 
+        background: rgba(0,0,0,0.5); 
+    }}
     </style>
     """, unsafe_allow_html=True)
+
 
 # --- [ 2. NAVIGATION SIDEBAR ] ---
 st.sidebar.markdown(f"<h1 class='neon-text'>SYNAPSE X</h1>", unsafe_allow_html=True)
