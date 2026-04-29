@@ -95,8 +95,8 @@ else:
                         return base64.b64encode(f.read()).decode()
         return ""   
 
-            data_a = get_audio_base64(song_a)
-            data_b = get_audio_base64(song_b)
+        data_a = get_audio_base64(song_a)
+        data_b = get_audio_base64(song_b)
 
             # ใส่ HTML/JS Mixer ที่นี่ (เหมือนที่คุณส่งมาเป๊ะๆ)
             mixer_html = f"""
