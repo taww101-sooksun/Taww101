@@ -142,7 +142,7 @@ else:
                 </script>
             </div>
             """
-            components.html(mixer_html, height=400)
+      components.html(mixer_html, height=400)
 
     # --- หน้า GPS ---
     elif st.session_state.current_page == "GPS":
