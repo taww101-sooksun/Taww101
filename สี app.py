@@ -99,7 +99,7 @@ else:
         data_b = get_audio_base64(song_b)
 
             # ใส่ HTML/JS Mixer ที่นี่ (เหมือนที่คุณส่งมาเป๊ะๆ)
-            mixer_html = f"""
+        mixer_html = f"""
             <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 20px; padding: 15px; font-family: sans-serif; color: white;">
                 <canvas id="scope" style="width: 100%; height: 100px; background: #050505; border-radius: 10px; margin-bottom:10px;"></canvas>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
