@@ -176,43 +176,50 @@ def room_comms():
             </script>
             """ % (st.session_state.theme_color, st.session_state.user, target, st.session_state.user, target)
             components.html(call_js, height=200)
-
-
 def room_music():
-    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>🎧 RAINBOW DJ STATION</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>🎧 SYNAPSE AUDIO TERMINAL</h2>", unsafe_allow_html=True)
     
     songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
     
     if not songs:
-        st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ")
+        st.warning("⚠️ ไม่พบสัญญาณเสียงในหน่วยความจำ")
         return
 
-    # --- ส่วนของ Visualizer สีสันสดใส ---
-    s_a = st.selectbox("เลือกเพลงที่จะเล่น", ["-- Select --"] + songs, index=st.session_state.song_index + 1)
+    # 1. เลือกเพลงจาก Dropdown (อันเดียวจบ)
+    s_a = st.selectbox("🎯 SELECT SIGNAL SOURCE", ["-- STANDBY --"] + songs, index=st.session_state.song_index + 1)
     
-    # แปลงไฟล์เป็น Base64 เพื่อให้ JavaScript เล่นได้เสถียร
     song_b64 = ""
-    if s_a != "-- Select --":
+    song_name = "WAITING FOR SIGNAL..."
+    if s_a != "-- STANDBY --":
         with open(s_a, "rb") as f:
             song_b64 = base64.b64encode(f.read()).decode()
         st.session_state.song_index = songs.index(s_a)
+        song_name = f"PLAYING: {s_a}"
 
+    # 2. ตัวเครื่องเล่นใหม่: มีข้อความวิ่ง (Marquee) แทนปุ่มสีรุ้ง
     visualizer_html = f"""
-    <div style="background: #000; border: 3px solid {st.session_state.theme_color}; border-radius: 20px; padding: 20px; box-shadow: 0 0 30px {st.session_state.theme_color}55;">
-        <canvas id="canvas" style="width: 100%; height: 200px; background: #050505; border-radius: 10px;"></canvas>
+    <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 15px; padding: 20px; box-shadow: 0 0 25px {st.session_state.theme_color}33;">
+        
+        <div style="overflow: hidden; white-space: nowrap; background: #0a0a0a; border: 1px solid {st.session_state.theme_color}55; border-radius: 5px; margin-bottom: 15px; padding: 5px;">
+            <p style="display: inline-block; padding-left: 100%; font-family: 'Orbitron', sans-serif; font-size: 14px; color: {st.session_state.theme_color}; text-shadow: 0 0 10px {st.session_state.theme_color}; animation: marquee 15s linear infinite;">
+                {song_name} >>> ANALYZING FREQUENCY... >>> SECURE LINE ACTIVE... >>> {song_name}
+            </p>
+        </div>
+
+        <canvas id="canvas" style="width: 100%; height: 180px; background: #000; border-radius: 5px; cursor: pointer;"></canvas>
+        
         <div style="margin-top: 15px; text-align: center;">
-            <button id="pBtn" style="width: 100%; padding: 15px; background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #8b00ff); 
-            background-size: 400% 400%; animation: rainbow 5s ease infinite; border: none; border-radius: 10px; color: white; font-weight: bold; font-size: 1.2em; cursor: pointer; text-shadow: 1px 1px 5px #000;">
-                ▶ START VISUALIZER
+            <button id="pBtn" style="width: 100%; padding: 12px; background: transparent; border: 1px solid {st.session_state.theme_color}; border-radius: 8px; color: {st.session_state.theme_color}; font-family: 'Orbitron', sans-serif; cursor: pointer; transition: 0.3s; box-shadow: inset 0 0 10px {st.session_state.theme_color}44;">
+                [ CLICK TO SYNC AUDIO ]
             </button>
         </div>
+
         <audio id="audio" src="data:audio/mp3;base64,{song_b64}"></audio>
     </div>
 
     <style>
-        @keyframes rainbow {{ 
-            0%{{background-position:0% 50%}} 50%{{background-position:100% 50%}} 100%{{background-position:0% 50%}} 
-        }}
+        @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
+        #pBtn:hover {{ background: {st.session_state.theme_color}22; box-shadow: 0 0 15px {st.session_state.theme_color}; }}
     </style>
 
     <script>
@@ -220,57 +227,45 @@ def room_music():
     const ctx = canvas.getContext('2d');
     const audio = document.getElementById('audio');
     const btn = document.getElementById('pBtn');
-    
     let audioCtx, analyser, source, dataArray;
 
     btn.onclick = function() {{
         if (!audioCtx) {{
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioCtx.createAnalyser();
-            source = audioCtx.createMediaStreamSource(audio.captureStream ? audio.captureStream() : audio.mozCaptureStream ? audio.mozCaptureStream() : null) || audioCtx.createMediaElementSource(audio);
+            source = audioCtx.createMediaElementSource(audio);
             source.connect(analyser);
             analyser.connect(audioCtx.destination);
-            analyser.fftSize = 128;
+            analyser.fftSize = 64; // ปรับให้ Bar ดูใหญ่และแข็งแรงขึ้น
             dataArray = new Uint8Array(analyser.frequencyBinCount);
             draw();
         }}
-        if (audio.paused) {{ audio.play(); btn.innerText = "⏸ PAUSE"; }}
-        else {{ audio.pause(); btn.innerText = "▶ RESUME"; }}
+        if (audio.paused) {{ audio.play(); btn.innerText = "[ SIGNAL ACTIVE ]"; btn.style.borderColor = "#ff0000"; btn.style.color = "#ff0000"; }}
+        else {{ audio.pause(); btn.innerText = "[ SIGNAL PAUSED ]"; btn.style.borderColor = "{st.session_state.theme_color}"; btn.style.color = "{st.session_state.theme_color}"; }}
     }};
 
     function draw() {{
         requestAnimationFrame(draw);
         analyser.getByteFrequencyData(dataArray);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        const barWidth = (canvas.width / dataArray.length) * 2.5;
-        let x = 0;
-
+        const barWidth = (canvas.width / dataArray.length);
         for (let i = 0; i < dataArray.length; i++) {{
-            const barHeight = dataArray[i] / 1.5;
-            // สร้างสีแบบ Rainbow ตามตำแหน่ง Bar
-            const hue = (i / dataArray.length) * 360;
-            ctx.fillStyle = `hsl(${{hue}}, 100%, 50%)`;
+            const barHeight = dataArray[i] * 0.8;
+            // ใช้สีตาม Theme แต่ไล่ความสว่างแบบ Neon
+            ctx.fillStyle = '{st.session_state.theme_color}';
             ctx.shadowBlur = 15;
-            ctx.shadowColor = `hsl(${{hue}}, 100%, 50%)`;
-            
-            ctx.fillRect(x, canvas.height - barHeight, barWidth - 2, barHeight);
-            x += barWidth;
+            ctx.shadowColor = '{st.session_state.theme_color}';
+            ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth - 4, barHeight);
         }}
     }}
     </script>
     """
-    components.html(visualizer_html, height=350)
+    components.html(visualizer_html, height=360)
 
-    # --- ส่วนแสดงรายชื่อเพลงด้านล่าง ---
-    st.write("---")
-    cols = st.columns(3)
-    for i, song in enumerate(songs):
-        with cols[i % 3]:
-            if st.button(f"🎵 {song[:15]}...", key=f"btn_{i}", use_container_width=True):
-                st.session_state.song_index = i
-                st.rerun()
+    st.markdown("---")
+    st.caption("ระบบตัดเสียงก้องอัตโนมัติ: เชื่อมต่อผ่านช่องทางเดียวเท่านั้น")
 
 def room_sensor():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>🎙️ SENSOR LAB</h2>", unsafe_allow_html=True)
