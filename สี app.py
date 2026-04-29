@@ -3,69 +3,42 @@ import streamlit.components.v1 as components
 import os
 import base64
 import math
+import time
+import folium
+from streamlit_folium import st_folium
 from datetime import datetime, date
 
-# --- [ 1. INITIAL SETUP & THEME ] ---
+# --- [ 1. INITIAL SETUP ] ---
 if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#00ff41" # สีเขียว Neon เริ่มต้น
+    st.session_state.theme_color = "#00ff41"
 if 'user_name' not in st.session_state:
-    st.session_state.user_name = ""
+    st.session_state.user_name = "AGENT_X"
 if 'current_page' not in st.session_state:
     st.session_state.current_page = "MAIN MENU"
 
 st.set_page_config(page_title="SYNAPSE X", layout="wide")
 
-# CSS: กู้คืนความหล่อแบบแอปมือถือ ซ่อนทุกอย่างของ Streamlit
+# CSS Style
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    
     header, footer, .stDeployButton {{visibility: hidden; display: none !important;}}
     [data-testid="stSidebar"] {{display: none;}}
-    
-    .stApp {{ 
-        background-color: #000; 
-        color: #ffffff; 
-        font-family: 'Orbitron', sans-serif;
-    }}
-    
-    .neon-title {{
-        color: {st.session_state.theme_color};
-        text-shadow: 0 0 15px {st.session_state.theme_color};
-        text-align: center;
-        margin-bottom: 25px;
-    }}
-    
-    /* สไตล์ปุ่มในหน้าเมนูหลัก */
-    div.stButton > button {{
-        background-color: #111;
-        border: 2px solid {st.session_state.theme_color};
-        color: {st.session_state.theme_color};
-        border-radius: 15px;
-        padding: 20px;
-        font-weight: bold;
-        transition: 0.3s;
-        box-shadow: 0 0 10px rgba(0,255,0,0.1);
-    }}
-    div.stButton > button:hover {{
-        background-color: {st.session_state.theme_color};
-        color: black;
-        box-shadow: 0 0 20px {st.session_state.theme_color};
-    }}
+    .stApp {{ background-color: #000; color: #ffffff; font-family: 'Orbitron', sans-serif; }}
+    .neon-title {{ color: {st.session_state.theme_color}; text-shadow: 0 0 15px {st.session_state.theme_color}; text-align: center; margin-bottom: 25px; }}
+    div.stButton > button {{ background-color: #111; border: 2px solid {st.session_state.theme_color}; color: {st.session_state.theme_color}; border-radius: 15px; padding: 15px; font-weight: bold; }}
+    div.stButton > button:hover {{ background-color: {st.session_state.theme_color}; color: black; box-shadow: 0 0 20px {st.session_state.theme_color}; }}
     </style>
     """, unsafe_allow_html=True)
 
-# ฟังก์ชันสำหรับเปลี่ยนหน้า
 def go_to(page):
     st.session_state.current_page = page
     st.rerun()
 
-# --- [ 2. MAIN INTERFACE ] ---
+# --- [ 2. INTERFACE LOGIC ] ---
 
-# A. หน้าเมนูหลัก (MAIN MENU)
 if st.session_state.current_page == "MAIN MENU":
     st.markdown("<h1 class='neon-title'>SYNAPSE X</h1>", unsafe_allow_html=True)
-    
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🔐 SETTINGS", use_container_width=True): go_to("SETTINGS")
@@ -73,215 +46,101 @@ if st.session_state.current_page == "MAIN MENU":
     with col2:
         if st.button("🎧 MUSIC", use_container_width=True): go_to("MUSIC")
         if st.button("🧬 DECODER", use_container_width=True): go_to("DECODER")
-    
     if st.button("🎙️ SENSOR LAB", use_container_width=True): go_to("SENSOR")
-    
     st.divider()
-    st.caption(f"AGENT: {st.session_state.user_name if st.session_state.user_name else 'Unknown'} | 'อยู่นิ่งๆ ไม่เจ็บตัว'")
+    st.caption(f"AGENT: {st.session_state.user_name} | 'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-# B. หน้าลูกต่างๆ (SUB-PAGES)
 else:
-    # ปุ่ม Back สำหรับทุกหน้า
     if st.button("⬅️ BACK TO MENU"):
         go_to("MAIN MENU")
     st.write("---")
 
-    # 1. หน้า SETTINGS
+    # --- PAGE: SETTINGS ---
     if st.session_state.current_page == "SETTINGS":
-        st.markdown(f"<h2 class='neon-title' style='color:{st.session_state.theme_color}'>SETTINGS</h2>", unsafe_allow_html=True)
-        st.session_state.user_name = st.text_input("ระบุชื่อ Agent ของคุณ", value=st.session_state.user_name)
-        new_color = st.color_picker("เลือกสี Neon ของคุณ", st.session_state.theme_color)
-        if st.button("บันทึกการตั้งค่า"):
-            st.session_state.theme_color = new_color
-            st.rerun()
+        st.markdown(f"<h2 class='neon-title'>SETTINGS</h2>", unsafe_allow_html=True)
+        st.session_state.user_name = st.text_input("AGENT NAME", value=st.session_state.user_name)
+        st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
+        if st.button("SAVE"): st.rerun()
 
-    # 2. หน้า MUSIC (ไฮไลต์: กราฟบน รายการล่าง)
+    # --- PAGE: MUSIC (กราฟบน รายการล่าง) ---
     elif st.session_state.current_page == "MUSIC":
-        st.markdown(f"<h2 class='neon-title' style='color:{st.session_state.theme_color}'>🎧 DJ STATION</h2>", unsafe_allow_html=True)
-        
-        # ดึงไฟล์เพลงจาก Directory
+        st.markdown(f"<h2 class='neon-title'>🎧 DJ STATION</h2>", unsafe_allow_html=True)
         all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
-        
-        if not all_songs:
-            st.error("⚠️ ไม่พบไฟล์ .mp3 ใน Directory")
+        if not all_songs: st.error("No .mp3 files found.")
         else:
-            # เลือกเพลง
-            song_a = st.session_state.get('sa', "-- Select --")
-            song_b = st.session_state.get('sb', "-- Select --")
-
-            def get_base64_audio(file):
-                if file != "-- Select --":
-                    with open(file, "rb") as f:
-                        return base64.b64encode(f.read()).decode()
-                return ""
-
-            data_a = get_base64_audio(song_a)
-            data_b = get_base64_audio(song_b)
-
-            # HTML/JS: Visualizer (บน) + Deck Control
+            s_a = st.session_state.get('sa', "-- Select --")
+            s_b = st.session_state.get('sb', "-- Select --")
+            def get_b64(f): return base64.b64encode(open(f, "rb").read()).decode() if f != "-- Select --" else ""
+            d_a, d_b = get_b64(s_a), get_b64(s_b)
+            
             mixer_html = f"""
-            <div style="background:#000; border:2px solid {st.session_state.theme_color}; border-radius:20px; padding:15px; color:white; font-family:sans-serif;">
-                <canvas id="scope" style="width:100%; height:160px; background:#050505; border-radius:15px; border:1px solid #222;"></canvas>
-                
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:15px;">
-                    <div id="deckA" style="border:1px solid {st.session_state.theme_color}; padding:10px; border-radius:12px; text-align:center;">
-                        <small id="curA" style="color:{st.session_state.theme_color};">00:00</small>
-                        <div style="height:4px; background:#222; margin-top:5px;"><div id="barA" style="height:100%; width:0%; background:{st.session_state.theme_color};"></div></div>
-                    </div>
-                    <div id="deckB" style="border:1px solid #FF00DE; padding:10px; border-radius:12px; text-align:center;">
-                        <small id="curB" style="color:#FF00DE;">00:00</small>
-                        <div style="height:4px; background:#222; margin-top:5px;"><div id="barB" style="height:100%; width:0%; background:#FF00DE;"></div></div>
-                    </div>
-                </div>
-
-                <button onclick="startMix()" style="width:100%; margin-top:15px; padding:15px; background:linear-gradient(45deg, {st.session_state.theme_color}, #FF00DE); border:none; border-radius:10px; color:white; font-weight:bold; cursor:pointer;">🔥 START AUTO-MIX</button>
-                
-                <audio id="audioA" src="data:audio/mp3;base64,{data_a}"></audio>
-                <audio id="audioB" src="data:audio/mp3;base64,{data_b}"></audio>
-
+            <div style="background:#000; border:2px solid {st.session_state.theme_color}; border-radius:20px; padding:15px;">
+                <canvas id="v" style="width:100%; height:150px; background:#050505; border-radius:10px;"></canvas>
+                <button onclick="play()" style="width:100%; margin-top:10px; padding:15px; background:linear-gradient(45deg, {st.session_state.theme_color}, #FF00DE); border:none; border-radius:10px; color:white; font-weight:bold;">START MIX</button>
+                <audio id="audA" src="data:audio/mp3;base64,{d_a}"></audio>
+                <audio id="audB" src="data:audio/mp3;base64,{d_b}"></audio>
                 <script>
-                    const audA = document.getElementById('audioA');
-                    const audB = document.getElementById('audioB');
-                    let ctx, analyser, active='A', isPlaying=false;
-
-                    function init() {{
+                    const a=document.getElementById('audA'), b=document.getElementById('audB');
+                    let ctx, ans, active='A';
+                    function play() {{
                         if(!ctx) {{
-                            ctx = new (window.AudioContext || window.webkitAudioContext)();
-                            analyser = ctx.createAnalyser();
-                            const sA = ctx.createMediaElementSource(audA);
-                            const sB = ctx.createMediaElementSource(audB);
-                            const gA = ctx.createGain(); const gB = ctx.createGain();
-                            sA.connect(gA).connect(analyser); sB.connect(gB).connect(analyser);
-                            analyser.connect(ctx.destination);
-                            window.gains = {{A:gA, B:gB}};
+                            ctx=new(window.AudioContext||window.webkitAudioContext)(); ans=ctx.createAnalyser();
+                            const sA=ctx.createMediaElementSource(a), sB=ctx.createMediaElementSource(b);
+                            const gA=ctx.createGain(), gB=ctx.createGain();
+                            sA.connect(gA).connect(ans); sB.connect(gB).connect(ans); ans.connect(ctx.destination);
+                            window.gs={{A:gA, B:gB}};
                         }}
+                        a.play(); window.gs.A.gain.value=1; window.gs.B.gain.value=0; loop();
                     }}
-
-                    function startMix() {{
-                        if(!audA.src || !audB.src) return;
-                        init(); audA.play(); 
-                        window.gains.A.gain.value = 1; window.gains.B.gain.value = 0;
-                        isPlaying = true; render();
+                    function loop() {{
+                        requestAnimationFrame(loop); const d=new Uint8Array(ans.frequencyBinCount); ans.getByteFrequencyData(d);
+                        const c=document.getElementById('v').getContext('2d'); c.clearRect(0,0,300,150);
+                        for(let i=0;i<d.length;i++) {{ c.fillStyle=`hsl(${{i*5}},100%,50%)`; c.fillRect(i*2, 150-(d[i]/2), 1, d[i]/2); }}
+                        if(a.duration-a.currentTime<7 && b.paused) {{ b.play(); window.gs.A.gain.linearRampToValueAtTime(0, ctx.currentTime+6); window.gs.B.gain.linearRampToValueAtTime(1, ctx.currentTime+6); }}
                     }}
-
-                    function render() {{
-                        requestAnimationFrame(render);
-                        const data = new Uint8Array(analyser.frequencyBinCount);
-                        analyser.getByteFrequencyData(data);
-                        const can = document.getElementById('scope');
-                        const c = can.getContext('2d');
-                        c.clearRect(0,0,can.width,can.height);
-                        let bw = (can.width/data.length)*2.5;
-                        for(let i=0; i<data.length; i++) {{
-                            let h = (data[i]/255)*can.height;
-                            c.fillStyle = `hsl(${{(i*5+Date.now()/20)%360}},100%,50%)`;
-                            c.fillRect(i*bw, can.height-h, bw-1, h);
-                        }}
-                        if(isPlaying) update();
-                    }}
-
-                    function update() {{
-                        const cur = active==='A'?audA:audB;
-                        const next = active==='A'?audB:audA;
-                        document.getElementById('curA').innerText = fmt(audA.currentTime);
-                        document.getElementById('curB').innerText = fmt(audB.currentTime);
-                        document.getElementById('barA').style.width = (audA.currentTime/audA.duration*100)+'%';
-                        document.getElementById('barB').style.width = (audB.currentTime/audB.duration*100)+'%';
-
-                        if(cur.duration - cur.currentTime < 7 && next.paused) {{
-                            next.currentTime = 0; next.play();
-                            let now = ctx.currentTime;
-                            window.gains[active].gain.linearRampToValueAtTime(0, now+6);
-                            window.gains[active==='A'?'B':'A'].gain.linearRampToValueAtTime(1, now+6);
-                            active = (active==='A'?'B':'A');
-                        }}
-                    }}
-                    function fmt(s) {{ return new Date(s*1000).toISOString().substr(14,5); }}
                 </script>
-            </div>
-            """
-            components.html(mixer_html, height=450)
-
-            # ส่วนเลือกเพลง (รายการอยู่ข้างล่าง)
-            st.write("---")
-            st.markdown("### 📂 TRACK SELECTION")
+            </div>"""
+            components.html(mixer_html, height=250)
             c1, c2 = st.columns(2)
-            with c1:
-                st.selectbox("💿 DECK A (LEFT)", ["-- Select --"] + all_songs, key="sa")
-            with c2:
-                st.selectbox("💿 DECK B (RIGHT)", ["-- Select --"] + all_songs, key="sb")
-            if st.button("🔄 UPDATE PLAYLIST"): st.rerun()
+            with c1: st.selectbox("DECK A", ["-- Select --"] + all_songs, key="sa")
+            with c2: st.selectbox("DECK B", ["-- Select --"] + all_songs, key="sb")
+            if st.button("🔄 UPDATE"): st.rerun()
 
-    # 3. หน้า DECODER
-    elif st.session_state.current_page == "DECODER":
-        st.markdown(f"<h2 class='neon-title' style='color:{st.session_state.theme_color}'>COSMIC DECODER</h2>", unsafe_allow_html=True)
-        st.write("1. รหัสฐานวัน:", round(date.today().isoweekday() * 1.618, 4))
-        st.write("2. รหัสจันทรคติ: 29.53 (Full Moon Cycle)")
-        st.write("3. รหัสสมดุลชีวิต: " + str(math.sqrt(618)))
-
-    # 4. หน้า GPS
+    # --- PAGE: GPS & CHAT (รวมร่าง) ---
     elif st.session_state.current_page == "GPS":
-        st.markdown(f"<h2 class='neon-title' style='color:{st.session_state.theme_color}'>GPS RADAR</h2>", unsafe_allow_html=True)
-        st.warning("⚠️ กำลังรอสัญญาณพิกัด...")
-    # --- หน้า GPS & CHAT (รวมระบบเรดาร์และแชตส่งไฟล์) ---
-    elif st.session_state.current_page == "GPS":
-        st.markdown(f"<h2 class='neon-title' style='color:{st.session_state.theme_color}'>🛰️ COMMAND CENTER</h2>", unsafe_allow_html=True)
+        st.markdown(f"<h2 class='neon-title'>🛰️ COMMAND CENTER</h2>", unsafe_allow_html=True)
+        t1, t2, t3 = st.tabs(["📡 RADAR", "🌐 PUBLIC", "🔐 SECURE"])
         
-        # สร้าง Tab เพื่อสลับโหมดการทำงาน
-        tab1, tab2, tab3 = st.tabs(["📡 RADAR VIEW", "🌐 PUBLIC HUB", "🔐 SECURE LINE"])
-
-        # --- [ TAB 1: RADAR VIEW ] ---
-        with tab1:
-            st.subheader("Satellite Reconnaissance")
-            # หมายเหตุ: สำหรับ get_geolocation() และ haversine() ต้องมี function รองรับในโค้ดหลักของคุณนะครับ
-            my_lat, my_lon = 13.7367, 100.5231 # พิกัดตัวอย่าง (กรุณาใช้ get_geolocation() ของคุณแทน)
-            
-            # ใช้ภาพถ่ายดาวเทียมแบบ Hybrid (เห็นหลังคาบ้าน + ชื่อถนน)
-            google_hybrid = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-            
-            import folium
-            from streamlit_folium import st_folium
-            
-            m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles=google_hybrid, attr='Google Maps')
-            
-            # ปักหมุดตัวเรา
-            folium.Marker([my_lat, my_lon], popup="YOU", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
-            
-            # แสดงแผนที่
+        with t1: # RADAR
+            lat, lon = 13.7367, 100.5231
+            m = folium.Map(location=[lat, lon], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google')
+            folium.Marker([lat, lon], icon=folium.Icon(color='red')).add_to(m)
             st_folium(m, width="100%", height=400)
-            
-            if st.button("📡 BROADCAST POSITION", use_container_width=True):
-                # โค้ดอัปเดตลง Firebase ของคุณ
-                st.success("พิกัดถูกส่งเข้าสู่เครือข่ายแล้ว!")
+            if st.button("📡 BROADCAST"): st.success("Position Shared")
 
-        # --- [ TAB 2: PUBLIC HUB (ส่งรูป/วิดีโอ) ] ---
-        with tab2:
-            st.subheader("Global Communication")
-            with st.form("public_media", clear_on_submit=True):
-                p_msg = st.text_input("Message...")
-                p_file = st.file_uploader("Upload Media", type=['jpg', 'png', 'mp4'])
-                if st.form_submit_button("📢 SEND TO PUBLIC"):
-                    # โค้ดส่ง Firebase (Base64) ที่คุณเตรียมไว้
-                    st.toast("Data Sent!")
-            st.divider()
-            st.caption("Recent Intelligence Feed...")
-            # แสดงรายการแชตสาธารณะที่นี่
+        with t2: # PUBLIC CHAT
+            with st.form("pub", clear_on_submit=True):
+                m = st.text_input("Message")
+                f = st.file_uploader("Media", type=['jpg','png','mp4'])
+                if st.form_submit_button("📢 SEND"): st.toast("Sent to Public Hub")
+            st.write("---")
+            st.caption("Intelligence Feed is Active...")
 
-        # --- [ TAB 3: SECURE LINE (แชตลับ) ] ---
-        with tab3:
-            st.subheader("Agent-to-Agent Encryption")
-            # ดึงรายชื่อจาก Firebase มาใส่ใน Selectbox
-            target = st.selectbox("🎯 SELECT TARGET AGENT:", ["-- Select Agent --", "Agent_01", "Agent_02"])
-            
-            if target != "-- Select Agent --":
-                with st.form("private_comm", clear_on_submit=True):
-                    sec_msg = st.text_input(f"🔒 Secure message to {target}")
-                    sec_file = st.file_uploader("Private Media", type=['jpg', 'png', 'mp4'])
-                    if st.form_submit_button("🚀 LOCK & SEND"):
-                        st.success("Encrypted data transmitted.")
-                
-                # แสดงผลข้อความแชตลับ (จัดชิดซ้าย/ขวาตามที่คุณเขียนไว้)
-                st.info(f"Connected to {target}'s secure line.")
+        with t3: # SECURE CHAT
+            target = st.selectbox("TARGET AGENT", ["-- Select --", "Agent_Alpha", "Agent_Beta"])
+            if target != "-- Select --":
+                with st.form("sec", clear_on_submit=True):
+                    sm = st.text_input(f"Lock on {target}")
+                    sf = st.file_uploader("Secure File", type=['jpg','png','mp4'])
+                    if st.form_submit_button("🚀 LOCK & SEND"): st.success("Encrypted")
 
+    # --- PAGE: DECODER ---
+    elif st.session_state.current_page == "DECODER":
+        st.markdown(f"<h2 class='neon-title'>COSMIC DECODER</h2>", unsafe_allow_html=True)
+        st.write("รหัสฐานวัน:", round(date.today().isoweekday() * 1.618, 4))
+        st.write("รหัสจันทรคติ: 29.53")
 
-
+    # --- PAGE: SENSOR ---
+    elif st.session_state.current_page == "SENSOR":
+        st.markdown(f"<h2 class='neon-title'>SENSOR LAB</h2>", unsafe_allow_html=True)
+        st.info("System scanning for G-Force vibrations...")
