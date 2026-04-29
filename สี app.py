@@ -145,11 +145,10 @@ else:
     components.html(mixer_html, height=400)
 
     # --- หน้า GPS ---
-    elif st.session_state.current_page == "GPS":
+elif st.session_state.current_page == "GPS":
         st.markdown("<h2 class='neon-title'>GPS RADAR</h2>", unsafe_allow_html=True)
         st.info("กำลังเชื่อมต่อสัญญาณดาวเทียม...")
 
-    # --- หน้า SENSOR ---
-    elif st.session_state.current_page == "SENSOR":
+    # --- หน้า SENSOR ---  elif st.session_state.current_page == "SENSOR":
         st.markdown("<h2 class='neon-title'>SENSOR LAB</h2>", unsafe_allow_html=True)
         st.write("ระบบตรวจวัดค่าความถี่เสียง...")
