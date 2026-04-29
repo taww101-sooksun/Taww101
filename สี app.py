@@ -223,6 +223,66 @@ else:
     elif st.session_state.current_page == "GPS":
         st.markdown(f"<h2 class='neon-title' style='color:{st.session_state.theme_color}'>GPS RADAR</h2>", unsafe_allow_html=True)
         st.warning("⚠️ กำลังรอสัญญาณพิกัด...")
+    # --- หน้า GPS & CHAT (รวมระบบเรดาร์และแชตส่งไฟล์) ---
+    elif st.session_state.current_page == "GPS":
+        st.markdown(f"<h2 class='neon-title' style='color:{st.session_state.theme_color}'>🛰️ COMMAND CENTER</h2>", unsafe_allow_html=True)
+        
+        # สร้าง Tab เพื่อสลับโหมดการทำงาน
+        tab1, tab2, tab3 = st.tabs(["📡 RADAR VIEW", "🌐 PUBLIC HUB", "🔐 SECURE LINE"])
+
+        # --- [ TAB 1: RADAR VIEW ] ---
+        with tab1:
+            st.subheader("Satellite Reconnaissance")
+            # หมายเหตุ: สำหรับ get_geolocation() และ haversine() ต้องมี function รองรับในโค้ดหลักของคุณนะครับ
+            my_lat, my_lon = 13.7367, 100.5231 # พิกัดตัวอย่าง (กรุณาใช้ get_geolocation() ของคุณแทน)
+            
+            # ใช้ภาพถ่ายดาวเทียมแบบ Hybrid (เห็นหลังคาบ้าน + ชื่อถนน)
+            google_hybrid = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+            
+            import folium
+            from streamlit_folium import st_folium
+            
+            m = folium.Map(location=[my_lat, my_lon], zoom_start=18, tiles=google_hybrid, attr='Google Maps')
+            
+            # ปักหมุดตัวเรา
+            folium.Marker([my_lat, my_lon], popup="YOU", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
+            
+            # แสดงแผนที่
+            st_folium(m, width="100%", height=400)
+            
+            if st.button("📡 BROADCAST POSITION", use_container_width=True):
+                # โค้ดอัปเดตลง Firebase ของคุณ
+                st.success("พิกัดถูกส่งเข้าสู่เครือข่ายแล้ว!")
+
+        # --- [ TAB 2: PUBLIC HUB (ส่งรูป/วิดีโอ) ] ---
+        with tab2:
+            st.subheader("Global Communication")
+            with st.form("public_media", clear_on_submit=True):
+                p_msg = st.text_input("Message...")
+                p_file = st.file_uploader("Upload Media", type=['jpg', 'png', 'mp4'])
+                if st.form_submit_button("📢 SEND TO PUBLIC"):
+                    # โค้ดส่ง Firebase (Base64) ที่คุณเตรียมไว้
+                    st.toast("Data Sent!")
+            st.divider()
+            st.caption("Recent Intelligence Feed...")
+            # แสดงรายการแชตสาธารณะที่นี่
+
+        # --- [ TAB 3: SECURE LINE (แชตลับ) ] ---
+        with tab3:
+            st.subheader("Agent-to-Agent Encryption")
+            # ดึงรายชื่อจาก Firebase มาใส่ใน Selectbox
+            target = st.selectbox("🎯 SELECT TARGET AGENT:", ["-- Select Agent --", "Agent_01", "Agent_02"])
+            
+            if target != "-- Select Agent --":
+                with st.form("private_comm", clear_on_submit=True):
+                    sec_msg = st.text_input(f"🔒 Secure message to {target}")
+                    sec_file = st.file_uploader("Private Media", type=['jpg', 'png', 'mp4'])
+                    if st.form_submit_button("🚀 LOCK & SEND"):
+                        st.success("Encrypted data transmitted.")
+                
+                # แสดงผลข้อความแชตลับ (จัดชิดซ้าย/ขวาตามที่คุณเขียนไว้)
+                st.info(f"Connected to {target}'s secure line.")
+
 
     # 5. หน้า SENSOR
     elif st.session_state.current_page == "SENSOR":
