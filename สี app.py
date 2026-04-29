@@ -1,162 +1,242 @@
 import streamlit as st
-import streamlit.components.v1 as components
-import os
-import base64
-import math
+import os 
+import random
 import time
-import folium
+from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, db
+import streamlit.components.v1 as components
+import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
-from datetime import datetime, date
+import hashlib
 
-# --- [ 1. FIREBASE INITIALIZATION ] ---
-@st.cache_resource
-def init_firebase():
+# ==========================================
+# 1. กลไกกลาง (Core Engine)
+# ==========================================
+def init_system():
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
+    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
+    if 'text_color' not in st.session_state: st.session_state.text_color = "#FFFFFF"
+    if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    if 'user' not in st.session_state: st.session_state.user = "Ta101" # กำหนด User เริ่มต้น
+        
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
-            if "\\n" in fb_creds["private_key"]:
-                fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
             cred = credentials.Certificate(fb_creds)
-            return firebase_admin.initialize_app(cred, {
-                'databaseURL': "https://sooksun1-default-rtdb.firebaseio.com/"
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': st.secrets["firebase_db_url"]
             })
         except Exception as e:
-            st.error(f"❌ Firebase Error: {e}")
-            return None
-    return firebase_admin.get_app()
+            st.error(f"🛰️ Firebase Connection Error: {e}")
 
-firebase_app = init_firebase()
-
-# --- [ 2. SESSION STATE ] ---
-if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00ff41"
-if 'user_name' not in st.session_state: st.session_state.user_name = "AGENT_X"
-if 'current_page' not in st.session_state: st.session_state.current_page = "MAIN MENU"
-
-st.set_page_config(page_title="SYNAPSE X", layout="wide")
-
-# --- [ 3. CSS STYLE ] ---
-st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    header, footer, .stDeployButton {{visibility: hidden; display: none !important;}}
-    [data-testid="stSidebar"] {{display: none;}}
-    .stApp {{ background-color: #000; color: #ffffff; font-family: 'Orbitron', sans-serif; }}
-    .neon-title {{ color: {st.session_state.theme_color}; text-shadow: 0 0 15px {st.session_state.theme_color}; text-align: center; margin-bottom: 25px; }}
-    div.stButton > button {{ background-color: #111; border: 2px solid {st.session_state.theme_color}; color: {st.session_state.theme_color}; border-radius: 15px; padding: 15px; font-weight: bold; }}
-    div.stButton > button:hover {{ background-color: {st.session_state.theme_color}; color: black; box-shadow: 0 0 20px {st.session_state.theme_color}; }}
-    </style>
+# ==========================================
+# 2. พื้นที่เก็บห้อง (The Rooms / Modules)
+# ==========================================
+def room_core():
+    st.subheader("🚀 ศูนย์ควบคุมแกนกลาง")
+    now = datetime.utcnow() + timedelta(hours=7) 
+    seconds_since_midnight = (now.hour * 3600) + (now.minute * 60) + now.second
+    day_percent = seconds_since_midnight / 84600
+    
+    st.markdown(f"""
+        <div style="border: 1px solid {st.session_state.theme_color}; padding: 10px; border-radius: 5px; text-align: center;">
+            <h3 style="margin: 0; color: {st.session_state.theme_color}; font-family: monospace;">{now.strftime('%H:%M:%S')}</h3>
+            <small style="color: {st.session_state.theme_color}; opacity: 0.8;">THAILAND TIME</small>
+        </div>
     """, unsafe_allow_html=True)
+        
+    st.write(f"⏳ Day Progress: {day_percent*100:.2f}%")
+    st.progress(min(day_percent, 1.0))
+    st.markdown("---")
+    st.info("สถานะระบบ: ONLINE")
+    st.write(f"รหัสผู้ใช้งาน: **{st.session_state.user}**")
+    st.write('สโลแกน: **"อยู่นิ่งๆ ไม่เจ็บตัว"**')
 
-def go_to(page):
-    st.session_state.current_page = page
-    st.rerun()
+def room_radar():
+    st.subheader("🛰️ ระบบเรดาร์รวมกลุ่ม")
+    loc = get_geolocation()
+    all_users = db.reference('users').get()
+    
+    start_lat, start_lon = 13.7367, 100.5231
+    if loc:
+        start_lat = loc['coords']['latitude']
+        start_lon = loc['coords']['longitude']
 
-# --- [ 4. INTERFACE LOGIC ] ---
+    tile_url = "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+    m = folium.Map(location=[start_lat, start_lon], zoom_start=15, tiles=tile_url, attr="Google Satellite")
 
-if st.session_state.current_page == "MAIN MENU":
-    st.markdown("<h1 class='neon-title'>SYNAPSE X</h1>", unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔐 SETTINGS", use_container_width=True): go_to("SETTINGS")
-        if st.button("🛰️ GPS & CHAT", use_container_width=True): go_to("GPS")
-    with col2:
-        if st.button("🎧 MUSIC", use_container_width=True): go_to("MUSIC")
-        if st.button("🧬 DECODER", use_container_width=True): go_to("DECODER")
-    if st.button("🎙️ SENSOR LAB", use_container_width=True): go_to("SENSOR")
-    st.divider()
-    st.caption(f"AGENT: {st.session_state.user_name} | 'อยู่นิ่งๆ ไม่เจ็บตัว'")
+    if all_users:
+        for user_id, data in all_users.items():
+            u_lat = data.get('lat')
+            u_lon = data.get('lon')
+            u_ts = data.get('ts', 0)
+            if u_lat and u_lon:
+                is_active = (time.time() - u_ts) < 3600
+                icon_color = 'red' if user_id == st.session_state.user else ('green' if is_active else 'gray')
+                folium.Marker([u_lat, u_lon], tooltip=user_id, icon=folium.Icon(color=icon_color, icon='user', prefix='fa')).add_to(m)
 
-else:
-    if st.button("⬅️ BACK TO MENU"): go_to("MAIN MENU")
-    st.write("---")
+    st_folium(m, width="100%", height=500)
+    if loc:
+        if st.button("📡 กระจายพิกัดของฉัน", use_container_width=True):
+            db.reference(f'users/{st.session_state.user}').update({'lat': start_lat, 'lon': start_lon, 'ts': time.time()})
+            st.rerun()
 
-    # --- PAGE: SETTINGS ---
-    if st.session_state.current_page == "SETTINGS":
-        st.markdown("<h2 class='neon-title'>SETTINGS</h2>", unsafe_allow_html=True)
-        st.session_state.user_name = st.text_input("AGENT NAME", value=st.session_state.user_name)
-        st.session_state.theme_color = st.color_picker("THEME COLOR", st.session_state.theme_color)
-        if st.button("SAVE"): st.rerun()
+def room_comms():
+    st.subheader("💬 ศูนย์สื่อสาร SYNAPSE")
+    chat_tabs = st.tabs(["🌐 Lobby", "📞 CALL (โทรฟรี)"])
+    
+    with chat_tabs[0]:
+        chat_ref = db.reference('public_chat')
+        with st.form("public_form", clear_on_submit=True):
+            msg = st.text_input("ส่งสัญญาณ...")
+            if st.form_submit_button("SEND"):
+                if msg: 
+                    chat_ref.push({'user': st.session_state.user, 'msg': msg, 'ts': time.time()})
+                    st.rerun()
+        msgs = chat_ref.order_by_key().limit_to_last(10).get()
+        if msgs:
+            for m in reversed(list(msgs.values())):
+                st.write(f"🟢 **{m.get('user')}:** {m.get('msg')}")
 
-    # --- PAGE: MUSIC ---
-    elif st.session_state.current_page == "MUSIC":
-        st.markdown("<h2 class='neon-title'>🎧 DJ STATION</h2>", unsafe_allow_html=True)
-        all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
-        if not all_songs: st.error("No .mp3 files found.")
-        else:
-            s_a = st.selectbox("DECK A", ["-- Select --"] + all_songs, key="sa")
-            s_b = st.selectbox("DECK B", ["-- Select --"] + all_songs, key="sb")
-            
-            def get_b64(f): 
-                if f == "-- Select --": return ""
-                return base64.b64encode(open(f, "rb").read()).decode()
-            
-            d_a, d_b = get_b64(s_a), get_b64(s_b)
-            mixer_html = f"""
-            <div style="background:#000; border:2px solid {st.session_state.theme_color}; border-radius:20px; padding:15px;">
-                <canvas id="v" style="width:100%; height:150px; background:#050505; border-radius:10px;"></canvas>
-                <button onclick="play()" style="width:100%; margin-top:10px; padding:15px; background:linear-gradient(45deg, {st.session_state.theme_color}, #FF00DE); border:none; border-radius:10px; color:white; font-weight:bold;">START MIX</button>
-                <audio id="audA" src="data:audio/mp3;base64,{d_a}"></audio>
-                <audio id="audB" src="data:audio/mp3;base64,{d_b}"></audio>
-                <script>
-                    const a=document.getElementById('audA'), b=document.getElementById('audB');
-                    let ctx, ans;
-                    function play() {{
-                        if(!ctx) {{
-                            ctx=new(window.AudioContext||window.webkitAudioContext)(); ans=ctx.createAnalyser();
-                            const sA=ctx.createMediaElementSource(a), sB=ctx.createMediaElementSource(b);
-                            const gA=ctx.createGain(), gB=ctx.createGain();
-                            sA.connect(gA).connect(ans); sB.connect(gB).connect(ans); ans.connect(ctx.destination);
-                            window.gs={{A:gA, B:gB}};
-                        }}
-                        a.play(); window.gs.A.gain.value=1; window.gs.B.gain.value=0; loop();
-                    }}
-                    function loop() {{
-                        requestAnimationFrame(loop); const d=new Uint8Array(ans.frequencyBinCount); ans.getByteFrequencyData(d);
-                        const c=document.getElementById('v').getContext('2d'); c.clearRect(0,0,300,150);
-                        for(let i=0;i<d.length;i++) {{ c.fillStyle=`hsl(${{i*5}},100%,50%)`; c.fillRect(i*2, 150-(d[i]/2), 1, d[i]/2); }}
-                    }}
-                </script>
-            </div>"""
-            components.html(mixer_html, height=250)
+    with chat_tabs[1]:
+        st.write("📞 ระบบโทรฟรีแบบ Peer-to-Peer")
+        # ดึงรายชื่อเพื่อนจาก Firebase
+        all_u = db.reference('users').get()
+        friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
+        target = st.selectbox("เลือกเพื่อนที่จะโทรหา:", [""] + friends)
+        
+        if target:
+            # ใช้สัญลักษณ์ % แทน f-string เพื่อป้องกัน SyntaxError จากปีกกา JS
+            call_html = """
+            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+            <div style="background:#111; padding:20px; border-radius:10px; border:1px solid %s; color:white; text-align:center;">
+                <p>ID ของคุณ: <b style="color:%s">%s</b></p>
+                <button id="callBtn" style="width:100%%; padding:15px; background:#28a745; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">🟢 กดโทรออกหา %s</button>
+                <p id="status" style="margin-top:10px; font-size:0.8em;">สถานะ: พร้อมใช้งาน</p>
+                <audio id="remoteAudio" autoplay></audio>
+            </div>
+            <script>
+                const peer = new Peer('%s');
+                peer.on('open', id => { document.getElementById('status').innerText = "ออนไลน์ (ID: " + id + ")"; });
+                
+                // รับสาย
+                peer.on('call', call => {
+                    navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
+                        call.answer(stream);
+                        call.on('stream', remStream => {
+                            document.getElementById('remoteAudio').srcObject = remStream;
+                            document.getElementById('status').innerText = "🔴 กำลังคุยสาย...";
+                        });
+                    });
+                });
 
-    # --- PAGE: GPS & CHAT ---
-    elif st.session_state.current_page == "GPS":
-        st.markdown("<h2 class='neon-title'>🛰️ COMMAND CENTER</h2>", unsafe_allow_html=True)
-        loc = get_geolocation()
-        my_lat, my_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.7367, 100.5231)
+                // โทรออก
+                document.getElementById('callBtn').onclick = () => {
+                    navigator.mediaDevices.getUserMedia({audio: true}).then(stream => {
+                        const call = peer.call('%s', stream);
+                        document.getElementById('status').innerText = "🟡 กำลังเรียกสาย...";
+                        call.on('stream', remStream => {
+                            document.getElementById('remoteAudio').srcObject = remStream;
+                            document.getElementById('status').innerText = "🔴 กำลังคุยสาย...";
+                        });
+                    });
+                };
+            </script>
+            """ % (st.session_state.theme_color, st.session_state.theme_color, st.session_state.user, target, st.session_state.user, target)
+            components.html(call_html, height=250)
 
-        tab1, tab2, tab3 = st.tabs(["📡 RADAR VIEW", "🌐 PUBLIC CHAT", "🔐 SECURE LINE"])
+def room_music():
+    st.subheader("🎧 SYNAPSE ROOMS")
+    music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+    if not music_files:
+        st.warning("⚠️ ไม่พบไฟล์เพลง")
+        return
+    current_song = music_files[st.session_state.song_index]
+    st.audio(current_song)
+    for i, song in enumerate(music_files):
+        if st.button(f"🎵 {song}", key=f"s_{i}", use_container_width=True):
+            st.session_state.song_index = i
+            st.rerun()
 
-        with tab1: # GPS Map
-            m = folium.Map(location=[my_lat, my_lon], zoom_start=18, 
-                          tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr='Google Hybrid')
-            folium.Marker([my_lat, my_lon], popup="YOU", icon=folium.Icon(color='red')).add_to(m)
-            st_folium(m, width="100%", height=400, key="radar_map")
-            if st.button("📡 BROADCAST POSITION", use_container_width=True):
-                db.reference(f'users/{st.session_state.user_name}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
-                st.success("Broadcasted!")
+def room_sensor():
+    st.subheader("🎙️ เครื่องวัดคลื่นเสียงความจริง")
+    theme_hex = st.session_state.theme_color
+    audio_js = f"""
+    <div style="background-color: #000; color: {theme_hex}; padding: 20px; border: 2px solid {theme_hex}; border-radius: 15px; text-align: center; font-family: monospace;">
+        <h2 id="status">🔴 STANDBY</h2>
+        <div style="display: flex; justify-content: space-around;">
+            <div><h3>dB</h3><h1 id="db_val">0</h1></div>
+            <div><h3>Hz</h3><h1 id="hz_val">0</h1></div>
+        </div>
+    </div>
+    <script>
+    async function startAudio() {{
+        try {{
+            const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioContext.createAnalyser();
+            const source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+            analyser.fftSize = 256;
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            function update() {{
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0, maxVal = 0, maxIdx = 0;
+                for (let i = 0; i < dataArray.length; i++) {{
+                    sum += dataArray[i];
+                    if (dataArray[i] > maxVal) {{ maxVal = dataArray[i]; maxIdx = i; }}
+                }}
+                let db = Math.round((sum / dataArray.length) * 3);
+                let hz = Math.round(maxIdx * audioContext.sampleRate / analyser.fftSize);
+                document.getElementById('db_val').innerText = db;
+                document.getElementById('hz_val').innerText = hz;
+                document.getElementById('status').innerText = db > 5 ? "🟢 SENSING" : "🟡 IDLE";
+                requestAnimationFrame(update);
+            }}
+            update();
+        }} catch (err) {{ document.getElementById('status').innerText = "❌ ERROR: " + err.message; }}
+    }}
+    window.addEventListener('click', () => {{ startAudio(); }}, {{ once: true }});
+    startAudio();
+    </script>
+    """
+    components.html(audio_js, height=250)
 
-        with tab2: # Chat
-            with st.form("chat_form", clear_on_submit=True):
-                msg = st.text_input("Message...")
-                if st.form_submit_button("SEND"):
-                    if msg:
-                        db.reference('public_chat').push({'u': st.session_state.user_name, 'm': msg, 'ts': time.time()})
-                        st.rerun()
-            
-            st.write("---")
-            data = db.reference('public_chat').order_by_key().limit_to_last(10).get()
-            if data:
-                for k, v in reversed(list(data.items())):
-                    st.write(f"**{v.get('u')}**: {v.get('m')}")
+# ==========================================
+# 3. แผงวงจรหลัก
+# ==========================================
+def main():
+    init_system()
+    st.markdown(f"""
+        <style>
+        .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.text_color} !important; }}
+        .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; }}
+        h1, h2, h3, p, span, div, label {{ color: {st.session_state.text_color} !important; }}
+        </style>
+        """, unsafe_allow_html=True)
 
-    elif st.session_state.current_page == "DECODER":
-        st.markdown("<h2 class='neon-title'>COSMIC DECODER</h2>", unsafe_allow_html=True)
-        st.write("รหัสฐานวัน:", round(date.today().isoweekday() * 1.618, 4))
+    with st.sidebar:
+        st.title("⚙️ SETTINGS")
+        st.session_state.theme_color = st.color_picker("🚨 สีหลัก", st.session_state.theme_color)
+        st.session_state.bg_color = st.color_picker("🌑 พื้นหลัง", st.session_state.bg_color)
+        st.session_state.text_color = st.color_picker("✍️ ข้อความ", st.session_state.text_color)
+        st.markdown("---")
+        st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
-    elif st.session_state.current_page == "SENSOR":
-        st.markdown("<h2 class='neon-title'>SENSOR LAB</h2>", unsafe_allow_html=True)
-        st.info("System scanning...")
+    room_map = {
+        "🚀 แกนหลัก": room_core,
+        "🛰️ เรดาร์": room_radar,
+        "💬 สื่อสาร": room_comms,
+        "🎧 เพลง": room_music,
+        "📟 วัดเสียง": room_sensor
+    }
+    
+    tabs = st.tabs(list(room_map.keys()))
+    for i, room_func in enumerate(room_map.values()):
+        with tabs[i]:
+            room_func()
+
+if __name__ == "__main__":
+    main()
