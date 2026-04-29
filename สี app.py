@@ -343,20 +343,29 @@ def room_logic():
 # 4. MAIN LAYOUT
 # ==========================================
 def main():
+    # --- จุดชี้ตาย: เช็คก่อนว่ามีค่าใน session_state ไหม ถ้าไม่มีให้เซตเดี๋ยวนี้เลย ---
+    if 'user' not in st.session_state: 
+        st.session_state['user'] = "Ta101"
+    if 'theme_color' not in st.session_state: 
+        st.session_state['theme_color'] = "#39FF14"
+    if 'bg_color' not in st.session_state: 
+        st.session_state['bg_color'] = "#000000"
+
     with st.sidebar:
         st.title("⚙️ SYSTEM")
-        st.session_state.user = st.text_input("AGENT ID", st.session_state.user)
-        st.session_state.theme_color = st.color_picker("THEME", st.session_state.theme_color)
-        st.session_state.bg_color = st.color_picker("BACKGROUND", st.session_state.bg_color)
+        # ใช้ .get() ซ้อนไว้อีกชั้นเพื่อความปลอดภัยสูงสุด
+        curr_user = st.session_state.get('user', 'Ta101')
+        st.session_state.user = st.text_input("AGENT ID", curr_user)
+        
+        st.session_state.theme_color = st.color_picker("THEME", st.session_state.get('theme_color', "#39FF14"))
+        st.session_state.bg_color = st.color_picker("BACKGROUND", st.session_state.get('bg_color', "#000000"))
         st.markdown("---")
         st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
+    # ส่วนแท็บและการรันห้องต่างๆ (เหมือนเดิม)
     tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "🎧 MUSIC", "📟 SENSOR", "🧬 LOGIC"])
     rooms = [room_core, room_radar, room_comms, room_music, room_sensor, room_logic]
     
     for i, tab in enumerate(tabs):
         with tab:
             rooms[i]()
-
-if __name__ == "__main__":
-    main()
