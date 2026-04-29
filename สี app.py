@@ -93,7 +93,7 @@ else:
                 if song_name != "-- Select --":
                     with open(song_name, "rb") as f:
                         return base64.b64encode(f.read()).decode()
-            return ""
+         return ""
 
             data_a = get_audio_base64(song_a)
             data_b = get_audio_base64(song_b)
