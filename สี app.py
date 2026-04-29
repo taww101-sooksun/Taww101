@@ -285,8 +285,19 @@ def room_logic():
         zodiacs = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
         zodiac = zodiacs[thai_year % 12]
         
-        elements = {1: "ดิน", 2: "น้ำ", 3: "ไฟ", 4: "ลม", 5: "ทอง", 6: "น้ำ", 7: "ดิน"}
-        element = elements.get(day_val)
+        # --- กำหนดธาตุตามรูปที่ 2 (แม่นยำตามหลักวันเกิด) ---
+        # 1=อาทิตย์, 2=จันทร์, 3=อังคาร, 4=พุธ, 5=พฤหัส, 6=ศุกร์, 7=เสาร์
+        if day_val in [2, 5]: 
+            element = "ดิน (Terra)"
+        elif day_val in [4, 6]: 
+            element = "น้ำ (Liquid)"
+        elif day_val == 3: # รวมพุธกลางคืนในแอปเป็นลมไปเลย
+            element = "ลม (Gas)"
+        elif day_val in [1, 7]: 
+            element = "ไฟ (Plasma)"
+        else:
+            element = "ไม่ระบุ"
+
 
         if pos <= 14.765:
             m_num = int(pos) + 1
