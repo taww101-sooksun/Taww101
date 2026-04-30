@@ -128,15 +128,6 @@ def room_logic():
 def room_music():
 
 
-# ฟังก์ชันช่วยแปลงไฟล์ (ต้องมีอยู่ในโค้ดหลักของคุณ)
-def get_base64(file_path):
-    try:
-        with open(file_path, "rb") as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    except Exception:
-        return ""
-
 # สมมติค่าตัวแปรเบื้องต้น
 primary_neon = "#00FFCC"
 
