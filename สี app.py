@@ -471,7 +471,6 @@ def room_logic():
 # 4. MAIN LAYOUT
 # ==========================================
 def main():
-    def main():
     # --- 1. ตรวจสอบและตั้งค่าเริ่มต้น (Fix AttributeError) ---
     if 'theme_color' not in st.session_state:
         st.session_state.theme_color = "#000000"  # กำหนดสีดำเป็นค่าเริ่มต้น
