@@ -19,17 +19,16 @@ from streamlit_js_eval import get_geolocation
 st.set_page_config(page_title="SYNAPSE OS", layout="wide", initial_sidebar_state="collapsed")
 
 def init_system():
-    # ตั้งค่าตัวแปรพื้นฐาน
+    # ตั้งค่าตัวแปรพื้นฐานใน Session State
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#1408BF"
     if 'logged_in' not in st.session_state: st.session_state.logged_in = False
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
     if 'user' not in st.session_state: st.session_state.user = "AGENT-X"
     
-    # เชื่อมต่อ Firebase
+    # เชื่อมต่อ Firebase (ใช้ค่าจาก Secrets)
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
-            # จัดการ private_key ให้ถูกต้อง
             if "private_key" in fb_creds:
                 fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
             cred = credentials.Certificate(fb_creds)
@@ -37,149 +36,153 @@ def init_system():
         except Exception as e:
             st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
 
+# ฟังก์ชันจัดการพื้นหลังรุ้ง (CSS)
+def apply_custom_background():
+    st.markdown(f"""
+        <style>
+        .stApp {{
+            background: linear-gradient(270deg, #111, #222, {st.session_state.theme_color}22);
+            background-size: 400% 400%;
+            animation: Gradient 15s ease infinite;
+        }}
+        @keyframes Gradient {{ 0%{{background-position:0% 50%}} 50%{{background-position:100% 50%}} 100%{{background-position:0% 50%}} }}
+        
+        /* ตกแต่ง Tabs */
+        .stTabs [data-baseweb="tab-list"] {{
+            background-color: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            padding: 5px;
+            border: 1px solid {st.session_state.theme_color};
+        }}
+        </style>
+    """, unsafe_allow_html=True)
+
 # ==========================================
-# 1. THE ROOMS (โมดูลความสามารถต่างๆ)
+# 1. MODULES (The Rooms)
 # ==========================================
 
-# --- ห้องเพลงที่คุณต้องการ (ใส่เข้าไปได้เลย) ---
 def room_music():
-    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station) อยู่นิ้งๆไม่เจ็บตัว🎙")
+    st.subheader("🎧 SYNAPSE MUSIC STATION")
     
+    # ค้นหาไฟล์เพลง
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     if not music_files:
         st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในระบบ")
         return
 
-    if st.session_state.song_index >= len(music_files):
-        st.session_state.song_index = 0
+    current_song = music_files[st.session_state.song_index % len(music_files)]
+    st.info(f"🎵 SIGNAL: {current_song}")
 
-    current_song = music_files[st.session_state.song_index]
-    st.info(f"🎵 กำลังเล่น: {current_song}")
-
+    # เครื่องเล่นเพลง
     with open(current_song, "rb") as f:
         audio_bytes = f.read()
     st.audio(audio_bytes, format="audio/mp3", autoplay=True)
 
-    # JS สำหรับ Auto-Next
-    components.html(
-        """
+    # JS Auto-Next
+    components.html("""
         <script>
-        const autoNext = () => {
+        setInterval(() => {
             const audios = window.parent.document.querySelectorAll('audio');
             audios.forEach(audio => {
                 if (!audio.dataset.listener) {
                     audio.dataset.listener = "true";
                     audio.onended = () => {
-                        const buttons = window.parent.document.querySelectorAll('button');
-                        for (let btn of buttons) {
-                            if (btn.innerText.includes('⏭️ Next')) {
-                                btn.click();
-                                break;
-                            }
-                        }
+                        const btns = window.parent.document.querySelectorAll('button');
+                        for (let b of btns) { if (b.innerText.includes('⏭️')) { b.click(); break; } }
                     };
                 }
             });
-        };
-        setInterval(autoNext, 2000);
+        }, 2000);
         </script>
-        """,
-        height=0,
-    )
+    """, height=0)
 
+    # ปุ่มควบคุม
     col1, col2, col3 = st.columns(3)
-    if col1.button("⏮️ Back", key="main_prev", use_container_width=True):
-        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
+    if col1.button("⏮️ BACK", key="m_prev", use_container_width=True):
+        st.session_state.song_index -= 1
         st.rerun()
-    if col2.button("🔄 Reload", key="main_reload", use_container_width=True):
+    if col2.button("🔄 RELOAD", key="m_reload", use_container_width=True):
         st.rerun()
-    if col3.button("⏭️ Next", key="main_next", use_container_width=True):
-        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+    if col3.button("⏭️ NEXT", key="m_next", use_container_width=True):
+        st.session_state.song_index += 1
         st.rerun()
 
-    st.write("---")
-    st.subheader("📂 รายชื่อเพลงทั้งหมด")
-    for i, f_name in enumerate(music_files):
-        is_playing = (i == st.session_state.song_index)
-        label = f"▶️ {f_name}" if is_playing else f"🎵 {f_name}"
-        if st.button(label, key=f"list_btn_{i}", use_container_width=True):
-            st.session_state.song_index = i
-            st.rerun()
+    # รายชื่อเพลง (แก้ Duplicate ID แล้ว)
+    with st.expander("📂 SIGNAL LIST"):
+        for i, f_name in enumerate(music_files):
+            if st.button(f"🎵 {f_name}", key=f"btn_song_{i}", use_container_width=True):
+                st.session_state.song_index = i
+                st.rerun()
 
-with tabs[5]:  # ห้อง SETTINGS
-    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>⚙️ SYSTEM CONFIGURATION</h2>", unsafe_allow_html=True)
+def room_settings():
+    st.subheader("🎨 SYSTEM THEME & MODES")
     
-    # --- ส่วนที่ 1: เลือกโหมดสีด่วน (Presets) ---
-    st.subheader("🎨 QUICK THEME MODE")
-    
-    # นิยามสีประจำโหมดต่างๆ
+    # โหมดสี (Presets)
     color_presets = {
         "🟢 CYBER NEON": "#39FF14",
         "🔵 DEEP SEA": "#1408BF",
         "🔴 RED ALERT": "#FF0000",
         "🟣 PURPLE VIBE": "#800080",
         "🟡 GOLDEN EYE": "#FFD700",
-        "🟠 SUNSET FLOW": "#FF7F50",
-        "⚪ CLASSIC WHITE": "#FFFFFF"
+        "⚪ CLASSIC": "#FFFFFF"
     }
     
-    # สร้างเมนูให้เลือก
-    col_preset, col_apply = st.columns([3, 1])
-    selected_mode = col_preset.selectbox("เลือกโทนสีของระบบ", list(color_presets.keys()), label_visibility="collapsed")
-    
-    if col_apply.button("APPLY MODE", use_container_width=True):
-        st.session_state.theme_color = color_presets[selected_mode]
-        st.toast(f"จูนสีระบบเป็น {selected_mode} เรียบร้อย!")
+    col_p, col_a = st.columns([3, 1])
+    selected = col_p.selectbox("เลือกโทนสีระบบ", list(color_presets.keys()))
+    if col_a.button("APPLY", use_container_width=True):
+        st.session_state.theme_color = color_presets[selected]
         st.rerun()
-
-    st.markdown("---")
-
-    # --- ส่วนที่ 2: ปรับแต่งสีละเอียด (Custom) ---
-    st.subheader("🛠️ CUSTOM COLOR")
-    st.session_state.theme_color = st.color_picker("ปรับแต่งสีตามใจชอบ", st.session_state.theme_color)
     
-    # --- ส่วนที่ 3: ระบบ LOGOUT ---
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    if st.button("🔴 TERMINATE SESSION (LOGOUT)", use_container_width=True):
+    st.write("---")
+    st.session_state.theme_color = st.color_picker("ปรับแต่งสีละเอียด", st.session_state.theme_color)
+    
+    if st.button("🚪 LOGOUT", use_container_width=True):
         st.session_state.logged_in = False
         st.rerun()
 
-# --- ห้องอื่นๆ (Core, Radar, Chat, Call - ตามที่คุณเขียนมา) ---
-# ... (ใส่โค้ด room_core, room_radar, room_secure_chat ตามที่คุณมี) ...
-
 # ==========================================
-# 2. MAIN SYSTEM
+# 2. MAIN EXECUTION
 # ==========================================
 def main():
     init_system()
-    # apply_custom_background() # เรียกใช้ฟังก์ชัน CSS ของคุณ
-    
-    loc = get_geolocation() 
+    apply_custom_background()
+    loc = get_geolocation()
 
     if not st.session_state.logged_in:
-        # แสดงหน้า Login จากฟังก์ชันที่คุณเขียน (room_login)
-        # room_login() 
-        st.title("🛡️ SYNAPSE LOGIN")
-        # (ตัวอย่างการ login ง่ายๆ)
-        with st.form("login"):
-            u = st.text_input("AGENT ID")
-            p = st.text_input("PASSWORD", type="password")
-            if st.form_submit_button("LOGIN"):
-                st.session_state.logged_in = True
-                st.session_state.user = u
-                st.rerun()
-    else:
-        # เมื่อ Login แล้ว ให้แสดง Tabs ทั้งหมด
-        tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
+        # หน้า Login (ปรับปรุงให้ใช้ Database จริง)
+        st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
+        tab_login, tab_reg = st.tabs(["🔑 LOGIN", "📝 REGISTER"])
         
-        # เชื่อมห้องเพลงเข้ากับ Tab ที่ 5
-        # with tabs[0]: room_core(loc)
-        # with tabs[1]: room_radar(loc)
-        with tabs[4]: 
-            room_music() # เรียกใช้ห้องเพลงที่นี่
-        with tabs[5]:  room_settingh
-            st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
-with tabs [2
-5
+        with tab_login:
+            with st.form("login_f"):
+                u = st.text_input("AGENT ID")
+                p = st.text_input("PASSWORD", type="password")
+                if st.form_submit_button("ACCESS GRANTED", use_container_width=True):
+                    # เช็คข้อมูลจาก Firebase
+                    data = db.reference(f'users/{u}').get()
+                    if data and data.get('pw') == p:
+                        st.session_state.logged_in = True
+                        st.session_state.user = u
+                        st.rerun()
+                    else: st.error("รหัสผ่านไม่ถูกต้อง")
+        
+        with tab_reg:
+            with st.form("reg_f"):
+                new_u = st.text_input("NEW ID")
+                new_p = st.text_input("SET PW", type="password")
+                if st.form_submit_button("CREATE AGENT", use_container_width=True):
+                    db.reference(f'users/{new_u}').set({'pw': new_p, 'ts': time.time()})
+                    st.success("ลงทะเบียนสำเร็จ!")
+    else:
+        # หน้าหลักเมื่อ Login แล้ว
+        st.sidebar.write(f"👤 AGENT: {st.session_state.user}")
+        st.sidebar.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
+        
+        tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "🎧 MUSIC", "⚙️ SETTINGS"])
+        
+        with tabs[0]: st.write(f"สวัสดี AGENT {st.session_state.user} ระบบพร้อมทำงาน")
+        with tabs[3]: room_music()
+        with tabs[4]: room_settings()
+
 if __name__ == "__main__":
     main()
