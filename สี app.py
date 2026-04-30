@@ -493,7 +493,7 @@ def main():
 
     with st.sidebar:
         st.title("⚙️ SYSTEM")
-        st.session_state.user = st.text_input("AGENT ID", st.session_state.user)
+        st.session_state.user = st.text_input("AGENT ID", st.session_state.user, key="sidebar_user_id")
         st.session_state.theme_color = st.color_picker("THEME", st.session_state.theme_color)
         st.session_state.bg_color = st.color_picker("BACKGROUND", st.session_state.bg_color)
         st.markdown("---")
