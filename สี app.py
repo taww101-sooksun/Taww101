@@ -37,18 +37,39 @@ def init_system():
 init_system()
 
 # ==========================================
-# 2. UI STYLING
+# 2. UI STYLING (แก้ไขบรรทัดที่ 44-52)
 # ==========================================
 st.set_page_config(page_title="SYNAPSE X", layout="wide")
+
+# ใช้ปีกกา 2 ชั้น {{ }} สำหรับส่วนที่เป็น CSS ปกติ เพื่อไม่ให้ Python f-string งง
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    .stApp {{ background-color: {st.session_state.bg_color} !important; color: #FFFFFF !important; font-family: 'Orbitron', sans-serif; }}
-    .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; border-radius: 10px; }}
-    .stButton>button:hover {{ background: {st.session_state.theme_color} !important; color: black !important; }}
-    .neon-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px {st.session_state.theme_color}; }}
+    .stApp {{ 
+        background-color: {st.session_state.bg_color} !important; 
+        color: #FFFFFF !important; 
+        font-family: 'Orbitron', sans-serif; 
+    }}
+    .stButton>button {{ 
+        border: 2px solid {st.session_state.theme_color} !important; 
+        color: {st.session_state.theme_color} !important; 
+        background: transparent !important; 
+        border-radius: 10px; 
+    }}
+    .stButton>button:hover {{ 
+        background: {st.session_state.theme_color} !important; 
+        color: black !important; 
+    }}
+    .neon-box {{ 
+        border: 1px solid {st.session_state.theme_color}; 
+        padding: 15px; 
+        border-radius: 10px; 
+        text-align: center; 
+        box-shadow: 0 0 10px {st.session_state.theme_color}; 
+    }}
     </style>
     """, unsafe_allow_html=True)
+
 
 # ==========================================
 # 3. MODULES (The Rooms)
