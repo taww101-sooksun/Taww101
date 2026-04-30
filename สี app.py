@@ -1,247 +1,440 @@
 import streamlit as st
+import os 
+import time
 import base64
+import firebase_admin
+from firebase_admin import credentials, db
+import streamlit.components.v1 as components
+import folium
+from folium.features import DivIcon
+from streamlit_folium import st_folium
+from math import radians, cos, sin, asin, sqrt
+import pytz
+from timezonefinder import TimezoneFinder
+from datetime import datetime
+
+# --- จุดสำคัญ: ต้อง Import แบบนี้เท่านั้น ---
+from streamlit_js_eval import get_geolocation 
+def apply_custom_background():
+    st.markdown(
+        f"""
+        <style>
+        /* 1. พื้นหลังหลัก (เหมือนเดิม) */
+        .stApp {{
+            background: linear-gradient(270deg, #AFEEEE, #FF7F50, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
+            background-size: 1600% 1600%;
+            animation: RainbowFlow 60s ease infinite;
+        }}
+
+        @keyframes RainbowFlow {{
+            0%{{background-position:0% 50%}}
+            50%{{background-position:100% 50%}}
+            100%{{background-position:0% 50%}}
+        }}
+
+        /* 2. แก้ไขเมนูห้อง (Tabs) ให้มีไฟและนูน */
+        .stTabs [data-baseweb="tab-list"] {{
+            background-color: rgba(0, 0, 0, 0.7) !important; /* พื้นหลังแถบเมนูเข้มขึ้นเพื่อให้ไฟชัด */
+            border-radius: 20px !important;
+            padding: 10px !important;
+            gap: 10px !important;
+            border: 2px solid {st.session_state.theme_color} !important;
+            box-shadow: 0 0 15px {st.session_state.theme_color}88, inset 0 0 10px rgba(0,0,0,0.5) !important;
+            margin: 10px 0px !important;
+        }}
+
+        /* ตัวอักษรในเมนู */
+        .stTabs [data-baseweb="tab"] {{
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            border-radius: 12px !important;
+            padding: 8px 16px !important;
+            height: 50px !important;
+            color: #BBBBBB !important; /* สีเทาอ่อนตอนยังไม่เลือก */
+            font-weight: bold !important;
+            transition: all 0.3s ease !important;
+            border: 1px solid transparent !important;
+        }}
+
+        /* เมนูห้องตอนที่ถูกเลือก (Selected Tab) */
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+            color: #FFFFFF !important; /* ตัวหนังสือขาวชัดเจน */
+            background-color: {st.session_state.theme_color}44 !important;
+            border: 1px solid {st.session_state.theme_color} !important;
+            box-shadow: 0 0 15px {st.session_state.theme_color} !important; /* ไฟนีออนรอบเมนูที่เลือก */
+            transform: scale(1.05); /* นูนออกมานิดนึง */
+        }}
+
+        /* เส้นใต้เมนูที่เลือก (ไฟวิ่งด้านล่าง) */
+        .stTabs [data-baseweb="tab-highlight"] {{
+            background-color: #FFFFFF !important;
+            height: 4px !important;
+            box-shadow: 0 0 10px #FFFFFF !important;
+        }}
+
+        /* 3. ปรับแต่งปุ่มทั่วไป (นูนมีไฟเหมือนเดิม) */
+        div.stButton > button {{
+            background-color: rgba(0, 0, 0, 0.8) !important;
+            color: white !important;
+            border: 2px solid {st.session_state.theme_color} !important;
+            border-radius: 15px !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5) !important;
+            filter: drop-shadow(0 0 5px {st.session_state.theme_color});
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
 
 # ==========================================
-# ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (กู้คืนสีสัน Neon ขั้นสุด)
+# 0. CONFIG & INITIALIZATION
 # ==========================================
+st.set_page_config(page_title="SYNAPSE OS", layout="wide", initial_sidebar_state="collapsed")
 
-st.set_page_config(page_title="Synapse Neon Mixer", layout="centered")
+def haversine(lat1, lon1, lat2, lon2):
+    lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+    dlon, dlat = lon2 - lon1, lat2 - lat1 
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    return 2 * asin(sqrt(a)) * 6371
 
-def get_base64_image(image_path):
+def init_system():
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#1408BF"
+    if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+    if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    
+    if not firebase_admin._apps:
+        try:
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
+        except Exception as e:
+            st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
+
+def get_local_time(lat, lon):
     try:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-    except: return ""
+        tf = TimezoneFinder()
+        timezone_str = tf.timezone_at(lat=lat, lng=lon)
+        if timezone_str:
+            local_tz = pytz.timezone(timezone_str)
+            return datetime.now(local_tz)
+    except: pass
+    return datetime.now(pytz.timezone('Asia/Bangkok'))
 
-logo_base64 = get_base64_image("logo1.png")
-logo_html_link = f"data:image/png;base64,{logo_base64}" if logo_base64 else ""
+# ==========================================
+# 1. AUTHENTICATION
+# ==========================================
+def room_login():
+    col1, col2, col3 = st.columns([1, 1.5, 1])
+    with col2:
+        st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; letter-spacing: 5px;'>SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
+        tab_l, tab_r = st.tabs(["🔑 UNLOCK SYSTEM", "📝 REGISTER AGENT"])
+        with tab_l:
+            with st.form("login"):
+                uid = st.text_input("AGENT ID ใสชื่อผู้ใช่")
+                pw = st.text_input("PASSWORD", type="password")
+                if st.form_submit_button("ACCESS GRANTED", use_container_width=True):
+                    user_data = db.reference(f'users/{uid}').get()
+                    if user_data and user_data.get('pw') == pw:
+                        st.session_state.user = uid
+                        st.session_state.logged_in = True
+                        st.rerun()
+                    else: st.error("รหัสผ่านไม่ถูกต้อง")
+        with tab_r:
+            with st.form("reg"):
+                new_id = st.text_input("NEW AGENT ID")
+                new_pw = st.text_input("SET PASSWORD", type="password")
+                if st.form_submit_button("CREATE ACCOUNT", use_container_width=True):
+                    db.reference(f'users/{new_id}').set({'pw': new_pw, 'ts': time.time()})
+                    st.success("ลงทะเบียนสำเร็จ!")
 
-st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    header {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    #MainMenu {{visibility: hidden;}}
-    .stApp {{ background-color: #000; }}
-
-    /* Logo ตรงกลางพร้อมแสง Neon หมุนสลับสี */
-    .block-container::before {{
-        content: "";
-        position: absolute;
-        top: 10px; left: 50%;
-        transform: translateX(-50%);
-        width: 100px; height: 100px;
-        background-image: url("{logo_html_link}");
-        background-size: contain;
-        background-repeat: no-repeat;
-        z-index: 999;
-        filter: drop-shadow(0 0 10px #ff00de);
-        animation: logo-glow 4s infinite alternate;
-    }}
-
-    @keyframes logo-glow {{
-        0% {{ filter: drop-shadow(0 0 10px #ff00de); transform: translateX(-50%) scale(1); }}
-        50% {{ filter: drop-shadow(0 0 25px #00f3ff); transform: translateX(-50%) scale(1.1); }}
-        100% {{ filter: drop-shadow(0 0 10px #ff8c00); transform: translateX(-50%) scale(1); }}
-    }}
-
-    .neon-title {{
-        font-family: 'Orbitron', sans-serif;
-        color: #fff;
-        text-align: center;
-        text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
-        font-size: 1.6rem;
-        margin-top: 110px;
-        letter-spacing: 3px;
-        animation: text-flicker 2s infinite;
-    }}
-    @keyframes text-flicker {{
-        0%, 100% {{ opacity: 1; }}
-        50% {{ opacity: 0.8; }}
-    }}
-    </style>
+# ==========================================
+# 2. CORE MODULES
+# ==========================================
+def room_core(loc):
+    st.subheader("🏠 CORE CONTROL อยู่นิ้งๆไม่เจ็บตัว 🇹🇭")
+    lat, lon = 13.7367, 100.5231
+    if loc and 'coords' in loc:
+        lat = loc['coords'].get('latitude', lat)
+        lon = loc['coords'].get('longitude', lon)
+    
+    current_time = get_local_time(lat, lon)
+    st.markdown(f"""
+        <div style="text-align:center; padding:30px; border:4px solid {st.session_state.theme_color}; border-radius:15px; background:rgba(0,0,0,0.3); box-shadow: 0 0 20px {st.session_state.theme_color}44;">
+            <h1 style="font-size:5em; color:{st.session_state.theme_color}; margin:0; font-family: monospace;">{current_time.strftime('%H:%M:%S')}</h1>
+            <p style="color:#888; letter-spacing: 2px;">📍 LAT: {lat:.4f} | LON: {lon:.4f}</p>
+            <p style="color:{st.session_state.theme_color}; font-weight:bold;">AGENT {st.session_state.user} ONLINE</p>
+        </div>
     """, unsafe_allow_html=True)
+def room_radar(loc):
+    st.subheader("🛰️ STRATEGIC GPS - ระบบติดตามพิกัดเครือข่าย AGENT อยู่นิ้งๆไม่เจ็บตัว📡")
+    
+    # 1. พิกัดตัวเรา
+    my_lat, my_lon = 13.7367, 100.5231 
+    if loc and 'coords' in loc:
+        my_lat = loc['coords'].get('latitude', my_lat)
+        my_lon = loc['coords'].get('longitude', my_lon)
+    
+    # สร้าง Container แผนที่ให้นูนมีไฟ (เปิด div)
+    st.markdown(f'<div style="border: 2px solid {st.session_state.theme_color}; border-radius: 15px; overflow: hidden; box-shadow: 0 0 20px {st.session_state.theme_color}88;">', unsafe_allow_html=True)
+    
+    # 2. สร้างแผนที่ดาวเทียม
+    m = folium.Map(
+        location=[my_lat, my_lon], 
+        zoom_start=15, 
+        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+        attr='Google Satellite'
+    )
+    
+    # Marker ของตัวเรา (สีแดง)
+    folium.Marker(
+        [my_lat, my_lon], 
+        icon=folium.Icon(color='red', icon='star'), 
+        tooltip="YOU (ฉันเอง)"
+    ).add_to(m)
 
-st.markdown('<h1 class="neon-title">SYNAPSE NEON MIXER</h1>', unsafe_allow_html=True)
+    # ลูกเล่น: วงรัศมีเรดาร์รอบตัวเรา
+    folium.Circle(
+        location=[my_lat, my_lon],
+        radius=1000,
+        color=st.session_state.theme_color,
+        fill=True,
+        fill_color=st.session_state.theme_color,
+        fill_opacity=0.1,
+        weight=2
+    ).add_to(m)
+    
+    # 3. ดึงข้อมูล AGENT คนอื่นๆ และลากเส้น
+    try:
+        users_ref = db.reference('users').get()
+        if users_ref:
+            for uid, data in users_ref.items():
+                if uid != st.session_state.user and 'lat' in data and 'lon' in data:
+                    u_lat, u_lon = data['lat'], data['lon']
+                    dist = haversine(my_lat, my_lon, u_lat, u_lon)
+                    
+                    # วาง Marker เพื่อน
+                    folium.Marker(
+                        [u_lat, u_lon], 
+                        icon=folium.Icon(color='green', icon='info-sign'), 
+                        tooltip=f"AGENT: {uid} | ห่าง: {dist:.2f} กม."
+                    ).add_to(m)
+                    
+                    # ลากเส้นเชื่อมโยง
+                    folium.PolyLine(
+                        [[my_lat, my_lon], [u_lat, u_lon]], 
+                        color=st.session_state.theme_color, 
+                        weight=2, 
+                        dash_array='10', 
+                        opacity=0.6
+                    ).add_to(m)
+    except: pass
+    
+    # แสดงแผนที่
+    st_folium(m, width="100%", height=250, returned_objects=[])
+    
+    # ปิด Container (สำคัญมาก!)
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # 4. ปุ่มส่งพิกัด (เพื่อให้เพื่อนเห็นเรา)
+    st.markdown("<br>", unsafe_allow_html=True)
+    if st.button("📡 BROADCAST MY LOCATION", key="btn_broadcast", use_container_width=True):
+        db.reference(f'users/{st.session_state.user}').update({
+            'lat': my_lat, 
+            'lon': my_lon, 
+            'ts': time.time()
+        })
+        st.toast("ส่งพิกัดสำเร็จ! เพื่อนๆ จะเห็นคุณบนเรดาร์")
+
+
+def room_call():
+    st.subheader("📞 SYNAPSE P2P CALL อยู่นิ้งๆไม่เจ็บตัว")
+    users = db.reference('users').get()
+    friends = [u for u in users.keys() if u != st.session_state.user] if users else []
+    target = st.selectbox("เลือก AGENT ที่จะโทรหา:", friends)
+    if target:
+        st.info(f"พร้อมเชื่อมต่อกับ {target} ผ่านเครือข่าย P2P")
+        call_html = f"""
+        <div style="background:#111; padding:20px; border-radius:15px; border:4px solid {st.session_state.theme_color}; text-align:center;">
+            <video id="remoteVideo" autoplay playsinline style="width:100%; height:300px; background:#000; border-radius:10px;"></video>
+            <video id="localVideo" autoplay playsinline muted style="width:100px; position:absolute; bottom:30px; right:30px; border:2px solid {st.session_state.theme_color};"></video>
+            <div style="margin-top:10px;">
+                <button id="startCall" style="background:{st.session_state.theme_color}; color:black; padding:10px 20px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">📞 START CALL</button>
+                <button onclick="location.reload()" style="background:#ff4444; color:white; padding:10px 20px; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">❌ DISCONNECT</button>
+            </div>
+        </div>
+        <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+        <script>
+            const peer = new Peer('{st.session_state.user}');
+            const localVideo = document.getElementById('localVideo');
+            const remoteVideo = document.getElementById('remoteVideo');
+            peer.on('call', call => {{
+                navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
+                    localVideo.srcObject = stream;
+                    call.answer(stream);
+                    call.on('stream', remoteStream => {{ remoteVideo.srcObject = remoteStream; }});
+                }});
+            }});
+            document.getElementById('startCall').onclick = () => {{
+                navigator.mediaDevices.getUserMedia({{video: true, audio: true}}).then(stream => {{
+                    localVideo.srcObject = stream;
+                    const call = peer.call('{target}', stream);
+                    call.on('stream', remoteStream => {{ remoteVideo.srcObject = remoteStream; }});
+                }});
+            }};
+        </script>
+        """
+        components.html(call_html, height=450)
+
 
 # ==========================================
-# ส่วนที่ 2: HTML/JS - ระบบเล่นต่อเนื่อง + สีสันสะบัด
+# 2. CORE MODULES (ปรับปรุงส่วน Music)
 # ==========================================
 
-html_code = """
-<!DOCTYPE html>
-<html>
-<head>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
-        .neon-card { border: 2px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
+def room_music():
+    st.subheader("🎧 ระบบสถานีเพลงต่อเนื่อง (Non-Stop Station) อยู่นิ้งๆไม่เจ็บตัว🎙")
+    
+    # 1. ค้นหาไฟล์เพลง
+    music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
+    if not music_files:
+        st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในระบบ")
+        return
+
+    # ตรวจสอบ index เพลง
+    if 'song_index' not in st.session_state:
+        st.session_state.song_index = 0
+    if st.session_state.song_index >= len(music_files):
+        st.session_state.song_index = 0
+
+    current_song = music_files[st.session_state.song_index]
+    st.info(f"🎵 กำลังเล่น: {current_song}")
+
+    # 2. เล่นเพลง (Native Player)
+    with open(current_song, "rb") as f:
+        audio_bytes = f.read()
+    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
+
+    # 3. JS สำหรับ Auto-Next (แอบกดปุ่ม Next ให้เมื่อเพลงจบ)
+    components.html(
+        """
+        <script>
+        const autoNext = () => {
+            const audios = window.parent.document.querySelectorAll('audio');
+            audios.forEach(audio => {
+                if (!audio.dataset.listener) {
+                    audio.dataset.listener = "true";
+                    audio.onended = () => {
+                        const buttons = window.parent.document.querySelectorAll('button');
+                        for (let btn of buttons) {
+                            if (btn.innerText.includes('⏭️ Next')) {
+                                btn.click();
+                                break;
+                            }
+                        }
+                    };
+                }
+            });
+        };
+        setInterval(autoNext, 2000);
+        </script>
+        """,
+        height=0,
+    )
+
+    # 4. ปุ่มควบคุมหลัก (ใช้ Key ที่ชัดเจน)
+    col1, col2, col3 = st.columns(3)
+    if col1.button("⏮️ Back", key="main_prev", use_container_width=True):
+        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
+        st.rerun()
+    
+    if col2.button("🔄 Reload", key="main_reload", use_container_width=True):
+        st.rerun()
+
+    if col3.button("⏭️ Next", key="main_next", use_container_width=True):
+        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+        st.rerun()
+
+    # 5. รายชื่อเพลง (จุดที่เกิด Error - แก้ไขโดยใช้ key เฉพาะทาง)
+    st.write("---")
+    st.subheader("📂 รายชื่อเพลงทั้งหมด")
+    for i, f_name in enumerate(music_files):
+        is_playing = (i == st.session_state.song_index)
+        label = f"▶️ {f_name}" if is_playing else f"🎵 {f_name}"
         
-        /* กราฟเสียงสีรุ้งสะบัด */
-        .visualizer-box { height: 150px; background: #050505; border-radius: 15px; border: 1px solid #222; }
+        # แก้ไขจุดนี้: ใช้ key="list_btn_{i}" เพื่อไม่ให้ซ้ำกับปุ่มอื่นแน่นอน
+        if st.button(label, key=f"list_btn_{i}", use_container_width=True):
+            st.session_state.song_index = i
+            st.rerun()
         
-        .deck { padding: 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px; transition: 0.5s; }
-        .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; background: rgba(0,243,255,0.05); }
+
+def room_secure_chat():
+    st.subheader("💬 SECURE CHAT📝อยู่นิ้งๆไม่เจ็บตัว")
+    users = db.reference('users').get()
+    friends = [u for u in users.keys() if u != st.session_state.user] if users else []
+    target = st.selectbox("🎯 เลือกผู้รับข้อความ:", friends)
+    if target:
+        rid = "_".join(sorted([st.session_state.user, target]))
+        with st.form("chat_form", clear_on_submit=True):
+            msg = st.text_input("พิมพ์ข้อความที่นี่...")
+            up = st.file_uploader("ส่งรูปภาพ/วิดีโอ", type=['jpg', 'png', 'mp4'])
+            if st.form_submit_button("SEND MESSAGE"):
+                f_data, f_type = (base64.b64encode(up.read()).decode(), up.type) if up else (None, None)
+                db.reference(f'private_rooms/{rid}').push({'u': st.session_state.user, 'm': msg, 'f': f_data, 'ft': f_type, 'ts': time.time()})
+                st.rerun()
         
-        /* ปุ่มสไตล์ Cyberpunk */
-        .btn-mix { 
-            background: linear-gradient(45deg, #ff00de, #00f3ff);
-            color: white; font-weight: bold; padding: 12px; border-radius: 10px;
-            text-transform: uppercase; letter-spacing: 2px; transition: 0.3s;
-            box-shadow: 0 0 15px rgba(255,0,222,0.4);
-        }
-        .btn-mix:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(0,243,255,0.6); }
-        
-        .progress-bar { height: 6px; background: #222; border-radius: 10px; overflow: hidden; }
-        .progress-inner { height: 100%; width: 0%; background: linear-gradient(90deg, #ff00de, #ff8c00); }
-    </style>
-</head>
-<body>
-    <div class="max-w-md mx-auto p-4 neon-card rounded-3xl">
-        <canvas id="scope" class="visualizer-box w-full mb-4"></canvas>
+        chats = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(15).get()
+        if chats:
+            for c in reversed(list(chats.values())):
+                align = "right" if c['u'] == st.session_state.user else "left"
+                color = st.session_state.theme_color if c['u'] == st.session_state.user else "#333"
+                st.markdown(f'<div style="text-align:{align}; margin-bottom:10px;"><div style="display:inline-block; background:{color}; padding:10px; border-radius:10px; color:white;"><b>{c["u"]}</b>: {c["m"]}</div></div>', unsafe_allow_html=True)
+                if c.get('f'):
+                    try:
+                        dec = base64.b64decode(c['f'])
+                        if "image" in c['ft']: st.image(dec, width=250)
+                        elif "video" in c['ft']: st.video(dec)
+                    except: pass
 
-        <div id="cardA" class="deck">
-            <div class="flex justify-between text-[10px] mb-2">
-                <span id="labelA" class="text-pink-500 font-bold">DECK A</span>
-                <span id="timeA" class="font-mono">00:00</span>
-            </div>
-            <input type="file" id="inA" class="hidden" onchange="handleFile(this.files[0], 'A')">
-            <button onclick="document.getElementById('inA').click()" class="text-[10px] border border-gray-600 px-3 py-1 rounded">LOAD A</button>
-            <div id="nameA" class="text-[11px] mt-1 truncate text-gray-400">No Song</div>
-            <div class="progress-bar mt-2"><div id="barA" class="progress-inner"></div></div>
-        </div>
+# ==========================================
+# 3. MAIN (ปรับปรุงตำแหน่งโลโก้และลำดับการรัน)
+# ==========================================
+def main():
+    init_system()
+    apply_custom_background()
+    
+    # ดึงพิกัด (ต้องดึงก่อนเริ่มเงื่อนไขอื่นเพื่อให้ loc พร้อมใช้งาน)
+    loc = get_geolocation() 
 
-        <div id="cardB" class="deck">
-            <div class="flex justify-between text-[10px] mb-2">
-                <span id="labelB" class="text-cyan-400 font-bold">DECK B</span>
-                <span id="timeB" class="font-mono">00:00</span>
-            </div>
-            <input type="file" id="inB" class="hidden" onchange="handleFile(this.files[0], 'B')">
-            <button onclick="document.getElementById('inB').click()" class="text-[10px] border border-gray-600 px-3 py-1 rounded">LOAD B</button>
-            <div id="nameB" class="text-[11px] mt-1 truncate text-gray-400">No Song</div>
-            <div class="progress-bar mt-2"><div id="barB" class="progress-inner" style="background: #00f3ff;"></div></div>
-        </div>
+    # 1. ตรวจสอบการ Login
+    if not st.session_state.get('logged_in', False):
+        room_login()
+        return
 
-        <button onclick="startMix()" class="btn-mix w-full mt-2">🔥 START AUTO-MIX</button>
-        <div id="status" class="text-[10px] text-center mt-3 text-gray-500 uppercase tracking-widest">System Ready</div>
-    </div>
+    # 2. ส่วนที่แสดงเมื่อ Login แล้ว (โชว์โลโก้ทุกห้อง)
+    st.markdown("<br>", unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1, 1, 1])
+    with c2:
+        if os.path.exists("logo1.jpg"):
+            st.image("logo1.jpg", use_container_width=True)
+        else:
+            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
 
-    <script>
-        let ctx, analyser, songA, songB, gainA, gainB, sourceA, sourceB;
-        let active = 'A', isPlaying = false, data;
+    # 3. Sidebar และเนื้อหาหลัก
+    with st.sidebar:
+        st.write(f"👤 AGENT: **{st.session_state.user}**")
+        st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
+        if st.button("🚪 LOGOUT", use_container_width=True):
+            st.session_state.logged_in = False
+            st.rerun()
 
-        function init() {
-            if (!ctx) {
-                ctx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = ctx.createAnalyser();
-                analyser.fftSize = 256;
-                data = new Uint8Array(analyser.frequencyBinCount);
-                render();
-            }
-        }
+    tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "📞 CALL", "🎧 MUSIC", "⚙️ SETTINGS"])
+    
+    with tabs[0]: room_core(loc)
+    with tabs[1]: room_radar(loc)
+    with tabs[2]: room_secure_chat()
+    with tabs[3]: room_call()
+    with tabs[4]: room_music()
+    with tabs[5]: 
+        st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
 
-        async function handleFile(file, side) {
-            init();
-            document.getElementById('name'+side).innerText = "Loading...";
-            const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
-            if(side === 'A') songA = buffer; else songB = buffer;
-            document.getElementById('name'+side).innerText = file.name;
-        }
-
-        function render() {
-            requestAnimationFrame(render);
-            if(!analyser) return;
-            analyser.getByteFrequencyData(data);
-            const can = document.getElementById('scope');
-            const c = can.getContext('2d');
-            c.clearRect(0,0,can.width,can.height);
-            
-            let bw = (can.width / data.length) * 2.5;
-            let x = 0;
-            for(let i=0; i<data.length; i++) {
-                let h = (data[i]/255) * can.height;
-                let hue = (i * 3) + (Date.now() / 50) % 360;
-                c.fillStyle = `hsl(${hue}, 100%, 50%)`;
-                c.fillRect(x, can.height - h, bw - 1, h);
-                x += bw;
-            }
-            updateEngine();
-        }
-
-        function startMix() {
-            if(!songA || !songB) return alert("อาจารย์ครับ โหลดเพลงให้ครบ A/B ก่อน!");
-            if(isPlaying) return;
-            
-            sourceA = ctx.createBufferSource(); sourceA.buffer = songA;
-            gainA = ctx.createGain(); 
-            sourceA.connect(gainA).connect(analyser).connect(ctx.destination);
-            
-            sourceB = ctx.createBufferSource(); sourceB.buffer = songB;
-            gainB = ctx.createGain(); gainB.gain.value = 0;
-            sourceB.connect(gainB).connect(analyser).connect(ctx.destination);
-            
-            sourceA.loop = true; sourceB.loop = true;
-            sourceA.start(0); sourceB.start(0);
-            isPlaying = true;
-            document.getElementById('status').innerText = "Playing: Deck A";
-            document.getElementById('cardA').classList.add('deck-active');
-        }
-
-        function updateEngine() {
-            if(!isPlaying) return;
-            let now = ctx.currentTime;
-            
-            // ระบบเช็กเวลาและ Auto-Crossfade เมื่อเพลงใกล้จบ (สมมติเล่น Loop)
-            // ในที่นี้ใช้การอัปเดต Progress Bar และ UI
-            updateUI('A', songA, gainA);
-            updateUI('B', songB, gainB);
-        }
-
-        function updateUI(s, buffer, gain) {
-            let bar = document.getElementById('bar'+s);
-            let time = document.getElementById('time'+s);
-            // จำลองการเดินของเวลาใน Loop
-            let p = (ctx.currentTime % buffer.duration) / buffer.duration;
-            bar.style.width = (p * 100) + "%";
-            
-            let rem = buffer.duration - (ctx.currentTime % buffer.duration);
-            let m = Math.floor(rem/60), sec = Math.floor(rem%60);
-            time.innerText = (m<10?'0':'')+m+":"+(sec<10?'0':'')+sec;
-
-            // AUTO CROSSFADE LOGIC: เมื่อเหลือ 5 วินาทีสุดท้าย
-            if(active === s && rem < 5) {
-                crossfade();
-            }
-        }
-
-        function crossfade() {
-            let next = (active === 'A' ? 'B' : 'A');
-            let now = ctx.currentTime;
-            let dur = 4; // วินาทีในการ Fade
-            
-            if(active === 'A') {
-                gainA.gain.linearRampToValueAtTime(0, now + dur);
-                gainB.gain.linearRampToValueAtTime(1, now + dur);
-                document.getElementById('cardA').classList.remove('deck-active');
-                document.getElementById('cardB').classList.add('deck-active');
-            } else {
-                gainB.gain.linearRampToValueAtTime(0, now + dur);
-                gainA.gain.linearRampToValueAtTime(1, now + dur);
-                document.getElementById('cardB').classList.remove('deck-active');
-                document.getElementById('cardA').classList.add('deck-active');
-            }
-            active = next;
-            document.getElementById('status').innerText = "Auto-Mixing to: Deck " + active;
-        }
-    </script>
-</body>
-</html>
-"""
-
-st.components.v1.html(html_code, height=650)
-
-st.markdown("""
-<div style='text-align: center; color: #555; font-size: 12px; font-family: "Orbitron"; letter-spacing: 2px;'>
-    อยู่นิ่งๆ ไม่เจ็บตัว | AUTO-MIX ENGINE v5.0 | © 2026
-</div>
-""", unsafe_allow_html=True)
+if __name__ == "__main__":
+    main()
