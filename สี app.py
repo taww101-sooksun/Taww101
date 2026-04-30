@@ -67,12 +67,10 @@ def room_logic():
         pos = (diff - 0.5) % lunar_cycle
         day_val = dt.weekday() + 1
         
-        # ปีนักษัตร
         thai_year = dt.year + 543
         zodiacs = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
         zodiac = zodiacs[thai_year % 12]
         
-        # ธาตุประจำวัน
         elements = {1: "ดิน", 2: "น้ำ", 3: "ไฟ", 4: "ลม", 5: "ทอง", 6: "น้ำ", 7: "ดิน"}
         element = elements.get(day_val)
 
@@ -98,7 +96,7 @@ def room_logic():
         d = decode_truth(target_date)
         st.markdown(f"""
             <div style="text-align:center; padding:20px; border:2px solid {st.session_state.theme_color}; border-radius:20px; background:rgba(0,0,0,0.3);">
-                <small>รหัสพิกัดจักรวาล</small>
+                <small style="color:#888;">รหัสพิกัดจักรวาล</small>
                 <h1 style="color:{st.session_state.theme_color}; font-size:60px; margin:0;">{d['res']}</h1>
                 <p style="color:#888;">{d['type']}</p>
             </div>
@@ -112,27 +110,16 @@ def room_logic():
             st.success(f"🐎 **ปีนักษัตร:** ปี{d['zodiac']}")
             st.success(f"💎 **ธาตุประจำวัน:** ธาตุ{d['element']}")
 
-        st.markdown(f"""
-            <div style="background:#111; padding:15px; border-left:5px solid {st.session_state.theme_color}; border-radius:10px; margin-top:10px;">
-                <p style="font-size:14px; color:#aaa; margin:0;">
-                    <b>สูตรการคำนวณ:</b> {d['formula']}<br>
-                    คำนวณจากวันที่สะสมตั้งแต่ปี 1900 รวมทั้งสิ้น {d['diff']:,} วัน
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
-
-        if target_date < date.today(): st.warning("⏪ ตรวจสอบรอยเท้าพลังงานใน **'อดีต'**")
-        elif target_date > date.today(): st.error("🔮 ตรวจสอบพิกัดเป้าหมายใน **'อนาคต'**")
-        else: st.success("🟢 พิกัดพลังงานใน **'ปัจจุบัน'**")
-
-        ref_date = date(1900
 def room_music():
     st.subheader("🎧 SYNAPSE MUSIC STATION")
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลง")
+        st.warning("⚠️ ไม่พบไฟล์เพลงในระบบ")
         return
+    
     current_song = music_files[st.session_state.song_index % len(music_files)]
+    st.info(f"🎵 กำลังเล่น: {current_song}")
+    
     with open(current_song, "rb") as f:
         audio_bytes = f.read()
     st.audio(audio_bytes, format="audio/mp3", autoplay=True)
@@ -141,7 +128,8 @@ def room_music():
     if col1.button("⏮️ BACK", use_container_width=True):
         st.session_state.song_index -= 1
         st.rerun()
-    if col2.button("🔄 RELOAD", use_container_width=True): st.rerun()
+    if col2.button("🔄 RELOAD", use_container_width=True): 
+        st.rerun()
     if col3.button("⏭️ NEXT", use_container_width=True):
         st.session_state.song_index += 1
         st.rerun()
@@ -149,10 +137,12 @@ def room_music():
 def room_settings():
     st.subheader("🎨 SYSTEM THEME")
     color_presets = {"🟢 CYBER": "#39FF14", "🔵 DEEP": "#1408BF", "🔴 ALERT": "#FF0000", "🟣 VIBE": "#800080"}
-    selected = st.selectbox("เลือกโทนสี", list(color_presets.keys()))
+    selected = st.selectbox("เลือกโทนสีระบบ", list(color_presets.keys()))
     if st.button("APPLY THEME", use_container_width=True):
         st.session_state.theme_color = color_presets[selected]
         st.rerun()
+    
+    st.write("---")
     if st.button("🚪 LOGOUT", use_container_width=True):
         st.session_state.logged_in = False
         st.rerun()
@@ -171,7 +161,7 @@ def main():
             u = st.text_input("AGENT ID")
             p = st.text_input("PASSWORD", type="password")
             if st.form_submit_button("LOGIN", use_container_width=True):
-                # ส่วนนี้เชื่อม Firebase จริงของคุณ
+                # ตรงนี้คุณสามารถใส่โค้ดเช็ค Firebase จริงได้
                 st.session_state.logged_in = True
                 st.session_state.user = u
                 st.rerun()
