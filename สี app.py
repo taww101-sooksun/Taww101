@@ -471,6 +471,27 @@ def room_logic():
 # 4. MAIN LAYOUT
 # ==========================================
 def main():
+    def main():
+    # --- 1. ตรวจสอบและตั้งค่าเริ่มต้น (Fix AttributeError) ---
+    if 'theme_color' not in st.session_state:
+        st.session_state.theme_color = "#000000"  # กำหนดสีดำเป็นค่าเริ่มต้น
+    if 'bg_color' not in st.session_state:
+        st.session_state.bg_color = "#FFFFFF"     # กำหนดสีขาวเป็นค่าเริ่มต้น
+    if 'user' not in st.session_state:
+        st.session_state.user = "AGENT-X"         # กำหนดชื่อเริ่มต้น
+
+    # --- 2. ส่วนของ Sidebar (โค้ดเดิมของคุณ) ---
+    with st.sidebar:
+        st.title("⚙️ SYSTEM")
+        # ตอนนี้จะใช้งานได้แล้ว เพราะเราประกาศไว้ข้างบนแล้ว
+        st.session_state.user = st.text_input("AGENT ID", st.session_state.user)
+        st.session_state.theme_color = st.color_picker("THEME", st.session_state.theme_color)
+        st.session_state.bg_color = st.color_picker("BACKGROUND", st.session_state.bg_color)
+        st.markdown("---")
+        st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
+
+    # ... (ส่วนที่เหลือของโค้ด) ...
+
     with st.sidebar:
         st.title("⚙️ SYSTEM")
         st.session_state.user = st.text_input("AGENT ID", st.session_state.user)
