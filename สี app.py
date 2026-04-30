@@ -66,9 +66,13 @@ def room_logic():
         lunar_cycle = 29.530589
         pos = (diff - 0.5) % lunar_cycle
         day_val = dt.weekday() + 1
+        
+        # ปีนักษัตร
         thai_year = dt.year + 543
         zodiacs = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
         zodiac = zodiacs[thai_year % 12]
+        
+        # ธาตุประจำวัน
         elements = {1: "ดิน", 2: "น้ำ", 3: "ไฟ", 4: "ลม", 5: "ทอง", 6: "น้ำ", 7: "ดิน"}
         element = elements.get(day_val)
 
@@ -84,20 +88,22 @@ def room_logic():
             res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
             formula = f"({day_val} × 1.618) / {m_num}"
             p_type = "สมดุลสัดส่วนทองคำ (Phi)"
+            
         return {"res": round(res, 4), "phase": phase, "zodiac": zodiac, "element": element, "formula": formula, "type": p_type, "day_num": day_val, "lunar_num": m_num, "diff": diff}
 
-    st.subheader("🔍 วิเคราะห์พิกัดความจริง")
-    target_date = st.date_input("เลือกวันที่ตรวจสอบ", value=date.today())
+    st.subheader("🔍 วิเคราะห์พิกัดความจริง (อดีต-อนาคต)")
+    target_date = st.date_input("เลือกวันที่ตรวจสอบ", value=date.today(), min_value=date(1950,1,1), max_value=date(2026,12,31))
     
     if target_date:
         d = decode_truth(target_date)
         st.markdown(f"""
             <div style="text-align:center; padding:20px; border:2px solid {st.session_state.theme_color}; border-radius:20px; background:rgba(0,0,0,0.3);">
-                <small style="color:{st.session_state.theme_color};">รหัสพิกัดจักรวาล</small>
+                <small>รหัสพิกัดจักรวาล</small>
                 <h1 style="color:{st.session_state.theme_color}; font-size:60px; margin:0;">{d['res']}</h1>
                 <p style="color:#888;">{d['type']}</p>
             </div>
         """, unsafe_allow_html=True)
+
         col1, col2 = st.columns(2)
         with col1:
             st.info(f"📅 **ฐานวัน ({d['day_num']}):** แรงดึงดูดโลก")
@@ -106,6 +112,20 @@ def room_logic():
             st.success(f"🐎 **ปีนักษัตร:** ปี{d['zodiac']}")
             st.success(f"💎 **ธาตุประจำวัน:** ธาตุ{d['element']}")
 
+        st.markdown(f"""
+            <div style="background:#111; padding:15px; border-left:5px solid {st.session_state.theme_color}; border-radius:10px; margin-top:10px;">
+                <p style="font-size:14px; color:#aaa; margin:0;">
+                    <b>สูตรการคำนวณ:</b> {d['formula']}<br>
+                    คำนวณจากวันที่สะสมตั้งแต่ปี 1900 รวมทั้งสิ้น {d['diff']:,} วัน
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        if target_date < date.today(): st.warning("⏪ ตรวจสอบรอยเท้าพลังงานใน **'อดีต'**")
+        elif target_date > date.today(): st.error("🔮 ตรวจสอบพิกัดเป้าหมายใน **'อนาคต'**")
+        else: st.success("🟢 พิกัดพลังงานใน **'ปัจจุบัน'**")
+
+        ref_date = date(1900
 def room_music():
     st.subheader("🎧 SYNAPSE MUSIC STATION")
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
