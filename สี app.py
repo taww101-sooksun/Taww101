@@ -1,112 +1,154 @@
 import streamlit as st
+import os
+import random
 import streamlit.components.v1 as components
-import base64
 
-st.set_page_config(page_title="Music Video Player Pro", layout="wide")
+# --- 1. SET UP & THEME ---
+st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
 
-# CSS จัดการหน้าจอให้เหมาะกับการแคปวิดีโอ
-st.markdown("""
+# ระบบจำค่าสี
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#39FF14" 
+if 'bg_color' not in st.session_state:
+    st.session_state.bg_color = "#121212" 
+
+with st.sidebar:
+    if os.path.exists("logo2.jpg"):
+        st.image("logo2.jpg", use_container_width=True)
+    st.markdown("### 🎨 ปรับแต่งสีระบบ")
+    st.session_state.theme_color = st.color_picker("เลือกสีนีออน", st.session_state.theme_color)
+    st.session_state.bg_color = st.color_picker("เลือกสีพื้นหลัง", st.session_state.bg_color)
+    st.write("---")
+    st.markdown('**สโลแกน:** \n*"อยู่นิ่งๆ ไม่เจ็บตัว"*')
+
+# --- 2. CSS DYNAMIC THEME ---
+st.markdown(f"""
     <style>
-    .stApp {
-        background: linear-gradient(270deg, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff);
-        background-size: 1200% 1200%;
-        animation: RainbowFlow 10s ease infinite;
-    }
-    @keyframes RainbowFlow {
-        0%{background-position:0% 50%}
-        50%{background-position:100% 50%}
-        100%{background-position:0% 50%}
-    }
-    #MainMenu, footer, header {visibility: hidden;}
-    .stFileUploader {background: rgba(255,255,255,0.2); border-radius: 15px; padding: 20px; color: white;}
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
+    .stApp {{ background-color: {st.session_state.bg_color} !important; color: {st.session_state.theme_color} !important; }}
+    .marquee {{
+        width: 100%; overflow: hidden; white-space: nowrap; background: rgba(0,0,0,0.6);
+        padding: 15px 0; border-radius: 12px; margin-bottom: 15px; border: 2px solid {st.session_state.theme_color};
+    }}
+    .marquee p {{
+        display: inline-block; padding-left: 100%; animation: marquee 20s linear infinite;
+        font-family: 'Orbitron', sans-serif; font-size: 22px; color: {st.session_state.theme_color};
+        text-shadow: 0px 0px 10px {st.session_state.theme_color}; margin: 0;
+    }}
+    @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
+    .stButton>button {{
+        width: 100%; background-color: transparent !important; color: {st.session_state.theme_color} !important;
+        border-radius: 10px !important; border: 1px solid {st.session_state.theme_color} !important;
+    }}
+    .stTextArea textarea {{ background-color: rgba(0,0,0,0.5) !important; color: {st.session_state.theme_color} !important; border: 1px solid {st.session_state.theme_color} !important; }}
+    h1, h2, h3, p, span {{ font-family: 'Orbitron', sans-serif; color: {st.session_state.theme_color} !important; }}
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🎬 Music & Video Crossfader")
+# --- 3. ระบบจัดการเพลง ---
+music_files = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
 
-# ช่องอัปโหลดไฟล์ (เลือกทั้งเพลงและรูปพร้อมกันได้เลย)
-uploaded_files = st.file_uploader("เลือกไฟล์เพลง (MP3) และไฟล์รูปปก (JPG/PNG)", type=["mp3", "jpg", "png"], accept_multiple_files=True)
-
-if uploaded_files:
-    songs = []
-    images = []
+if music_files:
+    if 'song_index' not in st.session_state:
+        st.session_state.song_index = 0
     
-    for f in uploaded_files:
-        b64 = base64.b64encode(f.read()).decode()
-        if f.type.startswith("audio"):
-            songs.append({"name": f.name, "data": f"data:audio/mp3;base64,{b64}"})
-        else:
-            images.append(f"data:image/jpeg;base64,{b64}")
+    current_song = music_files[st.session_state.song_index]
 
-    # ถ้าไม่มีรูป ให้ใช้สีพื้นฐาน
-    if not images:
-        images = ["https://via.placeholder.com/500/AFEEEE/000000?text=Enjoy+Music"]
+    col_l, col_r = st.columns([1, 5])
+    with col_l:
+        if os.path.exists("logo2.jpg"): st.image("logo2.jpg", width=500)
+    with col_r:
+        st.title("🎸 SYNAPSE ROOMS 🎼 MUSIC")
 
-    player_html = f"""
-    <div id="display-container" style="position: relative; width: 100%; height: 500px; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); background: #000;">
-        <div id="visualizer" style="position: absolute; width: 100%; height: 100%; opacity: 0.4;">
-             <div style="width:100%;height:100%; background: radial-gradient(circle, #FF7F50, transparent);"></div>
-        </div>
+    st.markdown(f'<div class="marquee"><p>NOW PLAYING: {current_song} •--• NEXT TRACK UP SOON </p></div>', unsafe_allow_html=True)
 
-        <div style="position: absolute; top: 0; width: 100%; background: rgba(0,0,0,0.6); color: #AFEEEE; padding: 15px; z-index: 10;">
-            <marquee id="marquee" style="font-size: 24px; font-weight: bold;">กรุณากดปุ่มเพื่อเริ่มรายการ...</marquee>
-        </div>
+    base_name = os.path.splitext(current_song)[0]
+    if os.path.exists(base_name + ".mp4"):
+        st.video(base_name + ".mp4", loop=True, autoplay=True, muted=True)
+    elif os.path.exists(base_name + ".jpg"):
+        st.image(base_name + ".jpg", use_container_width=True)
+    
+    st.audio(current_song)
 
-        <div id="album-cover" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 300px; height: 300px; border: 10px solid #FF7F50; border-radius: 20px; background-size: cover; background-position: center; transition: all 1s ease-in-out; z-index: 5;"></div>
+    # --- 4. ระบบแชตสาธารณะ & Playlist ---
+    st.markdown("---")
+    col_chat, col_list = st.columns([2, 1])
+
+    with col_chat:
+        st.subheader("🌐 PUBLIC LOBBY")
+        CHAT_FILE = "public_chat.txt"
         
-        <button id="start-btn" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); padding: 15px 40px; font-size: 20px; background: #FF7F50; color: white; border: none; border-radius: 50px; cursor: pointer; z-index: 20;">START SESSION</button>
-    </div>
+        # ดึงข้อมูลแชต
+        if os.path.exists(CHAT_FILE):
+            with open(CHAT_FILE, "r", encoding="utf-8") as f:
+                chat_data = "".join(f.readlines()[-10:]) # โชว์ 10 บรรทัดล่าสุด
+        else:
+            chat_data = "ยังไม่มีข้อความ..."
 
+        st.text_area("Live Chat", value=chat_data, height=200, disabled=True, label_visibility="collapsed")
+        
+        with st.form("chat_form", clear_on_submit=True):
+            msg = st.text_input("พิมพ์ข้อความ...", key="chat_msg_input")
+            if st.form_submit_button("SEND"):
+                if msg:
+                    with open(CHAT_FILE, "a", encoding="utf-8") as f:
+                        f.write(f"> {msg}\n")
+                    st.rerun()
+
+    with col_list:
+        st.subheader("🎧 PLAYLIST")
+        with st.container(border=True, height=250):
+            for i, song in enumerate(music_files):
+                label = f"▶️ {song}" if i == st.session_state.song_index else f"{song}"
+                if st.button(label, key=f"list_{i}"):
+                    st.session_state.song_index = i
+                    st.rerun()
+
+    # ปุ่มควบคุมเพลง
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("⏭️ เพลงถัดไป"):
+            st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
+            st.rerun()
+    with c2:
+        if st.button("🎲 สุ่มเพลง"):
+            st.session_state.song_index = random.randint(0, len(music_files) - 1)
+            st.rerun()
+
+    # --- 5. JAVASCRIPT: แบบปลอดภัย 100% ---
+    js_code = """
     <script>
-        const playlist = {songs};
-        const covers = {images};
-        let currentIndex = 0;
-        const fadeTime = 15;
+    var fadeDuration = 12; 
+    function handleAudio() {
+        var audio = window.parent.document.querySelector('audio');
+        var buttons = window.parent.document.querySelectorAll('button');
+        if (audio) {
+            // ระบบเสียง Fade
+            if (audio.currentTime < fadeDuration && !audio.paused) {
+                audio.volume = Math.min(audio.currentTime / fadeDuration, 1);
+            } else if (audio.duration - audio.currentTime < fadeDuration && !audio.paused) {
+                audio.volume = Math.max((audio.duration - audio.currentTime) / fadeDuration, 0);
+            } else { audio.volume = 1; }
 
-        const btn = document.getElementById('start-btn');
-        const marquee = document.getElementById('marquee');
-        const albumCover = document.getElementById('album-cover');
-
-        function playTrack(index) {{
-            if (index >= playlist.length) index = 0;
-            const track = playlist[index];
-            const audio = new Audio(track.data);
-            audio.volume = 0;
+            // ระบบเล่นเพลงถัดไป
+            audio.onended = function() {
+                for (var i = 0; i < buttons.length; i++) {
+                    if (buttons[i].textContent.includes('เพลงถัดไป')) {
+                        buttons[i].click(); break;
+                    }
+                }
+            };
             
-            // เปลี่ยนรูปปก (วนลูปรูปที่มี)
-            albumCover.style.backgroundImage = "url('" + covers[index % covers.length] + "')";
-            marquee.innerText = "NOW PLAYING: " + track.name + " --- NEXT: " + (playlist[index+1] ? playlist[index+1].name : playlist[0].name);
-            
-            audio.play();
-            fadeIn(audio);
-
-            audio.ontimeupdate = function() {{
-                const timeLeft = audio.duration - audio.currentTime;
-                if (timeLeft <= fadeTime && !audio.isFadingOut) {{
-                    audio.isFadingOut = true;
-                    fadeOut(audio);
-                    playTrack(index + 1);
-                }}
-            }};
-        }}
-
-        function fadeIn(a) {{
-            let v = 0;
-            const itv = setInterval(() => {{ if(v<1) {{v+=0.02; a.volume=v;}} else clearInterval(itv); }}, (fadeTime*1000)/50);
-        }}
-
-        function fadeOut(a) {{
-            let v = 1;
-            const itv = setInterval(() => {{ if(v>0) {{v-=0.02; a.volume=v;}} else {{clearInterval(itv); a.pause();}} }}, (fadeTime*1000)/50);
-        }}
-
-        btn.onclick = () => {{
-            btn.style.display = 'none';
-            playTrack(0);
-        }};
+            // Auto Play เบื้องต้น
+            if (audio.paused && audio.currentTime == 0) {
+                audio.play().catch(e => console.log("Interaction needed"));
+            }
+        }
+    }
+    setInterval(handleAudio, 500);
     </script>
     """
-    components.html(player_html, height=550)
+    components.html(js_code, height=0)
 
 else:
-    st.info("💡 วิธีใช้: เลือกไฟล์เพลง (.mp3) และไฟล์รูป (.jpg/.png) พร้อมกันหลายๆ ไฟล์ได้เลยครับ")
+    st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์ครับ")
