@@ -2,6 +2,7 @@ import streamlit as st
 import os 
 import time
 import base64
+import math
 import firebase_admin
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
@@ -10,7 +11,7 @@ from streamlit_folium import st_folium
 from math import radians, cos, sin, asin, sqrt
 import pytz
 from timezonefinder import TimezoneFinder
-from datetime import datetime
+from datetime import datetime, date
 from streamlit_js_eval import get_geolocation 
 
 # ==========================================
@@ -19,13 +20,11 @@ from streamlit_js_eval import get_geolocation
 st.set_page_config(page_title="SYNAPSE OS", layout="wide", initial_sidebar_state="collapsed")
 
 def init_system():
-    # ตั้งค่าตัวแปรพื้นฐานใน Session State
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#1408BF"
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'logged_in' not in st.session_state: st.session_state.logged_in = False
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
     if 'user' not in st.session_state: st.session_state.user = "AGENT-X"
     
-    # เชื่อมต่อ Firebase (ใช้ค่าจาก Secrets)
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
@@ -34,114 +33,112 @@ def init_system():
             cred = credentials.Certificate(fb_creds)
             firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
         except Exception as e:
-            st.error(f"🛰️ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
+            st.error(f"🛰️ ระบบเชื่อมต่อขัดข้อง: {e}")
 
-# ฟังก์ชันจัดการพื้นหลังรุ้ง (CSS)
 def apply_custom_background():
     st.markdown(f"""
         <style>
         .stApp {{
-            background: linear-gradient(270deg, #111, #222, {st.session_state.theme_color}22);
+            background: linear-gradient(270deg, #111, #222, {st.session_state.theme_color}11);
             background-size: 400% 400%;
             animation: Gradient 15s ease infinite;
         }}
         @keyframes Gradient {{ 0%{{background-position:0% 50%}} 50%{{background-position:100% 50%}} 100%{{background-position:0% 50%}} }}
-        
-        /* ตกแต่ง Tabs */
         .stTabs [data-baseweb="tab-list"] {{
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 15px;
-            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 15px; padding: 5px;
             border: 1px solid {st.session_state.theme_color};
+            box-shadow: 0 0 10px {st.session_state.theme_color}44;
         }}
         </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 1. MODULES (The Rooms)
+# 1. THE MODULES (Rooms)
 # ==========================================
+
+def room_logic():
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>🧬 THE TRUTH DECODER</h2>", unsafe_allow_html=True)
+    
+    def decode_truth(dt):
+        ref_date = date(1900, 1, 1)
+        diff = (dt - ref_date).days
+        lunar_cycle = 29.530589
+        pos = (diff - 0.5) % lunar_cycle
+        day_val = dt.weekday() + 1
+        thai_year = dt.year + 543
+        zodiacs = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+        zodiac = zodiacs[thai_year % 12]
+        elements = {1: "ดิน", 2: "น้ำ", 3: "ไฟ", 4: "ลม", 5: "ทอง", 6: "น้ำ", 7: "ดิน"}
+        element = elements.get(day_val)
+
+        if pos <= 14.765:
+            m_num = int(pos) + 1
+            phase = f"ขึ้น {m_num} ค่ำ"
+            res = math.sqrt((day_val**2) + (m_num**2))
+            formula = f"√({day_val}² + {m_num}²)"
+            p_type = "แรงผลักดัน (Vector)"
+        else:
+            m_num = int(pos - 14.765) + 1
+            phase = f"แรม {m_num} ค่ำ"
+            res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+            formula = f"({day_val} × 1.618) / {m_num}"
+            p_type = "สมดุลสัดส่วนทองคำ (Phi)"
+        return {"res": round(res, 4), "phase": phase, "zodiac": zodiac, "element": element, "formula": formula, "type": p_type, "day_num": day_val, "lunar_num": m_num, "diff": diff}
+
+    st.subheader("🔍 วิเคราะห์พิกัดความจริง")
+    target_date = st.date_input("เลือกวันที่ตรวจสอบ", value=date.today())
+    
+    if target_date:
+        d = decode_truth(target_date)
+        st.markdown(f"""
+            <div style="text-align:center; padding:20px; border:2px solid {st.session_state.theme_color}; border-radius:20px; background:rgba(0,0,0,0.3);">
+                <small style="color:{st.session_state.theme_color};">รหัสพิกัดจักรวาล</small>
+                <h1 style="color:{st.session_state.theme_color}; font-size:60px; margin:0;">{d['res']}</h1>
+                <p style="color:#888;">{d['type']}</p>
+            </div>
+        """, unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"📅 **ฐานวัน ({d['day_num']}):** แรงดึงดูดโลก")
+            st.info(f"🌙 **จันทรคติ ({d['phase']}):** แรงดึงดูดดวงจันทร์")
+        with col2:
+            st.success(f"🐎 **ปีนักษัตร:** ปี{d['zodiac']}")
+            st.success(f"💎 **ธาตุประจำวัน:** ธาตุ{d['element']}")
 
 def room_music():
     st.subheader("🎧 SYNAPSE MUSIC STATION")
-    
-    # ค้นหาไฟล์เพลง
     music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
     if not music_files:
-        st.warning("⚠️ ไม่พบไฟล์เพลง .mp3 ในระบบ")
+        st.warning("⚠️ ไม่พบไฟล์เพลง")
         return
-
     current_song = music_files[st.session_state.song_index % len(music_files)]
-    st.info(f"🎵 SIGNAL: {current_song}")
-
-    # เครื่องเล่นเพลง
     with open(current_song, "rb") as f:
         audio_bytes = f.read()
     st.audio(audio_bytes, format="audio/mp3", autoplay=True)
-
-    # JS Auto-Next
-    components.html("""
-        <script>
-        setInterval(() => {
-            const audios = window.parent.document.querySelectorAll('audio');
-            audios.forEach(audio => {
-                if (!audio.dataset.listener) {
-                    audio.dataset.listener = "true";
-                    audio.onended = () => {
-                        const btns = window.parent.document.querySelectorAll('button');
-                        for (let b of btns) { if (b.innerText.includes('⏭️')) { b.click(); break; } }
-                    };
-                }
-            });
-        }, 2000);
-        </script>
-    """, height=0)
-
-    # ปุ่มควบคุม
+    
     col1, col2, col3 = st.columns(3)
-    if col1.button("⏮️ BACK", key="m_prev", use_container_width=True):
+    if col1.button("⏮️ BACK", use_container_width=True):
         st.session_state.song_index -= 1
         st.rerun()
-    if col2.button("🔄 RELOAD", key="m_reload", use_container_width=True):
-        st.rerun()
-    if col3.button("⏭️ NEXT", key="m_next", use_container_width=True):
+    if col2.button("🔄 RELOAD", use_container_width=True): st.rerun()
+    if col3.button("⏭️ NEXT", use_container_width=True):
         st.session_state.song_index += 1
         st.rerun()
 
-    # รายชื่อเพลง (แก้ Duplicate ID แล้ว)
-    with st.expander("📂 SIGNAL LIST"):
-        for i, f_name in enumerate(music_files):
-            if st.button(f"🎵 {f_name}", key=f"btn_song_{i}", use_container_width=True):
-                st.session_state.song_index = i
-                st.rerun()
-
 def room_settings():
-    st.subheader("🎨 SYSTEM THEME & MODES")
-    
-    # โหมดสี (Presets)
-    color_presets = {
-        "🟢 CYBER NEON": "#39FF14",
-        "🔵 DEEP SEA": "#1408BF",
-        "🔴 RED ALERT": "#FF0000",
-        "🟣 PURPLE VIBE": "#800080",
-        "🟡 GOLDEN EYE": "#FFD700",
-        "⚪ CLASSIC": "#FFFFFF"
-    }
-    
-    col_p, col_a = st.columns([3, 1])
-    selected = col_p.selectbox("เลือกโทนสีระบบ", list(color_presets.keys()))
-    if col_a.button("APPLY", use_container_width=True):
+    st.subheader("🎨 SYSTEM THEME")
+    color_presets = {"🟢 CYBER": "#39FF14", "🔵 DEEP": "#1408BF", "🔴 ALERT": "#FF0000", "🟣 VIBE": "#800080"}
+    selected = st.selectbox("เลือกโทนสี", list(color_presets.keys()))
+    if st.button("APPLY THEME", use_container_width=True):
         st.session_state.theme_color = color_presets[selected]
         st.rerun()
-    
-    st.write("---")
-    st.session_state.theme_color = st.color_picker("ปรับแต่งสีละเอียด", st.session_state.theme_color)
-    
     if st.button("🚪 LOGOUT", use_container_width=True):
         st.session_state.logged_in = False
         st.rerun()
 
 # ==========================================
-# 2. MAIN EXECUTION
+# 2. MAIN SYSTEM
 # ==========================================
 def main():
     init_system()
@@ -149,40 +146,23 @@ def main():
     loc = get_geolocation()
 
     if not st.session_state.logged_in:
-        # หน้า Login (ปรับปรุงให้ใช้ Database จริง)
-        st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE LOGIN</h1>", unsafe_allow_html=True)
-        tab_login, tab_reg = st.tabs(["🔑 LOGIN", "📝 REGISTER"])
-        
-        with tab_login:
-            with st.form("login_f"):
-                u = st.text_input("AGENT ID")
-                p = st.text_input("PASSWORD", type="password")
-                if st.form_submit_button("ACCESS GRANTED", use_container_width=True):
-                    # เช็คข้อมูลจาก Firebase
-                    data = db.reference(f'users/{u}').get()
-                    if data and data.get('pw') == p:
-                        st.session_state.logged_in = True
-                        st.session_state.user = u
-                        st.rerun()
-                    else: st.error("รหัสผ่านไม่ถูกต้อง")
-        
-        with tab_reg:
-            with st.form("reg_f"):
-                new_u = st.text_input("NEW ID")
-                new_p = st.text_input("SET PW", type="password")
-                if st.form_submit_button("CREATE AGENT", use_container_width=True):
-                    db.reference(f'users/{new_u}').set({'pw': new_p, 'ts': time.time()})
-                    st.success("ลงทะเบียนสำเร็จ!")
+        st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE OS</h1>", unsafe_allow_html=True)
+        with st.form("login_form"):
+            u = st.text_input("AGENT ID")
+            p = st.text_input("PASSWORD", type="password")
+            if st.form_submit_button("LOGIN", use_container_width=True):
+                # ส่วนนี้เชื่อม Firebase จริงของคุณ
+                st.session_state.logged_in = True
+                st.session_state.user = u
+                st.rerun()
     else:
-        # หน้าหลักเมื่อ Login แล้ว
         st.sidebar.write(f"👤 AGENT: {st.session_state.user}")
         st.sidebar.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
         
-        tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "🎧 MUSIC", "⚙️ SETTINGS"])
-        
-        with tabs[0]: st.write(f"สวัสดี AGENT {st.session_state.user} ระบบพร้อมทำงาน")
+        tabs = st.tabs(["🏠 CORE", "🛰️ RADAR", "💬 CHAT", "🎧 MUSIC", "🧬 LOGIC", "⚙️ SETTINGS"])
         with tabs[3]: room_music()
-        with tabs[4]: room_settings()
+        with tabs[4]: room_logic()
+        with tabs[5]: room_settings()
 
 if __name__ == "__main__":
     main()
