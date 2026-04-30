@@ -106,6 +106,44 @@ def room_music():
             st.session_state.song_index = i
             st.rerun()
 
+with tabs[5]:  # ห้อง SETTINGS
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>⚙️ SYSTEM CONFIGURATION</h2>", unsafe_allow_html=True)
+    
+    # --- ส่วนที่ 1: เลือกโหมดสีด่วน (Presets) ---
+    st.subheader("🎨 QUICK THEME MODE")
+    
+    # นิยามสีประจำโหมดต่างๆ
+    color_presets = {
+        "🟢 CYBER NEON": "#39FF14",
+        "🔵 DEEP SEA": "#1408BF",
+        "🔴 RED ALERT": "#FF0000",
+        "🟣 PURPLE VIBE": "#800080",
+        "🟡 GOLDEN EYE": "#FFD700",
+        "🟠 SUNSET FLOW": "#FF7F50",
+        "⚪ CLASSIC WHITE": "#FFFFFF"
+    }
+    
+    # สร้างเมนูให้เลือก
+    col_preset, col_apply = st.columns([3, 1])
+    selected_mode = col_preset.selectbox("เลือกโทนสีของระบบ", list(color_presets.keys()), label_visibility="collapsed")
+    
+    if col_apply.button("APPLY MODE", use_container_width=True):
+        st.session_state.theme_color = color_presets[selected_mode]
+        st.toast(f"จูนสีระบบเป็น {selected_mode} เรียบร้อย!")
+        st.rerun()
+
+    st.markdown("---")
+
+    # --- ส่วนที่ 2: ปรับแต่งสีละเอียด (Custom) ---
+    st.subheader("🛠️ CUSTOM COLOR")
+    st.session_state.theme_color = st.color_picker("ปรับแต่งสีตามใจชอบ", st.session_state.theme_color)
+    
+    # --- ส่วนที่ 3: ระบบ LOGOUT ---
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    if st.button("🔴 TERMINATE SESSION (LOGOUT)", use_container_width=True):
+        st.session_state.logged_in = False
+        st.rerun()
+
 # --- ห้องอื่นๆ (Core, Radar, Chat, Call - ตามที่คุณเขียนมา) ---
 # ... (ใส่โค้ด room_core, room_radar, room_secure_chat ตามที่คุณมี) ...
 
@@ -139,8 +177,9 @@ def main():
         # with tabs[1]: room_radar(loc)
         with tabs[4]: 
             room_music() # เรียกใช้ห้องเพลงที่นี่
-        with tabs[5]:
+        with tabs[5]:  room_settingh
             st.session_state.theme_color = st.color_picker("ปรับแต่งสีระบบ", st.session_state.theme_color)
-
+with tabs [2
+5
 if __name__ == "__main__":
     main()
