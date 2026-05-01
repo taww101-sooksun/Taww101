@@ -6,38 +6,41 @@ from datetime import datetime
 import base64
 import os
 
-# --- 0. ฟังก์ชันพิเศษ: ซ่อนความเป็น Streamlit และจัดการไฟล์ ---
-def hide_streamlit_branding():
-    st.markdown("""
-        <style>
-            /* ซ่อนเมนูขวาบน, Footer และ Header ของ Streamlit */
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            .stApp { top: -60px; } /* ขยับแอปขึ้นไปแทนที่ช่องว่าง Header */
-        </style>
-    """, unsafe_allow_html=True)
-
+# ==========================================
+# 0. CONFIG & LOGO FUNCTION
+# ==========================================
 def get_base64_bin(file_path):
     if os.path.exists(file_path):
         with open(file_path, "rb") as f:
             return base64.b64encode(f.read()).decode()
     return ""
 
-# --- 1. ตั้งค่าระบบเริ่มต้น ---
+# ==========================================
+# 1. INITIALIZATION & HIDE STREAMLIT UI
+# ==========================================
 st.set_page_config(page_title="SYNAPSE PRO", layout="wide")
-hide_streamlit_branding()
 
-# แสดง Logo (logo1.png) ไว้บนสุด
-if os.path.exists("logo1.png"):
-    # แสดงรูปภาพ logo1.png ขนาดกว้าง 200px (ปรับได้ตามชอบ)
-    col_logo, _ = st.columns([1, 4])
-    with col_logo:
-        st.image("logo1.png", width=200)
-else:
-    st.caption("⚠️ ไม่พบไฟล์ logo1.png ในระบบ")
+st.markdown("""
+    <style>
+        /* ซ่อน Streamlit UI ทั้งหมด */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        .stApp { top: -60px; } /* ขยับแอปขึ้นไป */
+        
+        /* สไตล์หลักสำหรับทั้งหน้า */
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: monospace;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-# --- 2. การเชื่อมต่อ Firebase (เหมือนเดิม) ---
+# ดึงไฟล์โลโก้และเสียงเตรียมไว้
+logo_base64 = get_base64_bin("logo1.png")
+audio_data = get_base64_bin("notification.mp3")
+
 if not firebase_admin._apps:
     fb_creds = dict(st.secrets["firebase_credentials"])
     fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
@@ -47,41 +50,84 @@ if not firebase_admin._apps:
 if 'user' not in st.session_state: st.session_state.user = "Agent_Ta101"
 theme = "#39FF14"
 
-# เตรียมไฟล์เสียง
-audio_data = get_base64_bin("notification.mp3")
+# ==========================================
+# 2. LOGO (100) DANCING + SLOGAN WINKING
+# ==========================================
+logo_and_slogan_html = f"""
+<style>
+    /* แอนิเมชันสำหรับโลโก้เต้น */
+    @keyframes dance {{
+        0% {{ transform: translate(0, 0) rotate(0deg); }}
+        25% {{ transform: translate(2px, -3px) rotate(3deg); }}
+        50% {{ transform: translate(-2px, 3px) rotate(-3deg); }}
+        75% {{ transform: translate(1px, -1px) rotate(1deg); }}
+        100% {{ transform: translate(0, 0) rotate(0deg); }}
+    }}
 
-# --- 3. โครงสร้างหน้าจอแชต ---
-# (ส่วน CSS และ HTML เดิมที่ปรับแต่งตัวหนังสือใหม่และระบบแจ้งเตือน)
+    /* แอนิเมชันสำหรับตัวหนังสือวิ้งๆ */
+    @keyframes wink {{
+        0%, 100% {{ opacity: 1; }}
+        50% {{ opacity: 0; }}
+    }}
+
+    .dancing-logo {{
+        width: 100px;
+        height: auto;
+        animation: dance 0.5s infinite; /* ปรับเวลาให้เร็วขึ้นสำหรับ 'เต้น' */
+    }}
+
+    .winking-slogan {{
+        font-family: sans-serif;
+        font-size: 16px;
+        color: #fff;
+        margin-left: 15px;
+        animation: wink 1s infinite step-end; /* เวิ้งๆ แบบกะพริบ */
+        vertical-align: middle;
+    }}
+</style>
+
+<div style="display: flex; align-items: center; justify-content: center; width: 100%; padding: 10px 0;">
+    <img src="data:image/png;base64,{logo_base64}" class="dancing-logo">
+    <span class="winking-slogan">SYNAPSE อยู่นิ้งๆไม่เจ็บตัว</span>
+</div>
+"""
+components.html(logo_and_slogan_html, height=130)
+
+# ==========================================
+# 3. CHAT ROOM (Real-time, เสียง, รูปภาพ)
+# ==========================================
+st.markdown(f"<h3 style='color:{theme}; text-shadow: 0 0 10px {theme}; text-align:center;'>📡 ศูนย์สื่อสาร SYNAPSE</h3>", unsafe_allow_html=True)
+
 chat_html = f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
     body {{ background: transparent; color: #fff; font-family: 'Orbitron', sans-serif; }}
     #chat-box {{
-        background: rgba(0,0,0,0.95);
+        background: rgba(0,0,0,0.9);
         border: 2px solid {theme};
         border-radius: 15px;
-        height: 480px;
+        height: 400px;
         overflow-y: auto;
         padding: 20px;
-        box-shadow: 0 0 30px {theme}22;
+        box-shadow: inset 0 0 20px {theme}22, 0 0 10px {theme}44;
     }}
     .msg-bubble {{
-        padding: 12px 18px; border-radius: 10px; max-width: 85%; font-size: 14px; margin-bottom: 10px;
+        padding: 10px 15px; border-radius: 10px; max-width: 80%; font-size: 14px; margin-bottom: 10px;
+        border: 1px solid rgba(255,255,255,0.1);
     }}
     .me {{ background: {theme}22; border-right: 4px solid {theme}; align-self: flex-end; }}
     .others {{ background: #222; border-left: 4px solid #888; align-self: flex-start; }}
-    .notif-btn {{
-        background: #333; color: #fff; padding: 5px 15px; border-radius: 20px; font-size: 12px;
-    }}
-    .active-red {{
-        background: #FF0000 !important; box-shadow: 0 0 15px #FF0000; font-weight: bold;
+    .notif-active {{
+        background: #FF0000 !important;
+        box-shadow: 0 0 15px #FF0000 !important;
+        color: white !important;
     }}
 </style>
 
 <div id="chat-box">
-    <div style="display:flex; justify-content:space-between; margin-bottom:15px; border-bottom: 1px solid #333; padding-bottom: 5px;">
-        <span style="color:{theme}; font-size:12px;">🛰️ SYNAPSE_LINK_LIVE</span>
-        <span id="notif" class="notif-btn">0 NEW SIGNAL</span>
+    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+        <span style="color:{theme}; font-size:12px;">● SIGNAL_STABLE</span>
+        <span id="notif-btn" style="background:#444; padding:2px 10px; border-radius:10px; font-size:11px; transition: 0.3s;">0 NEW SIGNAL</span>
     </div>
     <div id="msgs" style="display:flex; flex-direction:column; gap:10px;"></div>
 </div>
@@ -95,17 +141,18 @@ chat_html = f"""
     const conf = {{ databaseURL: "{st.secrets['firebase_db_url']}" }};
     if(!firebase.apps.length) firebase.initializeApp(conf);
     const db = firebase.database();
-    let lastCnt = -1;
+    let lastUnread = -1;
     const sound = document.getElementById('beep');
 
-    // คลิกเพื่อปลดล็อกเสียง
+    // คลิกปลดล็อกเสียง
     document.addEventListener('click', () => {{
         sound.play().then(() => {{ sound.pause(); sound.currentTime = 0; }});
     }}, {{once: true}});
 
-    // แสดงข้อความ
-    db.ref('global_chat').limitToLast(20).on('child_added', (s) => {{
-        const d = s.val();
+    // แสดงแชต
+    db.ref('global_chat').limitToLast(20).on('child_added', (snap) => {{
+        const d = snap.val();
+        if(!d) return;
         const isMe = d.user === "{st.session_state.user}";
         const box = document.getElementById('msgs');
         const div = document.createElement('div');
@@ -115,34 +162,36 @@ chat_html = f"""
         let txt = d.text ? `<div>${{d.text}}</div>` : "";
         let img = d.img ? `<img src="data:image/png;base64,${{d.img}}" style="max-width:100%; border-radius:8px; margin-top:8px;">` : "";
         
-        div.innerHTML = `<div style="font-size:9px; color:#777; margin-bottom:4px;">${{d.user}}</div>` + txt + img;
+        div.innerHTML = `<div style="font-size:9px; color:#666; margin-bottom:4px;">[ ${{d.user}} ]</div>` + txt + img;
         box.appendChild(div);
         document.getElementById('chat-box').scrollTop = 999999;
     }});
 
-    // แจ้งเตือนสีแดง + เสียง
-    db.ref('chat_notifications/unread_count').on('value', (s) => {{
-        const c = s.val() || 0;
-        const n = document.getElementById('notif');
-        n.innerText = c + " NEW SIGNAL";
+    // แจ้งเตือนไฟแดงและเสียง
+    db.ref('chat_notifications/unread_count').on('value', (snap) => {{
+        const c = snap.val() || 0;
+        const btn = document.getElementById('notif-btn');
+        btn.innerText = c + " NEW SIGNAL";
+        
         if(c > 0) {{
-            n.classList.add('active-red');
-            if(lastCnt !== -1 && c > lastCnt) sound.play();
+            btn.classList.add('notif-active');
+            if(lastUnread !== -1 && c > lastUnread) sound.play().catch(() => {{}});
         }} else {{
-            n.classList.remove('active-red');
+            btn.classList.remove('notif-active');
         }}
-        lastCnt = c;
+        lastUnread = c;
     }});
 </script>
 """
+components.html(chat_html, height=450)
 
-components.html(chat_html, height=520)
-
-# --- 4. ส่วนควบคุมการส่ง (Python) ---
+# ==========================================
+# 4. SEND (Python)
+# ==========================================
 with st.container():
     c1, c2, c3 = st.columns([3, 1, 1])
     with c1:
-        msg_in = st.text_input("MSG", placeholder="ระบุสัญญาณ...", label_visibility="collapsed")
+        msg_in = st.text_input("MSG", placeholder="ส่งข้อความ...", label_visibility="collapsed")
     with c2:
         up_img = st.file_uploader("IMG", type=['png','jpg','jpeg'], label_visibility="collapsed")
     with c3:
@@ -155,11 +204,12 @@ with st.container():
                         p_load['img'] = base64.b64encode(up_img.read()).decode()
                 
                 db.reference('global_chat').push(p_load)
+                
                 # เพิ่มเลขแจ้งเตือน
-                cur = db.reference('chat_notifications/unread_count').get() or 0
-                db.reference('chat_notifications').set(cur + 1)
+                current = db.reference('chat_notifications/unread_count').get() or 0
+                db.reference('chat_notifications').set(current + 1)
                 st.rerun()
 
-if st.button("CLEAR NOTIFICATION"):
+if st.button("ล้างแจ้งเตือน"):
     db.reference('chat_notifications').set(0)
     st.rerun()
