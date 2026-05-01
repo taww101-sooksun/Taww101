@@ -2,205 +2,193 @@ import streamlit as st
 import os 
 import base64
 import math
-import time
 import pandas as pd
-import firebase_admin
-from firebase_admin import credentials, db
+from datetime import datetime, date, timedelta
 import streamlit.components.v1 as components
 import folium
 from streamlit_folium import st_folium
-from datetime import datetime, date, timedelta
 from streamlit_js_eval import get_geolocation 
 
 # ==========================================
-# 0. CONFIG & CLEAN UI (ลบทุกอย่างที่เป็น Streamlit)
+# 0. CONFIG & INVISIBLE UI
 # ==========================================
-st.set_page_config(page_title="SYNAPSE OS", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SYNAPSE OS V4", layout="wide", initial_sidebar_state="expanded")
 
-def apply_clean_ui():
+def apply_ui_logic():
     primary = st.session_state.get('theme_color', "#39FF14")
     bg = st.session_state.get('bg_color', "#000000")
-    txt = st.session_state.get('text_color', "#FFFFFF")
-    
     st.markdown(f"""
         <style>
-        /* ซ่อน Streamlit UI */
-        #MainMenu {{visibility: hidden;}}
-        footer {{visibility: hidden;}}
-        header {{visibility: hidden;}}
-        .stDeployButton {{display:none;}}
-        [data-testid="stHeader"] {{background: rgba(0,0,0,0);}}
-        
-        /* พื้นหลังและฟอนต์ */
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        .stApp {{
-            background: {bg} !important;
-            color: {txt} !important;
-            font-family: 'Orbitron', sans-serif;
-        }}
-        
-        /* สไตล์กรอบและนีออน */
-        .neon-border {{
-            border: 2px solid {primary};
-            border-radius: 15px;
+        #MainMenu, footer, header {{visibility: hidden;}}
+        .stApp {{ background: {bg}; color: white; font-family: 'Orbitron', sans-serif; }}
+        .neon-card {{
+            border: 1px solid {primary}55;
             padding: 20px;
-            box-shadow: 0 0 15px {primary}44;
+            border-radius: 15px;
+            background: rgba(0,0,0,0.4);
+            box-shadow: 0 0 15px {primary}22;
             margin-bottom: 20px;
         }}
-        
-        /* ปรับแต่ง Tabs */
-        .stTabs [data-baseweb="tab-list"] {{
-            gap: 10px;
-            background-color: rgba(0,0,0,0.5);
-            padding: 10px;
-            border-radius: 15px;
-            border: 1px solid {primary}33;
-        }}
-        .stTabs [data-baseweb="tab"] {{
-            color: {txt};
-            border-radius: 10px;
-            padding: 10px 20px;
-        }}
-        .stTabs [aria-selected="true"] {{
-            background-color: {primary}22 !important;
-            border-bottom: 3px solid {primary} !important;
-        }}
+        .stTabs [data-baseweb="tab-list"] {{ background: #0a0a0a; border-radius: 10px; border: 1px solid {primary}33; }}
+        .stTabs [data-baseweb="tab"] {{ color: #888; }}
+        .stTabs [aria-selected="true"] {{ color: {primary} !important; border-bottom: 2px solid {primary} !important; }}
         </style>
     """, unsafe_allow_html=True)
 
-def show_branding():
+def branding():
     if os.path.exists("logo1.png"):
-        st.image("logo1.png", width=100)
-    st.markdown(f"<h3 style='margin:0; color:{st.session_state.theme_color};'>SYNAPSE</h3>", unsafe_allow_html=True)
-    st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
+        st.sidebar.image("logo1.png", width=100)
+    st.sidebar.title("SYNAPSE")
+    st.sidebar.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
 # ==========================================
-# 1. CORE LOGIC (สูตรคำนวณจริง 1950-2026)
+# 1. LOGIC ENGINE (หัวใจของความจริง)
 # ==========================================
-def get_synapse_logic(dt):
-    if dt is None: return None
-    ref_date = date(1900, 1, 1) # จุดเริ่มต้นยุคดิจิทัลสากล
-    diff = (dt - ref_date).days
-    lunar_cycle = 29.530589 # คาบการโคจรเฉลี่ยของดวงจันทร์
-    pos = (diff - 0.5) % lunar_cycle
-    day_val = dt.weekday() + 1 # 1=จันทร์ ... 7=อาทิตย์ (ฐานแรงดึงดูดโลก)
-    
-    is_waxing = pos <= 14.765
-    m_num = int(pos) + 1 if is_waxing else int(pos - 14.765) + 1
+def calculate_logic(dt):
+    ref = date(1900, 1, 1)
+    diff = (dt - ref).days
+    lunar = (diff - 0.5) % 29.530589
+    day_val = dt.weekday() + 1
+    is_waxing = lunar <= 14.765
+    m_num = int(lunar) + 1 if is_waxing else int(lunar - 14.765) + 1
     
     if is_waxing:
-        # ใช้ทฤษฎี Vector (แรงผลัก) : ความสัมพันธ์เชิงมุมระหว่างโลกและดวงจันทร์
         res = math.sqrt((day_val**2) + (m_num**2))
-        formula = f"√({day_val}² + {m_num}²)"
-        explanation = "คำนวณจากแรงพีทาโกรัส (Vector) ระหว่างพลังงานประจำวันและแรงดึงดูดดวงจันทร์ช่วงขาขึ้น"
+        formula, tech_desc = f"√({day_val}² + {m_num}²)", "Vector Force (พลังงานผลักดัน)"
     else:
-        # ใช้ทฤษฎี Golden Ratio (สมดุล) : การลดทอนพลังงานตามสัดส่วนฟี (Phi)
         res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
-        formula = f"({day_val} × 1.618) / {m_num}"
-        explanation = "คำนวณจากสัดส่วนทองคำ (Phi 1.618) เพื่อหาจุดสมดุลของพลังงานในช่วงจันทรคติขาลง"
-
-    return {
-        "res": round(res, 4), "phase": f"{'ขึ้น' if is_waxing else 'แรม'} {m_num} ค่ำ",
-        "day_num": day_val, "formula": formula, "exp": explanation, "diff": diff
-    }
+        formula, tech_desc = f"({day_val} × 1.618) / {m_num}", "Golden Ratio (พลังงานสมดุล)"
+    return {"res": round(res, 4), "phase": f"{'ขึ้น' if is_waxing else 'แรม'} {m_num} ค่ำ", "formula": formula, "tech": tech_desc, "diff": diff}
 
 # ==========================================
-# 2. ROOMS
+# 2. ROOMS (MODULAR)
 # ==========================================
 
 def room_music():
-    show_branding()
-    m_tabs = st.tabs(["🎵 HOLOGRAPHIC PLAYER", "💿 MIXER DECK"])
+    st.markdown("### 🎧 MUSIC STATION")
+    st.info("💡 **คำอธิบาย:** ห้องนี้ใช้สำหรับการปรับจูนสภาวะจิตใจผ่านคลื่นความถี่ (Sound Frequency)")
+    t1, t2 = st.tabs(["🎵 HOLOGRAPHIC PLAYER", "💿 DECK B"])
     songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
     
-    with m_tabs[0]:
-        if not songs: st.warning("NO MP3 FOUND"); return
-        song = st.selectbox("CHOOSE SIGNAL", songs)
-        with open(song, "rb") as f:
-            st.audio(f.read(), format="audio/mp3")
-        st.markdown(f"<div class='neon-border'>ANALYZING: {song}</div>", unsafe_allow_html=True)
+    with t1:
+        if songs:
+            s = st.selectbox("เลือกสัญญาณเสียง (Signal Source)", songs)
+            with open(s, "rb") as f:
+                st.audio(f.read())
+            st.markdown(f"<div class='neon-card'>กำลังประมวลผล: {s} <br> <small>สถานะ: เข้ารหัสผ่านคลื่นความถี่ปลอดภัย</small></div>", unsafe_allow_html=True)
+        else:
+            st.error("ไม่พบไฟล์ .mp3 ในระบบ")
+    with t2:
+        st.write("โหมด Deck B กำลังรอการซิงค์ข้อมูลไฟล์ลำดับที่สอง...")
 
-    with m_tabs[1]:
-        st.write("DJ MIXER MODE (STANDBY)")
-
-def room_comms_gps():
-    show_branding()
-    c_tabs = st.tabs(["🌐 PUBLIC CHAT", "📞 PRIVATE", "🛰️ SATELLITE GPS"])
-    loc = get_geolocation()
+def room_comms():
+    st.markdown("### 💬 COMM CENTER & GPS")
+    st.info("💡 **คำอธิบาย:** ระบบระบุพิกัดตัวตนและช่องทางสื่อสารในเครือข่าย SYNAPSE")
+    t1, t2, t3 = st.tabs(["🌐 แชทรวม", "📞 ส่วนตัว", "🛰️ SATELLITE GPS"])
     
-    with c_tabs[2]:
+    with t3:
+        loc = get_geolocation()
         lat, lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.75, 100.5)
-        m = folium.Map(location=[lat, lon], zoom_start=15, tiles="CartoDB dark_matter")
-        folium.Marker([lat, lon], popup="CURRENT AGENT").add_to(m)
+        m = folium.Map(location=[lat, lon], zoom_start=15, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google")
+        folium.Marker([lat, lon], tooltip="ตำแหน่งของคุณ").add_to(m)
         st_folium(m, width="100%", height=400)
+        st.caption(f"พิกัดปัจจุบัน: {lat}, {lon} (อ้างอิงจากดาวเทียม)")
 
 def room_logic():
-    show_branding()
-    l_tabs = st.tabs(["🔍 DAILY DECODER", "⚖️ GAP ANALYZER", "🔮 365 TIMELINE"])
-    START, END = date(1950, 1, 1), date(2026, 12, 31)
-
-    with l_tabs[0]:
-        t_date = st.date_input("TARGET DATE", value=date.today(), min_value=START, max_value=END)
-        d = get_synapse_logic(t_date)
+    st.markdown("### 🧬 LOGIC CALCULATOR")
+    st.info("💡 **คำอธิบาย:** ถอดรหัสพิกัดชีวิตจากสถิติจันทรคติและเลขศาสตร์ความจริง (1950-2026)")
+    t1, t2, t3 = st.tabs(["🔍 ตรวจรหัสรายวัน", "⚖️ วิเคราะห์คู่ขนาน", "🔮 ไทม์ไลน์ 365 วัน"])
+    
+    with t1:
+        d_input = st.date_input("เลือกวันที่", value=date.today(), min_value=date(1950,1,1), max_value=date(2026,12,31))
+        res = calculate_logic(d_input)
         st.markdown(f"""
-            <div class="neon-border" style="text-align:center;">
-                <h1 style="color:{st.session_state.theme_color};">{d['res']}</h1>
-                <p>{d['phase']} | พิกัดสะสม: {d['diff']} วัน</p>
-                <hr style="border:0.5px solid {st.session_state.theme_color}33">
-                <p style="font-size:12px;"><b>ที่มาความจริง:</b> {d['exp']}</p>
-                <code>FORMULA: {d['formula']}</code>
+            <div class='neon-card' style='text-align:center;'>
+                <h1 style='color:{st.session_state.theme_color};'>{res['res']}</h1>
+                <p>{res['tech']}</p>
+                <code style='color:#888;'>ที่มา: {res['formula']}</code>
+                <p style='font-size:12px; margin-top:10px;'>คำอธิบาย: ตัวเลขนี้เกิดจากการนำค่าคงที่ของวัน (1-7) มาประมวลผลร่วมกับรอบการโคจรของดวงจันทร์ เพื่อหาค่าแรงดึงดูดที่มีผลต่อสภาวะจิตใจในวันนั้นๆ</p>
             </div>
         """, unsafe_allow_html=True)
 
-    with l_tabs[2]:
-        st.write("สแกนพิกัด 365 วัน (อดีต-อนาคต)")
-        # ส่วนนี้สามารถดึงตารางจากโค้ดเดิมมาใส่ได้เลย
+def room_sensor():
+    st.markdown("### 📟 SENSOR ARRAY")
+    st.info("💡 **คำอธิบาย:** ใช้เซนเซอร์จากมือถือของคุณเพื่อวัดค่าความจริงทางกายภาพ (เสียงและการสั่นสะเทือน)")
+    
+    sensor_js = f"""
+    <div style="background:#000; border:1px solid {st.session_state.theme_color}; border-radius:15px; padding:20px; color:white; font-family:monospace;">
+        <div id="status" style="color:{st.session_state.theme_color};">READY TO SCAN...</div>
+        <hr>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; text-align:center;">
+            <div><small>SONIC LEVEL</small><h2 id="vol">0</h2></div>
+            <div><small>MOTION (G)</small><h2 id="acc">1.00</h2></div>
+        </div>
+        <button id="btn" style="width:100%; padding:10px; background:none; border:1px solid {st.session_state.theme_color}; color:{st.session_state.theme_color}; cursor:pointer; margin-top:10px;">INITIALIZE SENSORS</button>
+    </div>
+    <script>
+        const btn = document.getElementById('btn');
+        btn.onclick = async () => {{
+            btn.style.display = 'none';
+            document.getElementById('status').innerText = 'SCANNING ACTIVE...';
+            
+            // Audio Sensor
+            const stream = await navigator.mediaDevices.getUserMedia({{audio:true}});
+            const aCtx = new AudioContext();
+            const analyser = aCtx.createAnalyser();
+            const source = aCtx.createMediaStreamSource(stream);
+            source.connect(analyser);
+            const data = new Uint8Array(analyser.frequencyBinCount);
+            
+            // Motion Sensor
+            if(window.DeviceMotionEvent && typeof DeviceMotionEvent.requestPermission === 'function') {{
+                await DeviceMotionEvent.requestPermission();
+            }}
+            
+            function update() {{
+                requestAnimationFrame(update);
+                analyser.getByteFrequencyData(data);
+                let sum = data.reduce((a,b)=>a+b, 0);
+                document.getElementById('vol').innerText = Math.round(sum/data.length);
+            }}
+            window.addEventListener('devicemotion', (e) => {{
+                let a = e.accelerationIncludingGravity;
+                let g = Math.sqrt(a.x**2 + a.y**2 + a.z**2) / 9.8;
+                document.getElementById('acc').innerText = g.toFixed(2);
+            }});
+            update();
+        }};
+    </script>
+    """
+    components.html(sensor_js, height=250)
+    st.warning("⚠️ โปรดอนุญาตให้แอปเข้าถึงไมโครโฟนและเซนเซอร์ความเคลื่อนไหว")
 
 def room_settings():
-    show_branding()
-    s_tabs = st.tabs(["👤 PROFILE", "🎨 THEME ENGINE", "🔐 SYSTEM"])
-    with s_tabs[1]:
-        st.session_state.theme_color = st.color_picker("NEON LIGHT (สีหลัก)", st.session_state.theme_color)
-        st.session_state.bg_color = st.color_picker("BACKGROUND (พื้นหลัง)", st.session_state.bg_color)
-        st.session_state.text_color = st.color_picker("TEXT COLOR (ตัวหนังสือ)", "#FFFFFF")
-        if st.button("UPDATE SYSTEM"): st.rerun()
+    st.markdown("### ⚙️ SYSTEM SETTINGS")
+    st.info("💡 **คำอธิบาย:** ปรับแต่งอินเตอร์เฟซให้เข้ากับตัวตนของคุณ (Agent Identity)")
+    c1, c2, c3 = st.columns(3)
+    st.session_state.theme_color = c1.color_picker("สีนีออนหลัก", st.session_state.theme_color)
+    st.session_state.bg_color = c2.color_picker("สีพื้นหลังระบบ", st.session_state.bg_color)
+    if st.button("บันทึกการตั้งค่า"): st.rerun()
 
 # ==========================================
-# 3. MAIN SYSTEM
+# 3. MAIN RUNNER
 # ==========================================
 def main():
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
-    if 'logged_in' not in st.session_state: st.session_state.logged_in = False
     
-    apply_clean_ui()
-
-    if not st.session_state.logged_in:
-        # หน้า Login (หน้าแรก)
-        _, col, _ = st.columns([1,2,1])
-        with col:
-            st.markdown("<br><br>", unsafe_allow_html=True)
-            show_branding()
-            with st.form("access_control"):
-                u = st.text_input("AGENT ID")
-                p = st.text_input("PASSWORD", type="password")
-                if st.form_submit_button("UNLOCK"):
-                    st.session_state.logged_in = True
-                    st.rerun()
-    else:
-        # เมนูหลักด้านข้าง
-        with st.sidebar:
-            show_branding()
-            st.write("---")
-            nav = st.radio("COMMAND CENTER", ["🎵 MUSIC", "💬 COMMS & GPS", "🧬 LOGIC", "⚙️ SETTINGS"])
-            if st.button("🚪 LOGOUT"):
-                st.session_state.logged_in = False
-                st.rerun()
-
-        if nav == "🎵 MUSIC": room_music()
-        elif nav == "💬 COMMS & GPS": room_comms_gps()
-        elif nav == "🧬 LOGIC": room_logic()
-        elif nav == "⚙️ SETTINGS": room_settings()
+    apply_ui_logic()
+    branding()
+    
+    # Sidebar Navigation
+    st.sidebar.markdown("---")
+    menu = st.sidebar.radio("COMMAND ROOM", ["🎧 MUSIC", "💬 COMMS", "🧬 LOGIC", "📟 SENSOR", "⚙️ SETTINGS"])
+    
+    if menu == "🎧 MUSIC": room_music()
+    elif menu == "💬 COMMS": room_comms()
+    elif menu == "🧬 LOGIC": room_logic()
+    elif menu == "📟 SENSOR": room_sensor()
+    elif menu == "⚙️ SETTINGS": room_settings()
 
 if __name__ == "__main__":
     main()
