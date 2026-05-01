@@ -128,8 +128,8 @@ def room_logic():
 def room_music():
 
 
-# สมมติค่าตัวแปรเบื้องต้น
-primary_neon = "#00FFCC"
+# สมมติค่าตัวแปรเบื้องต้น 
+    primary_neon = "#00FFCC"
 
 if "page" not in st.session_state:
     st.session_state.page = "1"
