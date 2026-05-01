@@ -69,82 +69,74 @@ with col1:
         if f_id not in fs:
             fs.append(f_id); my_ref.set(fs); st.rerun()
 
-with col2:
-    # JavaScript จัดการ Real-time Chat, เสียง และ รูปภาพ
-    chat_html = f"""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        .chat-font {{ font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }}
-    </style>
-    <div id="chat-box" style="background:#050505; border:1px solid {theme}66; border-radius:10px; padding:15px; height:450px; overflow-y:auto; display:flex; flex-direction:column; gap:15px;">
-        <div style="display:flex; justify-content:space-between; border-bottom:1px solid #222; padding-bottom:5px;">
-            <span style="color:{theme}; font-size:10px;">SYSTEM_ONLINE</span>
-            <span id="notif" style="color:#fff; background:#444; padding:2px 8px; border-radius:5px; font-size:10px;">0 NEW</span>
-        </div>
-        <div id="msgs" class="chat-font" style="display:flex; flex-direction:column; gap:10px;"></div>
-    </div>
-    <audio id="beep" src="data:audio/mp3;base64,{audio_data}" preload="auto"></audio>
-    
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script>
-        const conf = {{ databaseURL: "{st.secrets['firebase_db_url']}" }};
-        if(!firebase.apps.length) firebase.initializeApp(conf);
-        const db = firebase.database();
-        let lastC = -1;
+<script>
+    const conf = { databaseURL: "https://sooksun1-default-rtdb.firebaseio.com/" };
+    if(!firebase.apps.length) firebase.initializeApp(conf);
+    const db = firebase.database();
+    let lastC = -1;
+    const beep = document.getElementById('beep');
 
-        // โหลดข้อความและรูปภาพ
-        db.ref('global_chat').limitToLast(20).on('child_added', (s) => {{
-            const d = s.val();
-            const isMe = d.user === "{st.session_state.user}";
-            const div = document.createElement('div');
-            div.style.alignSelf = isMe ? 'flex-end' : 'flex-start';
-            
-            let content = d.text ? `<div style="background:${{isMe ? '{theme}11':'#111'}}; border:1px solid ${{isMe ? '{theme}':'#333'}}; padding:8px 12px; border-radius:8px; color:#fff; font-size:13px;">${{d.text}}</div>` : "";
-            if(d.img) content += `<img src="data:image/png;base64,${{d.img}}" style="max-width:200px; border-radius:8px; margin-top:5px; border:1px solid {theme}44;">`;
-            
-            div.innerHTML = `<div style="font-size:9px; color:#666; margin-bottom:2px; text-align:${{isMe?'right':'left'}};">${{d.user}}</div>` + content;
-            document.getElementById('msgs').appendChild(div);
-            document.getElementById('chat-box').scrollTop = 99999;
-        }});
+    // --- ระบบปลดล็อกเสียง (สำคัญมากสำหรับมือถือ) ---
+    function unlockAudio() {
+        beep.play().then(() => {
+            beep.pause();
+            beep.currentTime = 0;
+            console.log("🔊 ระบบเสียงพร้อมใช้งาน");
+            document.removeEventListener('click', unlockAudio);
+            document.removeEventListener('touchstart', unlockAudio);
+        }).catch(e => console.log("รอการสัมผัสหน้าจอเพื่อเปิดเสียง..."));
+    }
+    document.addEventListener('click', unlockAudio);
+    document.addEventListener('touchstart', unlockAudio);
 
-        // เสียงและไฟแดง
-        db.ref('chat_notifications/unread_count').on('value', (s) => {{
-            const c = s.val() || 0;
-            const n = document.getElementById('notif');
-            n.innerText = c + " NEW SIGNAL";
-            if(c > 0) {{
-                n.style.background = "#FF0000"; n.style.boxShadow = "0 0 10px #FF0000";
-                if(lastC !== -1 && c > lastC) document.getElementById('beep').play().catch(()=>{{}});
-            }} else {{ n.style.background = "#444"; n.style.boxShadow="none"; }}
-            lastC = c;
-        }});
+    // --- ระบบแจ้งเตือนสีแดงและเสียง ---
+    db.ref('chat_notifications/unread_count').on('value', (s) => {
+        const c = s.val() || 0;
+        const n = document.getElementById('notif');
+        n.innerText = c + " NEW SIGNAL";
         
-        // ปลดล็อคเสียงเมื่อคลิก
-        document.addEventListener('click', () => document.getElementById('beep').load());
-    </script>
-    """
-    components.html(chat_html, height=480)
+        if(c > 0) {
+            n.style.background = "#FF0000";
+            n.style.boxShadow = "0 0 15px #FF0000, 0 0 30px #FF0000"; // ไฟแดงนีออน
+            n.style.color = "#fff";
+            
+            if(lastC !== -1 && c > lastC) {
+                beep.currentTime = 0;
+                beep.play().catch(e => console.log("Browser บล็อกเสียง: กรุณาแตะหน้าจอ 1 ครั้ง"));
+            }
+        } else {
+            n.style.background = "#444";
+            n.style.boxShadow = "none";
+        }
+        lastC = c;
+    });
 
-    # --- ส่วนส่งข้อความ & รูปภาพ (Python) ---
-    with st.container():
-        c_text, c_img, c_btn = st.columns([3, 1, 1])
-        with c_text:
-            msg = st.text_input("MESSAGE", label_visibility="collapsed", placeholder="พิมพ์ข้อความที่นี่...")
-        with c_img:
-            img_file = st.file_uploader("IMG", type=['png','jpg','jpeg'], label_visibility="collapsed")
-        with c_btn:
-            if st.button("SEND ⚡", use_container_width=True):
-                payload = {'user': st.session_state.user, 'ts': datetime.now().isoformat()}
-                if msg: payload['text'] = msg
-                if img_file: payload['img'] = image_to_base64(img_file)
-                
-                if msg or img_file:
-                    db.reference('global_chat').push(payload)
-                    cnt = db.reference('chat_notifications/unread_count').get() or 0
-                    db.reference('chat_notifications').set(cnt + 1)
-                    st.rerun()
-
-if st.button("CLEAR NOTIF"):
-    db.reference('chat_notifications').set(0)
-    st.rerun()
+    // --- ดีไซน์ตัวหนังสือแชทแบบใหม่ (Modern & Clean) ---
+    db.ref('global_chat').limitToLast(20).on('child_added', (s) => {
+        const d = s.val();
+        const isMe = d.user === "{st.session_state.user}";
+        const div = document.createElement('div');
+        div.style.alignSelf = isMe ? 'flex-end' : 'flex-start';
+        div.style.maxWidth = '80%';
+        div.style.margin = '5px 0';
+        
+        // รูปแบบกล่องข้อความใหม่
+        let bubbleStyle = `
+            background: ${isMe ? 'rgba(57, 255, 20, 0.15)' : 'rgba(255, 255, 255, 0.05)'};
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: ${isMe ? '15px 15px 2px 15px' : '15px 15px 15px 2px'};
+            border: 1px solid ${isMe ? '#39FF14' : '#444'};
+            font-size: 14px;
+            line-height: 1.4;
+            box-shadow: ${isMe ? '0 0 10px rgba(57, 255, 20, 0.1)' : 'none'};
+        `;
+        
+        let content = d.text ? `<div style="${bubbleStyle}">${d.text}</div>` : "";
+        if(d.img) content += `<img src="data:image/png;base64,${d.img}" style="max-width:100%; border-radius:10px; margin-top:8px; border:1px solid #333;">`;
+        
+        div.innerHTML = `<div style="font-size:10px; color:#888; margin-bottom:3px; text-align:${isMe?'right':'left'};">[ ${d.user} ]</div>` + content;
+        document.getElementById('msgs').appendChild(div);
+        document.getElementById('chat-box').scrollTop = 999999;
+    });
+</script>
