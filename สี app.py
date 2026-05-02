@@ -1,247 +1,137 @@
 import streamlit as st
-import base64
+from datetime import date, timedelta
 
-# ==========================================
-# ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (กู้คืนสีสัน Neon ขั้นสุด)
-# ==========================================
+# --- 1. ฟังก์ชันดึงเลขฐาน (ห้ามเอาออก โชว์ที่มาความจริง) ---
+def get_step_by_step_data(dt):
+    if dt is None: return None
+    day_val = {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}[dt.weekday()]
+    day_name = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()]
+    date_val = dt.day
+    ref = date(1900, 1, 1)
+    diff = (dt - ref).days
+    lunar_pos = (diff - 0.5) % 29.530589
+    if lunar_pos <= 14.765:
+        moon_num = int(lunar_pos) + 1
+        l_logic = -7.5
+        l_type = f"ขึ้น {moon_num} ค่ำ"
+    else:
+        moon_num = int(lunar_pos - 14.765) + 1
+        l_logic = 7.5
+        l_type = f"แรม {moon_num} ค่ำ"
+    month_val = dt.month
+    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+    z_map = {0:9, 1:10, 2:11, 3:12, 4:1, 5:2, 6:3, 7:4, 8:5, 9:6, 10:7, 11:8}
+    zv = z_map[dt.year % 12]
+    z_name = z_names[dt.year % 12]
+    m, d = dt.month, dt.day
+    if (m == 5 and d >= 14) or (m == 6 and d <= 14): ev, en = 1, "ดิน"
+    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): ev, en = 2, "น้ำ"
+    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): ev, en = 4, "ไฟ"
+    else: ev, en = 3, "ลม"
+    return {
+        "day": day_val, "day_n": day_name, "date": date_val, "moon": moon_num, 
+        "l_logic": l_logic, "l_type": l_type, "month": month_val, "zv": zv, 
+        "zn": z_name, "ev": ev, "en": en, "year": dt.year
+    }
 
-st.set_page_config(page_title="Synapse Neon Mixer", layout="centered")
+def get_grade_info(val):
+    s_val = str(abs(val)).replace('.', '').lstrip('0')
+    digit = int(s_val[0]) if s_val else 0
+    if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
+    elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
+    else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
 
-def get_base64_image(image_path):
-    try:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-    except: return ""
+# --- 2. หน้าจอแอป ---
+st.set_page_config(page_title="SYNAPSE STEP-BY-STEP", layout="wide")
+st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
 
-logo_base64 = get_base64_image("logo1.png")
-logo_html_link = f"data:image/png;base64,{logo_base64}" if logo_base64 else ""
+tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล", "👥 วิเคราะห์คู่ขนาน"])
 
-st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    header {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    #MainMenu {{visibility: hidden;}}
-    .stApp {{ background-color: #000; }}
-
-    /* Logo ตรงกลางพร้อมแสง Neon หมุนสลับสี */
-    .block-container::before {{
-        content: "";
-        position: absolute;
-        top: 10px; left: 50%;
-        transform: translateX(-50%);
-        width: 100px; height: 100px;
-        background-image: url("{logo_html_link}");
-        background-size: contain;
-        background-repeat: no-repeat;
-        z-index: 999;
-        filter: drop-shadow(0 0 10px #ff00de);
-        animation: logo-glow 4s infinite alternate;
-    }}
-
-    @keyframes logo-glow {{
-        0% {{ filter: drop-shadow(0 0 10px #ff00de); transform: translateX(-50%) scale(1); }}
-        50% {{ filter: drop-shadow(0 0 25px #00f3ff); transform: translateX(-50%) scale(1.1); }}
-        100% {{ filter: drop-shadow(0 0 10px #ff8c00); transform: translateX(-50%) scale(1); }}
-    }}
-
-    .neon-title {{
-        font-family: 'Orbitron', sans-serif;
-        color: #fff;
-        text-align: center;
-        text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
-        font-size: 1.6rem;
-        margin-top: 110px;
-        letter-spacing: 3px;
-        animation: text-flicker 2s infinite;
-    }}
-    @keyframes text-flicker {{
-        0%, 100% {{ opacity: 1; }}
-        50% {{ opacity: 0.8; }}
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-
-st.markdown('<h1 class="neon-title">SYNAPSE NEON MIXER</h1>', unsafe_allow_html=True)
-
-# ==========================================
-# ส่วนที่ 2: HTML/JS - ระบบเล่นต่อเนื่อง + สีสันสะบัด
-# ==========================================
-
-html_code = """
-<!DOCTYPE html>
-<html>
-<head>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
-        .neon-card { border: 2px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
+# --- 👤 TAB 1: วิเคราะห์บุคคล ---
+with tab1:
+    u_birth = st.date_input("กรอกวันเกิดของคุณ", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="single")
+    if u_birth:
+        d = get_step_by_step_data(u_birth)
         
-        /* กราฟเสียงสีรุ้งสะบัด */
-        .visualizer-box { height: 150px; background: #050505; border-radius: 15px; border: 1px solid #222; }
+        st.markdown("### 🛠 กระดานแยกพิกัดตัวเลข")
+        st.write(f"1. วัน{d['day_n']}: `{d['day']}` | 2. วันที่: `{d['date']}` | 3. {d['l_type']}: `{d['moon']}`")
+        st.write(f"4. เดือน: `{d['month']}` | 5. ปี{d['zn']}: `{d['zv']}` | 6. ธาตุ{d['en']}: `{d['ev']}`")
         
-        .deck { padding: 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px; transition: 0.5s; }
-        .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; background: rgba(0,243,255,0.05); }
+        st.write("---")
+        base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
+        raw_code = (base_sum + d['l_logic']) * 1.618
+        days_alive = (date.today() - u_birth).days
+        final_val = (raw_code + days_alive) / 1.618
         
-        /* ปุ่มสไตล์ Cyberpunk */
-        .btn-mix { 
-            background: linear-gradient(45deg, #ff00de, #00f3ff);
-            color: white; font-weight: bold; padding: 12px; border-radius: 10px;
-            text-transform: uppercase; letter-spacing: 2px; transition: 0.3s;
-            box-shadow: 0 0 15px rgba(255,0,222,0.4);
-        }
-        .btn-mix:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(0,243,255,0.6); }
+        st.write(f"**ขั้นตอนที่ 1 (บวกฐาน):** `{d['day']}+{d['date']}+{d['moon']}+{d['month']}+{d['zv']}+{d['ev']} = {base_sum}`")
+        st.write(f"**ขั้นตอนที่ 2 (คูณ 1.618):** `({base_sum} + {d['l_logic']}) x 1.618 = {round(raw_code, 2)}`")
+        st.write(f"**ขั้นตอนที่ 3 (บวกวันชีวิต/หาร):** `({round(raw_code, 2)} + {days_alive}) / 1.618 = {round(final_val, 4)}`")
+
+        digit, grade, color = get_grade_info(final_val)
+        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid {color}; border-radius:15px; text-align:center;">
+            <h1 style="color:{color}; font-size:60px;">{round(final_val, 4)}</h1>
+            <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
+        </div>""", unsafe_allow_html=True)
+
+        # --- 🕒 สแกนไทม์ไลน์บุคคล ---
+        st.write("---")
+        st.subheader("🕒 รายงานการบรรจบของพิกัดบุคคล (730 วัน)")
+        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน", "🗓️ อนาคต 365 วัน"])
         
-        .progress-bar { height: 6px; background: #222; border-radius: 10px; overflow: hidden; }
-        .progress-inner { height: 100%; width: 0%; background: linear-gradient(90deg, #ff00de, #ff8c00); }
-    </style>
-</head>
-<body>
-    <div class="max-w-md mx-auto p-4 neon-card rounded-3xl">
-        <canvas id="scope" class="visualizer-box w-full mb-4"></canvas>
+        with t_past:
+            past_results = []
+            for i in range(-365, 0):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    past_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(past_results[:10] if past_results else "ไม่พบข้อมูล")
 
-        <div id="cardA" class="deck">
-            <div class="flex justify-between text-[10px] mb-2">
-                <span id="labelA" class="text-pink-500 font-bold">DECK A</span>
-                <span id="timeA" class="font-mono">00:00</span>
-            </div>
-            <input type="file" id="inA" class="hidden" onchange="handleFile(this.files[0], 'A')">
-            <button onclick="document.getElementById('inA').click()" class="text-[10px] border border-gray-600 px-3 py-1 rounded">LOAD A</button>
-            <div id="nameA" class="text-[11px] mt-1 truncate text-gray-400">No Song</div>
-            <div class="progress-bar mt-2"><div id="barA" class="progress-inner"></div></div>
-        </div>
+        with t_future:
+            future_results = []
+            for i in range(1, 366):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    future_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(future_results[:10] if future_results else "ไม่พบข้อมูล")
 
-        <div id="cardB" class="deck">
-            <div class="flex justify-between text-[10px] mb-2">
-                <span id="labelB" class="text-cyan-400 font-bold">DECK B</span>
-                <span id="timeB" class="font-mono">00:00</span>
-            </div>
-            <input type="file" id="inB" class="hidden" onchange="handleFile(this.files[0], 'B')">
-            <button onclick="document.getElementById('inB').click()" class="text-[10px] border border-gray-600 px-3 py-1 rounded">LOAD B</button>
-            <div id="nameB" class="text-[11px] mt-1 truncate text-gray-400">No Song</div>
-            <div class="progress-bar mt-2"><div id="barB" class="progress-inner" style="background: #00f3ff;"></div></div>
-        </div>
+# --- 👥 TAB 2: วิเคราะห์คู่ขนาน ---
+with tab2:
+    col1, col2 = st.columns(2)
+    with col1: birth_a = st.date_input("วันเกิดคนที่ 1", value=None, key="ba", min_value=date(1960,1,1))
+    with col2: birth_b = st.date_input("วันเกิดคนที่ 2", value=None, key="bb", min_value=date(1960,1,1))
+    
+    if birth_a and birth_b:
+        d1 = get_step_by_step_data(birth_a)
+        d2 = get_step_by_step_data(birth_b)
+        r1 = ((d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']) + d1['l_logic']) * 1.618
+        r2 = ((d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']) + d2['l_logic']) * 1.618
+        
+        resonance = (r1 + r2) / 1.618
+        digit_p, grade_p, color_p = get_grade_info(resonance)
+        
+        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
+        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid gold; border-radius:15px; text-align:center;">
+            <h1 style="color:white; font-size:60px;">{round(resonance, 4)}</h1>
+            <h2 style="color:{color_p};">เลขหน้าคือ {digit_p} : {grade_p}</h2>
+        </div>""", unsafe_allow_html=True)
 
-        <button onclick="startMix()" class="btn-mix w-full mt-2">🔥 START AUTO-MIX</button>
-        <div id="status" class="text-[10px] text-center mt-3 text-gray-500 uppercase tracking-widest">System Ready</div>
-    </div>
-
-    <script>
-        let ctx, analyser, songA, songB, gainA, gainB, sourceA, sourceB;
-        let active = 'A', isPlaying = false, data;
-
-        function init() {
-            if (!ctx) {
-                ctx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = ctx.createAnalyser();
-                analyser.fftSize = 256;
-                data = new Uint8Array(analyser.frequencyBinCount);
-                render();
-            }
-        }
-
-        async function handleFile(file, side) {
-            init();
-            document.getElementById('name'+side).innerText = "Loading...";
-            const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
-            if(side === 'A') songA = buffer; else songB = buffer;
-            document.getElementById('name'+side).innerText = file.name;
-        }
-
-        function render() {
-            requestAnimationFrame(render);
-            if(!analyser) return;
-            analyser.getByteFrequencyData(data);
-            const can = document.getElementById('scope');
-            const c = can.getContext('2d');
-            c.clearRect(0,0,can.width,can.height);
-            
-            let bw = (can.width / data.length) * 2.5;
-            let x = 0;
-            for(let i=0; i<data.length; i++) {
-                let h = (data[i]/255) * can.height;
-                let hue = (i * 3) + (Date.now() / 50) % 360;
-                c.fillStyle = `hsl(${hue}, 100%, 50%)`;
-                c.fillRect(x, can.height - h, bw - 1, h);
-                x += bw;
-            }
-            updateEngine();
-        }
-
-        function startMix() {
-            if(!songA || !songB) return alert("อาจารย์ครับ โหลดเพลงให้ครบ A/B ก่อน!");
-            if(isPlaying) return;
-            
-            sourceA = ctx.createBufferSource(); sourceA.buffer = songA;
-            gainA = ctx.createGain(); 
-            sourceA.connect(gainA).connect(analyser).connect(ctx.destination);
-            
-            sourceB = ctx.createBufferSource(); sourceB.buffer = songB;
-            gainB = ctx.createGain(); gainB.gain.value = 0;
-            sourceB.connect(gainB).connect(analyser).connect(ctx.destination);
-            
-            sourceA.loop = true; sourceB.loop = true;
-            sourceA.start(0); sourceB.start(0);
-            isPlaying = true;
-            document.getElementById('status').innerText = "Playing: Deck A";
-            document.getElementById('cardA').classList.add('deck-active');
-        }
-
-        function updateEngine() {
-            if(!isPlaying) return;
-            let now = ctx.currentTime;
-            
-            // ระบบเช็กเวลาและ Auto-Crossfade เมื่อเพลงใกล้จบ (สมมติเล่น Loop)
-            // ในที่นี้ใช้การอัปเดต Progress Bar และ UI
-            updateUI('A', songA, gainA);
-            updateUI('B', songB, gainB);
-        }
-
-        function updateUI(s, buffer, gain) {
-            let bar = document.getElementById('bar'+s);
-            let time = document.getElementById('time'+s);
-            // จำลองการเดินของเวลาใน Loop
-            let p = (ctx.currentTime % buffer.duration) / buffer.duration;
-            bar.style.width = (p * 100) + "%";
-            
-            let rem = buffer.duration - (ctx.currentTime % buffer.duration);
-            let m = Math.floor(rem/60), sec = Math.floor(rem%60);
-            time.innerText = (m<10?'0':'')+m+":"+(sec<10?'0':'')+sec;
-
-            // AUTO CROSSFADE LOGIC: เมื่อเหลือ 5 วินาทีสุดท้าย
-            if(active === s && rem < 5) {
-                crossfade();
-            }
-        }
-
-        function crossfade() {
-            let next = (active === 'A' ? 'B' : 'A');
-            let now = ctx.currentTime;
-            let dur = 4; // วินาทีในการ Fade
-            
-            if(active === 'A') {
-                gainA.gain.linearRampToValueAtTime(0, now + dur);
-                gainB.gain.linearRampToValueAtTime(1, now + dur);
-                document.getElementById('cardA').classList.remove('deck-active');
-                document.getElementById('cardB').classList.add('deck-active');
-            } else {
-                gainB.gain.linearRampToValueAtTime(0, now + dur);
-                gainA.gain.linearRampToValueAtTime(1, now + dur);
-                document.getElementById('cardB').classList.remove('deck-active');
-                document.getElementById('cardA').classList.add('deck-active');
-            }
-            active = next;
-            document.getElementById('status').innerText = "Auto-Mixing to: Deck " + active;
-        }
-    </script>
-</body>
-</html>
-"""
-
-st.components.v1.html(html_code, height=650)
-
-st.markdown("""
-<div style='text-align: center; color: #555; font-size: 12px; font-family: "Orbitron"; letter-spacing: 2px;'>
-    อยู่นิ่งๆ ไม่เจ็บตัว | AUTO-MIX ENGINE v5.0 | © 2026
-</div>
-""", unsafe_allow_html=True)
+        # --- 🕒 สแกนไทม์ไลน์คู่ขนาน ---
+        st.write("---")
+        st.subheader("⏳ จุด Sync คู่ขนานในอนาคต (365 วัน)")
+        p_future = []
+        for i in range(1, 366):
+            target = date.today() + timedelta(days=i)
+            td = get_step_by_step_data(target)
+            t_code = ((td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']) + td['l_logic']) * 1.618
+            t_digit, _, _ = get_grade_info(t_code)
+            if t_digit == digit_p:
+                p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
+        st.table(p_future[:10] if p_future else "ไม่พบข้อมูล")
