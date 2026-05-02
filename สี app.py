@@ -17,6 +17,16 @@ def hide_st_ui():
             header {visibility: hidden;}
             .stApp { top: -60px; }
             body { background-color: #000; color: #fff; }
+            /* ปรับแต่ง Tab ให้เข้ากับธีม */
+            .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+            .stTabs [data-baseweb="tab"] {
+                background-color: #111; border: 1px solid #333;
+                border-radius: 5px; padding: 10px 20px; color: #888;
+            }
+            .stTabs [aria-selected="true"] {
+                background-color: #39FF1422 !important;
+                border-color: #39FF14 !important; color: #39FF14 !important;
+            }
         </style>
     """, unsafe_allow_html=True)
 
@@ -55,15 +65,16 @@ header_html = f"""
     }}
     @keyframes wink {{
         0%, 100% {{ opacity: 1; color: {theme_color}; text-shadow: 0 0 10px {theme_color}; }}
-        50% {{ opacity: 0.3; color: #fff; }}
+        50% {{ opacity: 0.2; color: #fff; }}
     }}
-    .logo-img {{ width: 100px; animation: dance 0.6s infinite; }}
+    .logo-container {{ display: flex; align-items: center; justify-content: center; padding: 15px 0; }}
+    .logo-img {{ width: 100px; height: 100px; animation: dance 0.6s infinite; object-fit: contain; }}
     .slogan-txt {{ 
-        font-family: sans-serif; font-weight: bold; font-size: 18px; 
-        margin-left: 15px; animation: wink 1.2s infinite; 
+        font-family: sans-serif; font-weight: bold; font-size: 20px; 
+        margin-left: 15px; animation: wink 1.5s infinite; 
     }}
 </style>
-<div style="display: flex; align-items: center; justify-content: center; padding: 20px 0;">
+<div class="logo-container">
     <img src="data:image/png;base64,{logo_base64}" class="logo-img">
     <span class="slogan-txt">SYNAPSE อยู่นิ้งๆไม่เจ็บตัว</span>
 </div>
@@ -72,58 +83,61 @@ components.html(header_html, height=140)
 
 # --- 4. LOGIN / REGISTER PAGE ---
 if not st.session_state.logged_in:
-    st.markdown(f"<h3 style='text-align:center; color:{theme_color};'>IDENTITY VERIFICATION</h3>", unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["🔑 LOGIN", "📝 REGISTER"])
+    st.markdown(f"<h3 style='text-align:center; color:{theme_color};'>ยืนยันตัวตน</h3>", unsafe_allow_html=True)
+    tab1, tab2 = st.tabs(["🔑 เข้าสู่ระบบ", "📝 ลงทะเบียน"])
     
     with tab1:
         with st.form("login_form"):
-            u_id = st.text_input("AGENT ID")
-            u_pw = st.text_input("PASSWORD", type="password")
-            if st.form_submit_button("ACCESS ⚡", use_container_width=True):
+            u_id = st.text_input("ชื่อผู้ใช้ (AGENT ID)")
+            u_pw = st.text_input("รหัสผ่าน", type="password")
+            if st.form_submit_button("เข้าสู่ระบบ ⚡", use_container_width=True):
                 user_data = db.reference(f'users/{u_id}').get()
                 if user_data and user_data.get('password') == u_pw:
                     st.session_state.logged_in = True
                     st.session_state.user = u_id
                     st.rerun()
                 else:
-                    st.error("รหัสไม่ถูกต้อง หรือไม่มี Agent ID นี้")
+                    st.error("ข้อมูลไม่ถูกต้อง")
     
     with tab2:
         with st.form("reg_form"):
-            new_u = st.text_input("NEW AGENT ID")
-            new_p = st.text_input("NEW PASSWORD", type="password")
-            if st.form_submit_button("CREATE IDENTITY"):
+            new_u = st.text_input("ตั้งชื่อผู้ใช้ใหม่")
+            new_p = st.text_input("ตั้งรหัสผ่าน", type="password")
+            if st.form_submit_button("สร้างบัญชี"):
                 if new_u and new_p:
                     db.reference(f'users/{new_u}').set({'password': new_p, 'created_at': datetime.now().isoformat()})
-                    st.success("ลงทะเบียนสำเร็จ! กรุณาไปที่หน้า Login")
+                    st.success("ลงทะเบียนสำเร็จ! กรุณาไปที่หน้าเข้าสู่ระบบ")
     st.stop()
 
-# --- 5. CHAT MAIN INTERFACE ---
-st.markdown(f"<div style='text-align:right; color:{theme_color}; font-size:12px;'>AGENT: {st.session_state.user}</div>", unsafe_allow_html=True)
+# --- 5. CHAT INTERFACE ---
+st.markdown(f"<div style='text-align:right; color:{theme_color}; font-size:12px; padding-right:10px;'>AGENT: {st.session_state.user}</div>", unsafe_allow_html=True)
 
 chat_display_html = f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
     #chat-screen {{
-        background: rgba(0,0,0,0.9); border: 2px solid {theme_color}; border-radius: 10px;
-        height: 450px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column;
+        background: rgba(0,0,0,0.95); border: 2px solid {theme_color}; border-radius: 12px;
+        height: 480px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column;
+        box-shadow: inset 0 0 15px {theme_color}33;
     }}
-    .bubble {{ padding: 10px; border-radius: 8px; margin: 5px 0; max-width: 80%; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 13px; }}
-    .me {{ background: {theme_color}22; border-right: 3px solid {theme_color}; align-self: flex-end; }}
-    .others {{ background: #222; border-left: 3px solid #777; align-self: flex-start; }}
-    .notif-btn {{ background: #444; color: white; padding: 3px 10px; border-radius: 5px; font-size: 11px; }}
-    .alert-red {{ background: #F00 !important; box-shadow: 0 0 15px #F00; }}
+    .bubble {{ padding: 10px 15px; border-radius: 10px; margin: 8px 0; max-width: 85%; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 14px; line-height: 1.4; }}
+    .me {{ background: {theme_color}22; border-right: 4px solid {theme_color}; align-self: flex-end; }}
+    .others {{ background: #222; border-left: 4px solid #777; align-self: flex-start; }}
+    .notif-box {{ background: #333; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; transition: 0.3s; }}
+    .alert-red {{ background: #F00 !important; box-shadow: 0 0 15px #F00; font-weight: bold; }}
 </style>
 
 <div id="chat-screen">
-    <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-        <span style="color:{theme_color}; font-size:10px;">SYSTEM_ACTIVE</span>
-        <span id="notif-box" class="notif-btn">0 NEW</span>
+    <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom: 1px solid #333; padding-bottom: 5px;">
+        <span style="color:{theme_color}; font-size:10px; letter-spacing: 2px;">📡 SYSTEM_ACTIVE</span>
+        <span id="notif-box" class="notif-box">0 NEW SIGNAL</span>
     </div>
     <div id="msg-area" style="display:flex; flex-direction:column;"></div>
 </div>
 
-<audio id="notif-sound" src="data:audio/mp3;base64,{audio_data}" preload="auto"></audio>
+<audio id="notif-sound" preload="auto">
+    <source src="data:audio/mp3;base64,{audio_data}" type="audio/mp3">
+</audio>
 
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
@@ -131,74 +145,84 @@ chat_display_html = f"""
     const fb_conf = {{ databaseURL: "{st.secrets['firebase_db_url']}" }};
     if(!firebase.apps.length) firebase.initializeApp(fb_conf);
     const database = firebase.database();
-    let lastUnreadCount = -1;
-    const beepSound = document.getElementById('notif-sound');
+    let lastCount = -1;
+    const beep = document.getElementById('notif-sound');
 
-    // ปลดล็อกเสียงเมื่อคลิก
-    document.addEventListener('click', () => {{
-        beepSound.play().then(() => {{ beepSound.pause(); beepSound.currentTime = 0; }});
-    }}, {{once: true}});
+    // บังคับปลดล็อกเสียง
+    function unlock() {{
+        beep.play().then(() => {{ beep.pause(); beep.currentTime = 0; }});
+        window.removeEventListener('click', unlock);
+        window.removeEventListener('touchstart', unlock);
+    }}
+    window.addEventListener('click', unlock);
+    window.addEventListener('touchstart', unlock);
 
-    // แสดงข้อความแชท
-    database.ref('global_chat').limitToLast(20).on('child_added', (snap) => {{
+    // ดึงแชท
+    database.ref('global_chat').limitToLast(25).on('child_added', (snap) => {{
         const msg = snap.val();
-        const isMe = msg.user === "{st.session_state.user}";
         const area = document.getElementById('msg-area');
         const div = document.createElement('div');
+        const isMe = msg.user === "{st.session_state.user}";
         div.className = "bubble " + (isMe ? "me" : "others");
+        div.style.alignSelf = isMe ? 'flex-end' : 'flex-start';
         
-        let content = `<div style="font-size:9px; color:#999;">${{msg.user}}</div>`;
-        if(msg.text) content += `<div>${{msg.text}}</div>`;
-        if(msg.img) content += `<img src="data:image/png;base64,${{msg.img}}" style="max-width:100%; border-radius:5px; margin-top:5px;">`;
+        let html = `<div style="font-size:10px; color:#777; margin-bottom:5px;">${{msg.user}}</div>`;
+        if(msg.text) html += `<div>${{msg.text}}</div>`;
+        if(msg.img) html += `<img src="data:image/png;base64,${{msg.img}}" style="max-width:100%; border-radius:8px; margin-top:8px; border: 1px solid #444;">`;
         
-        div.innerHTML = content;
+        div.innerHTML = html;
         area.appendChild(div);
         document.getElementById('chat-screen').scrollTop = 999999;
     }});
 
-    // แจ้งเตือนไฟแดงและเสียง
+    // แจ้งเตือนสีแดง + เสียง
     database.ref('chat_notifications/unread_count').on('value', (snap) => {{
         const val = snap.val() || 0;
         const box = document.getElementById('notif-box');
         box.innerText = val + " NEW SIGNAL";
         if(val > 0) {{
             box.classList.add('alert-red');
-            if(lastUnreadCount !== -1 && val > lastUnreadCount) beepSound.play();
+            if(lastCount !== -1 && val > lastCount) {{
+                beep.currentTime = 0;
+                beep.play().catch(() => {{}});
+            }}
         }} else {{
             box.classList.remove('alert-red');
         }}
-        lastUnreadCount = val;
+        lastCount = val;
     }});
 </script>
 """
-components.html(chat_display_html, height=500)
+components.html(chat_display_html, height=520)
 
-# --- 6. MESSAGE CONTROLS ---
+# --- 6. CONTROLS ---
 with st.container():
     c1, c2, c3 = st.columns([3, 1, 1])
     with c1:
-        m_txt = st.text_input("MESSAGE", placeholder="ส่งข้อความ...", label_visibility="collapsed")
+        m_txt = st.text_input("MESSAGE", placeholder="พิมพ์ข้อความ...", label_visibility="collapsed")
     with c2:
-        m_img = st.file_uploader("IMG", type=['png','jpg','jpeg'], label_visibility="collapsed")
+        m_img = st.file_uploader("IMAGE", type=['png','jpg','jpeg'], label_visibility="collapsed")
     with c3:
-        if st.button("SEND ⚡", use_container_width=True):
+        if st.button("ส่งสัญญาณ ⚡", use_container_width=True):
             if m_txt or m_img:
-                payload = {'user': st.session_state.user, 'ts': datetime.now().isoformat()}
-                if m_txt: payload['text'] = m_txt
-                if m_img: payload['img'] = base64.b64encode(m_img.read()).decode()
+                p_load = {'user': st.session_state.user, 'ts': datetime.now().isoformat()}
+                if m_txt: p_load['text'] = m_txt
+                if m_img: p_load['img'] = base64.b64encode(m_img.read()).decode()
+                db.reference('global_chat').push(p_load)
                 
-                db.reference('global_chat').push(payload)
-                
-                # อัปเดตตัวเลขแจ้งเตือน (ไฟแดงจะขึ้นที่เครื่องคนอื่น)
-                cur_unread = db.reference('chat_notifications/unread_count').get() or 0
-                db.reference('chat_notifications').set(cur_unread + 1)
+                # เพิ่มเลขแจ้งเตือน (เพื่อให้เครื่องเพื่อนดัง)
+                cur = db.reference('chat_notifications/unread_count').get() or 0
+                db.reference('chat_notifications').set({'unread_count': cur + 1})
                 st.rerun()
 
-if st.button("ล้างการแจ้งเตือน"):
-    db.reference('chat_notifications').set(0)
-    st.rerun()
-
-if st.button("LOGOUT"):
-    st.session_state.logged_in = False
-    st.session_state.user = None
-    st.rerun()
+st.divider()
+col_act1, col_act2 = st.columns(2)
+with col_act1:
+    if st.button("ล้างการแจ้งเตือน (RESET)", use_container_width=True):
+        db.reference('chat_notifications').set({'unread_count': 0})
+        st.rerun()
+with col_act2:
+    if st.button("ออกจากระบบ (LOGOUT)", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.user = None
+        st.rerun()
