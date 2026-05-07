@@ -91,7 +91,7 @@ if music_files:
                 <canvas id="canvas" class="visualizer"></canvas>
             </div>
             
-            <div class="mt-2 text-center text-[10px] text-gray-500 uppercase tracking-tighter">
+            <div class="mt-2 text-center text-[10px] text-gray-300 uppercase tracking-tighter">
                 Audio Engine: {current_song}
             </div>
             
