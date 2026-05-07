@@ -31,7 +31,7 @@ st.markdown(f"""
         width: 150px; height: 150px;
         background-image: url("{logo_html_link}");
         background-size: contain; background-repeat: no-repeat;
-        filter: drop-shadow(0 0 5px #00f3ff);
+        filter: drop-shadow(0 0 30px #00f3ff);
         animation: pulse 2s infinite ease-in-out;
     }}
     @keyframes pulse {{
