@@ -108,7 +108,7 @@ st.markdown(f"""
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">SYNAPSE อยู่นิ้งๆไม่เจ็บตัว</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">อยู่นิ้งๆไม่เจ็บตัว</h1>', unsafe_allow_html=True)
 
 # ==========================================
 # ส่วนที่ 2: HTML/JS - ปรับสีสันให้หลากสี (Red/Blue/Green/White)
@@ -127,7 +127,7 @@ html_code = """
             border-image: linear-gradient(45deg, #ff0000, #00ff00, #0000ff, #ffffff) 1;
             background: rgba(0,0,0,0.9); 
             box-shadow: 0 0 30px rgba(255,255,255,0.2);
-            animation: border-rotate 5s linear infinite;
+            animation: border-rotate 10s linear infinite;
         }
 
         @keyframes border-rotate {
