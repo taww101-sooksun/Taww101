@@ -44,7 +44,7 @@ st.markdown(f"""
         z-index: 1000;
         border-top: 2px solid #ff00de;
         border-bottom: 2px solid #0FFF50;
-        text-shadow: 0 0 10px #00f3ff;
+        text-shadow: 0 0 10px #0FFF50;
     }}
     .top-m {{ top: 0; }}
     .bottom-m {{ bottom: 0; }}
@@ -165,7 +165,7 @@ html_code = """
             <input type="file" id="inB" class="hidden" onchange="handleFile(this.files[0], 'B')">
             <button onclick="document.getElementById('inB').click()" class="bg-cyan-600 text-[10px] px-4 py-1">LOAD FILE</button>
             <div id="nameB" class="text-[10px] mt-2 truncate text-pink-300">WAITING...</div>
-            <div class="h-2 bg-gray-900 mt-2"><div id="barB" class="h-full bg-cyan-400 shadow-[0_0_10px_#00f3ff]"></div></div>
+            <div class="h-2 bg-gray-900 mt-2"><div id="barB" class="h-full bg-cyan-400 shadow-[0_0_10px_#0FFF50]"></div></div>
         </div>
 
         <button onclick="startMix()" class="btn-mix w-full mt-4">INITIALIZE SYSTEM</button>
@@ -179,7 +179,7 @@ html_code = """
             if (!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = ctx.createAnalyser();
-                analyser.fftSize = 512; // ปรับให้แท่งใหญ่และลกขึ้น
+                analyser.fftSize = 256; // ปรับให้แท่งใหญ่และลกขึ้น
                 data = new Uint8Array(analyser.frequencyBinCount);
                 render();
             }
@@ -274,7 +274,7 @@ html_code = """
 </html>
 """
 
-st.components.v1.html(html_code, height=650)
+st.components.v1.html(html_code, height=300)
 
 st.markdown("""
     <div class="marquee-container bottom-m">
