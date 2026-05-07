@@ -93,7 +93,7 @@ st.markdown(f"""
         margin-top: 160px; /* เพิ่มระยะห่างลงมา */
         margin-bottom: 20px;
         letter-spacing: 5px;
-        animation: glitch-title 1s infinite;
+        animation: glitch-title 3s infinite;
     }}
 
     @keyframes glitch-title {{
@@ -108,7 +108,7 @@ st.markdown(f"""
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">อยู่นิ้งๆไม่เจ็บตัว</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">SYNAPSE</h1>', unsafe_allow_html=True)
 
 # ==========================================
 # ส่วนที่ 2: HTML/JS - ปรับสีสันให้หลากสี (Red/Blue/Green/White)
