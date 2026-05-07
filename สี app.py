@@ -71,7 +71,7 @@ st.markdown(f"""
         background-size: contain;
         background-repeat: no-repeat;
         z-index: 99;
-        animation: extreme-glow 10s infinite alternate;
+        animation: extreme-glow 2s infinite alternate;
     }}
 
     @keyframes extreme-glow {{
@@ -87,7 +87,7 @@ st.markdown(f"""
         font-size: 2rem;
         margin-top: 150px;
         letter-spacing: 5px;
-        animation: flicker 0.5s infinite;
+        animation: flicker 0.10s infinite;
     }}
     
     @keyframes flicker {{
