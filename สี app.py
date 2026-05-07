@@ -33,7 +33,7 @@ st.markdown(f"""
     /* จัดการโลโก้ให้เล็กลง */
     .logo-container {{ display: flex; justify-content: center; margin-top: -30px; }}
     .neon-logo {{
-        width: 80px; height: 80px;
+        width: 150px; height: 150px;
         background-image: url("{logo_data}");
         background-size: contain; background-repeat: no-repeat;
         filter: drop-shadow(0 0 8px #00f3ff);
@@ -47,7 +47,7 @@ st.markdown(f"""
     /* ตัวหนังสือวิ่งแบบเนียนๆ */
     .marquee-box {{
         width: 100%; overflow: hidden; background: rgba(255,255,255,0.05);
-        margin: 5px 0; border-y: 1px solid rgba(0,243,255,0.3);
+        margin: 5px 0; border-y: 4px solid rgba(0,243,255,0.3);
     }}
     .marquee-text {{
         display: inline-block; white-space: nowrap; font-family: 'Prompt';
