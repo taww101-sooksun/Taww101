@@ -43,7 +43,7 @@ st.markdown(f"""
         overflow: hidden;
         z-index: 1000;
         border-top: 2px solid #ff00de;
-        border-bottom: 2px solid #00f3ff;
+        border-bottom: 2px solid #0FFF50;
         text-shadow: 0 0 10px #00f3ff;
     }}
     .top-m {{ top: 0; }}
@@ -179,7 +179,7 @@ html_code = """
             if (!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = ctx.createAnalyser();
-                analyser.fftSize = 128; // ปรับให้แท่งใหญ่และลกขึ้น
+                analyser.fftSize = 512; // ปรับให้แท่งใหญ่และลกขึ้น
                 data = new Uint8Array(analyser.frequencyBinCount);
                 render();
             }
