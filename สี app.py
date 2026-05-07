@@ -52,7 +52,7 @@ st.markdown(f"""
     .marquee-text {{
         display: inline-block;
         padding-left: 100%;
-        animation: marquee 12s linear infinite, rainbow-text 3s infinite;
+        animation: marquee 30s linear infinite, rainbow-text 3s infinite;
         font-weight: 900;
     }}
     
