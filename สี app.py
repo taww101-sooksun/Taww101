@@ -2,10 +2,10 @@ import streamlit as st
 import base64
 
 # ==========================================
-# ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (เพิ่มความรกและสีสันระดับ Ultra)
+# ส่วนที่ 1: UI & Multicolor Neon CSS
 # ==========================================
 
-st.set_page_config(page_title="Synapse Neon Mixer - Chaos Edition", layout="centered")
+st.set_page_config(page_title="Synapse RGB Chaos", layout="centered")
 
 def get_base64_image(image_path):
     try:
@@ -24,27 +24,27 @@ st.markdown(f"""
     footer {{visibility: hidden;}}
     #MainMenu {{visibility: hidden;}}
     
-    /* พื้นหลังแบบ Scanlines ให้ดูรกๆ แบบจอเก่า */
     .stApp {{ 
-        background: radial-gradient(circle, #1a0033 0%, #000000 100%);
-        background-image: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+        background: #000;
+        background-image: 
+            linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(255, 0, 0, 0.05) 50%), 
+            linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.03), rgba(0, 0, 255, 0.03));
         background-size: 100% 4px, 3px 100%;
     }}
 
-    /* ตัวหนังสือวิ่งบน-ล่าง */
+    /* ตัวหนังสือวิ่งแบบสายรุ้ง */
     .marquee-container {{
         position: fixed;
         width: 100%;
-        background: rgba(255, 0, 222, 0.1);
-        color: #00f3ff;
+        background: rgba(255, 255, 255, 0.05);
         font-family: 'Prompt', sans-serif;
-        font-size: 20px;
+        font-size: 22px;
         white-space: nowrap;
         overflow: hidden;
         z-index: 1000;
-        border-top: 2px solid #ff00de;
-        border-bottom: 2px solid #0FFF50;
-        text-shadow: 0 0 10px #0FFF50;
+        border-top: 3px solid #ff0000;
+        border-bottom: 3px solid #00ff00;
+        animation: border-flicker 2s infinite;
     }}
     .top-m {{ top: 0; }}
     .bottom-m {{ bottom: 0; }}
@@ -52,61 +52,66 @@ st.markdown(f"""
     .marquee-text {{
         display: inline-block;
         padding-left: 100%;
-        animation: marquee 30s linear infinite;
+        animation: marquee 12s linear infinite, rainbow-text 3s infinite;
+        font-weight: 900;
     }}
     
+    @keyframes rainbow-text {{
+        0% {{ color: #ff0000; text-shadow: 0 0 10px #ff0000; }}
+        20% {{ color: #00ff00; text-shadow: 0 0 10px #00ff00; }}
+        40% {{ color: #0000ff; text-shadow: 0 0 10px #0000ff; }}
+        60% {{ color: #ffffff; text-shadow: 0 0 10px #ffffff; }}
+        80% {{ color: #ff00de; text-shadow: 0 0 10px #ff00de; }}
+        100% {{ color: #ff0000; text-shadow: 0 0 10px #ff0000; }}
+    }}
+
     @keyframes marquee {{
         0% {{ transform: translate(0, 0); }}
         100% {{ transform: translate(-100%, 0); }}
     }}
 
-    /* Logo Neon หมุนแรงๆ */
+    /* แก้ไขตำแหน่ง Logo ไม่ให้ทับตัวหนังสือ */
     .block-container::before {{
         content: "";
         position: absolute;
         top: 40px; left: 50%;
         transform: translateX(-50%);
-        width: 120px; height: 120px;
+        width: 100px; height: 100px;
         background-image: url("{logo_html_link}");
         background-size: contain;
         background-repeat: no-repeat;
         z-index: 99;
-        animation: extreme-glow 2s infinite alternate;
-    }}
-
-    @keyframes extreme-glow {{
-        0% {{ filter: drop-shadow(0 0 20px #ff00de) hue-rotate(0deg); transform: translateX(-50%) scale(1); }}
-        100% {{ filter: drop-shadow(0 0 40px #00f3ff) hue-rotate(360deg); transform: translateX(-50%) scale(1.15); }}
+        filter: drop-shadow(0 0 15px #fff);
     }}
 
     .neon-title {{
         font-family: 'Orbitron', sans-serif;
         color: #fff;
         text-align: center;
-        text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #ff00de, 0 0 30px #ff00de, 0 0 40px #ff00de;
-        font-size: 2rem;
-        margin-top: 150px;
+        text-shadow: 0 0 10px #ff0000, 0 0 20px #0000ff;
+        font-size: 1.8rem;
+        margin-top: 160px; /* เพิ่มระยะห่างลงมา */
+        margin-bottom: 20px;
         letter-spacing: 5px;
-        animation: flicker 0.10s infinite;
+        animation: glitch-title 1s infinite;
     }}
-    
-    @keyframes flicker {{
-        0%, 100% {{ opacity: 1; }}
-        41% {{ opacity: 0.8; }}
-        42% {{ opacity: 0.1; }}
-        43% {{ opacity: 0.8; }}
+
+    @keyframes glitch-title {{
+        0% {{ text-shadow: 2px 2px #ff0000, -2px -2px #0000ff; }}
+        50% {{ text-shadow: -2px 2px #00ff00, 2px -2px #ff00de; }}
+        100% {{ text-shadow: 2px -2px #ffffff, -2px 2px #ff0000; }}
     }}
     </style>
 
     <div class="marquee-container top-m">
-        <div class="marquee-text">อยู่นิ่งๆ ไม่เจ็บตัว ⚡ STAY STILL & HEAL ⚡ SYNAPSE NEON MIXER ⚡ อยู่นิ่งๆ ไม่เจ็บตัว ⚡ SYSTEM OVERLOAD ⚡</div>
+        <div class="marquee-text">อยู่นิ่งๆ ไม่เจ็บตัว ⚡ STAY STILL & HEAL ⚡ NO LIES JUST REAL CODE ⚡ SYNAPSE NEON ⚡</div>
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">SYNAPSE</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">SYNAPSE NEON MIXER</h1>', unsafe_allow_html=True)
 
 # ==========================================
-# ส่วนที่ 2: HTML/JS - ปรับ Visualizer ให้สะบัดแบบรกๆ
+# ส่วนที่ 2: HTML/JS - ปรับสีสันให้หลากสี (Red/Blue/Green/White)
 # ==========================================
 
 html_code = """
@@ -116,70 +121,72 @@ html_code = """
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background: transparent; color: white; overflow: hidden; font-family: 'Orbitron', sans-serif; }
+        
         .neon-card { 
-            border: 4px double #ff00de; 
-            background: rgba(10,0,20,0.8); 
-            box-shadow: 0 0 50px rgba(255,0,222,0.5), inset 0 0 20px rgba(0,243,255,0.3);
-            backdrop-filter: blur(10px);
-        }
-        
-        .visualizer-box { height: 180px; background: #000; border: 2px solid #00f3ff; box-shadow: 0 0 20px #00f3ff; }
-        
-        .deck { padding: 15px; border-radius: 5px; border: 1px solid #444; margin-bottom: 10px; background: rgba(255,255,255,0.05); }
-        .deck-active { border: 2px solid #ff00de !important; animation: pulse 1s infinite; }
-        
-        @keyframes pulse {
-            0% { box-shadow: 0 0 5px #ff00de; }
-            50% { box-shadow: 0 0 25px #ff00de; }
-            100% { box-shadow: 0 0 5px #ff00de; }
+            border: 5px solid;
+            border-image: linear-gradient(45deg, #ff0000, #00ff00, #0000ff, #ffffff) 1;
+            background: rgba(0,0,0,0.9); 
+            box-shadow: 0 0 30px rgba(255,255,255,0.2);
+            animation: border-rotate 5s linear infinite;
         }
 
-        .btn-mix { 
-            background: #fff; color: #000; font-weight: 900; padding: 15px; border-radius: 0;
-            text-transform: uppercase; letter-spacing: 4px; transition: 0.10s;
-            border: 3px solid #ff00de; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
+        @keyframes border-rotate {
+            0% { border-image-source: linear-gradient(0deg, #ff0000, #00ff00, #0000ff, #ffffff); }
+            100% { border-image-source: linear-gradient(360deg, #ff0000, #00ff00, #0000ff, #ffffff); }
         }
-        .btn-mix:hover { background: #ff00de; color: #fff; transform: skewX(-5deg); }
+        
+        .visualizer-box { height: 180px; background: #000; border: 1px solid #555; }
+        
+        .deck-a { border-left: 5px solid #ff0000; background: rgba(255,0,0,0.05); }
+        .deck-b { border-left: 5px solid #0000ff; background: rgba(0,0,255,0.05); }
+        
+        .deck-active { outline: 2px solid #ffffff; box-shadow: 0 0 20px #ffffff; }
+
+        .btn-start { 
+            background: #ff0000; color: white; font-weight: 900; padding: 12px;
+            border: 2px solid #ffffff; text-transform: uppercase;
+            box-shadow: 5px 5px 0px #0000ff;
+        }
+        .btn-start:active { transform: translate(2px, 2px); box-shadow: none; }
     </style>
 </head>
 <body>
-    <div class="max-w-md mx-auto p-6 neon-card rounded-sm">
+    <div class="max-w-md mx-auto p-4 neon-card">
         <canvas id="scope" class="visualizer-box w-full mb-4"></canvas>
 
-        <div id="cardA" class="deck">
-            <div class="flex justify-between text-[12px] mb-2">
-                <span class="text-pink-500 font-black">DECK A [STAY]</span>
-                <span id="timeA" class="text-white">00:00</span>
+        <div id="cardA" class="deck-a p-3 mb-2">
+            <div class="flex justify-between text-[11px] font-bold">
+                <span class="text-red-500">SYSTEM: RED [DECK A]</span>
+                <span id="timeA">00:00</span>
             </div>
+            <button onclick="document.getElementById('inA').click()" class="bg-white text-black text-[9px] px-2 mt-1 font-bold">LOAD RED</button>
             <input type="file" id="inA" class="hidden" onchange="handleFile(this.files[0], 'A')">
-            <button onclick="document.getElementById('inA').click()" class="bg-pink-600 text-[10px] px-4 py-1">LOAD FILE</button>
-            <div id="nameA" class="text-[10px] mt-2 truncate text-cyan-300">WAITING...</div>
-            <div class="h-2 bg-gray-900 mt-2"><div id="barA" class="h-full bg-pink-500 shadow-[0_0_10px_#ff00de]"></div></div>
+            <div id="nameA" class="text-[9px] truncate text-gray-400 mt-1">NO DATA</div>
+            <div class="h-1.5 bg-gray-800 mt-1"><div id="barA" class="h-full bg-red-600"></div></div>
         </div>
 
-        <div id="cardB" class="deck">
-            <div class="flex justify-between text-[12px] mb-2">
-                <span class="text-cyan-400 font-black">DECK B [HEAL]</span>
-                <span id="timeB" class="text-white">00:00</span>
+        <div id="cardB" class="deck-b p-3 mb-2">
+            <div class="flex justify-between text-[11px] font-bold">
+                <span class="text-blue-500">SYSTEM: BLUE [DECK B]</span>
+                <span id="timeB">00:00</span>
             </div>
+            <button onclick="document.getElementById('inB').click()" class="bg-white text-black text-[9px] px-2 mt-1 font-bold">LOAD BLUE</button>
             <input type="file" id="inB" class="hidden" onchange="handleFile(this.files[0], 'B')">
-            <button onclick="document.getElementById('inB').click()" class="bg-cyan-600 text-[10px] px-4 py-1">LOAD FILE</button>
-            <div id="nameB" class="text-[10px] mt-2 truncate text-pink-300">WAITING...</div>
-            <div class="h-2 bg-gray-900 mt-2"><div id="barB" class="h-full bg-cyan-400 shadow-[0_0_10px_#0FFF50]"></div></div>
+            <div id="nameB" class="text-[9px] truncate text-gray-400 mt-1">NO DATA</div>
+            <div class="h-1.5 bg-gray-800 mt-1"><div id="barB" class="h-full bg-blue-600"></div></div>
         </div>
 
-        <button onclick="startMix()" class="btn-mix w-full mt-4">INITIALIZE SYSTEM</button>
+        <button onclick="startMix()" class="btn-start w-full mt-2">RUN AUTO-MIXER ENGINE</button>
     </div>
 
     <script>
-        let ctx, analyser, songA, songB, gainA, gainB, sourceA, sourceB;
-        let active = 'A', isPlaying = false, data;
+        let ctx, analyser, songA, songB, gainA, gainB, active = 'A', isPlaying = false, data;
 
         function init() {
             if (!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = ctx.createAnalyser();
-                analyser.fftSize = 256; // ปรับให้แท่งใหญ่และลกขึ้น
+                analyser.fftSize = 64; 
                 data = new Uint8Array(analyser.frequencyBinCount);
                 render();
             }
@@ -187,97 +194,80 @@ html_code = """
 
         async function handleFile(file, side) {
             init();
-            document.getElementById('name'+side).innerText = "LOADING CORE...";
+            document.getElementById('name'+side).innerText = "LOADING...";
             const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
             if(side === 'A') songA = buffer; else songB = buffer;
-            document.getElementById('name'+side).innerText = "READY: " + file.name;
+            document.getElementById('name'+side).innerText = file.name;
         }
 
         function render() {
             requestAnimationFrame(render);
             if(!analyser) return;
             analyser.getByteFrequencyData(data);
-            const can = document.getElementById('scope');
-            const c = can.getContext('2d');
+            const can = document.getElementById('scope'), c = can.getContext('2d');
+            c.fillStyle = 'rgba(0,0,0,0.3)';
+            c.fillRect(0,0,can.width,can.height);
             
-            // เคลียร์จอแบบทิ้งรอย (Motion Blur)
-            c.fillStyle = 'rgba(0, 0, 0, 0.2)';
-            c.fillRect(0, 0, can.width, can.height);
-            
-            let bw = (can.width / data.length) * 2;
-            let x = 0;
+            let bw = can.width / data.length;
             for(let i=0; i<data.length; i++) {
-                let h = (data[i]/255) * can.height * 0.8;
-                let hue = (i * 5) + (Date.now() / 10) % 360;
-                c.fillStyle = `hsl(${hue}, 100%, 60%)`;
-                c.shadowBlur = 15;
-                c.shadowColor = `hsl(${hue}, 100%, 50%)`;
-                c.fillRect(x, can.width/2 - h/2, bw - 2, h); // วาดจากตรงกลางให้ดูเหมือนคลื่นไฟฟ้า
-                x += bw;
+                let h = (data[i]/255) * can.height;
+                // สลับสี แดง เขียว น้ำเงิน ขาว
+                let colors = ['#ff0000', '#00ff00', '#0000ff', '#ffffff'];
+                c.fillStyle = colors[i % 4];
+                c.fillRect(i*bw, can.height - h, bw-2, h);
+                // เพิ่มเส้นแสงพุ่งขึ้นข้างบนด้วยให้มันดูลกๆ
+                c.fillRect(i*bw, 0, bw-2, h*0.1);
             }
             updateEngine();
         }
 
         function startMix() {
-            if(!songA || !songB) return alert("LOAD BOTH DECKS FIRST!");
+            if(!songA || !songB) return alert("LOAD BOTH FILES!");
             if(isPlaying) return;
-            
-            sourceA = ctx.createBufferSource(); sourceA.buffer = songA;
-            gainA = ctx.createGain(); 
-            sourceA.connect(gainA).connect(analyser).connect(ctx.destination);
-            
-            sourceB = ctx.createBufferSource(); sourceB.buffer = songB;
-            gainB = ctx.createGain(); gainB.gain.value = 0;
-            sourceB.connect(gainB).connect(analyser).connect(ctx.destination);
-            
-            sourceA.loop = true; sourceB.loop = true;
-            sourceA.start(0); sourceB.start(0);
+            const sA = ctx.createBufferSource(); sA.buffer = songA;
+            gainA = ctx.createGain(); sA.connect(gainA).connect(analyser).connect(ctx.destination);
+            const sB = ctx.createBufferSource(); sB.buffer = songB;
+            gainB = ctx.createGain(); gainB.gain.value = 0; sB.connect(gainB).connect(analyser).connect(ctx.destination);
+            sA.loop = sB.loop = true; sA.start(0); sB.start(0);
             isPlaying = true;
             document.getElementById('cardA').classList.add('deck-active');
         }
 
         function updateEngine() {
             if(!isPlaying) return;
-            updateUI('A', songA, gainA);
-            updateUI('B', songB, gainB);
+            updateUI('A', songA); updateUI('B', songB);
         }
 
-        function updateUI(s, buffer, gain) {
-            let bar = document.getElementById('bar'+s);
-            let time = document.getElementById('time'+s);
-            let p = (ctx.currentTime % buffer.duration) / buffer.duration;
-            bar.style.width = (p * 100) + "%";
-            let rem = buffer.duration - (ctx.currentTime % buffer.duration);
+        function updateUI(s, buf) {
+            let p = (ctx.currentTime % buf.duration) / buf.duration;
+            document.getElementById('bar'+s).style.width = (p*100)+"%";
+            let rem = buf.duration - (ctx.currentTime % buf.duration);
             let m = Math.floor(rem/60), sec = Math.floor(rem%60);
-            time.innerText = (m<10?'0':'')+m+":"+(sec<10?'0':'')+sec;
+            document.getElementById('time'+s).innerText = (m<10?'0':'')+m+":"+(sec<10?'0':'')+sec;
             if(active === s && rem < 5) crossfade();
         }
 
         function crossfade() {
-            let next = (active === 'A' ? 'B' : 'A');
-            let now = ctx.currentTime;
+            let now = ctx.currentTime, dur = 4;
             if(active === 'A') {
-                gainA.gain.linearRampToValueAtTime(0, now + 4);
-                gainB.gain.linearRampToValueAtTime(1, now + 4);
-                document.getElementById('cardA').classList.remove('deck-active');
-                document.getElementById('cardB').classList.add('deck-active');
+                gainA.gain.linearRampToValueAtTime(0, now+dur); gainB.gain.linearRampToValueAtTime(1, now+dur);
+                document.getElementById('cardA').classList.remove('deck-active'); document.getElementById('cardB').classList.add('deck-active');
+                active = 'B';
             } else {
-                gainB.gain.linearRampToValueAtTime(0, now + 4);
-                gainA.gain.linearRampToValueAtTime(1, now + 4);
-                document.getElementById('cardB').classList.remove('deck-active');
-                document.getElementById('cardA').classList.add('deck-active');
+                gainB.gain.linearRampToValueAtTime(0, now+dur); gainA.gain.linearRampToValueAtTime(1, now+dur);
+                document.getElementById('cardB').classList.remove('deck-active'); document.getElementById('cardA').classList.add('deck-active');
+                active = 'A';
             }
-            active = next;
         }
     </script>
 </body>
 </html>
 """
 
-st.components.v1.html(html_code, height=300)
+st.components.v1.html(html_code, height=650)
 
 st.markdown("""
     <div class="marquee-container bottom-m">
-        <div class="marquee-text">อยู่นิ่งๆ ไม่เจ็บตัว ⚡ STAY STILL & HEAL ⚡ SYNAPSE NEON MIXER ⚡ อยู่นิ่งๆ ไม่เจ็บตัว ⚡ SYSTEM OVERLOAD ⚡</div>
+        <div class="marquee-text">อยู่นิ่งๆ ไม่เจ็บตัว ⚡ SYSTEM STATUS: RGB CHAOS ⚡ V.6.0 ⚡ อยู่นิ่งๆ ไม่เจ็บตัว ⚡</div>
     </div>
 """, unsafe_allow_html=True)
