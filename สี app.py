@@ -28,7 +28,7 @@ st.markdown(f"""
 
     .logo-container {{ display: flex; justify-content: center; margin-top: 20px; }}
     .neon-logo {{
-        width: 100px; height: 150px;
+        width: 100px; height: 100px;
         background-image: url("{logo_html_link}");
         background-size: contain; background-repeat: no-repeat;
         filter: drop-shadow(0 0 10px #00f3ff);
