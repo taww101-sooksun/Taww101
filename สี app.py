@@ -103,7 +103,7 @@ st.markdown(f"""
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">SYNAPSE NEON</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">SYNAPSE</h1>', unsafe_allow_html=True)
 
 # ==========================================
 # ส่วนที่ 2: HTML/JS - ปรับ Visualizer ให้สะบัดแบบรกๆ
@@ -136,7 +136,7 @@ html_code = """
 
         .btn-mix { 
             background: #fff; color: #000; font-weight: 900; padding: 15px; border-radius: 0;
-            text-transform: uppercase; letter-spacing: 4px; transition: 0.2s;
+            text-transform: uppercase; letter-spacing: 4px; transition: 0.10s;
             border: 3px solid #ff00de; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0% 100%);
         }
         .btn-mix:hover { background: #ff00de; color: #fff; transform: skewX(-5deg); }
