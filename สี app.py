@@ -203,23 +203,49 @@ html_code = """
         function render() {
             requestAnimationFrame(render);
             if(!analyser) return;
-            analyser.getByteFrequencyData(data);
-            const can = document.getElementById('scope'), c = can.getContext('2d');
-            c.fillStyle = 'rgba(0,0,0,0.3)';
-            c.fillRect(0,0,can.width,can.height);
             
-            let bw = can.width / data.length;
-            for(let i=0; i<data.length; i++) {
-                let h = (data[i]/255) * can.height;
-                // สลับสี แดง เขียว น้ำเงิน ขาว
-                let colors = ['#ff0000', '#00ff00', '#0000ff', '#ffffff'];
-                c.fillStyle = colors[i % 4];
-                c.fillRect(i*bw, can.height - h, bw-2, h);
-                // เพิ่มเส้นแสงพุ่งขึ้นข้างบนด้วยให้มันดูลกๆ
-                c.fillRect(i*bw, 0, bw-2, h*0.1);
+            // ปรับลดความละเอียดลงเหลือ 128 เพื่อให้แท่งใหญ่ขึ้น ไม่ดูเยอะเกินไป
+            analyser.fftSize = 128; 
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            analyser.getByteFrequencyData(dataArray);
+
+            const can = document.getElementById('scope');
+            const c = can.getContext('2d');
+            
+            // เคลียร์จอแบบ Fade เพื่อให้มีเงาจางๆ ตามหลัง
+            c.fillStyle = 'rgba(0, 0, 0, 0.15)';
+            c.fillRect(0, 0, can.width, can.height);
+            
+            let bw = (can.width / bufferLength) * 2;
+            let x = 0;
+
+            for(let i = 0; i < bufferLength; i++) {
+                // คำนวณความสูงตามจังหวะเพลง
+                let h = (dataArray[i] / 255) * can.height * 0.8;
+                
+                // --- ส่วนสำคัญ: เปลี่ยนสีตามความดัง (Dynamic Color) ---
+                // ใช้ค่าจากเสียงมาคำนวณเฉดสี (Hue) เพื่อให้สีเปลี่ยนไปตามจังหวะ
+                let hue = (i * 10 + dataArray[i]) % 360; 
+                let currentColor = `hsl(${hue}, 100%, 60%)`;
+
+                // ปรับความฟุ้งให้เต้นตามความแรงของเสียง
+                c.shadowBlur = dataArray[i] / 10; 
+                c.shadowColor = currentColor;
+                c.fillStyle = currentColor;
+
+                // วาดแท่งกราฟ (วาดแบบให้มีช่องว่างนิดหน่อย จะได้ดูไม่รก)
+                if (h > 0) {
+                    c.fillRect(x, can.height - h, bw - 4, h);
+                }
+
+                x += bw;
             }
+            
+            c.shadowBlur = 0;
             updateEngine();
         }
+
 
         function startMix() {
             if(!songA || !songB) return alert("LOAD BOTH FILES!");
