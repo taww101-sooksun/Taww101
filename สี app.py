@@ -4,71 +4,103 @@ import os
 import base64
 
 # ==========================================
-# ส่วนที่ 1: เตรียมระบบเบื้องต้น
+# ส่วนที่ 1: ระบบจัดการข้อมูลและ Session
 # ==========================================
+
+st.set_page_config(page_title="Synapse OnePage", layout="centered")
 
 if 'song_index' not in st.session_state:
     st.session_state.song_index = 0
 
 def get_base64(file_path):
     try:
-        with open(file_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
+        if os.path.exists(file_path):
+            with open(file_path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
     except: return ""
+    return ""
 
-# ดึงโลโก้ (ไฟล์ logo1.png ต้องอยู่ในโฟลเดอร์เดียวกัน)
 logo_b64 = get_base64("logo1.png")
 logo_data = f"data:image/png;base64,{logo_b64}" if logo_b64 else ""
 
+# CSS: บีบทุกอย่างให้กระชับสำหรับมือถือ
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Prompt:wght@700&display=swap');
     header {{visibility: hidden;}} footer {{visibility: hidden;}}
-    .stApp {{ background: #050505; color: white; }}
-
-    .logo-container {{ display: flex; justify-content: center; margin-top: 10px; }}
+    .stApp {{ background: #050505; color: white; overflow: hidden; }}
+    
+    /* จัดการโลโก้ให้เล็กลง */
+    .logo-container {{ display: flex; justify-content: center; margin-top: -30px; }}
     .neon-logo {{
-        width: 100px; height: 100px;
+        width: 80px; height: 80px;
         background-image: url("{logo_data}");
         background-size: contain; background-repeat: no-repeat;
-        filter: drop-shadow(0 0 12px #00f3ff);
+        filter: drop-shadow(0 0 8px #00f3ff);
         animation: pulse 2s infinite ease-in-out;
     }}
     @keyframes pulse {{
-        0%, 100% {{ transform: scale(1); filter: drop-shadow(0 0 10px #00f3ff); }}
-        50% {{ transform: scale(1.08); filter: drop-shadow(0 0 20px #ff00de); }}
+        0%, 100% {{ transform: scale(1); opacity: 0.8; }}
+        50% {{ transform: scale(1.05); opacity: 1; filter: drop-shadow(0 0 15px #ff00de); }}
     }}
+
+    /* ตัวหนังสือวิ่งแบบเนียนๆ */
+    .marquee-box {{
+        width: 100%; overflow: hidden; background: rgba(255,255,255,0.05);
+        margin: 5px 0; border-y: 1px solid rgba(0,243,255,0.3);
+    }}
+    .marquee-text {{
+        display: inline-block; white-space: nowrap; font-family: 'Prompt';
+        font-size: 14px; color: #00f3ff; animation: scroll 15s linear infinite;
+    }}
+    @keyframes scroll {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
+    
+    /* ปรับแต่ง Dropdown */
+    .stSelectbox {{ margin-top: -10px; }}
     </style>
+    
     <div class="logo-container"><div class="neon-logo"></div></div>
+    <div class="marquee-box">
+        <div class="marquee-text">อยู่นิ่งๆ ไม่เจ็บตัว ⚡ SYNAPSE AUTO-MIX ⚡ NO LIES JUST REAL CODE ⚡</div>
+    </div>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# ส่วนที่ 2: ระบบเลือกไฟล์วิดีโอ
+# ส่วนที่ 2: ระบบจัดการไฟล์
 # ==========================================
 
-st.write("### 🎬 VIDEO & MUSIC STATION")
-uploaded_video = st.file_uploader("📂 เลือกไฟล์วิดีโอจากเครื่องของคุณ (.mp4)", type=["mp4"])
-
+# 1. จัดการวิดีโอ
+uploaded_video = st.file_uploader("🎬 เลือกวิดีโอ", type=["mp4"], label_visibility="collapsed")
 video_src = ""
-if uploaded_video is not None:
-    # อ่านข้อมูลวิดีโอและแปลงเป็น Base64 เพื่อส่งให้ HTML Video Tag
-    v_data = uploaded_video.read()
-    v_b64 = base64.b64encode(v_data).decode()
+if uploaded_video:
+    v_b64 = base64.b64encode(uploaded_video.read()).decode()
     video_src = f"data:video/mp4;base64,{v_b64}"
-else:
-    # ถ้ายังไม่เลือกไฟล์ ให้แสดงข้อความเตือน หรือใส่ Link วิดีโอเริ่มต้น
-    st.info("กรุณาเลือกไฟล์วิดีโอก่อนครับ จอถึงจะแสดงผล")
 
-# ==========================================
-# ส่วนที่ 3: ระบบเพลงและตัวเล่น HTML
-# ==========================================
-
+# 2. จัดการเพลง
 music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
 
 if music_files:
+    # เลือกเพลงผ่าน Dropdown
+    selected_song_name = st.selectbox(
+        "🎵 เลือกเพลงจากคลัง (70+ เพลง)", 
+        music_files, 
+        index=st.session_state.song_index,
+        key="song_selector"
+    )
+    
+    # อัปเดต index เมื่อมีการเลือกใน Dropdown
+    new_index = music_files.index(selected_song_name)
+    if new_index != st.session_state.song_index:
+        st.session_state.song_index = new_index
+        st.rerun()
+
     current_song = music_files[st.session_state.song_index]
     with open(current_song, "rb") as f:
         audio_b64 = base64.b64encode(f.read()).decode()
+
+    # ==========================================
+    # ส่วนที่ 3: HTML Player (Video + Visualizer)
+    # ==========================================
     
     html_player = f"""
     <!DOCTYPE html>
@@ -76,25 +108,17 @@ if music_files:
     <head>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
-            body {{ background: transparent; font-family: 'Orbitron', sans-serif; overflow: hidden; }}
-            .screen-box {{ background: #000; border: 2px solid #222; border-radius: 15px; overflow: hidden; position: relative; }}
-            video {{ width: 100%; display: block; background: #000; }}
-            .visualizer {{ height: 60px; background: rgba(0,0,0,0.9); width: 100%; }}
-            audio {{ width: 100%; height: 35px; filter: invert(100%) opacity(0.4); }}
+            body {{ background: transparent; overflow: hidden; }}
+            .main-container {{ background: #111; border: 1px solid #333; border-radius: 12px; padding: 8px; }}
+            #v-screen {{ width: 100%; border-radius: 8px; background: #000; aspect-ratio: 16/9; object-fit: cover; }}
+            #canvas {{ height: 50px; width: 100%; margin-top: 5px; }}
+            audio {{ width: 100%; height: 30px; filter: invert(100%) opacity(0.3); margin-top: 5px; }}
         </style>
     </head>
     <body>
-        <div class="max-w-xl mx-auto p-2">
-            <div class="screen-box">
-                <video id="v-player" autoplay loop muted src="{video_src}"></video>
-                
-                <canvas id="canvas" class="visualizer"></canvas>
-            </div>
-            
-            <div class="mt-2 text-center text-[10px] text-gray-100 uppercase tracking-tighter">
-                Audio Engine: {current_song}
-            </div>
-            
+        <div class="main-container">
+            <video id="v-screen" autoplay loop muted src="{video_src}"></video>
+            <canvas id="canvas"></canvas>
             <audio id="audio" controls autoplay src="data:audio/mp3;base64,{audio_b64}"></audio>
         </div>
 
@@ -125,14 +149,11 @@ if music_files:
                 requestAnimationFrame(render);
                 analyser.getByteFrequencyData(dataArray);
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
                 let bw = (canvas.width / dataArray.length) * 2;
                 for (let i = 0; i < dataArray.length; i++) {{
-                    let h = (dataArray[i] / 255) * canvas.height * 0.8;
-                    let hue = (i * 20 + Date.now()/100) % 360;
+                    let h = (dataArray[i] / 255) * canvas.height * 0.9;
+                    let hue = (i * 25 + Date.now()/100) % 360;
                     ctx.fillStyle = `hsla(${{hue}}, 70%, 60%, 0.8)`;
-                    ctx.shadowBlur = 10;
-                    ctx.shadowColor = `hsla(${{hue}}, 70%, 60%, 0.4)`;
                     ctx.fillRect(i * bw, canvas.height - h, bw - 2, h);
                 }}
             }}
@@ -142,20 +163,24 @@ if music_files:
     """
 
     # ส่วนรับค่าขากลับเมื่อเพลงจบ
-    result = components.html(html_player, height=480)
+    result = components.html(html_player, height=330)
+    
     if result == "next":
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
 
-    # ปุ่มคุมเพลง
-    col1, col2, col3 = st.columns(3)
-    if col1.button("⏮️ BACK"):
+    # ปุ่มคุมเพลงขนาดกะทัดรัด
+    c1, c2, c3 = st.columns(3)
+    if c1.button("⏮️", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
         st.rerun()
-    if col2.button("🔄 RE"):
+    if c2.button("🔄", use_container_width=True):
         st.rerun()
-    if col3.button("⏭️ NEXT"):
+    if c3.button("⏭️", use_container_width=True):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
 
-st.markdown("<p style='text-align:center; color:#222; font-size:9px; margin-top:20px;'>STAY STILL & HEAL ⚡ SYNAPSE V10</p>", unsafe_allow_html=True)
+else:
+    st.info("วางไฟล์ .mp3 ไว้ในโฟลเดอร์เดียวกับโค้ดเพื่อเริ่มเล่นครับ")
+
+st.markdown("<p style='text-align:center; color:#333; font-size:10px;'>⚡ SYNAPSE V11 | ONE-SCREEN MODE ⚡</p>", unsafe_allow_html=True)
