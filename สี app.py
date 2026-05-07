@@ -46,7 +46,7 @@ st.markdown(f"""
     }}
     </style>
     <div class="logo-container"><div class="neon-logo"></div></div>
-    <h1 class="neon-title">SYNAPSE STATION</h1>
+    <h1 class="neon-title">SYNAPSE</h1>
     """, unsafe_allow_html=True)
 
 # ==========================================
@@ -77,7 +77,7 @@ else:
         </style>
     </head>
     <body>
-        <div class="max-w-md mx-auto p-4 bg-[#111] rounded-xl border border-[#333]">
+        <div class="max-w-md mx-auto p-4 bg-[#0000ff] rounded-xl border border-[#ff0000]">
             <canvas id="canvas" class="visualizer w-full"></canvas>
             <div class="text-[10px] text-cyan-400 mt-3 text-center truncate tracking-widest uppercase">
                 Now Playing: {current_song}
@@ -98,7 +98,7 @@ else:
                     source = audioCtx.createMediaElementSource(audio);
                     source.connect(analyser);
                     analyser.connect(audioCtx.destination);
-                    analyser.fftSize = 128;
+                    analyser.fftSize = 256;
                     dataArray = new Uint8Array(analyser.frequencyBinCount);
                     render();
                 }}
