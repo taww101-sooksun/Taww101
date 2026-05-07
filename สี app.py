@@ -19,69 +19,77 @@ def get_base64_image(image_path):
 logo_base64 = get_base64_image("logo1.png")
 logo_html_link = f"data:image/png;base64,{logo_base64}" if logo_base64 else ""
 
-# CSS: โลโก้เต้นและ UI นีออนนวล
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Prompt:wght@700&display=swap');
     header {{visibility: hidden;}} footer {{visibility: hidden;}}
     .stApp {{ background: #050505; color: white; }}
 
-    .logo-container {{ display: flex; justify-content: center; margin-top: 20px; }}
+    .logo-container {{ display: flex; justify-content: center; margin-top: 10px; }}
     .neon-logo {{
-        width: 150px; height: 150px;
+        width: 100px; height: 100px;
         background-image: url("{logo_html_link}");
         background-size: contain; background-repeat: no-repeat;
-        filter: drop-shadow(0 0 30px #00f3ff);
+        filter: drop-shadow(0 0 10px #00f3ff);
         animation: pulse 2s infinite ease-in-out;
     }}
     @keyframes pulse {{
         0%, 100% {{ transform: scale(1); filter: drop-shadow(0 0 10px #00f3ff); }}
-        50% {{ transform: scale(1.08); filter: drop-shadow(0 0 20px #ff00de); }}
-    }}
-
-    .neon-title {{
-        font-family: 'Orbitron', sans-serif; text-align: center;
-        font-size: 1.5rem; letter-spacing: 5px; margin: 15px 0;
-        color: #fff; text-shadow: 0 0 8px #00f3ff;
+        50% {{ transform: scale(1.05); filter: drop-shadow(0 0 15px #ff00de); }}
     }}
     </style>
     <div class="logo-container"><div class="neon-logo"></div></div>
-    <h1 class="neon-title">SYNAPSE</h1>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# ส่วนที่ 2: Logic การดึงเพลง
+# ส่วนที่ 2: ส่วนเลือกไฟล์วิดีโอ (Video Upload)
+# ==========================================
+
+st.subheader("📽️ ระบบฉายวิดีโอ & คุมเสียง")
+video_file = st.file_uploader("เลือกไฟล์วิดีโอจากเครื่องของคุณ (.mp4)", type=["mp4"])
+
+video_url = ""
+if video_file is not None:
+    # แปลงวิดีโอเป็น Base64 เพื่อให้เล่นใน HTML ได้
+    video_bytes = video_file.read()
+    video_b64 = base64.b64encode(video_bytes).decode()
+    video_url = f"data:video/mp4;base64,{video_b64}"
+
+# ==========================================
+# ส่วนที่ 3: Logic การดึงเพลงและ HTML Player
 # ==========================================
 
 music_files = sorted([f for f in os.listdir('.') if f.endswith(".mp3")])
 
 if not music_files:
-    st.warning("⚠️ ไม่พบไฟล์ .mp3 ในเครื่องเพื่อนเลย วางไว้โฟลเดอร์เดียวกับโค้ดนะ")
+    st.warning("⚠️ ไม่พบไฟล์ .mp3 ในเครื่อง (วางไว้โฟลเดอร์เดียวกับโค้ดนะ)")
 else:
     current_song = music_files[st.session_state.song_index]
-    
-    # แปลงเพลงเป็น Base64
     with open(current_song, "rb") as f:
         audio_b64 = base64.b64encode(f.read()).decode()
     
-    # HTML Visualizer + Audio Logic
     html_code = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
-            body {{ background: transparent; font-family: 'Orbitron', sans-serif; overflow: hidden; }}
-            .visualizer {{ height: 200px; background: #000; border: 1px solid #222; border-radius: 10px; }}
-            audio {{ width: 100%; filter: invert(100%) opacity(0.5); margin-top: 10px; }}
+            body {{ background: transparent; font-family: 'Orbitron', sans-serif; overflow: hidden; color: white; }}
+            .video-screen {{ width: 100%; border-radius: 12px; border: 2px solid #333; background: #000; aspect-ratio: 16/9; object-fit: cover; }}
+            .mini-visualizer {{ height: 80px; background: rgba(0,0,0,0.8); border: 1px solid #222; border-radius: 8px; margin-top: 10px; }}
+            audio {{ width: 100%; height: 30px; filter: invert(100%) opacity(0.3); margin-top: 8px; }}
         </style>
     </head>
     <body>
-        <div class="max-w-md mx-auto p-4 bg-[#0000ff] rounded-xl border border-[#ff0000]">
-            <canvas id="canvas" class="visualizer w-full"></canvas>
-            <div class="text-[10px] text-cyan-400 mt-3 text-center truncate tracking-widest uppercase">
-                Now Playing: {current_song}
+        <div class="max-w-xl mx-auto p-3 bg-[#111] rounded-2xl border border-[#222] shadow-2xl">
+            <video id="video-player" class="video-screen" controls autoplay muted loop src="{video_url}"></video>
+            
+            <div class="text-[9px] text-gray-500 mt-2 text-center tracking-widest uppercase">
+                🎵 Visualizer: {current_song}
             </div>
+
+            <canvas id="canvas" class="mini-visualizer w-full"></canvas>
+            
             <audio id="audio" controls autoplay src="data:audio/mp3;base64,{audio_b64}"></audio>
         </div>
 
@@ -98,13 +106,12 @@ else:
                     source = audioCtx.createMediaElementSource(audio);
                     source.connect(analyser);
                     analyser.connect(audioCtx.destination);
-                    analyser.fftSize = 256;
+                    analyser.fftSize = 64; // ลดขนาดเพื่อให้แท่งกราฟดูใหญ่ในจอเล็ก
                     dataArray = new Uint8Array(analyser.frequencyBinCount);
                     render();
                 }}
             }};
 
-            // เมื่อเพลงจบ ส่งค่ากลับไปหา Streamlit เพื่อกด 'Next' อัตโนมัติ
             audio.onended = () => {{
                 window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next_track'}}, '*');
             }};
@@ -112,17 +119,17 @@ else:
             function render() {{
                 requestAnimationFrame(render);
                 analyser.getByteFrequencyData(dataArray);
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
                 let bw = (canvas.width / dataArray.length) * 2;
                 for (let i = 0; i < dataArray.length; i++) {{
-                    let h = (dataArray[i] / 255) * canvas.height * 0.7;
-                    let hue = (i * 15 + Date.now()/80) % 360;
-                    ctx.fillStyle = `hsla(${{hue}}, 60%, 55%, 0.7)`;
-                    ctx.shadowBlur = dataArray[i]/20;
-                    ctx.shadowColor = `hsla(${{hue}}, 60%, 55%, 0.4)`;
-                    ctx.fillRect(i * bw, canvas.height - h, bw - 3, h);
+                    let h = (dataArray[i] / 255) * canvas.height * 0.8;
+                    let hue = (i * 25 + Date.now()/100) % 360;
+                    ctx.fillStyle = `hsla(${{hue}}, 70%, 60%, 0.8)`;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = `hsla(${{hue}}, 70%, 60%, 0.5)`;
+                    // วาดกราฟจากกึ่งกลางขึ้นลงให้ดูฟุ้ง
+                    ctx.fillRect(i * bw, (canvas.height/2) - (h/2), bw - 2, h);
                 }}
             }}
         </script>
@@ -130,31 +137,27 @@ else:
     </html>
     """
 
-    # ใช้ Custom Component เพื่อรับค่าขากลับ (Event 'next_track')
-    result = components.html(html_code, height=350)
+    result = components.html(html_code, height=520)
 
-    # เช็คว่าเพลงจบหรือยังจาก JS ขากลับ
     if result == "next_track":
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
 
-    # ปุ่มควบคุม
+    # ส่วนควบคุมเพลง
     col1, col2, col3 = st.columns(3)
     if col1.button("⏮️ ก่อนหน้า"):
         st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
         st.rerun()
-    if col2.button("🔄 เริ่มใหม่"):
+    if col2.button("🔄 เริ่มเพลงใหม่"):
         st.rerun()
     if col3.button("⏭️ ถัดไป"):
         st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
         st.rerun()
 
-    # รายชื่อเพลง
-    st.write("---")
-    with st.expander(f"📂 รายชื่อเพลงทั้งหมด ({len(music_files)} เพลง)"):
+    with st.expander("📂 เลือกเพลงจากคลัง"):
         for i, f in enumerate(music_files):
             if st.button(f"🎼 {f}", key=f"s_{i}", use_container_width=True):
                 st.session_state.song_index = i
                 st.rerun()
 
-st.markdown("<p style='text-align:center; color:#222; font-size:10px; margin-top:50px;'>⚡ SYNAPSE V8.0 | อยู่นิ่งๆ ไม่เจ็บตัว ⚡</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#222; font-size:10px; margin-top:30px;'>⚡ SYNAPSE V9.0 | จอวิดีโอ & เครื่องเสียงมินิ ⚡</p>", unsafe_allow_html=True)
