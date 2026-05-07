@@ -36,7 +36,7 @@ st.markdown(f"""
     /* จัดการโลโก้ให้เล็กลงและเต้น */
     .logo-container {{ display: flex; justify-content: center; margin-top: -30px; }}
     .neon-logo {{
-        width: 70px; height: 70px;
+        width: 100px; height: 100px;
         background-image: url("{logo_data}");
         background-size: contain; background-repeat: no-repeat;
         filter: drop-shadow(0 0 10px #00f3ff);
