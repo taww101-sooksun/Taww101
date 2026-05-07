@@ -52,7 +52,7 @@ st.markdown(f"""
     .marquee-text {{
         display: inline-block;
         padding-left: 100%;
-        animation: marquee 15s linear infinite;
+        animation: marquee 30s linear infinite;
     }}
     
     @keyframes marquee {{
@@ -71,7 +71,7 @@ st.markdown(f"""
         background-size: contain;
         background-repeat: no-repeat;
         z-index: 99;
-        animation: extreme-glow 2s infinite alternate;
+        animation: extreme-glow 10s infinite alternate;
     }}
 
     @keyframes extreme-glow {{
