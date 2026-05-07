@@ -104,11 +104,11 @@ st.markdown(f"""
     </style>
 
     <div class="marquee-container top-m">
-        <div class="marquee-text">อยู่นิ่งๆ ไม่เจ็บตัว ⚡ STAY STILL & HEAL ⚡ NO LIES JUST REAL CODE ⚡ SYNAPSE NEON ⚡</div>
+        <div class="marquee-text">อยู่นิ้งๆ ไม่เจ็บตัว ⚡ STAY STILL & HEAL ⚡ NO LIES JUST REAL CODE ⚡ SYNAPSE NEON ⚡</div>
     </div>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">SYNAPSE NEON MIXER</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">SYNAPSE อยู่นิ้งๆไม่เจ็บตัว</h1>', unsafe_allow_html=True)
 
 # ==========================================
 # ส่วนที่ 2: HTML/JS - ปรับสีสันให้หลากสี (Red/Blue/Green/White)
@@ -205,7 +205,7 @@ html_code = """
             if(!analyser) return;
             
             // ปรับลดความละเอียดลงเหลือ 128 เพื่อให้แท่งใหญ่ขึ้น ไม่ดูเยอะเกินไป
-            analyser.fftSize = 128; 
+            analyser.fftSize = 256; 
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
             analyser.getByteFrequencyData(dataArray);
