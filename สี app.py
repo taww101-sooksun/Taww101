@@ -86,27 +86,6 @@ if 'user' not in st.session_state:
 st.session_state.theme_color = "#00FF00"
 
 # --- 4. ฟังก์ชัน ROOM RADAR (ตัวที่คุณส่งมา) ---
-def room_radar():
-    st.subheader("🛰️ ระบบเรดาร์ตรวจจับสัญญาณ AGENT")
-    
-    loc = get_geolocation()
-    if loc and 'coords' in loc:
-        my_lat = loc['coords']['latitude']
-        my_lon = loc['coords']['longitude']
-        st.session_state.my_pos = (my_lat, my_lon)
-    else:
-        my_lat, my_lon = 13.7367, 100.5231
-        st.info("📡 กำลังรอพิกัดจริงจากดาวเทียม...")
-
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=14, tiles="CartoDB dark_matter")
-    
-    folium.Marker([my_lat, my_lon], tooltip="คุณ (ORIGIN)",
-                  icon=folium.Icon(color='red', icon='crosshairs', prefix='fa')).add_to(m)
-
-    for radius in [1000, 3000, 5000]:
-        folium.Circle(radius=radius, location=[my_lat, my_lon], color=st.session_state.theme_color,
-                      fill=False, dash_array='10, 10', opacity=0.3).add_to(m)
-
     # ดึงข้อมูล AGENT อื่นๆ จาก Firebase Realtime Database
     try:
         users_ref = db.reference('users').get()
