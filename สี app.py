@@ -7,6 +7,56 @@ from firebase_admin import credentials, db
 import math
 import time
 import json
+import streamlit as st
+
+# --- 1. CSS สำหรับสร้างขอบนีออนเต้น (Neon Glow Animation) ---
+st.markdown("""
+    <style>
+    /* สร้างการเคลื่อนไหวของแสงนีออน */
+    @keyframes neon-glow {
+        0% { filter: drop-shadow(0 0 5px #00FF00) drop-shadow(0 0 10px #00FF00); }
+        50% { filter: drop-shadow(0 0 15px #00FF00) drop-shadow(0 0 25px #00FF00); }
+        100% { filter: drop-shadow(0 0 5px #00FF00) drop-shadow(0 0 10px #00FF00); }
+    }
+
+    /* สไตล์สำหรับโลโก้ */
+    .neon-logo {
+        width: 100%;
+        max-width: 250px;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        animation: neon-glow 2s infinite ease-in-out; /* สั่งให้เต้นตลอดเวลา */
+        border-radius: 15px; /* ปรับขอบให้โค้งมนถ้าต้องการ */
+    }
+
+    /* ซ่อนส่วนประกอบ Streamlit ตามที่เพื่อนเคยขอ */
+    #MainMenu, footer, header {visibility: hidden;}
+    .stApp { background-color: #0e1117; }
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 2. ส่วนการดึงโลโก้มาแสดงใน Sidebar ---
+with st.sidebar:
+    try:
+        # ใช้ HTML แทน st.image เพื่อให้ใส่ Class CSS ได้
+        import base64
+        
+        def get_base64_image(image_path):
+            with open(image_path, "rb") as img_file:
+                return base64.b64encode(img_file.read()).decode()
+
+        # แปลงไฟล์ภาพเป็น base64 เพื่อให้ CSS จัดการได้ง่ายขึ้น
+        logo_base64 = get_base64_image("logo1.png")
+        st.markdown(
+            f'<img src="data:image/png;base64,{logo_base64}" class="neon-logo">',
+            unsafe_allow_html=True
+        )
+    except Exception as e:
+        st.error("ไม่พบไฟล์ logo1.png ในระบบ")
+    
+    st.markdown("<br><h3 style='text-align: center; color: #00FF00;'>SYNAPSE COMMAND</h3>", unsafe_allow_html=True)
+    st.markdown("---")
 
 # --- 1. เชื่อมต่อ Firebase (ดึงจาก st.secrets) ---
 if not firebase_admin._apps:
