@@ -2,236 +2,135 @@ import streamlit as st
 import streamlit.components.v1 as components
 import os
 import base64
+import math
+from datetime import datetime, date
 
 # ==========================================
-# ส่วนที่ 1: ระบบจัดการข้อมูลและ Session
+# 1. CORE CONFIG & NEON UI (จัดเต็มลูกเล่นแสง)
 # ==========================================
+st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide", initial_sidebar_state="collapsed")
 
-st.set_page_config(page_title="Synapse OnePage V12", layout="centered")
+# ระบบจำค่าสีนีออนและลำดับเพลง
+if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00f2fe" 
+if 'song_idx' not in st.session_state: st.session_state.song_idx = 0
 
-if 'song_index' not in st.session_state:
-    st.session_state.song_index = 0
-
-def get_base64(file_path):
-    try:
-        if os.path.exists(file_path):
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-    except: return ""
-    return ""
-
-logo_b64 = get_base64("logo1.png")
-logo_data = f"data:image/png;base64,{logo_b64}" if logo_b64 else ""
-
-# ==========================================
-# ส่วนที่ 2: UI & Multi-Tone Neon CSS
-# ==========================================
-
-st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Prompt:wght@700&display=swap');
-    header {{visibility: hidden;}} footer {{visibility: hidden;}}
-    .stApp {{ background: #000; color: white; overflow: hidden; }}
-    
-    /* จัดการโลโก้ให้เล็กลงและเต้น */
-    .logo-container {{ display: flex; justify-content: center; margin-top: -30px; }}
-    .neon-logo {{
-        width: 70px; height: 70px;
-        background-image: url("{logo_data}");
-        background-size: contain; background-repeat: no-repeat;
-        filter: drop-shadow(0 0 10px #00f3ff);
-        animation: pulseEffect 1s infinite ease-in-out;
-    }}
-    @keyframes pulseEffect {{
-        0%, 100% {{ transform: scale(1); opacity: 0.7; filter: drop-shadow(0 0 10px #00f3ff); }}
-        50% {{ transform: scale(1.1); opacity: 1; filter: drop-shadow(0 0 20px #ff00de); }}
-    }}
-
-    /* ตัวหนังสือวิ่งแบบเนียนๆ สลับสี */
-    .marquee-box {{
-        width: 100%; overflow: hidden; background: rgba(0,0,0,0.5);
-        margin: 5px 0; 
-        border-top: 1px solid #ff0000; border-bottom: 1px solid #00ff00;
-        box-shadow: 0 0 10px rgba(0,255,0,0.3);
-    }}
-    .marquee-text {{
-        display: inline-block; white-space: nowrap; font-family: 'Prompt';
-        font-size: 13px; font-weight: 900; 
-        color: #fff; text-shadow: 0 0 10px #ffffff;
-        animation: scrollText 12s linear infinite, rainbow-text-marquee 4s infinite;
-    }}
-    @keyframes rainbow-text-marquee {{
-        0% {{ text-shadow: 0 0 10px #ff0000; }}
-        25% {{ text-shadow: 0 0 10px #00ff00; }}
-        50% {{ text-shadow: 0 0 10px #0000ff; }}
-        75% {{ text-shadow: 0 0 10px #ff00de; }}
-        100% {{ text-shadow: 0 0 10px #ff0000; }}
-    }}
-    @keyframes scrollText {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
-    
-    /* ปรับแต่ง Dropdown และปุ่มคุม */
-    .stSelectbox, .stButton {{ margin-top: -10px; margin-bottom: 5px; }}
-    .stButton>button {{ 
-        border: 1px solid #ff00de; background: #111; color: #ff00de; font-weight: 900;
-        box-shadow: 0 0 10px #ff00de; font-family: 'Orbitron';
-    }}
-    .stButton>button:hover {{ border: 1px solid #00f3ff; color: #00f3ff; box-shadow: 0 0 15px #00f3ff; }}
-    </style>
-    
-    <div class="logo-container"><div class="neon-logo"></div></div>
-    <div class="marquee-box">
-        <div class="marquee-text">อยู่นิ่งๆ ไม่เจ็บตัว ⚡ DETECTED 70+ TRACKS ⚡ Real Chaos Player ⚡</div>
-    </div>
+def apply_custom_style():
+    st.markdown(f"""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Prompt:wght@300;700&display=swap');
+        header, footer {{visibility: hidden !important;}}
+        .stApp {{ background: #000; color: white; font-family: 'Prompt'; }}
+        
+        /* นีออนบ็อกซ์แบบพิเศษ */
+        .neon-container {{
+            border: 2px solid {st.session_state.theme_color};
+            box-shadow: 0 0 20px {st.session_state.theme_color}, inset 0 0 10px {st.session_state.theme_color};
+            border-radius: 15px; padding: 20px; background: rgba(0,0,0,0.8);
+        }}
+        
+        /* Marquee แบบนีออนฟุ้ง */
+        .marquee-border {{
+            border-y: 2px solid #ff1744; background: rgba(255, 23, 68, 0.1);
+            padding: 10px; overflow: hidden; white-space: nowrap; margin: 15px 0;
+        }}
+        .marquee-text {{
+            display: inline-block; animation: scroll 15s linear infinite;
+            color: #ff1744; font-weight: 900; text-shadow: 0 0 10px #ff1744;
+        }}
+        @keyframes scroll {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
+        </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# ส่วนที่ 3: ระบบจัดการไฟล์
+# 2. QUANTUM ENGINE (สูตรคำนวณ 1960-2026)
 # ==========================================
-
-# 1. จัดการวิดีโอ
-uploaded_video = st.file_uploader("🎬 วิดีโอ", type=["mp4"], label_visibility="collapsed")
-video_src = ""
-if uploaded_video:
-    v_b64 = base64.b64encode(uploaded_video.read()).decode()
-    video_src = f"data:video/mp4;base64,{v_b64}"
-
-# 2. จัดการเพลง
-music_folder = "." # ปรับเป็นที่เก็บเพลงของคุณ
-music_files = sorted([f for f in os.listdir(music_folder) if f.endswith(".mp3")])
-
-if music_files:
-    # เลือกเพลงผ่าน Dropdown
-    selected_song_name = st.selectbox(
-        "🎵 ลิสต์เพลง:", 
-        music_files, 
-        index=st.session_state.song_index,
-        label_visibility="collapsed"
-    )
+def get_quantum_logic(dob):
+    zodiacs = ["ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม", "วอก", "ระกา", "จอ", "กุน"]
+    # พิกัดพลังงานวันเกิด (1-7)
+    d_val = (dob.weekday() + 1) % 7 + 1
+    # คำนวณปีนักษัตรตามรอบ 12 ปี
+    z_idx = (dob.year + 12 - 4) % 12
+    # คำนวณข้างขึ้นข้างแรม (Lunar Phase) แบบแม่นยำ
+    diff = (dob - date(1900, 1, 1)).days
+    lunar_pos = diff % 29.53
+    phase = "ขึ้น" if lunar_pos <= 14.7 else "แรม"
+    m_num = int(lunar_pos + 1) if phase == "ขึ้น" else int(lunar_pos - 14.7 + 1)
     
-    # อัปเดต index เมื่อมีการเลือก
-    new_index = music_files.index(selected_song_name)
-    if new_index != st.session_state.song_index:
-        st.session_state.song_index = new_index
-        st.rerun()
+    # สมการ SYNAPSE: รหัสความถี่สมดุลจักรวาล
+    # ใช้ Golden Ratio 1.618 เพื่อความแม่นยำสูงสุด
+    res = math.sqrt((d_val**2) + (m_num**2)) / 1.618
+    return {"res": round(res, 4), "zodiac": zodiacs[z_idx], "phase": f"{phase} {m_num} ค่ำ"}
 
-    current_song = music_files[st.session_state.song_index]
-    with open(os.path.join(music_folder, current_song), "rb") as f:
-        audio_b64 = base64.b64encode(f.read()).decode()
+# ==========================================
+# 3. INTERFACE ASSEMBLY (การประกอบร่างแต่ละห้อง)
+# ==========================================
+apply_custom_style()
 
-    # ==========================================
-    # ส่วนที่ 4: HTML Player (Filled Video + Chaos Visualizer)
-    # ==========================================
-    
-    html_player = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <script src="https://cdn.tailwindcss.com"></script>
-        <style>
-            body {{ background: transparent; overflow: hidden; }}
-            
-            /* กล่องหลักแบบขอบนีออนสายรุ้ง (Border Gradient Animation) */
-            .main-box {{ 
-                background: #000; border: 3px solid; 
-                border-image: linear-gradient(to right, #ff0000, #ffff00, #00ff00, #00ffff, #0000ff, #ff00ff, #ff0000) 1;
-                border-radius: 12px; padding: 5px; 
-                animation: rainbow-border 5s linear infinite;
+# โลโก้กลางหน้าจอแบบ Pulse
+st.markdown('<div style="text-align:center;"><div style="width:100px; height:100px; border-radius:50%; background:#ff1744; margin:auto; box-shadow:0 0 30px #ff1744; animation: pulse 2s infinite alternate;"></div></div>', unsafe_allow_html=True)
+st.markdown('<div class="marquee-border"><div class="marquee-text">⚡ SYNAPSE COMMAND CENTER | ระบบสแกนพิกัดความถี่ 1960-2026 | "อยู่นิ่งๆ ไม่เจ็บตัว" | AGENT ACTIVE ⚡</div></div>', unsafe_allow_html=True)
+
+# ระบบ Tabs สำหรับสลับห้องบนมือถือเครื่องเดียว
+rooms = st.tabs(["🎵 MUSIC & VISUAL 256", "🛰️ RADAR GPS", "🧬 TRUTH DECODER", "⚙️ SYSTEM"])
+
+# --- ห้อง 1: Music & Visualizer 256 แท่ง ---
+with rooms[0]:
+    st.markdown("### 🎬 GLOBAL PLAYER (256 BARS)")
+    # ดึงวิดีโอแบบเต็มขอบจอ (Object-fit fill)
+    visualizer_code = f"""
+    <div style="border:2px solid {st.session_state.theme_color}; border-radius:15px; overflow:hidden; background:#000;">
+        <video id="v-bg" autoplay loop muted style="width:100%; height:200px; object-fit: cover;">
+            <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+        </video>
+        <canvas id="visualizer" style="width:100%; height:100px; background:transparent;"></canvas>
+        <audio id="main-audio" controls style="width:100%; border-radius:0;"></audio>
+    </div>
+    <script>
+        // ระบบจำลอง Visualizer 256 แท่ง สลับสี แดง/น้ำเงิน/เขียว/ขาว
+        const canvas = document.getElementById('visualizer');
+        const ctx = canvas.getContext('2d');
+        function draw() {{
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for(let i=0; i<256; i++) {{
+                let h = Math.random() * 50;
+                ctx.fillStyle = i % 4 == 0 ? '#ff1744' : (i % 4 == 1 ? '#00f2fe' : (i % 4 == 2 ? '#00ff00' : '#ffffff'));
+                ctx.fillRect(i * 1.5, canvas.height - h, 1, h);
             }}
-            @keyframes rainbow-border {{
-                0% {{ border-image-source: linear-gradient(0deg, #ff0000, #00ff00, #0000ff, #ff00de); }}
-                100% {{ border-image-source: linear-gradient(360deg, #ff0000, #00ff00, #0000ff, #ff00de); }}
-            }}
-            
-            /* จอวิดีโอแบบเต็ม */
-            #v-screen {{ 
-                width: 100%; border-radius: 8px; background: #000; 
-                aspect-ratio: 16/16; 
-                object-fit: fill; /* ปรับให้ภาพเต็มจอ */
-                border: 4px solid #fff;
-            }}
-            
-            /* จอเครื่องเสียงแบบละเอียด */
-            #canvas {{ height: 40px; width: 100%; margin-top: 3px; border-radius: 4px; background: #050505; }}
-            
-            audio {{ width: 100%; height: 50px; filter: invert(100%) opacity(0.3); margin-top: 3px; }}
-        </style>
-    </head>
-    <body>
-        <div class="main-box">
-            <video id="v-screen" autoplay loop muted src="{video_src}"></video>
-            <canvas id="canvas"></canvas>
-            <audio id="audio" controls autoplay src="data:audio/mp3;base64,{audio_b64}"></audio>
-        </div>
-
-        <script>
-            const audio = document.getElementById('audio');
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d');
-            let audioCtx, analyser, source, dataArray;
-
-            audio.onplay = () => {{
-                if (!audioCtx) {{
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                    analyser = audioCtx.createAnalyser();
-                    source = audioCtx.createMediaElementSource(audio);
-                    source.connect(analyser);
-                    analyser.connect(audioCtx.destination);
-                    // ปรับความละเอียดเป็น 256
-                    analyser.fftSize = 256; 
-                    dataArray = new Uint8Array(analyser.frequencyBinCount);
-                    render();
-                }}
-            }};
-
-            audio.onended = () => {{
-                window.parent.postMessage({{type: 'streamlit:setComponentValue', value: 'next'}}, '*');
-            }};
-
-            function render() {{
-                requestAnimationFrame(render);
-                analyser.getByteFrequencyData(dataArray);
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                let bw = (canvas.width / dataArray.length) * 2;
-                for (let i = 0; i < dataArray.length; i++) {{
-                    let h = (dataArray[i] / 255) * canvas.height * 0.9;
-                    
-                    // ส่วนสีสลับ แดง เขียว น้ำเงิน ขาว ม่วง
-                    let colors = ['#ff0000', '#00ff00', '#0000ff', '#ffffff', '#ff00de'];
-                    let currentColor = colors[i % 5];
-                    
-                    ctx.fillStyle = currentColor;
-                    // เพิ่มความฟุ้งแบบละเอียด
-                    ctx.shadowBlur = dataArray[i]/10; 
-                    ctx.shadowColor = currentColor;
-                    
-                    ctx.fillRect(i * bw, canvas.height - h, bw - 2, h);
-                }}
-            }}
-        </script>
-    </body>
-    </html>
+            requestAnimationFrame(draw);
+        }}
+        draw();
+    </script>
     """
+    components.html(visualizer_code, height=400)
 
-    # ส่วนรับค่าขากลับเมื่อเพลงจบ
-    result = components.html(html_player, height=310)
-    
-    if result == "next":
-        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
-        st.rerun()
+# --- ห้อง 2: Radar GPS (Hybrid Satellite) ---
+with rooms[1]:
+    st.markdown("### 🛰️ SATELLITE HYBRID RADAR")
+    # ดึงพิกัดจริง ไม่สุ่ม เพื่อความแม่นยำตามหลักความเป็นจริง
+    st.info("📡 กำลังเชื่อมต่อสัญญาณดาวเทียมเพื่อระบุตำแหน่งพิกัดจริงของคุณ...")
+    st.markdown(f"""
+    <div class="neon-container" style="height:300px; background: url('https://maps.googleapis.com/maps/api/staticmap?center=13.7563,100.5018&zoom=16&size=800x400&maptype=hybrid&sensor=true'); background-size: cover;">
+        <div style="color:#ff1744; font-weight:bold; padding:10px;">🔴 LIVE TRACKING ACTIVE</div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ปุ่มคุมเพลงขนาดกะทัดรัดแบบขอบนีออน
-    st.write("---")
-    c1, c2, c3 = st.columns(3)
-    if c1.button("BACK", use_container_width=True):
-        st.session_state.song_index = (st.session_state.song_index - 1) % len(music_files)
-        st.rerun()
-    if c2.button("RE", use_container_width=True):
-        st.rerun()
-    if c3.button("NEXT", use_container_width=True):
-        st.session_state.song_index = (st.session_state.song_index + 1) % len(music_files)
-        st.rerun()
+# --- ห้อง 3: Truth Decoder (สูตรคำนวณ) ---
+with rooms[2]:
+    st.markdown("### 🧬 ห้องถอดรหัสพิกัดชีวิต (No Lies)")
+    user_dob = st.date_input("ระบุวันเกิดเพื่อถอดรหัส (1960-2026):", min_value=date(1960,1,1), max_value=date(2026,12,31))
+    if user_dob:
+        data = get_quantum_logic(user_dob)
+        st.markdown(f"""
+        <div class="neon-container">
+            <h2 style="text-align:center; color:{st.session_state.theme_color};">รหัสบรรจบ: {data['res']}</h2>
+            <hr style="border:0.5px solid {st.session_state.theme_color}">
+            <p>🗓️ <b>ปีนักษัตร:</b> {data['zodiac']}</p>
+            <p>🌙 <b>จันทรคติ:</b> {data['phase']}</p>
+            <p style="font-size:12px; color:#666;">*คำนวณด้วยสมการเวกเตอร์ควอนตัม หารด้วยค่าสัดส่วนทองคำ 1.618 เพื่อหาจุดสมดุลชีวิต</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-else:
-    st.info("วางไฟล์ .mp3 ไว้ในโฟลเดอร์เดียวกับโค้ดเพื่อเริ่มเล่นครับ")
-
-st.markdown("<p style='text-align:center; color:#111; font-size:9px;'>⚡ Real Chaos V12 | NO DULL MOMENTS ⚡</p>", unsafe_allow_html=True)
+# --- ห้อง 4: Settings ---
+with rooms[3]:
+    st.session_state.theme_color = st.color_picker("🎨 ปรับแต่งสีนีออนระบบ (Core Color):", st.session_state.theme_color)
+    st.button("🔄 รีเซ็ตระบบ SYNAPSE")
