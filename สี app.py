@@ -109,7 +109,5 @@ try:
             'lat': my_lat, 'lon': my_lon, 'ts': time.time()
         })
         st.success(f"อัปเดตพิกัดเข้าฐานข้อมูลเรียบร้อย!")
-
-# รันระบบ
 room_radar()
 st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE COMMAND CENTER")
