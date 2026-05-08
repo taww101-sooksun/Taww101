@@ -1,136 +1,158 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import os
+import firebase_admin
+from firebase_admin import credentials, db
+import folium
+from streamlit_folium import st_folium
+from datetime import datetime, date, timedelta
 import base64
+import time
 import math
-from datetime import datetime, date
 
-# ==========================================
-# 1. CORE CONFIG & NEON UI (จัดเต็มลูกเล่นแสง)
-# ==========================================
-st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide", initial_sidebar_state="collapsed")
+# --- 1. SET UP & THEME (Cyberpunk Style) ---
+st.set_page_config(page_title="SYNAPSE ULTIMATE", layout="wide")
 
-# ระบบจำค่าสีนีออนและลำดับเพลง
-if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00f2fe" 
-if 'song_idx' not in st.session_state: st.session_state.song_idx = 0
-
-def apply_custom_style():
-    st.markdown(f"""
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Prompt:wght@300;700&display=swap');
-        header, footer {{visibility: hidden !important;}}
-        .stApp {{ background: #000; color: white; font-family: 'Prompt'; }}
-        
-        /* นีออนบ็อกซ์แบบพิเศษ */
-        .neon-container {{
-            border: 2px solid {st.session_state.theme_color};
-            box-shadow: 0 0 20px {st.session_state.theme_color}, inset 0 0 10px {st.session_state.theme_color};
-            border-radius: 15px; padding: 20px; background: rgba(0,0,0,0.8);
-        }}
-        
-        /* Marquee แบบนีออนฟุ้ง */
-        .marquee-border {{
-            border-y: 2px solid #ff1744; background: rgba(255, 23, 68, 0.1);
-            padding: 10px; overflow: hidden; white-space: nowrap; margin: 15px 0;
-        }}
-        .marquee-text {{
-            display: inline-block; animation: scroll 15s linear infinite;
-            color: #ff1744; font-weight: 900; text-shadow: 0 0 10px #ff1744;
-        }}
-        @keyframes scroll {{ 0% {{ transform: translateX(100%); }} 100% {{ transform: translateX(-100%); }} }}
-        </style>
+st.markdown("""
+    <style>
+    header {visibility: hidden;}
+    .stApp { background-color: #000; color: #39FF14; }
+    .stButton>button { 
+        border: 1px solid #39FF14 !important; color: #39FF14 !important;
+        background: rgba(57, 255, 20, 0.1) !important; width: 100%;
+    }
+    .stTabs [data-baseweb="tab-list"] { background-color: #111; }
+    .stTabs [data-baseweb="tab"] { color: #888; }
+    .stTabs [aria-selected="true"] { color: #39FF14 !important; border-bottom: 2px solid #39FF14 !important; }
+    </style>
     """, unsafe_allow_html=True)
 
-# ==========================================
-# 2. QUANTUM ENGINE (สูตรคำนวณ 1960-2026)
-# ==========================================
-def get_quantum_logic(dob):
-    zodiacs = ["ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม", "วอก", "ระกา", "จอ", "กุน"]
-    # พิกัดพลังงานวันเกิด (1-7)
-    d_val = (dob.weekday() + 1) % 7 + 1
-    # คำนวณปีนักษัตรตามรอบ 12 ปี
-    z_idx = (dob.year + 12 - 4) % 12
-    # คำนวณข้างขึ้นข้างแรม (Lunar Phase) แบบแม่นยำ
-    diff = (dob - date(1900, 1, 1)).days
-    lunar_pos = diff % 29.53
-    phase = "ขึ้น" if lunar_pos <= 14.7 else "แรม"
-    m_num = int(lunar_pos + 1) if phase == "ขึ้น" else int(lunar_pos - 14.7 + 1)
-    
-    # สมการ SYNAPSE: รหัสความถี่สมดุลจักรวาล
-    # ใช้ Golden Ratio 1.618 เพื่อความแม่นยำสูงสุด
-    res = math.sqrt((d_val**2) + (m_num**2)) / 1.618
-    return {"res": round(res, 4), "zodiac": zodiacs[z_idx], "phase": f"{phase} {m_num} ค่ำ"}
+# --- 2. FIREBASE INIT ---
+if not firebase_admin._apps:
+    try:
+        fb_creds = dict(st.secrets["firebase_credentials"])
+        fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
+        cred = credentials.Certificate(fb_creds)
+        firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
+    except:
+        st.error("⚠️ เชื่อมต่อ Firebase ไม่ได้ ตรวจสอบ Secrets ด้วยเพื่อน!")
 
-# ==========================================
-# 3. INTERFACE ASSEMBLY (การประกอบร่างแต่ละห้อง)
-# ==========================================
-apply_custom_style()
+# --- 3. SESSION STATE ---
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+if 'user' not in st.session_state: st.session_state.user = None
 
-# โลโก้กลางหน้าจอแบบ Pulse
-st.markdown('<div style="text-align:center;"><div style="width:100px; height:100px; border-radius:50%; background:#ff1744; margin:auto; box-shadow:0 0 30px #ff1744; animation: pulse 2s infinite alternate;"></div></div>', unsafe_allow_html=True)
-st.markdown('<div class="marquee-border"><div class="marquee-text">⚡ SYNAPSE COMMAND CENTER | ระบบสแกนพิกัดความถี่ 1960-2026 | "อยู่นิ่งๆ ไม่เจ็บตัว" | AGENT ACTIVE ⚡</div></div>', unsafe_allow_html=True)
+# --- 4. UTILS ---
+def get_base64_img(path):
+    import os
+    if os.path.exists(path):
+        with open(path, "rb") as f: return base64.b64encode(f.read()).decode()
+    return ""
 
-# ระบบ Tabs สำหรับสลับห้องบนมือถือเครื่องเดียว
-rooms = st.tabs(["🎵 MUSIC & VISUAL 256", "🛰️ RADAR GPS", "🧬 TRUTH DECODER", "⚙️ SYSTEM"])
+# --- 5. LOGIN SYSTEM ---
+if not st.session_state.logged_in:
+    st.title("🛡️ AGENT AUTHENTICATION")
+    tab_l, tab_r = st.tabs(["🔑 LOGIN", "📝 REGISTER"])
+    with tab_l:
+        u = st.text_input("AGENT ID")
+        p = st.text_input("PASSWORD", type="password")
+        if st.button("ENTER SYSTEM"):
+            res = db.reference(f'users/{u}').get()
+            if res and res.get('password') == p:
+                st.session_state.logged_in = True
+                st.session_state.user = u
+                st.rerun()
+            else: st.error("Access Denied.")
+    with tab_r:
+        nu = st.text_input("NEW AGENT ID")
+        np = st.text_input("SET PASSWORD", type="password")
+        if st.button("CREATE PROFILE"):
+            db.reference(f'users/{nu}').set({'password': np, 'ts': time.time()})
+            st.success("Profile Created.")
+    st.stop()
 
-# --- ห้อง 1: Music & Visualizer 256 แท่ง ---
-with rooms[0]:
-    st.markdown("### 🎬 GLOBAL PLAYER (256 BARS)")
-    # ดึงวิดีโอแบบเต็มขอบจอ (Object-fit fill)
-    visualizer_code = f"""
-    <div style="border:2px solid {st.session_state.theme_color}; border-radius:15px; overflow:hidden; background:#000;">
-        <video id="v-bg" autoplay loop muted style="width:100%; height:200px; object-fit: cover;">
-            <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
-        </video>
-        <canvas id="visualizer" style="width:100%; height:100px; background:transparent;"></canvas>
-        <audio id="main-audio" controls style="width:100%; border-radius:0;"></audio>
+# --- 6. MAIN INTERFACE ---
+st.sidebar.title(f"📟 AGENT: {st.session_state.user}")
+st.sidebar.write('"อยู่นิ่งๆ ไม่เจ็บตัว"')
+if st.sidebar.button("LOGOUT"):
+    st.session_state.logged_in = False
+    st.rerun()
+
+main_tabs = st.tabs(["💬 GLOBAL CHAT", "🛰️ RADAR", "🔢 COSMIC DECODER", "🎧 NEON MIXER"])
+
+# --- TAB 1: GLOBAL CHAT ---
+with main_tabs[0]:
+    chat_html = f"""
+    <div id="c-box" style="height:400px; overflow-y:auto; background:#050505; border:1px solid #39FF14; padding:10px; font-family:monospace;">
+        <div id="m-area"></div>
     </div>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script>
-        // ระบบจำลอง Visualizer 256 แท่ง สลับสี แดง/น้ำเงิน/เขียว/ขาว
-        const canvas = document.getElementById('visualizer');
-        const ctx = canvas.getContext('2d');
-        function draw() {{
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for(let i=0; i<256; i++) {{
-                let h = Math.random() * 50;
-                ctx.fillStyle = i % 4 == 0 ? '#ff1744' : (i % 4 == 1 ? '#00f2fe' : (i % 4 == 2 ? '#00ff00' : '#ffffff'));
-                ctx.fillRect(i * 1.5, canvas.height - h, 1, h);
-            }}
-            requestAnimationFrame(draw);
-        }}
-        draw();
+        const conf = {{ databaseURL: "{st.secrets['firebase_db_url']}" }};
+        if(!firebase.apps.length) firebase.initializeApp(conf);
+        firebase.database().ref('global_chat').limitToLast(20).on('child_added', (s) => {{
+            const m = s.val();
+            const area = document.getElementById('m-area');
+            const d = document.createElement('div');
+            d.style.color = m.user === "{st.session_state.user}" ? "#39FF14" : "#fff";
+            d.innerHTML = `<b>[${{m.user}}]:</b> ${{m.text}}`;
+            area.appendChild(d);
+            document.getElementById('c-box').scrollTop = 9999;
+        }});
     </script>
     """
-    components.html(visualizer_code, height=400)
+    components.html(chat_html, height=420)
+    msg = st.text_input("SEND SIGNAL", key="chat_in")
+    if st.button("SEND ⚡"):
+        if msg:
+            db.reference('global_chat').push({'user': st.session_state.user, 'text': msg, 'ts': time.time()})
+            st.rerun()
 
-# --- ห้อง 2: Radar GPS (Hybrid Satellite) ---
-with rooms[1]:
-    st.markdown("### 🛰️ SATELLITE HYBRID RADAR")
-    # ดึงพิกัดจริง ไม่สุ่ม เพื่อความแม่นยำตามหลักความเป็นจริง
-    st.info("📡 กำลังเชื่อมต่อสัญญาณดาวเทียมเพื่อระบุตำแหน่งพิกัดจริงของคุณ...")
-    st.markdown(f"""
-    <div class="neon-container" style="height:300px; background: url('https://maps.googleapis.com/maps/api/staticmap?center=13.7563,100.5018&zoom=16&size=800x400&maptype=hybrid&sensor=true'); background-size: cover;">
-        <div style="color:#ff1744; font-weight:bold; padding:10px;">🔴 LIVE TRACKING ACTIVE</div>
-    </div>
-    """, unsafe_allow_html=True)
+# --- TAB 2: RADAR ---
+with main_tabs[1]:
+    st.subheader("🛰️ AGENT LOCATOR")
+    m = folium.Map(location=[13.7367, 100.5231], zoom_start=12, tiles="CartoDB dark_matter")
+    try:
+        agents = db.reference('users').get()
+        for uid, data in agents.items():
+            if 'lat' in data and 'lon' in data:
+                folium.Marker([data['lat'], data['lon']], tooltip=uid, 
+                              icon=folium.Icon(color='green' if uid != st.session_state.user else 'red')).add_to(m)
+    except: pass
+    st_folium(m, width="100%", height=400)
+    if st.button("📡 BROADCAST MY LOCATION"):
+        # ในใช้งานจริงต้องใช้ get_geolocation จาก streamlit_js_eval
+        db.reference(f'users/{st.session_state.user}').update({'lat': 13.7367, 'lon': 100.5231}) 
+        st.success("Location Broadcasted!")
 
-# --- ห้อง 3: Truth Decoder (สูตรคำนวณ) ---
-with rooms[2]:
-    st.markdown("### 🧬 ห้องถอดรหัสพิกัดชีวิต (No Lies)")
-    user_dob = st.date_input("ระบุวันเกิดเพื่อถอดรหัส (1960-2026):", min_value=date(1960,1,1), max_value=date(2026,12,31))
-    if user_dob:
-        data = get_quantum_logic(user_dob)
-        st.markdown(f"""
-        <div class="neon-container">
-            <h2 style="text-align:center; color:{st.session_state.theme_color};">รหัสบรรจบ: {data['res']}</h2>
-            <hr style="border:0.5px solid {st.session_state.theme_color}">
-            <p>🗓️ <b>ปีนักษัตร:</b> {data['zodiac']}</p>
-            <p>🌙 <b>จันทรคติ:</b> {data['phase']}</p>
-            <p style="font-size:12px; color:#666;">*คำนวณด้วยสมการเวกเตอร์ควอนตัม หารด้วยค่าสัดส่วนทองคำ 1.618 เพื่อหาจุดสมดุลชีวิต</p>
+# --- TAB 3: COSMIC DECODER ---
+with main_tabs[2]:
+    st.subheader("🔢 COSMIC BALANCE DECODER")
+    target_dt = st.date_input("เลือกวันที่วิเคราะห์", date.today())
+    # Logic ถอดรหัส (ตัวอย่างจาก Step-by-Step)
+    day_val = target_dt.isoweekday()
+    lunar_pos = ((target_dt - date(1900,1,1)).days - 0.5) % 29.53
+    lunar_val = int(lunar_pos) if lunar_pos <= 14.7 else int(lunar_pos - 14.7)
+    res = (day_val + target_dt.day + lunar_val) * 1.618
+    
+    st.metric("Cosmic Index", f"{res:.4f}")
+    st.info(f"วันทางพลังงาน: {day_val} | ฐานจันทรคติ: {lunar_val} | ตัวเลขสั่นสะเทือน: {str(res)[2:4]}")
+
+# --- TAB 4: NEON MIXER ---
+with main_tabs[3]:
+    st.subheader("🎧 NEON AUTO-MIXER")
+    # โค้ด HTML Mixer แบบย่อ (ใช้งานจริงต้องโหลดไฟล์เสียง)
+    mixer_html = """
+    <div style="background:#111; padding:20px; border-radius:10px; border:1px solid #39FF14; text-align:center;">
+        <p style="color:#39FF14;">SYSTEM READY: AWAITING AUDIO INPUT</p>
+        <div style="display:flex; justify-content:space-around;">
+            <div style="width:40%; border:1px dashed #555; padding:10px;">DECK A</div>
+            <div style="width:40%; border:1px dashed #555; padding:10px;">DECK B</div>
         </div>
-        """, unsafe_allow_html=True)
+        <button style="margin-top:20px; padding:10px 30px; background:#39FF14; border:none; color:#000; font-weight:bold;">AUTO-SYNC</button>
+    </div>
+    """
+    st.components.v1.html(mixer_html, height=300)
+    st.write("💡 อัปโหลดไฟล์เสียงในระดับเครื่อง AGENT เพื่อเริ่มการ Mix")
 
-# --- ห้อง 4: Settings ---
-with rooms[3]:
-    st.session_state.theme_color = st.color_picker("🎨 ปรับแต่งสีนีออนระบบ (Core Color):", st.session_state.theme_color)
-    st.button("🔄 รีเซ็ตระบบ SYNAPSE")
+st.markdown("---")
+st.caption("SYNAPSE ULTIMATE SYSTEM v6.0 | © 2026")
