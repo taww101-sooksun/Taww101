@@ -1,36 +1,23 @@
 import streamlit as st
-from streamlit_js_eval import get_geolocation
-import folium
-from streamlit_folium import st_folium
 
-st.set_page_config(page_title="GPS Real-time Tracker")
+# 1. ตั้งค่า Page และซ่อนองค์ประกอบของ Streamlit
+st.set_page_config(page_title="Professional GPS Tracker", layout="wide")
 
-st.title("📍 ระบบระบุตำแหน่งเรียลไทม์")
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# ดึงข้อมูล Location จากเซนเซอร์มือถือผ่าน Browser
-loc = get_geolocation()
+# 2. ใส่ Logo (ใช้ st.logo สำหรับเวอร์ชันใหม่ หรือ st.sidebar.image)
+# ตรวจสอบว่าไฟล์ logo1.png อยู่ในโฟลเดอร์เดียวกับโค้ด
+try:
+    st.sidebar.image("logo1.png", use_container_width=True)
+except:
+    st.sidebar.warning("ไม่พบไฟล์ logo1.png กรุณาตรวจสอบชื่อไฟล์")
 
-if loc:
-    lat = loc['coords']['latitude']
-    lon = loc['coords']['longitude']
-    accuracy = loc['coords']['accuracy']
-
-    st.success(f"พบตำแหน่งปัจจุบัน (ความแม่นยำ: {accuracy:.2f} เมตร)")
-    st.write(f"ละติจูด: {lat} | ลองจิจูด: {lon}")
-
-    # สร้างแผนที่และปักหมุด
-    m = folium.Map(location=[lat, lon], zoom_start=16)
-    folium.Marker(
-        [lat, lon], 
-        popup="ตำแหน่งของคุณ",
-        tooltip="You are here",
-        icon=folium.Icon(color='red', icon='info-sign')
-    ).add_to(m)
-
-    # แสดงผลแผนที่ในแอป
-    st_folium(m, width=700, height=500)
-    
-    if st.button("อัปเดตตำแหน่งใหม่"):
-        st.rerun()
-else:
-    st.warning("กำลังรอสัญญาณ GPS... กรุณากดอนุญาตให้เข้าถึงตำแหน่ง (Location Access)")
+st.title("📍 ระบบระบุตำแหน่งระดับองค์กร")
+# ... โค้ดส่วน GPS และแผนที่ของคุณต่อจากตรงนี้ ...
