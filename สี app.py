@@ -87,7 +87,7 @@ st.session_state.theme_color = "#00FF00"
 
 # --- 4. ฟังก์ชัน ROOM RADAR (ตัวที่คุณส่งมา) ---
     # ดึงข้อมูล AGENT อื่นๆ จาก Firebase Realtime Database
-    try:
+try:
         users_ref = db.reference('users').get()
         if users_ref:
             for uid, data in users_ref.items():
