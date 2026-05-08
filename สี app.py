@@ -145,15 +145,15 @@ if music_files:
             /* จอวิดีโอแบบเต็ม */
             #v-screen {{ 
                 width: 100%; border-radius: 8px; background: #000; 
-                aspect-ratio: 16/9; 
+                aspect-ratio: 16/16; 
                 object-fit: fill; /* ปรับให้ภาพเต็มจอ */
-                border: 1px solid #fff;
+                border: 4px solid #fff;
             }}
             
             /* จอเครื่องเสียงแบบละเอียด */
             #canvas {{ height: 40px; width: 100%; margin-top: 3px; border-radius: 4px; background: #050505; }}
             
-            audio {{ width: 100%; height: 25px; filter: invert(100%) opacity(0.3); margin-top: 3px; }}
+            audio {{ width: 100%; height: 50px; filter: invert(100%) opacity(0.3); margin-top: 3px; }}
         </style>
     </head>
     <body>
