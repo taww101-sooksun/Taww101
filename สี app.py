@@ -1,158 +1,161 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import firebase_admin
-from firebase_admin import credentials, db
-import folium
-from streamlit_folium import st_folium
-from datetime import datetime, date, timedelta
+import os
 import base64
-import time
-import math
 
-# --- 1. SET UP & THEME (Cyberpunk Style) ---
-st.set_page_config(page_title="SYNAPSE ULTIMATE", layout="wide")
-
-st.markdown("""
-    <style>
-    header {visibility: hidden;}
-    .stApp { background-color: #000; color: #39FF14; }
-    .stButton>button { 
-        border: 1px solid #39FF14 !important; color: #39FF14 !important;
-        background: rgba(57, 255, 20, 0.1) !important; width: 100%;
-    }
-    .stTabs [data-baseweb="tab-list"] { background-color: #111; }
-    .stTabs [data-baseweb="tab"] { color: #888; }
-    .stTabs [aria-selected="true"] { color: #39FF14 !important; border-bottom: 2px solid #39FF14 !important; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# --- 2. FIREBASE INIT ---
-if not firebase_admin._apps:
+# ฟังก์ชันช่วยแปลงไฟล์ (ต้องมีอยู่ในโค้ดหลักของคุณ)
+def get_base64(file_path):
     try:
-        fb_creds = dict(st.secrets["firebase_credentials"])
-        fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
-        cred = credentials.Certificate(fb_creds)
-        firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
-    except:
-        st.error("⚠️ เชื่อมต่อ Firebase ไม่ได้ ตรวจสอบ Secrets ด้วยเพื่อน!")
+        with open(file_path, "rb") as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except Exception:
+        return ""
 
-# --- 3. SESSION STATE ---
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-if 'user' not in st.session_state: st.session_state.user = None
+# สมมติค่าตัวแปรเบื้องต้น
+primary_neon = "#00FFCC"
 
-# --- 4. UTILS ---
-def get_base64_img(path):
-    import os
-    if os.path.exists(path):
-        with open(path, "rb") as f: return base64.b64encode(f.read()).decode()
-    return ""
+if "page" not in st.session_state:
+    st.session_state.page = "1"
 
-# --- 5. LOGIN SYSTEM ---
-if not st.session_state.logged_in:
-    st.title("🛡️ AGENT AUTHENTICATION")
-    tab_l, tab_r = st.tabs(["🔑 LOGIN", "📝 REGISTER"])
-    with tab_l:
-        u = st.text_input("AGENT ID")
-        p = st.text_input("PASSWORD", type="password")
-        if st.button("ENTER SYSTEM"):
-            res = db.reference(f'users/{u}').get()
-            if res and res.get('password') == p:
-                st.session_state.logged_in = True
-                st.session_state.user = u
-                st.rerun()
-            else: st.error("Access Denied.")
-    with tab_r:
-        nu = st.text_input("NEW AGENT ID")
-        np = st.text_input("SET PASSWORD", type="password")
-        if st.button("CREATE PROFILE"):
-            db.reference(f'users/{nu}').set({'password': np, 'ts': time.time()})
-            st.success("Profile Created.")
-    st.stop()
-
-# --- 6. MAIN INTERFACE ---
-st.sidebar.title(f"📟 AGENT: {st.session_state.user}")
-st.sidebar.write('"อยู่นิ่งๆ ไม่เจ็บตัว"')
-if st.sidebar.button("LOGOUT"):
-    st.session_state.logged_in = False
-    st.rerun()
-
-main_tabs = st.tabs(["💬 GLOBAL CHAT", "🛰️ RADAR", "🔢 COSMIC DECODER", "🎧 NEON MIXER"])
-
-# --- TAB 1: GLOBAL CHAT ---
-with main_tabs[0]:
-    chat_html = f"""
-    <div id="c-box" style="height:400px; overflow-y:auto; background:#050505; border:1px solid #39FF14; padding:10px; font-family:monospace;">
-        <div id="m-area"></div>
-    </div>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script>
-        const conf = {{ databaseURL: "{st.secrets['firebase_db_url']}" }};
-        if(!firebase.apps.length) firebase.initializeApp(conf);
-        firebase.database().ref('global_chat').limitToLast(20).on('child_added', (s) => {{
-            const m = s.val();
-            const area = document.getElementById('m-area');
-            const d = document.createElement('div');
-            d.style.color = m.user === "{st.session_state.user}" ? "#39FF14" : "#fff";
-            d.innerHTML = `<b>[${{m.user}}]:</b> ${{m.text}}`;
-            area.appendChild(d);
-            document.getElementById('c-box').scrollTop = 9999;
-        }});
-    </script>
-    """
-    components.html(chat_html, height=420)
-    msg = st.text_input("SEND SIGNAL", key="chat_in")
-    if st.button("SEND ⚡"):
-        if msg:
-            db.reference('global_chat').push({'user': st.session_state.user, 'text': msg, 'ts': time.time()})
-            st.rerun()
-
-# --- TAB 2: RADAR ---
-with main_tabs[1]:
-    st.subheader("🛰️ AGENT LOCATOR")
-    m = folium.Map(location=[13.7367, 100.5231], zoom_start=12, tiles="CartoDB dark_matter")
-    try:
-        agents = db.reference('users').get()
-        for uid, data in agents.items():
-            if 'lat' in data and 'lon' in data:
-                folium.Marker([data['lat'], data['lon']], tooltip=uid, 
-                              icon=folium.Icon(color='green' if uid != st.session_state.user else 'red')).add_to(m)
-    except: pass
-    st_folium(m, width="100%", height=400)
-    if st.button("📡 BROADCAST MY LOCATION"):
-        # ในใช้งานจริงต้องใช้ get_geolocation จาก streamlit_js_eval
-        db.reference(f'users/{st.session_state.user}').update({'lat': 13.7367, 'lon': 100.5231}) 
-        st.success("Location Broadcasted!")
-
-# --- TAB 3: COSMIC DECODER ---
-with main_tabs[2]:
-    st.subheader("🔢 COSMIC BALANCE DECODER")
-    target_dt = st.date_input("เลือกวันที่วิเคราะห์", date.today())
-    # Logic ถอดรหัส (ตัวอย่างจาก Step-by-Step)
-    day_val = target_dt.isoweekday()
-    lunar_pos = ((target_dt - date(1900,1,1)).days - 0.5) % 29.53
-    lunar_val = int(lunar_pos) if lunar_pos <= 14.7 else int(lunar_pos - 14.7)
-    res = (day_val + target_dt.day + lunar_val) * 1.618
+if st.session_state.page == "1":
+    st.markdown("<h2 style='color:#00FFCC; font-family:monospace;'>🎧 SYNAPSE DJ STATION V.3</h2>", unsafe_allow_html=True)
     
-    st.metric("Cosmic Index", f"{res:.4f}")
-    st.info(f"วันทางพลังงาน: {day_val} | ฐานจันทรคติ: {lunar_val} | ตัวเลขสั่นสะเทือน: {str(res)[2:4]}")
+    all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
+    
+    if not all_songs:
+        st.warning("⚠️ ไม่พบไฟล์ .mp3 ในระบบ")
+    else:
+        col_sel_a, col_sel_b = st.columns(2)
+        with col_sel_a:
+            song_a = st.selectbox("💿 DECK A (LEFT)", ["-- Select --"] + all_songs, key="sa")
+        with col_sel_b:
+            song_b = st.selectbox("💿 DECK B (RIGHT)", ["-- Select --"] + all_songs, key="sb")
 
-# --- TAB 4: NEON MIXER ---
-with main_tabs[3]:
-    st.subheader("🎧 NEON AUTO-MIXER")
-    # โค้ด HTML Mixer แบบย่อ (ใช้งานจริงต้องโหลดไฟล์เสียง)
-    mixer_html = """
-    <div style="background:#111; padding:20px; border-radius:10px; border:1px solid #39FF14; text-align:center;">
-        <p style="color:#39FF14;">SYSTEM READY: AWAITING AUDIO INPUT</p>
-        <div style="display:flex; justify-content:space-around;">
-            <div style="width:40%; border:1px dashed #555; padding:10px;">DECK A</div>
-            <div style="width:40%; border:1px dashed #555; padding:10px;">DECK B</div>
+        data_a = get_base64(song_a) if song_a != "-- Select --" else ""
+        data_b = get_base64(song_b) if song_b != "-- Select --" else ""
+
+        mixer_html = f"""
+        <div style="background: #000; border: 2px solid {primary_neon}; border-radius: 20px; padding: 15px; font-family: monospace; color: white;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div style="border: 1px solid {primary_neon}; padding: 10px; border-radius: 15px; text-align: center;">
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: {primary_neon};">
+                        <span id="curA">00:00</span><span id="remA">-00:00</span>
+                    </div>
+                    <canvas id="canvasA" style="width: 100%; height: 60px; background: #111; margin: 5px 0; border-radius:5px;"></canvas>
+                    <input type="range" id="volA" min="0" max="1" step="0.01" value="0.7" style="width: 100%;">
+                    <div style="margin-top: 10px;">
+                        <button onclick="control('A', 'play')" style="background:{primary_neon}; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">PLAY</button>
+                        <button onclick="control('A', 'pause')" style="background:none; border:1px solid {primary_neon}; color:{primary_neon}; padding:5px 10px; border-radius:5px; cursor:pointer;">PAUSE</button>
+                    </div>
+                </div>
+
+                <div style="border: 1px solid #FF44CC; padding: 10px; border-radius: 15px; text-align: center;">
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #FF44CC;">
+                        <span id="curB">00:00</span><span id="remB">-00:00</span>
+                    </div>
+                    <canvas id="canvasB" style="width: 100%; height: 60px; background: #111; margin: 5px 0; border-radius:5px;"></canvas>
+                    <input type="range" id="volB" min="0" max="1" step="0.01" value="0.7" style="width: 100%;">
+                    <div style="margin-top: 10px;">
+                        <button onclick="control('B', 'play')" style="background:#FF44CC; border:none; padding:5px 10px; border-radius:5px; color:white; cursor:pointer;">PLAY</button>
+                        <button onclick="control('B', 'pause')" style="background:none; border:1px solid #FF44CC; color:#FF44CC; padding:5px 10px; border-radius:5px; cursor:pointer;">PAUSE</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top:20px; text-align:center;">
+                <small>CROSSFADER (A <-> B)</small><br>
+                <input type="range" id="fader" min="0" max="1" step="0.01" value="0.5" style="width: 80%;">
+            </div>
+
+            <audio id="audioA" src="data:audio/mp3;base64,{data_a}"></audio>
+            <audio id="audioB" src="data:audio/mp3;base64,{data_b}"></audio>
+
+            <script>
+                const audA = document.getElementById('audioA');
+                const audB = document.getElementById('audioB');
+                const fader = document.getElementById('fader');
+                let audioCtx;
+                let analyserA, analyserB;
+                let sourceA, sourceB;
+
+                function initAudio() {{
+                    if (!audioCtx) {{
+                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                        
+                        // Setup Deck A
+                        analyserA = audioCtx.createAnalyser();
+                        sourceA = audioCtx.createMediaElementSource(audA);
+                        sourceA.connect(analyserA);
+                        analyserA.connect(audioCtx.destination);
+                        
+                        // Setup Deck B
+                        analyserB = audioCtx.createAnalyser();
+                        sourceB = audioCtx.createMediaElementSource(audB);
+                        sourceB.connect(analyserB);
+                        analyserB.connect(audioCtx.destination);
+
+                        startVisualizer('canvasA', analyserA, '{primary_neon}');
+                        startVisualizer('canvasB', analyserB, '#FF44CC');
+                    }}
+                }}
+
+                function startVisualizer(canvasID, analyser, color) {{
+                    const canvas = document.getElementById(canvasID);
+                    const ctx = canvas.getContext('2d');
+                    analyser.fftSize = 64;
+                    const bufferLength = analyser.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+
+                    function draw() {{
+                        requestAnimationFrame(draw);
+                        analyser.getByteFrequencyData(dataArray);
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        let barWidth = (canvas.width / bufferLength) * 2.5;
+                        let x = 0;
+                        for(let i = 0; i < bufferLength; i++) {{
+                            let barHeight = dataArray[i] / 5;
+                            ctx.fillStyle = color;
+                            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+                            x += barWidth + 1;
+                        }}
+                    }}
+                    draw();
+                }}
+
+                function control(deck, action) {{
+                    initAudio();
+                    if (audioCtx.state === 'suspended') audioCtx.resume();
+                    const target = (deck === 'A') ? audA : audB;
+                    if (action === 'play') target.play();
+                    else target.pause();
+                }}
+
+                // Volume & Fader Logic
+                function updateVolumes() {{
+                    const volA = document.getElementById('volA').value;
+                    const volB = document.getElementById('volB').value;
+                    const f = parseFloat(fader.value);
+                    audA.volume = volA * (1 - f);
+                    audB.volume = volB * f;
+                }}
+
+                fader.oninput = updateVolumes;
+                document.getElementById('volA').oninput = updateVolumes;
+                document.getElementById('volB').oninput = updateVolumes;
+
+                // Time Update
+                const updateUI = (aud, cur, rem) => {{
+                    aud.ontimeupdate = () => {{
+                        const fmt = s => new Date(s * 1000).toISOString().substr(14, 5);
+                        document.getElementById(cur).innerText = fmt(aud.currentTime);
+                        if(aud.duration) document.getElementById(rem).innerText = "-" + fmt(aud.duration - aud.currentTime);
+                    }};
+                }}
+                updateUI(audA, 'curA', 'remA');
+                updateUI(audB, 'curB', 'remB');
+            </script>
         </div>
-        <button style="margin-top:20px; padding:10px 30px; background:#39FF14; border:none; color:#000; font-weight:bold;">AUTO-SYNC</button>
-    </div>
-    """
-    st.components.v1.html(mixer_html, height=300)
-    st.write("💡 อัปโหลดไฟล์เสียงในระดับเครื่อง AGENT เพื่อเริ่มการ Mix")
-
-st.markdown("---")
-st.caption("SYNAPSE ULTIMATE SYSTEM v6.0 | © 2026")
+        """
+        components.html(mixer_html, height=450)
+        st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Sound Module v4.2")
