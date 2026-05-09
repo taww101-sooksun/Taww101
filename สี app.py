@@ -44,18 +44,25 @@ else:
     st.markdown("<h1 style='text-align: center; color: #00FF00;'>SYNAPSE</h1>", unsafe_allow_html=True)
 
 # --- 3. การดึงพิกัดแบบแม่นยำสูง (High Accuracy) ---
-# เพิ่มความพยายามในการดึงพิกัดให้แม่นที่สุด
-loc = get_geolocation() 
+
+# ใช้พารามิเตอร์เพื่อบังคับเปิด GPS และให้ระบบรอสัญญาณที่นิ่งที่สุด
+loc = get_geolocation(component_key="high_accuracy_gps") 
+
+# หมายเหตุ: ใน streamlit_js_eval เวอร์ชันปกติอาจจะปรับพารามิเตอร์ได้จำกัด 
+# หากยังไม่แม่น ให้ใช้คำสั่งระบุค่าพารามิเตอร์แบบนี้ (ถ้าไลบรารีรองรับ):
+# loc = get_geolocation(options={'enableHighAccuracy': True, 'timeout': 10000, 'maximumAge': 0})
 
 if loc and 'coords' in loc:
     my_lat = loc['coords']['latitude']
     my_lon = loc['coords']['longitude']
-    accuracy = loc['coords'].get('accuracy', 'N/A')
-    st.success(f"📍 ล็อกพิกัดแม่นยำสำเร็จ: {my_lat:.6f}, {my_lon:.6f} (รัศมีคลาดเคลื่อน: {accuracy} เมตร)")
-else:
-    # พิกัดฐานทัพที่คุณอยู่ (นาโพธิ์) อ้างอิงจากรูปภาพ
-    my_lat, my_lon = 15.65872, 103.57858
-    st.warning("📡 กำลังปรับจูนสัญญาณ GPS... กรุณารอสักครู่หรือเดินไปที่โล่งแจ้ง")
+    accuracy = loc['coords'].get('accuracy', 0)
+    
+    # ถ้าความคลาดเคลื่อน (accuracy) เกิน 100 เมตร ให้แจ้งเตือนผู้ใช้
+    if accuracy > 100:
+        st.warning(f"⚠️ สัญญาณยังไม่นิ่ง (คลาดเคลื่อน {accuracy:.2f} เมตร) กรุณารอสักครู่...")
+    else:
+        st.success(f"📍 ล็อกพิกัดแม่นยำสำเร็จ: {my_lat:.6f}, {my_lon:.6f}")
+
 
 # --- 4. แผนที่ Google Hybrid ---
 m = folium.Map(
