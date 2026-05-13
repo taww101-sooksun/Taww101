@@ -116,10 +116,28 @@ tab_comms, tab_music, tab_sys = st.tabs(["💬 COMMS & RADAR", "🎧 NEON MIXER"
 
 # --- TAB: COMMS & RADAR (Chat + GPS) ---
 with tab_comms:
-    # Get Current Location
+    # 1. ดึงพิกัดจาก Browser
     loc = get_geolocation()
-    user_lat, user_lon = (0, 0)
-    if loc:
+    
+    # 2. ตรวจสอบก่อนว่ามีข้อมูลพิกัดจริงไหม (กัน Error)
+    if loc and 'coords' in loc:
+        user_lat = loc['coords']['latitude']
+        user_lon = loc['coords']['longitude']
+        
+        # แสดงสถานะให้ Agent รู้ว่าล็อกเป้าแล้ว
+        st.success(f"🎯 GPS LOCKED: {user_lat:.4f}, {user_lon:.4f}")
+
+        # Update GPS เข้า Firebase
+        db.reference(f'active_locations/{st.session_state.user}').update({
+            'lat': user_lat, 
+            'lon': user_lon, 
+            'ts': time.time()
+        })
+    else:
+        # ถ้ายังไม่มีพิกัด ให้ตั้งค่าเริ่มต้นไว้ก่อน และแจ้งเตือนเบาๆ
+        user_lat, user_lon = 0.0, 0.0
+        st.info("🛰️ กำลังค้นหาสัญญาณดาวเทียม... กรุณาเปิด GPS")
+
         user_lat, user_lon = loc['coords']['latitude'], loc['coords']['longitude']
         # Update GPS to Firebase for others to see
         db.reference(f'active_locations/{st.session_state.user}').set({
