@@ -42,27 +42,31 @@ if logo_data:
     st.markdown(f'<img src="data:image/png;base64,{logo_data}" class="neon-logo-main">', unsafe_allow_html=True)
 else:
     st.markdown("<h1 style='text-align: center; color: #00FF00;'>SYNAPSE</h1>", unsafe_allow_html=True)
-# --- 3. การดึงพิกัดแบบแม่นยำสูง (High Accuracy) ---
+# --- 3. ระบบดึงพิกัดจริง (No Default) ---
 
-# 1. กำหนดค่าเริ่มต้นไว้ก่อน (กันแอปพังถ้า GPS ยังไม่มา)
-# ใช้พิกัดนาโพธิ์ที่คุณตั้งไว้เป็นค่าสำรอง
-my_lat, my_lon = 15.65872, 103.57858 
+# ใช้ Session State เก็บค่า เพื่อไม่ให้แผนที่รีเฟรชหายไปมาระหว่างรอ
+if 'user_lat' not in st.session_state:
+    st.session_state.user_lat = None
+    st.session_state.user_lon = None
 
-# 2. ดึงพิกัดจากเครื่อง
+# ดึงพิกัดจากเครื่อง
 loc = get_geolocation() 
 
 if loc and 'coords' in loc:
-    # ถ้าดึงสำเร็จ ให้เขียนทับค่าเริ่มต้น
-    my_lat = loc['coords']['latitude']
-    my_lon = loc['coords']['longitude']
+    # อัปเดตพิกัดจริงเข้าตัวแปรล็อก
+    st.session_state.user_lat = loc['coords']['latitude']
+    st.session_state.user_lon = loc['coords']['longitude']
     accuracy = loc['coords'].get('accuracy', 0)
     
-    if accuracy > 100:
-        st.warning(f"⚠️ สัญญาณดาวเทียมยังไม่นิ่ง (คลาดเคลื่อน {accuracy:.0f} เมตร)")
-    else:
-        st.success(f"📍 ล็อกพิกัดแม่นยำ: {my_lat:.6f}, {my_lon:.6f} (รัศมี {accuracy:.0f} ม.)")
+    st.success(f"🎯 ล็อกเป้าหมายสำเร็จ! (แม่นยำในระยะ {accuracy:.0f} เมตร)")
 else:
-    st.info("🛰️ กำลังรอสัญญาณจากดาวเทียม... (ใช้พิกัดสำรองชั่วคราว)")
+    st.info("🛰️ กำลังค้นหาสัญญาณดาวเทียมจากมือถือคุณ... กรุณาเปิด GPS และรอสักครู่")
+    # หยุดการทำงานไว้ตรงนี้จนกว่าพิกัดจะมา (ป้องกันแผนที่ดีดไปที่อื่น)
+    st.stop() 
+
+my_lat = st.session_state.user_lat
+my_lon = st.session_state.user_lon
+
 
 # --- 4. แผนที่ Google Hybrid ---
 # ตอนนี้ my_lat จะมีค่าแน่นอน ไม่ Error แล้วครับ
