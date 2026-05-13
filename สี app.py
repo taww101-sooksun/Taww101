@@ -40,7 +40,6 @@ def get_base64(file_path):
         with open(file_path, "rb") as f: return base64.b64encode(f.read()).decode()
     return ""
 
-# สแกนหาเพลงเตรียมไว้ก่อนป้องกัน Error (Line 208 เดิม)
 all_songs = sorted([f for f in os.listdir('.') if f.endswith('.mp3')])
 
 if not firebase_admin._apps:
@@ -59,7 +58,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- 4. AUTH SYSTEM (LOGIN/REGISTER) ---
+# --- 4. AUTH SYSTEM ---
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
@@ -91,9 +90,9 @@ if not st.session_state.logged_in:
                             st.success("ลงทะเบียนสำเร็จ! กรุณาไปที่หน้า LOGIN")
     st.stop()
 
-# --- 5. GPS & TABS ---
+# --- 5. GPS & DATA ---
 loc = get_geolocation()
-my_lat, my_lon = 13.756, 100.501 # Default
+my_lat, my_lon = 13.756, 100.501
 if loc:
     my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
     db.reference(f'active_locations/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
@@ -125,30 +124,38 @@ with tab_r:
     """, height=160)
     g_msg = st.text_input("MESSAGE", key="gk")
     if st.button("SEND ⚡"):
-        db.reference('global_chat').push({'user': st.session_state.user, 'text': g_msg})
+        if g_msg: db.reference('global_chat').push({'user': st.session_state.user, 'text': g_msg})
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- PRIVATE CHAT ---
+# --- PRIVATE CHAT (FIXED) ---
 with tab_p:
     st.markdown('<div class="private-box">', unsafe_allow_html=True)
     all_users = db.reference('active_locations').get()
-    target = st.selectbox("TALK TO:", [k for k in all_users.keys() if k != st.session_state.user] if all_users else ["None"])
-    path = f"private/{'_'.join(sorted([st.session_state.user, target]))}"
-    components.html(f"""
-        <div id="p" style="color:#ff00de; height:200px; overflow-y:auto; font-size:12px; font-family:monospace;"></div>
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-        <script>
-            if(!firebase.apps.length) firebase.initializeApp({{databaseURL: "{st.secrets['firebase_db_url']}"}});
-            firebase.database().ref('{path}').limitToLast(15).on('child_added', (s)=>{{
-                document.getElementById('p').innerHTML += `<div><b>${{s.val().user}}:</b> ${{s.val().text}}</div>`;
-                document.getElementById('p').scrollTop = 9999;
-            }});
-        </script>
-    """, height=210)
-    p_msg = st.text_input("PRIVATE MSG", key="pk")
-    if st.button("WHISPER 🔒"):
-        db.reference(path).push({'user': st.session_state.user, 'text': p_msg})
+    
+    # ดึงรายชื่อเพื่อนที่ออนไลน์ (ที่ไม่ใช่ตัวเอง)
+    friend_list = [k for k in all_users.keys() if k != st.session_state.user] if all_users else []
+    
+    if not friend_list:
+        st.warning("ยังไม่มี Agent คนอื่นออนไลน์ในขณะนี้")
+    else:
+        target = st.selectbox("TALK TO:", friend_list)
+        if target:
+            path = f"private/{'_'.join(sorted([st.session_state.user, target]))}"
+            components.html(f"""
+                <div id="p" style="color:#ff00de; height:200px; overflow-y:auto; font-size:12px; font-family:monospace;"></div>
+                <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+                <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+                <script>
+                    if(!firebase.apps.length) firebase.initializeApp({{databaseURL: "{st.secrets['firebase_db_url']}"}});
+                    firebase.database().ref('{path}').limitToLast(15).on('child_added', (s)=>{{
+                        document.getElementById('p').innerHTML += `<div><b>${{s.val().user}}:</b> ${{s.val().text}}</div>`;
+                        document.getElementById('p').scrollTop = 9999;
+                    }});
+                </script>
+            """, height=210)
+            p_msg = st.text_input("PRIVATE MSG", key="pk")
+            if st.button("WHISPER 🔒"):
+                if p_msg: db.reference(path).push({'user': st.session_state.user, 'text': p_msg})
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- NEON MIXER ---
@@ -156,9 +163,7 @@ with tab_m:
     if len(all_songs) >= 2:
         sA = st.selectbox("DECK A", all_songs, index=0)
         sB = st.selectbox("DECK B", all_songs, index=1)
-        if st.button("START SYSTEM MIX"):
-            st.write(f"Mixing: {sA} + {sB}")
-            # Insert Audio Loop JS here if needed
+        # ส่วนผสมเพลงใช้ JS เดียวกับเวอร์ชันก่อนหน้าได้เลยครับ
     else:
         st.warning("ต้องการไฟล์ .mp3 อย่างน้อย 2 ไฟล์ในโฟลเดอร์")
 
