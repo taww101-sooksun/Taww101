@@ -1,4 +1,4 @@
-Import streamlit as st
+import streamlit as st
 from streamlit_js_eval import get_geolocation
 import folium
 from streamlit_folium import st_folium
