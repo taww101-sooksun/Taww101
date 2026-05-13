@@ -5,154 +5,189 @@ from firebase_admin import credentials, db
 import base64
 import os
 import time
+from datetime import datetime
 import folium
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 
-# --- 1. CONFIG & STYLING ---
+# --- 1. INITIAL CONFIG ---
 st.set_page_config(page_title="SYNAPSE OMNI", layout="wide", initial_sidebar_state="collapsed")
 
-def apply_synapse_ui():
+def apply_global_style():
     st.markdown("""
         <style>
             #MainMenu, footer, header {visibility: hidden;}
-            .stApp { top: -60px; background-color: #000; }
+            .stApp { top: -60px; background-color: #000; color: #fff; }
             @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
             * { font-family: 'Orbitron', sans-serif !important; }
             
-            /* Chat Bubble Styling */
-            .msg-container { display: flex; flex-direction: column; gap: 10px; padding: 10px; }
-            .msg-right { align-self: flex-end; background: #39FF1422; border: 1px solid #39FF14; 
-                         color: #39FF14; padding: 8px 15px; border-radius: 15px 15px 0 15px; max-width: 80%; }
-            .msg-left { align-self: flex-start; background: #ff00de22; border: 1px solid #ff00de; 
-                        color: #ff00de; padding: 8px 15px; border-radius: 15px 15px 15px 0; max-width: 80%; }
+            /* Neon Text Animation */
+            .neon-title {
+                text-align: center; font-size: 2rem; color: #fff;
+                text-shadow: 0 0 10px #39FF14, 0 0 20px #39FF14;
+                animation: wink 2s infinite; margin-bottom: 20px;
+            }
+            @keyframes wink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
             
-            .stTabs [aria-selected="true"] { border: 4px solid #39FF14 !important; box-shadow: 0 0 20px #39FF14; }
+            .stTabs [aria-selected="true"] { border-bottom: 4px solid #39FF14 !important; box-shadow: 0 5px 15px #39FF1444; }
         </style>
     """, unsafe_allow_html=True)
 
-apply_synapse_ui()
+apply_global_style()
 
-# --- 2. DATA UTILS ---
-def get_base64(file_path):
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as f: return base64.b64encode(f.read()).decode()
-    return ""
-
-all_songs = sorted([f for f in os.listdir('.') if f.endswith('.mp3')])
-notif_sound = get_base64("notification.mp3") # ต้องมีไฟล์เสียงนี้ในโฟลเดอร์
-
+# --- 2. FIREBASE & UTILS ---
 if not firebase_admin._apps:
     fb_creds = dict(st.secrets["firebase_credentials"])
     fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
     cred = credentials.Certificate(fb_creds)
     firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
 
-# --- 3. STICKY LOGO ---
-logo_b64 = get_base64("logo1.png")
-st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{logo_b64}" width="100"></div>', unsafe_allow_html=True)
+def get_base64(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f: return base64.b64encode(f.read()).decode()
+    return ""
 
-# --- 4. AUTH ---
+all_songs = sorted([f for f in os.listdir('.') if f.endswith('.mp3')])
+logo_b64 = get_base64("logo1.png")
+notif_sound = get_base64("notification.mp3")
+
+# --- 3. AUTHENTICATION SYSTEM (Login / Register) ---
 if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+
 if not st.session_state.logged_in:
-    # (ส่วน Login/Register เหมือนเดิม)
-    u = st.text_input("AGENT ID")
-    p = st.text_input("PASSWORD", type="password")
-    if st.button("CONNECT"):
-        res = db.reference(f'users/{u}').get()
-        if res and res.get('password') == p:
-            st.session_state.logged_in, st.session_state.user = True, u
-            st.rerun()
+    st.markdown('<div class="neon-title">SYNAPSE AUTH</div>', unsafe_allow_html=True)
+    auth_tab1, auth_tab2 = st.tabs(["🔑 LOGIN", "📝 REGISTER"])
+    
+    with auth_tab1:
+        with st.form("login"):
+            u = st.text_input("AGENT ID")
+            p = st.text_input("PASSWORD", type="password")
+            if st.form_submit_button("CONNECT ⚡", use_container_width=True):
+                res = db.reference(f'users/{u}').get()
+                if res and res.get('password') == p:
+                    st.session_state.logged_in, st.session_state.user = True, u
+                    st.rerun()
+                else: st.error("Access Denied")
+                
+    with auth_tab2:
+        with st.form("register"):
+            nu = st.text_input("NEW AGENT ID")
+            np = st.text_input("NEW PASSWORD", type="password")
+            cp = st.text_input("CONFIRM PASSWORD", type="password")
+            if st.form_submit_button("CREATE ACCOUNT"):
+                if nu and np == cp:
+                    db.reference(f'users/{nu}').set({'password': np, 'created_at': datetime.now().isoformat()})
+                    st.success("Registration Complete! Please Login.")
+                else: st.error("Data Mismatch")
     st.stop()
 
-# --- 5. GPS ---
-loc = get_geolocation()
-my_lat, my_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.75, 100.5)
-db.reference(f'active_locations/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
+# --- 4. MAIN INTERFACE ---
+st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{logo_b64}" width="80" style="filter:drop-shadow(0 0 10px #39FF14);"></div>', unsafe_allow_html=True)
+st.markdown(f'<div style="text-align:right; font-size:10px; color:#39FF14;">ID: {st.session_state.user}</div>', unsafe_allow_html=True)
 
-# --- 6. MAIN TABS ---
-tab_r, tab_p, tab_m = st.tabs(["🛰️ RADAR", "🔒 PRIVATE", "🎧 MIXER"])
+tab_map, tab_chat, tab_music = st.tabs(["🛰️ RADAR", "💬 COMMS", "🎧 MIXER"])
 
-# --- RADAR & GLOBAL ---
-with tab_r:
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=16, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
-    st_folium(m, width="100%", height=250)
-    
-    st.caption("GLOBAL SIGNAL")
+# --- GPS RADAR ---
+with tab_map:
+    loc = get_geolocation()
+    if loc:
+        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
+        st.write(f"📍 LAT: `{lat}` | LON: `{lon}`")
+        db.reference(f'active_locations/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
+        
+        m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
+        folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='crosshairs', prefix='fa')).add_to(m)
+        st_folium(m, width="100%", height=400)
+    else:
+        st.warning("WAITING FOR SATELLITE SIGNAL...")
+
+# --- CHAT (LEFT-RIGHT + SOUND) ---
+with tab_chat:
     components.html(f"""
-        <div id="gbox" style="display:flex; flex-direction:column; gap:8px; height:200px; overflow-y:auto; padding:10px; background:#000; border:1px solid #333;"></div>
+        <div id="chat-box" style="height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:10px; background:#050505; border:1px solid #222; border-radius:10px;"></div>
         <audio id="beep"><source src="data:audio/mp3;base64,{notif_sound}" type="audio/mp3"></audio>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
         <script>
-            const db = firebase.initializeApp({{databaseURL: "{st.secrets['firebase_db_url']}"}}).database();
-            db.ref('global_chat').limitToLast(10).on('child_added', (s) => {{
+            const fb = firebase.initializeApp({{databaseURL: "{st.secrets['firebase_db_url']}"}}).database();
+            fb.ref('global_chat').limitToLast(20).on('child_added', (s) => {{
                 const d = s.val();
                 const isMe = d.user === "{st.session_state.user}";
-                const div = `<div style="align-self:${{isMe?'flex-end':'flex-start'}}; background:${{isMe?'#39FF1422':'#ff00de22'}}; border:1px solid ${{isMe?'#39FF14':'#ff00de'}}; color:${{isMe?'#39FF14':'#ff00de'}}; padding:5px 12px; border-radius:10px; font-size:12px; max-width:80%;"><b>${{d.user}}:</b> ${{d.text}}</div>`;
-                const box = document.getElementById('gbox');
-                box.innerHTML += div; box.scrollTop = box.scrollHeight;
+                const bubble = `
+                    <div style="align-self:${{isMe?'flex-end':'flex-start'}}; 
+                                background:${{isMe?'#39FF1422':'#333'}}; 
+                                border:1px solid ${{isMe?'#39FF14':'#555'}}; 
+                                color:${{isMe?'#39FF14':'#fff'}}; 
+                                padding:8px 12px; border-radius:15px; font-size:13px; max-width:80%;">
+                        <div style="font-size:9px; opacity:0.6; margin-bottom:3px;">${{d.user}}</div>
+                        ${{d.text}}
+                    </div>`;
+                const box = document.getElementById('chat-box');
+                box.innerHTML += bubble; box.scrollTop = box.scrollHeight;
                 if(!isMe) document.getElementById('beep').play();
             }});
         </script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    """, height=220)
-    
-    g_msg = st.text_input("SIGNAL", key="g_in")
+    """, height=370)
+    msg = st.text_input("ENTER SIGNAL")
     if st.button("SEND ⚡"):
-        if g_msg: db.reference('global_chat').push({'user': st.session_state.user, 'text': g_msg})
+        if msg: db.reference('global_chat').push({'user': st.session_state.user, 'text': msg, 'ts': time.time()})
 
-# --- PRIVATE (LEFT-RIGHT CHAT) ---
-with tab_p:
-    agents = db.reference('active_locations').get()
-    target = st.selectbox("AGENT:", [k for k in agents.keys() if k != st.session_state.user] if agents else ["None"])
-    if target != "None":
-        path = f"private/{'_'.join(sorted([st.session_state.user, target]))}"
-        components.html(f"""
-            <div id="pbox" style="display:flex; flex-direction:column; gap:8px; height:250px; overflow-y:auto; padding:10px; background:#000;"></div>
-            <script>
-                if(!window.fb_p) {{
-                    window.fb_p = firebase.initializeApp({{databaseURL: "{st.secrets['firebase_db_url']}"}}, "p_app").database();
-                }}
-                window.fb_p.ref('{path}').limitToLast(15).on('child_added', (s) => {{
-                    const d = s.val();
-                    const isMe = d.user === "{st.session_state.user}";
-                    document.getElementById('pbox').innerHTML += `<div style="align-self:${{isMe?'flex-end':'flex-start'}}; background:${{isMe?'#39FF1411':'#ff00de11'}}; border:1px solid ${{isMe?'#39FF14':'#ff00de'}}; color:${{isMe?'#39FF14':'#ff00de'}}; padding:8px; border-radius:10px; font-size:12px;">${{d.text}}</div>`;
-                    document.getElementById('pbox').scrollTop = 9999;
-                }});
-            </script>
-        """, height=260)
-        p_msg = st.text_input("PRIVATE", key="p_in")
-        if st.button("WHISPER 🔒"):
-            if p_msg: db.reference(path).push({'user': st.session_state.user, 'text': p_msg})
-
-# --- NEON MIXER (CONTINUOUS PLAY) ---
-with tab_m:
+# --- MUSIC MIXER (CROSSFADE + VISUALIZER) ---
+with tab_music:
     if len(all_songs) >= 2:
-        sA, sB = st.columns(2)
-        songA = sA.selectbox("DECK A", all_songs, index=0)
-        songB = sB.selectbox("DECK B", all_songs, index=1)
+        c1, c2 = st.columns(2)
+        s1 = c1.selectbox("DECK A", all_songs, index=0)
+        s2 = c2.selectbox("DECK B", all_songs, index=1)
         
-        components.html(f"""
-            <div style="border:5px solid #ff00de; border-radius:20px; padding:20px; text-align:center; background:#111;">
-                <h3 style="color:#ff00de;">SYSTEM MIXER ACTIVE</h3>
-                <button id="btn" style="background:#39FF14; color:#000; padding:15px; border-radius:30px; font-weight:bold; width:100%; cursor:pointer;">START CONTINUOUS FLOW</button>
-            </div>
-            <script>
-                let ctx;
-                document.getElementById('btn').onclick = async () => {{
-                    ctx = new (window.AudioContext || window.webkitAudioContext)();
-                    const load = async (b64) => ctx.decodeAudioData(await (await fetch('data:audio/mp3;base64,' + b64)).arrayBuffer());
-                    let bA = await load('{get_base64(songA)}');
-                    let bB = await load('{get_base64(songB)}');
-                    const play = (b, isA) => {{
-                        let s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination);
-                        s.onended = () => play(isA ? bB : bA, !isA);
-                        s.start(0);
-                    }};
-                    play(bA, true);
-                    document.getElementById('btn').innerText = "SYSTEM FLOWING...";
+        html_mixer = f"""
+        <canvas id="scope" style="width:100%; height:100px; background:#000; border-radius:10px; border:1px solid #333;"></canvas>
+        <div id="status" style="text-align:center; color:#39FF14; font-size:12px; margin:10px 0;">SYSTEM READY</div>
+        <button id="playBtn" style="width:100%; padding:15px; background:linear-gradient(90deg, #39FF14, #00f3ff); border:none; border-radius:10px; font-weight:bold; cursor:pointer;">START MIXING FLOW</button>
+        
+        <script>
+            let ctx, analyser, data, active='A';
+            async function play() {{
+                ctx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = ctx.createAnalyser();
+                data = new Uint8Array(analyser.frequencyBinCount);
+                
+                const load = async (b64) => ctx.decodeAudioData(await (await fetch('data:audio/mp3;base64,' + b64)).arrayBuffer());
+                let bA = await load('{get_base64(s1)}');
+                let bB = await load('{get_base64(s2)}');
+
+                const run = (buf, isA) => {{
+                    active = isA ? 'A' : 'B';
+                    let src = ctx.createBufferSource(); src.buffer = buf;
+                    let gain = ctx.createGain();
+                    src.connect(gain).connect(analyser).connect(ctx.destination);
+                    
+                    // Crossfade logic
+                    gain.gain.setValueAtTime(0, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(1, ctx.currentTime + 3);
+                    
+                    src.onended = () => run(isA ? bB : bA, !isA);
+                    src.start(0);
+                    document.getElementById('status').innerText = "PLAYING DECK " + active;
                 }};
-            </script>
-        """, height=250)
-    else:
-        st.warning("ต้องการ .mp3 อย่างน้อย 2 ไฟล์")
+                run(bA, true);
+                render();
+            }}
+
+            function render() {{
+                requestAnimationFrame(render);
+                analyser.getByteFrequencyData(data);
+                const can = document.getElementById('scope');
+                const c = can.getContext('2d');
+                c.clearRect(0,0,can.width,can.height);
+                for(let i=0; i<data.length; i++) {{
+                    c.fillStyle = `hsl(${{i + (active=='A'?120:200)}}, 100%, 50%)`;
+                    c.fillRect(i*2, can.height - data[i]/2, 1, data[i]/2);
+                }}
+            }}
+            document.getElementById('playBtn').onclick = play;
+        </script>
+        """
+        components.html(html_mixer, height=300)
+    else: st.error("Need 2 MP3 files")
+
+st.markdown("<div style='text-align:center; color:#333; font-size:10px;'>อยู่นิ่งๆ ไม่เจ็บตัว | OMNI COMMAND V.3</div>", unsafe_allow_html=True)
