@@ -1,381 +1,158 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import os
+import firebase_admin
+from firebase_admin import credentials, db
 import base64
-import streamlit as st
-import base64
 import os
+import time
+import folium
+from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
 
-# --- 1. ตั้งค่าพื้นฐาน ---
-st.set_page_config(page_title="Synapse Neon Mixer", layout="centered")
+# --- 1. CONFIG & STYLING ---
+st.set_page_config(page_title="SYNAPSE OMNI", layout="wide", initial_sidebar_state="collapsed")
 
-def get_base64_image(image_path):
-    try:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-    except: return ""
-
-def get_audio_base64(file_path):
-    try:
-        with open(file_path, "rb") as f:
-            return base64.b64encode(f.read()).decode()
-    except: return None
-
-# สแกนหาเพลงในเครื่อง
-all_songs = [f for f in os.listdir('.') if f.endswith('.mp3')]
-all_songs = sorted(all_songs)
-logo_b64 = get_base64_image("logo1.png")
-
-# --- 2. สไตล์หน้าจอ (CSS) ---
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    .stApp { background-color: #000; }
-    .neon-text {
-        font-family: 'Orbitron', sans-serif;
-        color: #fff;
-        text-align: center;
-        font-size: 1.8rem;
-        letter-spacing: 5px;
-        text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px #00f3ff;
-        animation: flicker 1.5s infinite alternate;
-        margin-bottom: 20px;
-    }
-    @keyframes flicker {
-        0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px #00f3ff; }
-        20%, 24%, 55% { opacity: 0.5; text-shadow: none; }
-    }
-    </style>
+def apply_synapse_ui():
+    st.markdown("""
+        <style>
+            #MainMenu, footer, header {visibility: hidden;}
+            .stApp { top: -60px; background-color: #000; }
+            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+            * { font-family: 'Orbitron', sans-serif !important; }
+            
+            /* Chat Bubble Styling */
+            .msg-container { display: flex; flex-direction: column; gap: 10px; padding: 10px; }
+            .msg-right { align-self: flex-end; background: #39FF1422; border: 1px solid #39FF14; 
+                         color: #39FF14; padding: 8px 15px; border-radius: 15px 15px 0 15px; max-width: 80%; }
+            .msg-left { align-self: flex-start; background: #ff00de22; border: 1px solid #ff00de; 
+                        color: #ff00de; padding: 8px 15px; border-radius: 15px 15px 15px 0; max-width: 80%; }
+            
+            .stTabs [aria-selected="true"] { border: 4px solid #39FF14 !important; box-shadow: 0 0 20px #39FF14; }
+        </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<div class="neon-text">SYNAPSE MIXER</div>', unsafe_allow_html=True)
+apply_synapse_ui()
 
-# --- 3. ส่วนเลือกเพลง ---
-if all_songs:
-    col1, col2 = st.columns(2)
-    with col1: sA = st.selectbox("DECK A (เริ่มก่อน)", all_songs, key="sA")
-    with col2: sB = st.selectbox("DECK B (เล่นต่อ)", all_songs, key="sB")
-    
-    audio_a = get_audio_base64(sA)
-    audio_b = get_audio_base64(sB)
-else:
-    st.error("ไม่พบไฟล์ .mp3 ในโฟลเดอร์")
+# --- 2. DATA UTILS ---
+def get_base64(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f: return base64.b64encode(f.read()).decode()
+    return ""
+
+all_songs = sorted([f for f in os.listdir('.') if f.endswith('.mp3')])
+notif_sound = get_base64("notification.mp3") # ต้องมีไฟล์เสียงนี้ในโฟลเดอร์
+
+if not firebase_admin._apps:
+    fb_creds = dict(st.secrets["firebase_credentials"])
+    fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
+    cred = credentials.Certificate(fb_creds)
+    firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
+
+# --- 3. STICKY LOGO ---
+logo_b64 = get_base64("logo1.png")
+st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{logo_b64}" width="100"></div>', unsafe_allow_html=True)
+
+# --- 4. AUTH ---
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+if not st.session_state.logged_in:
+    # (ส่วน Login/Register เหมือนเดิม)
+    u = st.text_input("AGENT ID")
+    p = st.text_input("PASSWORD", type="password")
+    if st.button("CONNECT"):
+        res = db.reference(f'users/{u}').get()
+        if res and res.get('password') == p:
+            st.session_state.logged_in, st.session_state.user = True, u
+            st.rerun()
     st.stop()
 
-# --- 4. หัวใจสำคัญ: HTML/JS Mixer Engine ---
-html_code = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {{ background: transparent; color: white; font-family: 'Orbitron', sans-serif; overflow: hidden; }}
-        .neon-card {{ 
-            border: 2px solid #333; 
-            background: rgba(10,10,10,0.95); 
-            box-shadow: 0 0 20px rgba(255,0,222,0.3);
-            position: relative;
-        }}
-        .logo-box {{
-            width: 60px; height: 60px;
-            margin: 0 auto 15px auto;
-            background: url('data:image/png;base64,{logo_b64}') no-repeat center;
-            background-size: contain;
-            filter: drop-shadow(0 0 8px #00f3ff);
-        }}
-        .visualizer {{ height: 100px; background: #000; border-radius: 10px; border: 1px solid #222; }}
-        .deck {{ padding: 12px; border-radius: 10px; border: 1px solid #222; margin-top: 10px; transition: 0.3s; opacity: 0.5; }}
-        .active-a {{ border-color: #ff00de; box-shadow: 0 0 10px #ff00de; opacity: 1; }}
-        .active-b {{ border-color: #00f3ff; box-shadow: 0 0 10px #00f3ff; opacity: 1; }}
-        .btn-mix {{
-            background: linear-gradient(45deg, #ff00de, #00f3ff);
-            width: 100%; padding: 15px; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: pointer;
-        }}
-        .progress {{ height: 4px; background: #222; margin-top: 5px; }}
-        .bar {{ height: 100%; width: 0%; background: #ff00de; }}
-    </style>
-</head>
-<body>
-    <div class="max-w-md mx-auto p-6 neon-card rounded-3xl text-center">
-        <div class="logo-box"></div>
-        <canvas id="scope" class="visualizer w-full"></canvas>
+# --- 5. GPS ---
+loc = get_geolocation()
+my_lat, my_lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.75, 100.5)
+db.reference(f'active_locations/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
 
-        <div id="deckA" class="deck text-left">
-            <div class="flex justify-between text-[10px]">
-                <span style="color:#ff00de">DECK A</span>
-                <span id="tA">00:00</span>
-            </div>
-            <div class="text-[11px] truncate">{sA}</div>
-            <div class="progress"><div id="barA" class="bar"></div></div>
-        </div>
+# --- 6. MAIN TABS ---
+tab_r, tab_p, tab_m = st.tabs(["🛰️ RADAR", "🔒 PRIVATE", "🎧 MIXER"])
 
-        <div id="deckB" class="deck text-left">
-            <div class="flex justify-between text-[10px]">
-                <span style="color:#00f3ff">DECK B</span>
-                <span id="tB">00:00</span>
-            </div>
-            <div class="text-[11px] truncate">{sB}</div>
-            <div class="progress"><div id="barB" class="bar" style="background:#00f3ff"></div></div>
-        </div>
-
-        <button onclick="start()" class="btn-mix">🚀 START MIXING</button>
-        <div id="status" class="text-[9px] mt-4 text-gray-500 uppercase">SYSTEM READY</div>
-    </div>
-
-    <script>
-        let ctx, analyser, songA, songB, gA, gB, srcA, srcB;
-        let isPlaying = false, active = 'A', data;
-
-        async function toBuf(b64) {{
-            const r = await fetch('data:audio/mp3;base64,' + b64);
-            const ab = await r.arrayBuffer();
-            return await ctx.decodeAudioData(ab);
-        }}
-
-        async function start() {{
-            if(isPlaying) return;
-            try {{
-                document.getElementById('status').innerText = "BOOTING...";
-                ctx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = ctx.createAnalyser();
-                data = new Uint8Array(analyser.frequencyBinCount);
-
-                songA = await toBuf('{audio_a}');
-                songB = await toBuf('{audio_b}');
-
-                playDeckA();
-                
-                isPlaying = true;
-                render();
-            }} catch(e) {{
-                alert("Error: " + e);
-            }}
-        }}
-
-        function playDeckA() {{
-            active = 'A';
-            srcA = ctx.createBufferSource();
-            srcA.buffer = songA;
-            gA = ctx.createGain();
-            srcA.connect(gA).connect(analyser).connect(ctx.destination);
-            srcA.start(0);
-            srcA.t0 = ctx.currentTime; // เก็บเวลาที่เริ่มเล่น
-            document.getElementById('deckA').classList.add('active-a');
-            document.getElementById('status').innerText = "PLAYING DECK A";
-        }}
-
-        function playDeckB() {{
-            active = 'B';
-            srcB = ctx.createBufferSource();
-            srcB.buffer = songB;
-            gB = ctx.createGain();
-            srcB.connect(gB).connect(analyser).connect(ctx.destination);
-            gB.gain.value = 0; 
-            srcB.start(0);
-            srcB.t0 = ctx.currentTime;
-            
-            // ค่อยๆ เพิ่มเสียง B ใน 5 วินาที
-            gB.gain.linearRampToValueAtTime(1, ctx.currentTime + 5);
-            document.getElementById('deckB').classList.add('active-b');
-            document.getElementById('deckA').classList.remove('active-a');
-        }}
-
-        function render() {{
-            requestAnimationFrame(render);
-            analyser.getByteFrequencyData(data);
-            const can = document.getElementById('scope');
-            const c = can.getContext('2d');
-            c.clearRect(0,0,can.width,can.height);
-            for(let i=0; i<data.length; i++) {{
-                c.fillStyle = 'hsl(' + (i*2 + (active=='A'?300:190)) + ', 100%, 50%)';
-                c.fillRect(i*3, can.height-(data[i]/2.5), 2, data[i]/2.5);
-            }}
-            updateProgress();
-        }}
-
-        function updateProgress() {{
-            if (active == 'A' && srcA) {{
-                let elapsed = ctx.currentTime - srcA.t0;
-                let rem = songA.duration - elapsed;
-                
-                document.getElementById('tA').innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
-                document.getElementById('barA').style.width = (elapsed/songA.duration*100) + "%";
-
-                // ถ้าเหลือ 8 วินาที ให้สั่งเล่น B และ Fade Out A
-                if (rem < 8) {{
-                    active = 'B'; 
-                    gA.gain.linearRampToValueAtTime(0, ctx.currentTime + 5);
-                    playDeckB();
-                    document.getElementById('status').innerText = "CROSSFADING...";
-                }}
-            }} else if (active == 'B' && srcB) {{
-                let elapsed = ctx.currentTime - srcB.t0;
-                let rem = songB.duration - elapsed;
-                document.getElementById('tB').innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
-                document.getElementById('barB').style.width = (elapsed/songB.duration*100) + "%";
-                document.getElementById('status').innerText = "PLAYING DECK B";
-            }}
-        }}
-    </script>
-</body>
-</html>
-"""
-
-st.components.v1.html(html_code, height=600)
-st.markdown("<div style='text-align:center; color:#444; font-size:10px;'>อยู่นิ่งๆ ไม่เจ็บตัว | MIXER V.2</div>", unsafe_allow_html=True)
-# ฟังก์ชันช่วยแปลงไฟล์ (ต้องมีอยู่ในโค้ดหลักของคุณ)
-def get_base64(file_path):
-    try:
-        with open(file_path, "rb") as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    except Exception:
-        return ""
-
-# สมมติค่าตัวแปรเบื้องต้น
-primary_neon = "#00FFCC"
-
-if "page" not in st.session_state:
-    st.session_state.page = "1"
-
-if st.session_state.page == "1":
-    st.markdown("<h2 style='color:#00FFCC; font-family:monospace;'>🎧 SYNAPSE DJ STATION V.3</h2>", unsafe_allow_html=True)
+# --- RADAR & GLOBAL ---
+with tab_r:
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=16, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
+    st_folium(m, width="100%", height=250)
     
-    all_songs = [f for f in os.listdir('.') if f.lower().endswith('.mp3')]
+    st.caption("GLOBAL SIGNAL")
+    components.html(f"""
+        <div id="gbox" style="display:flex; flex-direction:column; gap:8px; height:200px; overflow-y:auto; padding:10px; background:#000; border:1px solid #333;"></div>
+        <audio id="beep"><source src="data:audio/mp3;base64,{notif_sound}" type="audio/mp3"></audio>
+        <script>
+            const db = firebase.initializeApp({{databaseURL: "{st.secrets['firebase_db_url']}"}}).database();
+            db.ref('global_chat').limitToLast(10).on('child_added', (s) => {{
+                const d = s.val();
+                const isMe = d.user === "{st.session_state.user}";
+                const div = `<div style="align-self:${{isMe?'flex-end':'flex-start'}}; background:${{isMe?'#39FF1422':'#ff00de22'}}; border:1px solid ${{isMe?'#39FF14':'#ff00de'}}; color:${{isMe?'#39FF14':'#ff00de'}}; padding:5px 12px; border-radius:10px; font-size:12px; max-width:80%;"><b>${{d.user}}:</b> ${{d.text}}</div>`;
+                const box = document.getElementById('gbox');
+                box.innerHTML += div; box.scrollTop = box.scrollHeight;
+                if(!isMe) document.getElementById('beep').play();
+            }});
+        </script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    """, height=220)
     
-    if not all_songs:
-        st.warning("⚠️ ไม่พบไฟล์ .mp3 ในระบบ")
-    else:
-        col_sel_a, col_sel_b = st.columns(2)
-        with col_sel_a:
-            song_a = st.selectbox("💿 DECK A (LEFT)", ["-- Select --"] + all_songs, key="sa")
-        with col_sel_b:
-            song_b = st.selectbox("💿 DECK B (RIGHT)", ["-- Select --"] + all_songs, key="sb")
+    g_msg = st.text_input("SIGNAL", key="g_in")
+    if st.button("SEND ⚡"):
+        if g_msg: db.reference('global_chat').push({'user': st.session_state.user, 'text': g_msg})
 
-        data_a = get_base64(song_a) if song_a != "-- Select --" else ""
-        data_b = get_base64(song_b) if song_b != "-- Select --" else ""
-
-        mixer_html = f"""
-        <div style="background: #000; border: 2px solid {primary_neon}; border-radius: 20px; padding: 15px; font-family: monospace; color: white;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div style="border: 1px solid {primary_neon}; padding: 10px; border-radius: 15px; text-align: center;">
-                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: {primary_neon};">
-                        <span id="curA">00:00</span><span id="remA">-00:00</span>
-                    </div>
-                    <canvas id="canvasA" style="width: 100%; height: 60px; background: #111; margin: 5px 0; border-radius:5px;"></canvas>
-                    <input type="range" id="volA" min="0" max="1" step="0.01" value="0.7" style="width: 100%;">
-                    <div style="margin-top: 10px;">
-                        <button onclick="control('A', 'play')" style="background:{primary_neon}; border:none; padding:5px 10px; border-radius:5px; cursor:pointer;">PLAY</button>
-                        <button onclick="control('A', 'pause')" style="background:none; border:1px solid {primary_neon}; color:{primary_neon}; padding:5px 10px; border-radius:5px; cursor:pointer;">PAUSE</button>
-                    </div>
-                </div>
-
-                <div style="border: 1px solid #FF44CC; padding: 10px; border-radius: 15px; text-align: center;">
-                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: #FF44CC;">
-                        <span id="curB">00:00</span><span id="remB">-00:00</span>
-                    </div>
-                    <canvas id="canvasB" style="width: 100%; height: 60px; background: #111; margin: 5px 0; border-radius:5px;"></canvas>
-                    <input type="range" id="volB" min="0" max="1" step="0.01" value="0.7" style="width: 100%;">
-                    <div style="margin-top: 10px;">
-                        <button onclick="control('B', 'play')" style="background:#FF44CC; border:none; padding:5px 10px; border-radius:5px; color:white; cursor:pointer;">PLAY</button>
-                        <button onclick="control('B', 'pause')" style="background:none; border:1px solid #FF44CC; color:#FF44CC; padding:5px 10px; border-radius:5px; cursor:pointer;">PAUSE</button>
-                    </div>
-                </div>
-            </div>
-
-            <div style="margin-top:20px; text-align:center;">
-                <small>CROSSFADER (A <-> B)</small><br>
-                <input type="range" id="fader" min="0" max="1" step="0.01" value="0.5" style="width: 80%;">
-            </div>
-
-            <audio id="audioA" src="data:audio/mp3;base64,{data_a}"></audio>
-            <audio id="audioB" src="data:audio/mp3;base64,{data_b}"></audio>
-
+# --- PRIVATE (LEFT-RIGHT CHAT) ---
+with tab_p:
+    agents = db.reference('active_locations').get()
+    target = st.selectbox("AGENT:", [k for k in agents.keys() if k != st.session_state.user] if agents else ["None"])
+    if target != "None":
+        path = f"private/{'_'.join(sorted([st.session_state.user, target]))}"
+        components.html(f"""
+            <div id="pbox" style="display:flex; flex-direction:column; gap:8px; height:250px; overflow-y:auto; padding:10px; background:#000;"></div>
             <script>
-                const audA = document.getElementById('audioA');
-                const audB = document.getElementById('audioB');
-                const fader = document.getElementById('fader');
-                let audioCtx;
-                let analyserA, analyserB;
-                let sourceA, sourceB;
-
-                function initAudio() {{
-                    if (!audioCtx) {{
-                        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                        
-                        // Setup Deck A
-                        analyserA = audioCtx.createAnalyser();
-                        sourceA = audioCtx.createMediaElementSource(audA);
-                        sourceA.connect(analyserA);
-                        analyserA.connect(audioCtx.destination);
-                        
-                        // Setup Deck B
-                        analyserB = audioCtx.createAnalyser();
-                        sourceB = audioCtx.createMediaElementSource(audB);
-                        sourceB.connect(analyserB);
-                        analyserB.connect(audioCtx.destination);
-
-                        startVisualizer('canvasA', analyserA, '{primary_neon}');
-                        startVisualizer('canvasB', analyserB, '#FF44CC');
-                    }}
+                if(!window.fb_p) {{
+                    window.fb_p = firebase.initializeApp({{databaseURL: "{st.secrets['firebase_db_url']}"}}, "p_app").database();
                 }}
-
-                function startVisualizer(canvasID, analyser, color) {{
-                    const canvas = document.getElementById(canvasID);
-                    const ctx = canvas.getContext('2d');
-                    analyser.fftSize = 64;
-                    const bufferLength = analyser.frequencyBinCount;
-                    const dataArray = new Uint8Array(bufferLength);
-
-                    function draw() {{
-                        requestAnimationFrame(draw);
-                        analyser.getByteFrequencyData(dataArray);
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        let barWidth = (canvas.width / bufferLength) * 2.5;
-                        let x = 0;
-                        for(let i = 0; i < bufferLength; i++) {{
-                            let barHeight = dataArray[i] / 5;
-                            ctx.fillStyle = color;
-                            ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-                            x += barWidth + 1;
-                        }}
-                    }}
-                    draw();
-                }}
-
-                function control(deck, action) {{
-                    initAudio();
-                    if (audioCtx.state === 'suspended') audioCtx.resume();
-                    const target = (deck === 'A') ? audA : audB;
-                    if (action === 'play') target.play();
-                    else target.pause();
-                }}
-
-                // Volume & Fader Logic
-                function updateVolumes() {{
-                    const volA = document.getElementById('volA').value;
-                    const volB = document.getElementById('volB').value;
-                    const f = parseFloat(fader.value);
-                    audA.volume = volA * (1 - f);
-                    audB.volume = volB * f;
-                }}
-
-                fader.oninput = updateVolumes;
-                document.getElementById('volA').oninput = updateVolumes;
-                document.getElementById('volB').oninput = updateVolumes;
-
-                // Time Update
-                const updateUI = (aud, cur, rem) => {{
-                    aud.ontimeupdate = () => {{
-                        const fmt = s => new Date(s * 1000).toISOString().substr(14, 5);
-                        document.getElementById(cur).innerText = fmt(aud.currentTime);
-                        if(aud.duration) document.getElementById(rem).innerText = "-" + fmt(aud.duration - aud.currentTime);
-                    }};
-                }}
-                updateUI(audA, 'curA', 'remA');
-                updateUI(audB, 'curB', 'remB');
+                window.fb_p.ref('{path}').limitToLast(15).on('child_added', (s) => {{
+                    const d = s.val();
+                    const isMe = d.user === "{st.session_state.user}";
+                    document.getElementById('pbox').innerHTML += `<div style="align-self:${{isMe?'flex-end':'flex-start'}}; background:${{isMe?'#39FF1411':'#ff00de11'}}; border:1px solid ${{isMe?'#39FF14':'#ff00de'}}; color:${{isMe?'#39FF14':'#ff00de'}}; padding:8px; border-radius:10px; font-size:12px;">${{d.text}}</div>`;
+                    document.getElementById('pbox').scrollTop = 9999;
+                }});
             </script>
-        </div>
-        """
-        components.html(mixer_html, height=450)
-        st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Tactical Sound Module v4.2")
+        """, height=260)
+        p_msg = st.text_input("PRIVATE", key="p_in")
+        if st.button("WHISPER 🔒"):
+            if p_msg: db.reference(path).push({'user': st.session_state.user, 'text': p_msg})
+
+# --- NEON MIXER (CONTINUOUS PLAY) ---
+with tab_m:
+    if len(all_songs) >= 2:
+        sA, sB = st.columns(2)
+        songA = sA.selectbox("DECK A", all_songs, index=0)
+        songB = sB.selectbox("DECK B", all_songs, index=1)
+        
+        components.html(f"""
+            <div style="border:5px solid #ff00de; border-radius:20px; padding:20px; text-align:center; background:#111;">
+                <h3 style="color:#ff00de;">SYSTEM MIXER ACTIVE</h3>
+                <button id="btn" style="background:#39FF14; color:#000; padding:15px; border-radius:30px; font-weight:bold; width:100%; cursor:pointer;">START CONTINUOUS FLOW</button>
+            </div>
+            <script>
+                let ctx;
+                document.getElementById('btn').onclick = async () => {{
+                    ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const load = async (b64) => ctx.decodeAudioData(await (await fetch('data:audio/mp3;base64,' + b64)).arrayBuffer());
+                    let bA = await load('{get_base64(songA)}');
+                    let bB = await load('{get_base64(songB)}');
+                    const play = (b, isA) => {{
+                        let s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination);
+                        s.onended = () => play(isA ? bB : bA, !isA);
+                        s.start(0);
+                    }};
+                    play(bA, true);
+                    document.getElementById('btn').innerText = "SYSTEM FLOWING...";
+                }};
+            </script>
+        """, height=250)
+    else:
+        st.warning("ต้องการ .mp3 อย่างน้อย 2 ไฟล์")
