@@ -88,6 +88,68 @@ st.markdown(f'<div style="text-align:right; font-size:10px; color:#39FF14;">ID: 
 tab_map, tab_chat, tab_music = st.tabs(["🛰️ RADAR", "💬 COMMS", "🎧 MIXER"])
 
 # --- GPS RADAR ---
+def get_base64_image(image_path):
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except: return None
+
+# --- 2. แสดงโลโก้ที่ "หน้าหลัก" (เพื่อให้เห็นทันที) ---
+logo_data = get_base64_image("logo1.png")
+if logo_data:
+    st.markdown(f'<img src="data:image/png;base64,{logo_data}" class="neon-logo-main">', unsafe_allow_html=True)
+else:
+    st.markdown("<h1 style='text-align: center; color: #00FF00;'>SYNAPSE</h1>", unsafe_allow_html=True)
+# --- 3. ระบบดึงพิกัดจริง (No Default) ---
+
+# ใช้ Session State เก็บค่า เพื่อไม่ให้แผนที่รีเฟรชหายไปมาระหว่างรอ
+if 'user_lat' not in st.session_state:
+    st.session_state.user_lat = None
+    st.session_state.user_lon = None
+
+# ดึงพิกัดจากเครื่อง
+loc = get_geolocation() 
+
+if loc and 'coords' in loc:
+    # อัปเดตพิกัดจริงเข้าตัวแปรล็อก
+    st.session_state.user_lat = loc['coords']['latitude']
+    st.session_state.user_lon = loc['coords']['longitude']
+    accuracy = loc['coords'].get('accuracy', 0)
+    
+    st.success(f"🎯 ล็อกเป้าหมายสำเร็จ! (แม่นยำในระยะ {accuracy:.0f} เมตร)")
+else:
+    st.info("🛰️ กำลังค้นหาสัญญาณดาวเทียมจากมือถือคุณ... กรุณาเปิด GPS และรอสักครู่")
+    # หยุดการทำงานไว้ตรงนี้จนกว่าพิกัดจะมา (ป้องกันแผนที่ดีดไปที่อื่น)
+    st.stop() 
+
+my_lat = st.session_state.user_lat
+my_lon = st.session_state.user_lon
+
+
+# --- 4. แผนที่ Google Hybrid ---
+# ตอนนี้ my_lat จะมีค่าแน่นอน ไม่ Error แล้วครับ
+m = folium.Map(
+    location=[my_lat, my_lon], 
+    zoom_start=18, 
+    tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', 
+    attr='Google Maps'
+)
+
+
+folium.Marker(
+    [my_lat, my_lon], 
+    icon=folium.Icon(color='red', icon='crosshairs', prefix='fa')
+).add_to(m)
+
+st_folium(m, width="100%", height=500)
+
+if st.button("🛰️ บันทึกและส่งพิกัดปัจจุบัน", use_container_width=True):
+    try:
+        db.reference(f'users/Bas_Admin').update({
+            'lat': my_lat, 'lon': my_lon, 'ts': time.time()
+        })
+        st.toast("ส่งพิกัดเข้าดาวเทียมแล้ว!")
+    except: st.error("Firebase Connection Error")
 with tab_map:
     loc = get_geolocation()
     if loc:
