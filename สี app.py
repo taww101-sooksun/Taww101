@@ -42,35 +42,37 @@ if logo_data:
     st.markdown(f'<img src="data:image/png;base64,{logo_data}" class="neon-logo-main">', unsafe_allow_html=True)
 else:
     st.markdown("<h1 style='text-align: center; color: #00FF00;'>SYNAPSE</h1>", unsafe_allow_html=True)
-
 # --- 3. การดึงพิกัดแบบแม่นยำสูง (High Accuracy) ---
 
-# ใช้พารามิเตอร์เพื่อบังคับเปิด GPS และให้ระบบรอสัญญาณที่นิ่งที่สุด
-loc = get_geolocation(component_key="high_accuracy_gps") 
+# 1. กำหนดค่าเริ่มต้นไว้ก่อน (กันแอปพังถ้า GPS ยังไม่มา)
+# ใช้พิกัดนาโพธิ์ที่คุณตั้งไว้เป็นค่าสำรอง
+my_lat, my_lon = 15.65872, 103.57858 
 
-# หมายเหตุ: ใน streamlit_js_eval เวอร์ชันปกติอาจจะปรับพารามิเตอร์ได้จำกัด 
-# หากยังไม่แม่น ให้ใช้คำสั่งระบุค่าพารามิเตอร์แบบนี้ (ถ้าไลบรารีรองรับ):
-# loc = get_geolocation(options={'enableHighAccuracy': True, 'timeout': 10000, 'maximumAge': 0})
+# 2. ดึงพิกัดจากเครื่อง
+loc = get_geolocation() 
 
 if loc and 'coords' in loc:
+    # ถ้าดึงสำเร็จ ให้เขียนทับค่าเริ่มต้น
     my_lat = loc['coords']['latitude']
     my_lon = loc['coords']['longitude']
     accuracy = loc['coords'].get('accuracy', 0)
     
-    # ถ้าความคลาดเคลื่อน (accuracy) เกิน 100 เมตร ให้แจ้งเตือนผู้ใช้
     if accuracy > 100:
-        st.warning(f"⚠️ สัญญาณยังไม่นิ่ง (คลาดเคลื่อน {accuracy:.2f} เมตร) กรุณารอสักครู่...")
+        st.warning(f"⚠️ สัญญาณดาวเทียมยังไม่นิ่ง (คลาดเคลื่อน {accuracy:.0f} เมตร)")
     else:
-        st.success(f"📍 ล็อกพิกัดแม่นยำสำเร็จ: {my_lat:.6f}, {my_lon:.6f}")
-
+        st.success(f"📍 ล็อกพิกัดแม่นยำ: {my_lat:.6f}, {my_lon:.6f} (รัศมี {accuracy:.0f} ม.)")
+else:
+    st.info("🛰️ กำลังรอสัญญาณจากดาวเทียม... (ใช้พิกัดสำรองชั่วคราว)")
 
 # --- 4. แผนที่ Google Hybrid ---
+# ตอนนี้ my_lat จะมีค่าแน่นอน ไม่ Error แล้วครับ
 m = folium.Map(
     location=[my_lat, my_lon], 
-    zoom_start=18, # ซูมเข้าไปให้เห็นหลังคาบ้านชัดๆ
+    zoom_start=18, 
     tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', 
     attr='Google Maps'
 )
+
 
 folium.Marker(
     [my_lat, my_lon], 
