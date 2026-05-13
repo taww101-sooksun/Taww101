@@ -66,11 +66,16 @@ else:
     audio_b_b64 = get_audio_base64(select_b)
 st.markdown("</div>", unsafe_allow_html=True)
 
+# --- แก้ไขส่วนการเตรียมข้อมูลก่อนเข้า HTML ---
+# ใช้ f-string แบบระวังเรื่องเครื่องหมาย ` 
+# และตรวจสอบว่ามีเพลงถูกเลือกจริงไหม
+song_a_name = select_a if all_songs else ""
+song_b_name = select_b if all_songs else ""
+
 # ==========================================
-# ส่วนที่ 2: HTML/JS Mixer Engine
+# ส่วนที่ 2: HTML/JS Mixer Engine (ฉบับแก้ไข Error)
 # ==========================================
 
-# ส่งค่าชื่อเพลงและข้อมูล Base64 เข้าไปใน JS
 html_code = f"""
 <!DOCTYPE html>
 <html>
@@ -85,7 +90,7 @@ html_code = f"""
         .btn-mix {{ 
             background: linear-gradient(45deg, #ff00de, #00f3ff);
             color: white; font-weight: bold; padding: 12px; border-radius: 10px;
-            text-transform: uppercase; letter-spacing: 2px; width: 100%;
+            text-transform: uppercase; letter-spacing: 2px; width: 100%; cursor: pointer;
         }}
     </style>
 </head>
@@ -98,7 +103,7 @@ html_code = f"""
                 <span class="text-pink-500 font-bold">DECK A</span>
                 <span id="timeA">00:00</span>
             </div>
-            <div class="text-[11px] truncate text-gray-300">{select_a if all_songs else "No Song"}</div>
+            <div class="text-[11px] truncate text-gray-300">{song_a_name}</div>
         </div>
 
         <div id="cardB" class="deck">
@@ -106,55 +111,61 @@ html_code = f"""
                 <span class="text-cyan-400 font-bold">DECK B</span>
                 <span id="timeB">00:00</span>
             </div>
-            <div class="text-[11px] truncate text-gray-300">{select_b if all_songs else "No Song"}</div>
+            <div class="text-[11px] truncate text-gray-300">{song_b_name}</div>
         </div>
 
-        <button onclick="startMix()" class="btn-mix">🔥 START NEON MIX</button>
-        <div id="status" class="text-[9px] text-center mt-3 text-gray-500 uppercase">Ready to Play</div>
+        <button id="mainBtn" onclick="startMix()" class="btn-mix">🔥 START NEON MIX</button>
+        <div id="status" class="text-[9px] text-center mt-3 text-gray-500 uppercase">Ready</div>
     </div>
 
     <script>
         let ctx, analyser, songA, songB, gainA, gainB, sourceA, sourceB;
-        let isPlaying = false, active = 'A', data;
+        let isPlaying = false, data;
 
-        // ข้อมูลเพลงที่ถูกส่งมาจาก Python
-        const b64A = "{audio_a_b64 if audio_a_b64 else ""}";
-        const b64B = "{audio_b_b64 if audio_b_b64 else ""}";
+        // แก้ไข: ใช้ Single Quote แทน Backtick ในการรับค่าจาก Python
+        const b64A = '{audio_a_b64 if audio_a_b64 else ""}';
+        const b64B = '{audio_b_b64 if audio_b_b64 else ""}';
 
-        async function base64ToBuffer(base64) {{
-            const binary = atob(base64);
-            const arrayBuffer = new ArrayBuffer(binary.length);
-            const uint8Array = new Uint8Array(arrayBuffer);
-            for (let i = 0; i < binary.length; i++) uint8Array[i] = binary.charCodeAt(i);
-            return await ctx.decodeAudioData(arrayBuffer);
+        async function base64ToBuffer(b64) {{
+            const resp = await fetch('data:audio/mp3;base64,' + b64);
+            const arrayBuf = await resp.arrayBuffer();
+            return await ctx.decodeAudioData(arrayBuf);
         }}
 
         async function startMix() {{
-            if (!b64A || !b64B) return alert("ยังไม่มีไฟล์เพลงครับ!");
+            if (!b64A || !b64B) {{ alert('โหลดเพลงไม่สำเร็จครับ!'); return; }}
             if (isPlaying) return;
 
-            ctx = new (window.AudioContext || window.webkitAudioContext)();
-            analyser = ctx.createAnalyser();
-            analyser.fftSize = 128;
-            data = new Uint8Array(analyser.frequencyBinCount);
+            try {{
+                document.getElementById('status').innerText = "LOADING ENGINE...";
+                ctx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // ถอดรหัสเพลง
+                songA = await base64ToBuffer(b64A);
+                songB = await base64ToBuffer(b64B);
 
-            document.getElementById('status').innerText = "Decoding Audio...";
-            songA = await base64ToBuffer(b64A);
-            songB = await base64ToBuffer(b64B);
+                analyser = ctx.createAnalyser();
+                analyser.fftSize = 64;
+                data = new Uint8Array(analyser.frequencyBinCount);
 
-            sourceA = ctx.createBufferSource(); sourceA.buffer = songA;
-            gainA = ctx.createGain(); sourceA.connect(gainA).connect(analyser).connect(ctx.destination);
-            
-            sourceB = ctx.createBufferSource(); sourceB.buffer = songB;
-            gainB = ctx.createGain(); gainB.gain.value = 0;
-            sourceB.connect(gainB).connect(analyser).connect(ctx.destination);
+                sourceA = ctx.createBufferSource(); sourceA.buffer = songA;
+                gainA = ctx.createGain(); sourceA.connect(gainA).connect(analyser).connect(ctx.destination);
+                
+                sourceB = ctx.createBufferSource(); sourceB.buffer = songB;
+                gainB = ctx.createGain(); gainB.gain.value = 0;
+                sourceB.connect(gainB).connect(analyser).connect(ctx.destination);
 
-            sourceA.loop = true; sourceB.loop = true;
-            sourceA.start(0); sourceB.start(0);
-            isPlaying = true;
-            render();
-            document.getElementById('cardA').classList.add('deck-active');
-            document.getElementById('status').innerText = "Playing Now";
+                sourceA.loop = true; sourceB.loop = true;
+                sourceA.start(0); sourceB.start(0);
+                
+                isPlaying = true;
+                render();
+                document.getElementById('cardA').classList.add('deck-active');
+                document.getElementById('status').innerText = "SYSTEM ONLINE";
+                document.getElementById('mainBtn').innerText = "MIXER ACTIVE";
+            }} catch(e) {{
+                alert('Error: ' + e);
+            }}
         }}
 
         function render() {{
@@ -163,27 +174,18 @@ html_code = f"""
             const can = document.getElementById('scope');
             const c = can.getContext('2d');
             c.clearRect(0,0,can.width,can.height);
+            
             let bw = can.width / data.length;
             for(let i=0; i<data.length; i++) {{
                 let h = (data[i]/255) * can.height;
-                c.fillStyle = `hsl(${(i*5)%360}, 100%, 50%)`;
+                // แก้จุดนี้: ใช้การต่อสตริงธรรมดาแทน Backtick เพื่อเลี่ยง Error ใน Python
+                c.fillStyle = 'hsl(' + (i * 10) + ', 100%, 50%)';
                 c.fillRect(i*bw, can.height-h, bw-1, h);
             }}
-            
-            // อัปเดตเวลาแบบง่าย
-            let rem = songA.duration - (ctx.currentTime % songA.duration);
-            let m = Math.floor(rem/60), s = Math.floor(rem%60);
-            document.getElementById('timeA').innerText = (m<10?'0':'')+m+":"+(s<10?'0':'')+s;
         }}
     </script>
 </body>
 </html>
 """
 
-st.components.v1.html(html_code, height=500)
-
-st.markdown("""
-<div style='text-align: center; color: #555; font-size: 11px; font-family: "Orbitron"; margin-top: 10px;'>
-    อยู่นิ่งๆ ไม่เจ็บตัว | LOCAL MP3 ENGINE | © 2026
-</div>
-""", unsafe_allow_html=True)
+st.components.v1.html(html_code, height=550)
