@@ -2,7 +2,7 @@ import streamlit as st
 import base64
 import os
 
-# --- ตั้งค่าพื้นฐาน ---
+# --- 1. ตั้งค่าพื้นฐาน ---
 st.set_page_config(page_title="Synapse Neon Mixer", layout="centered")
 
 def get_base64_image(image_path):
@@ -17,19 +17,16 @@ def get_audio_base64(file_path):
             return base64.b64encode(f.read()).decode()
     except: return None
 
-# สแกนหาเพลง
+# สแกนหาเพลงในเครื่อง
 all_songs = [f for f in os.listdir('.') if f.endswith('.mp3')]
 all_songs = sorted(all_songs)
-
-# ดึงข้อมูลโลโก้
 logo_b64 = get_base64_image("logo1.png")
 
+# --- 2. สไตล์หน้าจอ (CSS) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
     .stApp { background-color: #000; }
-    
-    /* ข้อความวิ้งๆ Neon Flicker */
     .neon-text {
         font-family: 'Orbitron', sans-serif;
         color: #fff;
@@ -40,27 +37,20 @@ st.markdown("""
         animation: flicker 1.5s infinite alternate;
         margin-bottom: 20px;
     }
-
     @keyframes flicker {
-        0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
-            opacity: 1;
-            text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px #00f3ff;
-        }
-        20%, 24%, 55% {
-            opacity: 0.5;
-            text-shadow: none;
-        }
+        0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px #00f3ff; }
+        20%, 24%, 55% { opacity: 0.5; text-shadow: none; }
     }
     </style>
     """, unsafe_allow_html=True)
 
 st.markdown('<div class="neon-text">SYNAPSE MIXER</div>', unsafe_allow_html=True)
 
-# ส่วนเลือกเพลง
+# --- 3. ส่วนเลือกเพลง ---
 if all_songs:
     col1, col2 = st.columns(2)
-    with col1: sA = st.selectbox("DECK A", all_songs, key="sA")
-    with col2: sB = st.selectbox("DECK B", all_songs, key="sB")
+    with col1: sA = st.selectbox("DECK A (เริ่มก่อน)", all_songs, key="sA")
+    with col2: sB = st.selectbox("DECK B (เล่นต่อ)", all_songs, key="sB")
     
     audio_a = get_audio_base64(sA)
     audio_b = get_audio_base64(sB)
@@ -68,14 +58,13 @@ else:
     st.error("ไม่พบไฟล์ .mp3 ในโฟลเดอร์")
     st.stop()
 
-# --- HTML/JS Engine (ฉบับแก้ Hex Color Error) ---
+# --- 4. หัวใจสำคัญ: HTML/JS Mixer Engine ---
 html_code = f"""
 <!DOCTYPE html>
 <html>
 <head>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* ต้องใช้ double braces {{ }} ล้อมรอบ CSS ทั้งหมด */
         body {{ background: transparent; color: white; font-family: 'Orbitron', sans-serif; overflow: hidden; }}
         .neon-card {{ 
             border: 2px solid #333; 
@@ -91,9 +80,9 @@ html_code = f"""
             filter: drop-shadow(0 0 8px #00f3ff);
         }}
         .visualizer {{ height: 100px; background: #000; border-radius: 10px; border: 1px solid #222; }}
-        .deck {{ padding: 12px; border-radius: 10px; border: 1px solid #222; margin-top: 10px; transition: 0.3s; }}
-        .active-a {{ border-color: #ff00de; box-shadow: 0 0 10px #ff00de; }}
-        .active-b {{ border-color: #00f3ff; box-shadow: 0 0 10px #00f3ff; }}
+        .deck {{ padding: 12px; border-radius: 10px; border: 1px solid #222; margin-top: 10px; transition: 0.3s; opacity: 0.5; }}
+        .active-a {{ border-color: #ff00de; box-shadow: 0 0 10px #ff00de; opacity: 1; }}
+        .active-b {{ border-color: #00f3ff; box-shadow: 0 0 10px #00f3ff; opacity: 1; }}
         .btn-mix {{
             background: linear-gradient(45deg, #ff00de, #00f3ff);
             width: 100%; padding: 15px; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: pointer;
@@ -125,8 +114,8 @@ html_code = f"""
             <div class="progress"><div id="barB" class="bar" style="background:#00f3ff"></div></div>
         </div>
 
-        <button onclick="start()" class="btn-mix">🚀 START AUTO-MIX</button>
-        <div id="status" class="text-[9px] mt-4 text-gray-500 uppercase">System Ready</div>
+        <button onclick="start()" class="btn-mix">🚀 START MIXING</button>
+        <div id="status" class="text-[9px] mt-4 text-gray-500 uppercase">SYSTEM READY</div>
     </div>
 
     <script>
@@ -139,104 +128,94 @@ html_code = f"""
             return await ctx.decodeAudioData(ab);
         }}
 
-        <script>
-        let ctx, analyser, songA, songB, gA, gB, srcA, srcB;
-        let isPlaying = false, active = 'A', data;
-
-        async function toBuf(b64) {
-            const r = await fetch('data:audio/mp3;base64,' + b64);
-            const ab = await r.arrayBuffer();
-            return await ctx.decodeAudioData(ab);
-        }
-
-        async function start() {
+        async function start() {{
             if(isPlaying) return;
-            try {
-                document.getElementById('status').innerText = "BOOTING ENGINE...";
+            try {{
+                document.getElementById('status').innerText = "BOOTING...";
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = ctx.createAnalyser();
                 data = new Uint8Array(analyser.frequencyBinCount);
 
-                // โหลดเพลงเตรียมไว้ (แต่ยังไม่สั่งเล่น)
                 songA = await toBuf('{audio_a}');
                 songB = await toBuf('{audio_b}');
 
-                // เริ่มเล่นแค่เพลง A ก่อน
                 playDeckA();
                 
                 isPlaying = true;
-                document.getElementById('status').innerText = "PLAYING: DECK A";
                 render();
-            } catch(e) {
+            }} catch(e) {{
                 alert("Error: " + e);
-            }
-        }
+            }}
+        }}
 
-        function playDeckA() {
+        function playDeckA() {{
             active = 'A';
             srcA = ctx.createBufferSource();
             srcA.buffer = songA;
             gA = ctx.createGain();
             srcA.connect(gA).connect(analyser).connect(ctx.destination);
-            gA.gain.value = 1; // ดังปกติ
             srcA.start(0);
+            srcA.t0 = ctx.currentTime; // เก็บเวลาที่เริ่มเล่น
             document.getElementById('deckA').classList.add('active-a');
-            document.getElementById('deckB').classList.remove('active-b');
-        }
+            document.getElementById('status').innerText = "PLAYING DECK A";
+        }}
 
-        function playDeckB() {
+        function playDeckB() {{
             active = 'B';
             srcB = ctx.createBufferSource();
             srcB.buffer = songB;
             gB = ctx.createGain();
             srcB.connect(gB).connect(analyser).connect(ctx.destination);
-            gB.gain.value = 0; // เริ่มที่เงียบๆ
+            gB.gain.value = 0; 
             srcB.start(0);
+            srcB.t0 = ctx.currentTime;
             
-            // ค่อยๆ เร่งเสียง B ขึ้นมาใน 5 วินาที
+            // ค่อยๆ เพิ่มเสียง B ใน 5 วินาที
             gB.gain.linearRampToValueAtTime(1, ctx.currentTime + 5);
             document.getElementById('deckB').classList.add('active-b');
             document.getElementById('deckA').classList.remove('active-a');
-        }
+        }}
 
-        function render() {
+        function render() {{
             requestAnimationFrame(render);
             analyser.getByteFrequencyData(data);
             const can = document.getElementById('scope');
             const c = can.getContext('2d');
             c.clearRect(0,0,can.width,can.height);
-            for(let i=0; i<data.length; i++) {
+            for(let i=0; i<data.length; i++) {{
                 c.fillStyle = 'hsl(' + (i*2 + (active=='A'?300:190)) + ', 100%, 50%)';
                 c.fillRect(i*3, can.height-(data[i]/2.5), 2, data[i]/2.5);
-            }
+            }}
             updateProgress();
-        }
+        }}
 
-        function updateProgress() {
-            // เช็คเพลง A
-            if (srcA && active == 'A') {
-                let curr = (ctx.currentTime - srcA.startTime || 0) % songA.duration; // แก้จุดนี้เพื่อหาเวลาเล่นจริง
-                // เนื่องจาก AudioBufferSourceNode ไม่มี property 'currentTime' โดยตรง 
-                // เราจะใช้วิธีคำนวณเวลาที่ผ่านไปแทน (แบบง่ายๆ)
-                let rem = songA.duration - (ctx.currentTime % songA.duration); 
+        function updateProgress() {{
+            if (active == 'A' && srcA) {{
+                let elapsed = ctx.currentTime - srcA.t0;
+                let rem = songA.duration - elapsed;
                 
                 document.getElementById('tA').innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
-                document.getElementById('barA').style.width = ((songA.duration - rem)/songA.duration*100) + "%";
+                document.getElementById('barA').style.width = (elapsed/songA.duration*100) + "%";
 
-                // ถ้าเหลือ 8 วินาที ให้เริ่มเล่นเพลง B
-                if (rem < 8 && active == 'A') {
-                    active = 'MIXING_TO_B'; 
-                    gA.gain.linearRampToValueAtTime(0, ctx.currentTime + 5); // ค่อยๆ หรี่ A
-                    playDeckB(); // เริ่มเล่น B
-                    document.getElementById('status').innerText = "CROSSFADING TO B...";
-                }
-            }
-            
-            // เช็คเพลง B (ถ้าเล่นอยู่)
-            if (srcB && active == 'B') {
-                let rem = songB.duration - (ctx.currentTime % songB.duration);
+                // ถ้าเหลือ 8 วินาที ให้สั่งเล่น B และ Fade Out A
+                if (rem < 8) {{
+                    active = 'B'; 
+                    gA.gain.linearRampToValueAtTime(0, ctx.currentTime + 5);
+                    playDeckB();
+                    document.getElementById('status').innerText = "CROSSFADING...";
+                }}
+            }} else if (active == 'B' && srcB) {{
+                let elapsed = ctx.currentTime - srcB.t0;
+                let rem = songB.duration - elapsed;
                 document.getElementById('tB').innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
-                document.getElementById('barB').style.width = ((songB.duration - rem)/songB.duration*100) + "%";
-            }
-        }
+                document.getElementById('barB').style.width = (elapsed/songB.duration*100) + "%";
+                document.getElementById('status').innerText = "PLAYING DECK B";
+            }}
+        }}
     </script>
+</body>
+</html>
+"""
+
+st.components.v1.html(html_code, height=600)
+st.markdown("<div style='text-align:center; color:#444; font-size:10px;'>อยู่นิ่งๆ ไม่เจ็บตัว | MIXER V.2</div>", unsafe_allow_html=True)
