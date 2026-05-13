@@ -139,79 +139,104 @@ html_code = f"""
             return await ctx.decodeAudioData(ab);
         }}
 
-        async function start() {{
+        <script>
+        let ctx, analyser, songA, songB, gA, gB, srcA, srcB;
+        let isPlaying = false, active = 'A', data;
+
+        async function toBuf(b64) {
+            const r = await fetch('data:audio/mp3;base64,' + b64);
+            const ab = await r.arrayBuffer();
+            return await ctx.decodeAudioData(ab);
+        }
+
+        async function start() {
             if(isPlaying) return;
-            try {{
-                document.getElementById('status').innerText = "BOOTING...";
+            try {
+                document.getElementById('status').innerText = "BOOTING ENGINE...";
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = ctx.createAnalyser();
                 data = new Uint8Array(analyser.frequencyBinCount);
 
+                // โหลดเพลงเตรียมไว้ (แต่ยังไม่สั่งเล่น)
                 songA = await toBuf('{audio_a}');
                 songB = await toBuf('{audio_b}');
 
-                srcA = ctx.createBufferSource(); srcA.buffer = songA;
-                gA = ctx.createGain(); srcA.connect(gA).connect(analyser).connect(ctx.destination);
+                // เริ่มเล่นแค่เพลง A ก่อน
+                playDeckA();
                 
-                srcB = ctx.createBufferSource(); srcB.buffer = songB;
-                gB = ctx.createGain(); gB.gain.value = 0; 
-                srcB.connect(gB).connect(analyser).connect(ctx.destination);
-
-                srcA.loop = true; srcB.loop = true;
-                srcA.start(0); srcB.start(0);
                 isPlaying = true;
-                document.getElementById('deckA').classList.add('active-a');
-                document.getElementById('status').innerText = "ONLINE";
+                document.getElementById('status').innerText = "PLAYING: DECK A";
                 render();
-            }} catch(e) {{
+            } catch(e) {
                 alert("Error: " + e);
-            }}
-        }}
+            }
+        }
 
-        function render() {{
+        function playDeckA() {
+            active = 'A';
+            srcA = ctx.createBufferSource();
+            srcA.buffer = songA;
+            gA = ctx.createGain();
+            srcA.connect(gA).connect(analyser).connect(ctx.destination);
+            gA.gain.value = 1; // ดังปกติ
+            srcA.start(0);
+            document.getElementById('deckA').classList.add('active-a');
+            document.getElementById('deckB').classList.remove('active-b');
+        }
+
+        function playDeckB() {
+            active = 'B';
+            srcB = ctx.createBufferSource();
+            srcB.buffer = songB;
+            gB = ctx.createGain();
+            srcB.connect(gB).connect(analyser).connect(ctx.destination);
+            gB.gain.value = 0; // เริ่มที่เงียบๆ
+            srcB.start(0);
+            
+            // ค่อยๆ เร่งเสียง B ขึ้นมาใน 5 วินาที
+            gB.gain.linearRampToValueAtTime(1, ctx.currentTime + 5);
+            document.getElementById('deckB').classList.add('active-b');
+            document.getElementById('deckA').classList.remove('active-a');
+        }
+
+        function render() {
             requestAnimationFrame(render);
             analyser.getByteFrequencyData(data);
             const can = document.getElementById('scope');
             const c = can.getContext('2d');
             c.clearRect(0,0,can.width,can.height);
-            for(let i=0; i<data.length; i++) {{
+            for(let i=0; i<data.length; i++) {
                 c.fillStyle = 'hsl(' + (i*2 + (active=='A'?300:190)) + ', 100%, 50%)';
                 c.fillRect(i*3, can.height-(data[i]/2.5), 2, data[i]/2.5);
-            }}
-            updateProgress('A', songA, gA);
-            updateProgress('B', songB, gB);
-        }}
+            }
+            updateProgress();
+        }
 
-        function updateProgress(id, buf, gain) {{
-            if(!buf) return;
-            let curr = ctx.currentTime % buf.duration;
-            let rem = buf.duration - curr;
-            document.getElementById('t'+id).innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
-            document.getElementById('bar'+id).style.width = (curr/buf.duration*100) + "%";
+        function updateProgress() {
+            // เช็คเพลง A
+            if (srcA && active == 'A') {
+                let curr = (ctx.currentTime - srcA.startTime || 0) % songA.duration; // แก้จุดนี้เพื่อหาเวลาเล่นจริง
+                // เนื่องจาก AudioBufferSourceNode ไม่มี property 'currentTime' โดยตรง 
+                // เราจะใช้วิธีคำนวณเวลาที่ผ่านไปแทน (แบบง่ายๆ)
+                let rem = songA.duration - (ctx.currentTime % songA.duration); 
+                
+                document.getElementById('tA').innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
+                document.getElementById('barA').style.width = ((songA.duration - rem)/songA.duration*100) + "%";
 
-            if(active == id && rem < 5) {{
-                let next = (active == 'A' ? 'B' : 'A');
-                let now = ctx.currentTime;
-                if(active == 'A') {{
-                    gA.gain.linearRampToValueAtTime(0, now + 4);
-                    gB.gain.linearRampToValueAtTime(1, now + 4);
-                    document.getElementById('deckA').classList.remove('active-a');
-                    document.getElementById('deckB').classList.add('active-b');
-                }} else {{
-                    gB.gain.linearRampToValueAtTime(0, now + 4);
-                    gA.gain.linearRampToValueAtTime(1, now + 4);
-                    document.getElementById('deckB').classList.remove('active-b');
-                    document.getElementById('deckA').classList.add('active-a');
-                }}
-                active = next;
-            }}
-        }}
+                // ถ้าเหลือ 8 วินาที ให้เริ่มเล่นเพลง B
+                if (rem < 8 && active == 'A') {
+                    active = 'MIXING_TO_B'; 
+                    gA.gain.linearRampToValueAtTime(0, ctx.currentTime + 5); // ค่อยๆ หรี่ A
+                    playDeckB(); // เริ่มเล่น B
+                    document.getElementById('status').innerText = "CROSSFADING TO B...";
+                }
+            }
+            
+            // เช็คเพลง B (ถ้าเล่นอยู่)
+            if (srcB && active == 'B') {
+                let rem = songB.duration - (ctx.currentTime % songB.duration);
+                document.getElementById('tB').innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
+                document.getElementById('barB').style.width = ((songB.duration - rem)/songB.duration*100) + "%";
+            }
+        }
     </script>
-</body>
-</html>
-"""
-
-
-st.components.v1.html(html_code, height=600)
-
-st.markdown("<div style='text-align:center; color:#444; font-size:10px; font-family:Orbitron;'>อยู่นิ่งๆ ไม่เจ็บตัว | V.AUTO-MIX 2026</div>", unsafe_allow_html=True)
