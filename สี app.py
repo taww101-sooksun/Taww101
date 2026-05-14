@@ -1,193 +1,161 @@
 import streamlit as st
-import streamlit.components.v1 as components
-import firebase_admin
-from firebase_admin import credentials, db
-import base64
-import os
-import time
-from datetime import datetime
-import folium
-from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
+import pandas as pd
+from datetime import datetime, date, timedelta
+import math
 
-# --- 1. INITIAL CONFIG ---
-st.set_page_config(page_title="SYNAPSE OMNI", layout="wide", initial_sidebar_state="collapsed")
+# --- CONFIG & UI ---
+st.set_page_config(page_title="SYNAPSE: THE UNIFIED TRUTH", layout="wide")
 
-def apply_global_style():
-    st.markdown("""
-        <style>
-            #MainMenu, footer, header {visibility: hidden;}
-            .stApp { top: -60px; background-color: #000; color: #fff; }
-            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-            * { font-family: 'Orbitron', sans-serif !important; }
-            
-            /* Neon Text Animation */
-            .neon-title {
-                text-align: center; font-size: 2rem; color: #fff;
-                text-shadow: 0 0 10px #39FF14, 0 0 20px #39FF14;
-                animation: wink 2s infinite; margin-bottom: 20px;
-            }
-            @keyframes wink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-            
-            .stTabs [aria-selected="true"] { border-bottom: 4px solid #39FF14 !important; box-shadow: 0 5px 15px #39FF1444; }
-        </style>
+# ปรับแต่ง Theme ให้ดูเป็น Cyber-Logic
+st.markdown("""
+    <style>
+    .main { background-color: #050a0e; color: #00ff41; }
+    .stApp { background: linear-gradient(180deg, #050a0e 0%, #0a1118 100%); }
+    .logic-box { 
+        background-color: #101a24; 
+        padding: 20px; 
+        border-left: 5px solid #00ff41; 
+        border-radius: 12px;
+        margin-bottom: 20px;
+        color: #f0f0f0;
+        box-shadow: 0 4px 15px rgba(0,255,65,0.1);
+    }
+    .metric-card {
+        text-align: center;
+        padding: 20px;
+        border: 1px solid #00ff41;
+        border-radius: 15px;
+        background: rgba(0, 255, 65, 0.05);
+    }
+    h1, h2, h3 { color: #00ff41; font-family: 'Courier New', Courier, monospace; }
+    code { color: #ff7f50; }
+    </style>
     """, unsafe_allow_html=True)
 
-apply_global_style()
-
-# --- 2. FIREBASE & UTILS ---
-if not firebase_admin._apps:
-    fb_creds = dict(st.secrets["firebase_credentials"])
-    fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
-    cred = credentials.Certificate(fb_creds)
-    firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
-
-def get_base64(file_path):
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as f: return base64.b64encode(f.read()).decode()
-    return ""
-
-all_songs = sorted([f for f in os.listdir('.') if f.endswith('.mp3')])
-logo_b64 = get_base64("logo1.png")
-notif_sound = get_base64("notification.mp3")
-
-# --- 3. AUTHENTICATION SYSTEM (Login / Register) ---
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-
-if not st.session_state.logged_in:
-    st.markdown('<div class="neon-title">SYNAPSE AUTH</div>', unsafe_allow_html=True)
-    auth_tab1, auth_tab2 = st.tabs(["🔑 LOGIN", "📝 REGISTER"])
+# --- CORE ENGINE (ฟังก์ชันวิเคราะห์ความจริง) ---
+def get_logic_core(dt):
+    if dt is None: return None
     
-    with auth_tab1:
-        with st.form("login"):
-            u = st.text_input("AGENT ID")
-            p = st.text_input("PASSWORD", type="password")
-            if st.form_submit_button("CONNECT ⚡", use_container_width=True):
-                res = db.reference(f'users/{u}').get()
-                if res and res.get('password') == p:
-                    st.session_state.logged_in, st.session_state.user = True, u
-                    st.rerun()
-                else: st.error("Access Denied")
-                
-    with auth_tab2:
-        with st.form("register"):
-            nu = st.text_input("NEW AGENT ID")
-            np = st.text_input("NEW PASSWORD", type="password")
-            cp = st.text_input("CONFIRM PASSWORD", type="password")
-            if st.form_submit_button("CREATE ACCOUNT"):
-                if nu and np == cp:
-                    db.reference(f'users/{nu}').set({'password': np, 'created_at': datetime.now().isoformat()})
-                    st.success("Registration Complete! Please Login.")
-                else: st.error("Data Mismatch")
-    st.stop()
-
-# --- 4. MAIN INTERFACE ---
-st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{logo_b64}" width="80" style="filter:drop-shadow(0 0 10px #39FF14);"></div>', unsafe_allow_html=True)
-st.markdown(f'<div style="text-align:right; font-size:10px; color:#39FF14;">ID: {st.session_state.user}</div>', unsafe_allow_html=True)
-
-tab_map, tab_chat, tab_music = st.tabs(["🛰️ RADAR", "💬 COMMS", "🎧 MIXER"])
-
-# --- GPS RADAR ---
-with tab_map:
-    loc = get_geolocation()
-    if loc:
-        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-        st.write(f"📍 LAT: `{lat}` | LON: `{lon}`")
-        db.reference(f'active_locations/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
-        
-        m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
-        folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='crosshairs', prefix='fa')).add_to(m)
-        st_folium(m, width="100%", height=400)
+    # 1. ฐานข้อมูลวันและเวลา
+    ref_date = date(1900, 1, 1)
+    diff_days = (dt - ref_date).days
+    day_val = dt.weekday() + 1
+    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+    
+    # 2. คำนวณดิถีพระจันทร์ (Real Lunar Cycle)
+    lunar_cycle = 29.530589
+    pos = (diff_days - 0.5) % lunar_cycle
+    is_waxing = pos <= 14.765
+    m_num = int(pos) + 1 if is_waxing else int(pos - 14.765) + 1
+    phase_text = f"{'ขึ้น' if is_waxing else 'แรม'} {m_num} ค่ำ"
+    
+    # 3. คำนวณรหัสผลลัพธ์ (The Resulting Code)
+    if is_waxing:
+        res = math.sqrt((day_val**2) + (m_num**2))
+        formula = f"√({day_val}² + {m_num}²)"
+        p_type = "Vector Energy (แรงผลักดัน)"
     else:
-        st.warning("WAITING FOR SATELLITE SIGNAL...")
-
-# --- CHAT (LEFT-RIGHT + SOUND) ---
-with tab_chat:
-    components.html(f"""
-        <div id="chat-box" style="height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:10px; background:#050505; border:1px solid #222; border-radius:10px;"></div>
-        <audio id="beep"><source src="data:audio/mp3;base64,{notif_sound}" type="audio/mp3"></audio>
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-        <script>
-            const fb = firebase.initializeApp({{databaseURL: "{st.secrets['firebase_db_url']}"}}).database();
-            fb.ref('global_chat').limitToLast(20).on('child_added', (s) => {{
-                const d = s.val();
-                const isMe = d.user === "{st.session_state.user}";
-                const bubble = `
-                    <div style="align-self:${{isMe?'flex-end':'flex-start'}}; 
-                                background:${{isMe?'#39FF1422':'#333'}}; 
-                                border:1px solid ${{isMe?'#39FF14':'#555'}}; 
-                                color:${{isMe?'#39FF14':'#fff'}}; 
-                                padding:8px 12px; border-radius:15px; font-size:13px; max-width:80%;">
-                        <div style="font-size:9px; opacity:0.6; margin-bottom:3px;">${{d.user}}</div>
-                        ${{d.text}}
-                    </div>`;
-                const box = document.getElementById('chat-box');
-                box.innerHTML += bubble; box.scrollTop = box.scrollHeight;
-                if(!isMe) document.getElementById('beep').play();
-            }});
-        </script>
-    """, height=370)
-    msg = st.text_input("ENTER SIGNAL")
-    if st.button("SEND ⚡"):
-        if msg: db.reference('global_chat').push({'user': st.session_state.user, 'text': msg, 'ts': time.time()})
-
-# --- MUSIC MIXER (CROSSFADE + VISUALIZER) ---
-with tab_music:
-    if len(all_songs) >= 2:
-        c1, c2 = st.columns(2)
-        s1 = c1.selectbox("DECK A", all_songs, index=0)
-        s2 = c2.selectbox("DECK B", all_songs, index=1)
+        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+        formula = f"({day_val} × 1.618) / {m_num}"
+        p_type = "Golden Ratio (สมดุลทองคำ)"
         
-        html_mixer = f"""
-        <canvas id="scope" style="width:100%; height:100px; background:#000; border-radius:10px; border:1px solid #333;"></canvas>
-        <div id="status" style="text-align:center; color:#39FF14; font-size:12px; margin:10px 0;">SYSTEM READY</div>
-        <button id="playBtn" style="width:100%; padding:15px; background:linear-gradient(90deg, #39FF14, #00f3ff); border:none; border-radius:10px; font-weight:bold; cursor:pointer;">START MIXING FLOW</button>
+    # 4. ข้อมูลเสริม (ธาตุและนักษัตร)
+    thai_year = dt.year + 543
+    zodiacs = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+    elements = {1: "ดิน", 2: "น้ำ", 3: "ไฟ", 4: "ลม", 5: "ทอง", 6: "น้ำ", 7: "ดิน"}
+    
+    return {
+        "res": round(res, 4), "phase": phase_text, "day_name": day_names[dt.weekday()],
+        "zodiac": zodiacs[thai_year % 12], "element": elements.get(day_val),
+        "formula": formula, "type": p_type, "diff": diff_days
+    }
+
+# --- SCANNER ENGINE (ระบบสแกนหาช่วงเวลา) ---
+def run_synapse_scan(target_res, base_date, range_days, direction="future"):
+    scan_results = []
+    for i in range(range_days + 1):
+        curr_date = base_date + timedelta(days=i) if direction == "future" else base_date - timedelta(days=i)
+        d = get_logic_core(curr_date)
+        gap = abs(target_res - d['res'])
         
-        <script>
-            let ctx, analyser, data, active='A';
-            async function play() {{
-                ctx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = ctx.createAnalyser();
-                data = new Uint8Array(analyser.frequencyBinCount);
-                
-                const load = async (b64) => ctx.decodeAudioData(await (await fetch('data:audio/mp3;base64,' + b64)).arrayBuffer());
-                let bA = await load('{get_base64(s1)}');
-                let bB = await load('{get_base64(s2)}');
+        status = ""
+        if gap < 0.5: status = "💎 บรรจบ (Perfect Match)"
+        elif 3.8 <= gap <= 4.2: status = "🌀 สะท้อน (Resonance)"
+        elif gap > 10.0: status = "🚩 แยกตัว (Independence)"
+        
+        if status:
+            scan_results.append({
+                "วันที่": curr_date.strftime("%d/%m/%Y"),
+                "วัน/เฟส": f"{d['day_name']} ({d['phase']})",
+                "สถานะพิกัด": status,
+                "Gap": round(gap, 4),
+                "รหัสวัน": d['res']
+            })
+    return pd.DataFrame(scan_results)
 
-                const run = (buf, isA) => {{
-                    active = isA ? 'A' : 'B';
-                    let src = ctx.createBufferSource(); src.buffer = buf;
-                    let gain = ctx.createGain();
-                    src.connect(gain).connect(analyser).connect(ctx.destination);
-                    
-                    // Crossfade logic
-                    gain.gain.setValueAtTime(0, ctx.currentTime);
-                    gain.gain.linearRampToValueAtTime(1, ctx.currentTime + 3);
-                    
-                    src.onended = () => run(isA ? bB : bA, !isA);
-                    src.start(0);
-                    document.getElementById('status').innerText = "PLAYING DECK " + active;
-                }};
-                run(bA, true);
-                render();
-            }}
+# --- MAIN INTERFACE ---
+st.title("🛰️ SYNAPSE : ระบบรวมศูนย์ความจริง")
+st.write("การรวมสมการ Quantum Logic และพิกัดดาราศาสตร์เพื่อถอดรหัสรอยเท้าพลังงาน")
 
-            function render() {{
-                requestAnimationFrame(render);
-                analyser.getByteFrequencyData(data);
-                const can = document.getElementById('scope');
-                const c = can.getContext('2d');
-                c.clearRect(0,0,can.width,can.height);
-                for(let i=0; i<data.length; i++) {{
-                    c.fillStyle = `hsl(${{i + (active=='A'?120:200)}}, 100%, 50%)`;
-                    c.fillRect(i*2, can.height - data[i]/2, 1, data[i]/2);
-                }}
-            }}
-            document.getElementById('playBtn').onclick = play;
-        </script>
-        """
-        components.html(html_mixer, height=300)
-    else: st.error("Need 2 MP3 files")
+# ส่วนที่ 1: วิเคราะห์รหัสบุคคล
+st.divider()
+c1, c2 = st.columns([1, 1])
 
-st.markdown("<div style='text-align:center; color:#333; font-size:10px;'>อยู่นิ่งๆ ไม่เจ็บตัว | OMNI COMMAND V.3</div>", unsafe_allow_html=True)
+with c1:
+    st.subheader("👤 ข้อมูลพื้นฐาน")
+    user_dob = st.date_input("ระบุวันเกิดของคุณ", value=None, min_value=date(1940,1,1))
+    
+with c2:
+    if user_dob:
+        u = get_logic_core(user_dob)
+        st.markdown(f"""
+            <div class="metric-card">
+                <small>รหัสประจำตัวของคุณ</small>
+                <h1 style="font-size: 50px; margin: 0;">{u['res']}</h1>
+                <code>{u['formula']}</code>
+            </div>
+        """, unsafe_allow_html=True)
+
+if user_dob:
+    u = get_logic_core(user_dob)
+    col_a, col_b, col_c = st.columns(3)
+    col_a.metric("พิกัดวัน", u['day_name'], u['phase'])
+    col_b.metric("ธาตุพื้นฐาน", u['element'])
+    col_c.metric("ปีนักษัตร", u['zodiac'])
+
+    # ส่วนที่ 2: ระบบสแกนวงจร (Timeline Scanner)
+    st.divider()
+    st.subheader("🔍 ระบบสแกนหาจังหวะชีวิต (Timeline Scanner)")
+    
+    past_days = st.slider("ย้อนหลัง (วัน)", 0, 365, 90)
+    future_days = st.slider("ล่วงหน้า (วัน)", 0, 365, 180)
+    
+    t_past, t_future = st.tabs(["⏪ ตรวจสอบรอยเท้าในอดีต", "🔮 พยากรณ์พิกัดในอนาคต"])
+    
+    with t_past:
+        df_past = run_synapse_scan(u['res'], date.today(), past_days, "past")
+        if not df_past.empty:
+            st.dataframe(df_past, use_container_width=True, hide_index=True)
+        else:
+            st.info("ไม่พบจุดบรรจบที่สำคัญในช่วงอดีตที่เลือก")
+            
+    with t_future:
+        df_future = run_synapse_scan(u['res'], date.today(), future_days, "future")
+        if not df_future.empty:
+            st.dataframe(df_future, use_container_width=True, hide_index=True)
+        else:
+            st.info("ยังไม่พบพิกัดที่สอดคล้องในช่วงเวลาข้างหน้า")
+
+    # ส่วนที่ 3: คัมภีร์อ่านค่า
+    with st.expander("📖 ความหมายของสถานะพิกัด"):
+        st.markdown("""
+        *   **💎 บรรจบ:** วันที่ค่าพลังงานภายนอกตรงกับรหัสคุณ (Gap ใกล้ 0) เหมาะกับการตัดสินใจเรื่องสำคัญ
+        *   **🌀 สะท้อน:** วันที่เกิดแรงเหวี่ยงของตัวเลข (Gap ใกล้ 4) มักเกิดเหตุการณ์ไม่คาดฝันหรือการพบเจอโดยบังเอิญ
+        *   **🚩 แยกตัว:** วันที่พลังงานผลักออกจากกัน เหมาะกับการอยู่เงียบๆ หรือยุติปัญหาที่ค้างคา
+        """)
+
+else:
+    st.info("กรุณาระบุวันเกิด เพื่อให้ระบบเชื่อมต่อฐานข้อมูลความจริง")
+
+st.divider()
+st.caption(f"สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE INTEGRATED v4.0 | {date.today().year}")
