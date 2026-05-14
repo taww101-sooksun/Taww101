@@ -1,193 +1,137 @@
 import streamlit as st
-import streamlit.components.v1 as components
-import firebase_admin
-from firebase_admin import credentials, db
-import base64
-import os
-import time
-from datetime import datetime
-import folium
-from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
+from datetime import date, timedelta
 
-# --- 1. INITIAL CONFIG ---
-st.set_page_config(page_title="SYNAPSE OMNI", layout="wide", initial_sidebar_state="collapsed")
-
-def apply_global_style():
-    st.markdown("""
-        <style>
-            #MainMenu, footer, header {visibility: hidden;}
-            .stApp { top: -60px; background-color: #000; color: #fff; }
-            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-            * { font-family: 'Orbitron', sans-serif !important; }
-            
-            /* Neon Text Animation */
-            .neon-title {
-                text-align: center; font-size: 2rem; color: #fff;
-                text-shadow: 0 0 10px #39FF14, 0 0 20px #39FF14;
-                animation: wink 2s infinite; margin-bottom: 20px;
-            }
-            @keyframes wink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-            
-            .stTabs [aria-selected="true"] { border-bottom: 4px solid #39FF14 !important; box-shadow: 0 5px 15px #39FF1444; }
-        </style>
-    """, unsafe_allow_html=True)
-
-apply_global_style()
-
-# --- 2. FIREBASE & UTILS ---
-if not firebase_admin._apps:
-    fb_creds = dict(st.secrets["firebase_credentials"])
-    fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
-    cred = credentials.Certificate(fb_creds)
-    firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
-
-def get_base64(file_path):
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as f: return base64.b64encode(f.read()).decode()
-    return ""
-
-all_songs = sorted([f for f in os.listdir('.') if f.endswith('.mp3')])
-logo_b64 = get_base64("logo1.png")
-notif_sound = get_base64("notification.mp3")
-
-# --- 3. AUTHENTICATION SYSTEM (Login / Register) ---
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-
-if not st.session_state.logged_in:
-    st.markdown('<div class="neon-title">SYNAPSE AUTH</div>', unsafe_allow_html=True)
-    auth_tab1, auth_tab2 = st.tabs(["🔑 LOGIN", "📝 REGISTER"])
-    
-    with auth_tab1:
-        with st.form("login"):
-            u = st.text_input("AGENT ID")
-            p = st.text_input("PASSWORD", type="password")
-            if st.form_submit_button("CONNECT ⚡", use_container_width=True):
-                res = db.reference(f'users/{u}').get()
-                if res and res.get('password') == p:
-                    st.session_state.logged_in, st.session_state.user = True, u
-                    st.rerun()
-                else: st.error("Access Denied")
-                
-    with auth_tab2:
-        with st.form("register"):
-            nu = st.text_input("NEW AGENT ID")
-            np = st.text_input("NEW PASSWORD", type="password")
-            cp = st.text_input("CONFIRM PASSWORD", type="password")
-            if st.form_submit_button("CREATE ACCOUNT"):
-                if nu and np == cp:
-                    db.reference(f'users/{nu}').set({'password': np, 'created_at': datetime.now().isoformat()})
-                    st.success("Registration Complete! Please Login.")
-                else: st.error("Data Mismatch")
-    st.stop()
-
-# --- 4. MAIN INTERFACE ---
-st.markdown(f'<div style="text-align:center;"><img src="data:image/png;base64,{logo_b64}" width="80" style="filter:drop-shadow(0 0 10px #39FF14);"></div>', unsafe_allow_html=True)
-st.markdown(f'<div style="text-align:right; font-size:10px; color:#39FF14;">ID: {st.session_state.user}</div>', unsafe_allow_html=True)
-
-tab_map, tab_chat, tab_music = st.tabs(["🛰️ RADAR", "💬 COMMS", "🎧 MIXER"])
-
-# --- GPS RADAR ---
-with tab_map:
-    loc = get_geolocation()
-    if loc:
-        lat, lon = loc['coords']['latitude'], loc['coords']['longitude']
-        st.write(f"📍 LAT: `{lat}` | LON: `{lon}`")
-        db.reference(f'active_locations/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
-        
-        m = folium.Map(location=[lat, lon], zoom_start=17, tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', attr='Google')
-        folium.Marker([lat, lon], icon=folium.Icon(color='red', icon='crosshairs', prefix='fa')).add_to(m)
-        st_folium(m, width="100%", height=400)
+# --- 1. ฟังก์ชันดึงเลขฐาน (ห้ามเอาออก โชว์ที่มาความจริง) ---
+def get_step_by_step_data(dt):
+    if dt is None: return None
+    day_val = {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}[dt.weekday()]
+    day_name = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()]
+    date_val = dt.day
+    ref = date(1900, 1, 1)
+    diff = (dt - ref).days
+    lunar_pos = (diff - 0.5) % 29.530589
+    if lunar_pos <= 14.765:
+        moon_num = int(lunar_pos) + 1
+        l_logic = -7.5
+        l_type = f"ขึ้น {moon_num} ค่ำ"
     else:
-        st.warning("WAITING FOR SATELLITE SIGNAL...")
+        moon_num = int(lunar_pos - 14.765) + 1
+        l_logic = 7.5
+        l_type = f"แรม {moon_num} ค่ำ"
+    month_val = dt.month
+    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+    z_map = {0:9, 1:10, 2:11, 3:12, 4:1, 5:2, 6:3, 7:4, 8:5, 9:6, 10:7, 11:8}
+    zv = z_map[dt.year % 12]
+    z_name = z_names[dt.year % 12]
+    m, d = dt.month, dt.day
+    if (m == 5 and d >= 14) or (m == 6 and d <= 14): ev, en = 1, "ดิน"
+    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): ev, en = 2, "น้ำ"
+    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): ev, en = 4, "ไฟ"
+    else: ev, en = 3, "ลม"
+    return {
+        "day": day_val, "day_n": day_name, "date": date_val, "moon": moon_num, 
+        "l_logic": l_logic, "l_type": l_type, "month": month_val, "zv": zv, 
+        "zn": z_name, "ev": ev, "en": en, "year": dt.year
+    }
 
-# --- CHAT (LEFT-RIGHT + SOUND) ---
-with tab_chat:
-    components.html(f"""
-        <div id="chat-box" style="height:350px; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:10px; background:#050505; border:1px solid #222; border-radius:10px;"></div>
-        <audio id="beep"><source src="data:audio/mp3;base64,{notif_sound}" type="audio/mp3"></audio>
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-        <script>
-            const fb = firebase.initializeApp({{databaseURL: "{st.secrets['firebase_db_url']}"}}).database();
-            fb.ref('global_chat').limitToLast(20).on('child_added', (s) => {{
-                const d = s.val();
-                const isMe = d.user === "{st.session_state.user}";
-                const bubble = `
-                    <div style="align-self:${{isMe?'flex-end':'flex-start'}}; 
-                                background:${{isMe?'#39FF1422':'#333'}}; 
-                                border:1px solid ${{isMe?'#39FF14':'#555'}}; 
-                                color:${{isMe?'#39FF14':'#fff'}}; 
-                                padding:8px 12px; border-radius:15px; font-size:13px; max-width:80%;">
-                        <div style="font-size:9px; opacity:0.6; margin-bottom:3px;">${{d.user}}</div>
-                        ${{d.text}}
-                    </div>`;
-                const box = document.getElementById('chat-box');
-                box.innerHTML += bubble; box.scrollTop = box.scrollHeight;
-                if(!isMe) document.getElementById('beep').play();
-            }});
-        </script>
-    """, height=370)
-    msg = st.text_input("ENTER SIGNAL")
-    if st.button("SEND ⚡"):
-        if msg: db.reference('global_chat').push({'user': st.session_state.user, 'text': msg, 'ts': time.time()})
+def get_grade_info(val):
+    s_val = str(abs(val)).replace('.', '').lstrip('0')
+    digit = int(s_val[0]) if s_val else 0
+    if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
+    elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
+    else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
 
-# --- MUSIC MIXER (CROSSFADE + VISUALIZER) ---
-with tab_music:
-    if len(all_songs) >= 2:
-        c1, c2 = st.columns(2)
-        s1 = c1.selectbox("DECK A", all_songs, index=0)
-        s2 = c2.selectbox("DECK B", all_songs, index=1)
+# --- 2. หน้าจอแอป ---
+st.set_page_config(page_title="SYNAPSE STEP-BY-STEP", layout="wide")
+st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
+
+tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล", "👥 วิเคราะห์คู่ขนาน"])
+
+# --- 👤 TAB 1: วิเคราะห์บุคคล ---
+with tab1:
+    u_birth = st.date_input("กรอกวันเกิดของคุณ", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="single")
+    if u_birth:
+        d = get_step_by_step_data(u_birth)
         
-        html_mixer = f"""
-        <canvas id="scope" style="width:100%; height:100px; background:#000; border-radius:10px; border:1px solid #333;"></canvas>
-        <div id="status" style="text-align:center; color:#39FF14; font-size:12px; margin:10px 0;">SYSTEM READY</div>
-        <button id="playBtn" style="width:100%; padding:15px; background:linear-gradient(90deg, #39FF14, #00f3ff); border:none; border-radius:10px; font-weight:bold; cursor:pointer;">START MIXING FLOW</button>
+        st.markdown("### 🛠 กระดานแยกพิกัดตัวเลข")
+        st.write(f"1. วัน{d['day_n']}: `{d['day']}` | 2. วันที่: `{d['date']}` | 3. {d['l_type']}: `{d['moon']}`")
+        st.write(f"4. เดือน: `{d['month']}` | 5. ปี{d['zn']}: `{d['zv']}` | 6. ธาตุ{d['en']}: `{d['ev']}`")
         
-        <script>
-            let ctx, analyser, data, active='A';
-            async function play() {{
-                ctx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = ctx.createAnalyser();
-                data = new Uint8Array(analyser.frequencyBinCount);
-                
-                const load = async (b64) => ctx.decodeAudioData(await (await fetch('data:audio/mp3;base64,' + b64)).arrayBuffer());
-                let bA = await load('{get_base64(s1)}');
-                let bB = await load('{get_base64(s2)}');
+        st.write("---")
+        base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
+        raw_code = (base_sum + d['l_logic']) * 1.618
+        days_alive = (date.today() - u_birth).days
+        final_val = (raw_code + days_alive) / 1.618
+        
+        st.write(f"**ขั้นตอนที่ 1 (บวกฐาน):** `{d['day']}+{d['date']}+{d['moon']}+{d['month']}+{d['zv']}+{d['ev']} = {base_sum}`")
+        st.write(f"**ขั้นตอนที่ 2 (คูณ 1.618):** `({base_sum} + {d['l_logic']}) x 1.618 = {round(raw_code, 2)}`")
+        st.write(f"**ขั้นตอนที่ 3 (บวกวันชีวิต/หาร):** `({round(raw_code, 2)} + {days_alive}) / 1.618 = {round(final_val, 4)}`")
 
-                const run = (buf, isA) => {{
-                    active = isA ? 'A' : 'B';
-                    let src = ctx.createBufferSource(); src.buffer = buf;
-                    let gain = ctx.createGain();
-                    src.connect(gain).connect(analyser).connect(ctx.destination);
-                    
-                    // Crossfade logic
-                    gain.gain.setValueAtTime(0, ctx.currentTime);
-                    gain.gain.linearRampToValueAtTime(1, ctx.currentTime + 3);
-                    
-                    src.onended = () => run(isA ? bB : bA, !isA);
-                    src.start(0);
-                    document.getElementById('status').innerText = "PLAYING DECK " + active;
-                }};
-                run(bA, true);
-                render();
-            }}
+        digit, grade, color = get_grade_info(final_val)
+        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid {color}; border-radius:15px; text-align:center;">
+            <h1 style="color:{color}; font-size:60px;">{round(final_val, 4)}</h1>
+            <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
+        </div>""", unsafe_allow_html=True)
 
-            function render() {{
-                requestAnimationFrame(render);
-                analyser.getByteFrequencyData(data);
-                const can = document.getElementById('scope');
-                const c = can.getContext('2d');
-                c.clearRect(0,0,can.width,can.height);
-                for(let i=0; i<data.length; i++) {{
-                    c.fillStyle = `hsl(${{i + (active=='A'?120:200)}}, 100%, 50%)`;
-                    c.fillRect(i*2, can.height - data[i]/2, 1, data[i]/2);
-                }}
-            }}
-            document.getElementById('playBtn').onclick = play;
-        </script>
-        """
-        components.html(html_mixer, height=300)
-    else: st.error("Need 2 MP3 files")
+        # --- 🕒 สแกนไทม์ไลน์บุคคล ---
+        st.write("---")
+        st.subheader("🕒 รายงานการบรรจบของพิกัดบุคคล (730 วัน)")
+        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน", "🗓️ อนาคต 365 วัน"])
+        
+        with t_past:
+            past_results = []
+            for i in range(-365, 0):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    past_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(past_results[:10] if past_results else "ไม่พบข้อมูล")
 
-st.markdown("<div style='text-align:center; color:#333; font-size:10px;'>อยู่นิ่งๆ ไม่เจ็บตัว | OMNI COMMAND V.3</div>", unsafe_allow_html=True)
+        with t_future:
+            future_results = []
+            for i in range(1, 366):
+                scan_date = date.today() + timedelta(days=i)
+                sd = get_step_by_step_data(scan_date)
+                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
+                s_code = (s_sum + sd['l_logic']) * 1.618
+                s_digit, _, _ = get_grade_info(s_code)
+                if s_digit == digit:
+                    future_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
+            st.table(future_results[:10] if future_results else "ไม่พบข้อมูล")
+
+# --- 👥 TAB 2: วิเคราะห์คู่ขนาน ---
+with tab2:
+    col1, col2 = st.columns(2)
+    with col1: birth_a = st.date_input("วันเกิดคนที่ 1", value=None, key="ba", min_value=date(1960,1,1))
+    with col2: birth_b = st.date_input("วันเกิดคนที่ 2", value=None, key="bb", min_value=date(1960,1,1))
+    
+    if birth_a and birth_b:
+        d1 = get_step_by_step_data(birth_a)
+        d2 = get_step_by_step_data(birth_b)
+        r1 = ((d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']) + d1['l_logic']) * 1.618
+        r2 = ((d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']) + d2['l_logic']) * 1.618
+        
+        resonance = (r1 + r2) / 1.618
+        digit_p, grade_p, color_p = get_grade_info(resonance)
+        
+        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
+        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid gold; border-radius:15px; text-align:center;">
+            <h1 style="color:white; font-size:60px;">{round(resonance, 4)}</h1>
+            <h2 style="color:{color_p};">เลขหน้าคือ {digit_p} : {grade_p}</h2>
+        </div>""", unsafe_allow_html=True)
+
+        # --- 🕒 สแกนไทม์ไลน์คู่ขนาน ---
+        st.write("---")
+        st.subheader("⏳ จุด Sync คู่ขนานในอนาคต (365 วัน)")
+        p_future = []
+        for i in range(1, 366):
+            target = date.today() + timedelta(days=i)
+            td = get_step_by_step_data(target)
+            t_code = ((td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']) + td['l_logic']) * 1.618
+            t_digit, _, _ = get_grade_info(t_code)
+            if t_digit == digit_p:
+                p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
+        st.table(p_future[:10] if p_future else "ไม่พบข้อมูล")
