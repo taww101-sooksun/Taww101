@@ -1,81 +1,131 @@
 import streamlit as st
-from datetime import datetime
+import pandas as pd
+from datetime import datetime, date, timedelta
+import math
 
-# 1. สไตล์แบบอาจารย์ต๊ะ (Dark Neon)
-st.set_page_config(page_title="Cosmic Auto-Decoder", layout="centered")
+# --- CONFIG & STYLING ---
+st.set_page_config(page_title="SYNAPSE : FULL CYCLE SCANNER", layout="wide")
+
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; color: #00ff00; }
-    h1 { color: #ff00ff; text-shadow: 2px 2px #000000; text-align: center; }
-    .stMetric { background-color: #1e2130; border-radius: 10px; padding: 15px; border: 1px solid #00ff00; }
+    .main { background-color: #050a0e; color: #00e5ff; }
+    .stApp { background: linear-gradient(180deg, #050a0e 0%, #101a24 100%); }
+    
+    /* Neon Formula Card */
+    .formula-box {
+        background: rgba(0, 229, 255, 0.03);
+        border-left: 5px solid #00e5ff;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 10px 0;
+    }
+    
+    /* Data Table Styling */
+    .stDataFrame { border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 10px; }
+    
+    h1, h2, h3 { color: #ffffff; text-shadow: 0 0 10px rgba(0, 229, 255, 0.5); }
+    .highlight { color: #ff7f50; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🌌 Cosmic Auto-Decoder")
-st.write("<center>ระบบถอดรหัสวันที่และสมดุลจันทรคติอัตโนมัติ</center>", unsafe_allow_html=True)
-
-# 2. ส่วนรับข้อมูลเพียงอย่างเดียว
-selected_date = st.date_input("📅 กรอก วัน/เดือน/ปี ที่ต้องการเช็ค", datetime.now())
-
-# 3. Logic คำนวณอัตโนมัติ
-# A. วันในสัปดาห์
-day_of_week = selected_date.isoweekday()
-day_name_th = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][day_of_week-1]
-
-# B. ปีนักษัตร (ไทย)
-thai_year = selected_date.year + 543
-zodiac_list = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
-current_zodiac = zodiac_list[thai_year % 12]
-
-# C. คำนวณข้างขึ้นข้างแรมอัตโนมัติ (Approximate Lunar Phase)
-def get_lunar_phase(date):
-    # อ้างอิงวันที่ 6 ม.ค. 2000 เป็นวันแรม 15 ค่ำ (New Moon)
-    reference_date = datetime(2000, 1, 6)
-    diff = (date - reference_date.date()).days
-    lunar_cycle = 29.530588853
-    phase_pos = (diff % lunar_cycle) / lunar_cycle # ค่า 0.0 - 1.0
+# --- CORE LOGIC (สูตรที่ไม่มั่ว) ---
+def get_synapse_logic(dt):
+    if dt is None: return None
+    ref_date = date(1900, 1, 1)
+    diff = (dt - ref_date).days
+    lunar_cycle = 29.530589
+    pos = (diff - 0.5) % lunar_cycle
+    day_val = dt.weekday() + 1
+    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
     
-    # แปลงเป็นวันที่ในรอบเดือน (1-29)
-    current_pos = phase_pos * 29.53
+    is_waxing = pos <= 14.765
+    m_num = int(pos) + 1 if is_waxing else int(pos - 14.765) + 1
     
-    if current_pos <= 14.76: # ข้างขึ้น
-        step = round(current_pos if current_pos >= 1 else 1)
-        return "ข้างขึ้น (-)", step, -1
-    else: # ข้างแรม
-        step = round(current_pos - 14.76 if (current_pos - 14.76) >= 1 else 1)
-        return "ข้างแรม (+)", step, 1
+    if is_waxing:
+        res = math.sqrt((day_val**2) + (m_num**2))
+        formula = f"√({day_val}² + {m_num}²)"
+        type_text = "Vector Energy (ขึ้น)"
+    else:
+        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+        formula = f"({day_val} × 1.618) / {m_num}"
+        type_text = "Golden Ratio (แรม)"
 
-lunar_label, lunar_step, lunar_sign = get_lunar_phase(selected_date)
+    return {
+        "res": round(res, 4), "phase": f"{'ขึ้น' if is_waxing else 'แรม'} {m_num} ค่ำ",
+        "day": day_names[dt.weekday()], "formula": formula, "type": type_text
+    }
 
-# D. สูตรสมดุลจักรวาล
-PHI = 1.618
-balance_point = lunar_step - 7.5
-lunar_modifier = balance_point * lunar_sign if lunar_sign == 1 else -balance_point
-result = (day_of_week * PHI) + lunar_modifier
+def run_scanner(target_res, base_date, days, mode="future"):
+    results = []
+    for i in range(days + 1):
+        current_date = base_date + timedelta(days=i) if mode == "future" else base_date - timedelta(days=i)
+        d = get_synapse_logic(current_date)
+        gap = abs(target_res - d['res'])
+        
+        status = "อิสระ"
+        if gap < 0.5: status = "💎 บรรจบ"
+        elif 3.8 <= gap <= 4.2: status = "🌀 สะท้อน (Gap 4)"
+        elif gap > 10.0: status = "🚩 แยกตัว"
+        
+        if status != "อิสระ":
+            results.append({
+                "วันที่": current_date.strftime("%d/%m/%Y"),
+                "วัน": d['day'],
+                "สถานะพิกัด": status,
+                "Gap": round(gap, 4),
+                "รหัสวันนั้น": d['res']
+            })
+    return pd.DataFrame(results)
 
-# 4. แสดงผลโชว์เพื่อน
-st.write("---")
-st.subheader(f"🔍 วิเคราะห์วันที่: {selected_date.strftime('%d/%m/%Y')}")
+# --- MAIN INTERFACE ---
+st.title("🛰️ SYNAPSE : ระบบสแกนวงจรชีวิต 365 วัน")
+st.write("ตรวจสอบพิกัดรหัสย้อนหลังและล่วงหน้า 1 ปี เพื่อหาจังหวะที่ 'ตรง' กับคุณ")
 
-col1, col2, col3 = st.columns(3)
-col1.metric("วัน", day_name_th)
-col2.metric("ปีนักษัตร", current_zodiac)
-col3.metric("จันทรคติ", f"{lunar_label} {lunar_step} ค่ำ")
+# 1. ข้อมูลตั้งต้น
+with st.container():
+    st.subheader("👤 ข้อมูลผู้ใช้งาน")
+    user_dob = st.date_input("เลือกวันเดือนปีเกิดของคุณ", value=None, min_value=date(1920,1,1))
 
-st.write("### 🎯 เลขรหัสจักรวาลที่ได้")
-st.metric(label="Cosmic Index", value=f"{abs(result):.4f}")
-
-# 5. โชว์ที่มา (เน้นเช็ควันเกิด/เช็คดวง)
-with st.expander("📝 ขั้นตอนการถอดรหัส (สำหรับตรวจสอบ)"):
-    st.latex(r"Result = (Day \times 1.618) \pm (Lunar_{Balance})")
+if user_dob:
+    user_data = get_synapse_logic(user_dob)
     st.markdown(f"""
-    **วิเคราะห์ตามหลักการ:**
-    1. **ฐานวัน:** วัน{day_name_th} ({day_of_week}) × 1.618 = **{day_of_week * PHI:.3f}**
-    2. **แรงดึงดูดดวงจันทร์:** {lunar_label} {lunar_step} ค่ำ (ค่าเบี่ยงเบนจากจุดสมดุล: {lunar_modifier:.2f})
-    3. **สรุป:** ค่าความสั่นสะเทือนประจำวันคือ **{result:.4f}**
-    """)
-    
-    raw_num = str(abs(result)).replace('.', '')
-    st.success(f"**ตัวเลขเด่นที่ถอดรหัสได้:** {raw_num[1:3]} , {raw_num[2:4]}")
+        <div class="formula-box">
+            <span style='font-size: 1.2rem;'>รหัสประจำตัวของคุณคือ: <b style='color:#00e5ff;'>{user_data['res']}</b></span><br>
+            พิกัด: {user_data['day']} ({user_data['phase']}) | ระบบ: {user_data['type']}<br>
+            ที่มาตัวเลข: <code>{user_data['formula']}</code>
+        </div>
+    """, unsafe_allow_html=True)
 
-st.info("💡 สามารถใช้เช็คข้อมูลย้อนหลังวันเกิด หรือวันที่สำคัญเพื่อหาค่าพลังงานตัวเลขได้")
+    st.divider()
+
+    # 2. ส่วนควบคุมการสแกน
+    st.subheader("🔍 ตั้งค่าขอบเขตการสแกน")
+    c1, c2 = st.columns(2)
+    with c1:
+        past_range = st.slider("สแกนย้อนหลัง (วัน)", 0, 365, 180)
+    with c2:
+        future_range = st.slider("สแกนไปข้างหน้า (วัน)", 0, 365, 180)
+
+    # 3. ผลการสแกน
+    tab_past, tab_future = st.tabs([f"⏪ อดีต ({past_range} วัน)", f"🔮 อนาคต ({future_range} วัน)"])
+
+    with tab_past:
+        df_p = run_scanner(user_data['res'], date.today(), past_range, "past")
+        if not df_p.empty:
+            st.write(f"พบพิกัดที่น่าสนใจในอดีต {len(df_p)} จุด")
+            st.dataframe(df_p, use_container_width=True)
+        else:
+            st.write("ไม่พบพิกัดพิเศษในช่วงวันที่เลือก")
+
+    with tab_future:
+        df_f = run_scanner(user_data['res'], date.today(), future_range, "future")
+        if not df_f.empty:
+            st.write(f"พบพิกัดที่น่าสนใจในอนาคต {len(df_f)} จุด")
+            st.dataframe(df_f, use_container_width=True)
+        else:
+            st.write("ไม่พบพิกัดพิเศษในช่วงวันที่เลือก")
+            
+else:
+    st.info("💡 กรุณาระบุวันเกิดของคุณเพื่อเริ่มการสแกนพิกัดย้อนหลังและอนาคต")
+
+st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE ENGINE v3.2")
