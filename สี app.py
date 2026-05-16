@@ -1,81 +1,218 @@
+# ไฟล์: mixer_module.py
 import streamlit as st
-from datetime import datetime
+import base64
+import os
 
-# 1. สไตล์แบบอาจารย์ต๊ะ (Dark Neon)
-st.set_page_config(page_title="Cosmic Auto-Decoder", layout="centered")
-st.markdown("""
-    <style>
-    .main { background-color: #0e1117; color: #00ff00; }
-    h1 { color: #ff00ff; text-shadow: 2px 2px #000000; text-align: center; }
-    .stMetric { background-color: #1e2130; border-radius: 10px; padding: 15px; border: 1px solid #00ff00; }
-    </style>
-    """, unsafe_allow_html=True)
+def run_mixer():
+    # --- ฟังก์ชันตัวช่วยภายใน ---
+    def get_base64_image(image_path):
+        try:
+            with open(image_path, "rb") as img_file:
+                return base64.b64encode(img_file.read()).decode()
+        except: return ""
 
-st.title("🌌 Cosmic Auto-Decoder")
-st.write("<center>ระบบถอดรหัสวันที่และสมดุลจันทรคติอัตโนมัติ</center>", unsafe_allow_html=True)
+    def get_audio_base64(file_path):
+        try:
+            with open(file_path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+        except: return None
 
-# 2. ส่วนรับข้อมูลเพียงอย่างเดียว
-selected_date = st.date_input("📅 กรอก วัน/เดือน/ปี ที่ต้องการเช็ค", datetime.now())
+    # สแกนหาเพลงในเครื่อง
+    all_songs = [f for f in os.listdir('.') if f.endswith('.mp3')]
+    all_songs = sorted(all_songs)
+    logo_b64 = get_base64_image("logo1.png")
 
-# 3. Logic คำนวณอัตโนมัติ
-# A. วันในสัปดาห์
-day_of_week = selected_date.isoweekday()
-day_name_th = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][day_of_week-1]
+    # --- 2. สไตล์หน้าจอ (CSS) ---
+    st.markdown("""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        .stApp { background-color: #000; }
+        .neon-text {
+            font-family: 'Orbitron', sans-serif;
+            color: #fff;
+            text-align: center;
+            font-size: 1.8rem;
+            letter-spacing: 5px;
+            text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px #00f3ff;
+            animation: flicker 1.5s infinite alternate;
+            margin-bottom: 20px;
+        }
+        @keyframes flicker {
+            0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px #00f3ff; }
+            20%, 24%, 55% { opacity: 0.5; text-shadow: none; }
+        }
+        </style>
+        """, unsafe_allow_html=True)
 
-# B. ปีนักษัตร (ไทย)
-thai_year = selected_date.year + 543
-zodiac_list = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
-current_zodiac = zodiac_list[thai_year % 12]
+    st.markdown('<div class="neon-text">SYNAPSE MIXER</div>', unsafe_allow_html=True)
 
-# C. คำนวณข้างขึ้นข้างแรมอัตโนมัติ (Approximate Lunar Phase)
-def get_lunar_phase(date):
-    # อ้างอิงวันที่ 6 ม.ค. 2000 เป็นวันแรม 15 ค่ำ (New Moon)
-    reference_date = datetime(2000, 1, 6)
-    diff = (date - reference_date.date()).days
-    lunar_cycle = 29.530588853
-    phase_pos = (diff % lunar_cycle) / lunar_cycle # ค่า 0.0 - 1.0
-    
-    # แปลงเป็นวันที่ในรอบเดือน (1-29)
-    current_pos = phase_pos * 29.53
-    
-    if current_pos <= 14.76: # ข้างขึ้น
-        step = round(current_pos if current_pos >= 1 else 1)
-        return "ข้างขึ้น (-)", step, -1
-    else: # ข้างแรม
-        step = round(current_pos - 14.76 if (current_pos - 14.76) >= 1 else 1)
-        return "ข้างแรม (+)", step, 1
+    # --- 3. ส่วนเลือกเพลง ---
+    if all_songs:
+        col1, col2 = st.columns(2)
+        with col1: sA = st.selectbox("DECK A (เริ่มก่อน)", all_songs, key="sA")
+        with col2: sB = st.selectbox("DECK B (เล่นต่อ)", all_songs, key="sB")
+        
+        audio_a = get_audio_base64(sA)
+        audio_b = get_audio_base64(sB)
+    else:
+        st.error("ไม่พบไฟล์ .mp3 ในโฟลเดอร์")
+        return # ออกจากฟังก์ชันถ้าไม่มีเพลง
 
-lunar_label, lunar_step, lunar_sign = get_lunar_phase(selected_date)
+    # --- 4. HTML/JS Mixer Engine ---
+    html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            body {{ background: transparent; color: white; font-family: 'Orbitron', sans-serif; overflow: hidden; }}
+            .neon-card {{ 
+                border: 2px solid #333; 
+                background: rgba(10,10,10,0.95); 
+                box-shadow: 0 0 20px rgba(255,0,222,0.3);
+                position: relative;
+            }}
+            .logo-box {{
+                width: 60px; height: 60px;
+                margin: 0 auto 15px auto;
+                background: url('data:image/png;base64,{logo_b64}') no-repeat center;
+                background-size: contain;
+                filter: drop-shadow(0 0 8px #00f3ff);
+            }}
+            .visualizer {{ height: 100px; background: #000; border-radius: 10px; border: 1px solid #222; }}
+            .deck {{ padding: 12px; border-radius: 10px; border: 1px solid #222; margin-top: 10px; transition: 0.3s; opacity: 0.5; }}
+            .active-a {{ border-color: #ff00de; box-shadow: 0 0 10px #ff00de; opacity: 1; }}
+            .active-b {{ border-color: #00f3ff; box-shadow: 0 0 10px #00f3ff; opacity: 1; }}
+            .btn-mix {{
+                background: linear-gradient(45deg, #ff00de, #00f3ff);
+                width: 100%; padding: 15px; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: pointer;
+            }}
+            .progress {{ height: 4px; background: #222; margin-top: 5px; }}
+            .bar {{ height: 100%; width: 0%; background: #ff00de; }}
+        </style>
+    </head>
+    <body>
+        <div class="max-w-md mx-auto p-6 neon-card rounded-3xl text-center">
+            <div class="logo-box"></div>
+            <canvas id="scope" class="visualizer w-full"></canvas>
 
-# D. สูตรสมดุลจักรวาล
-PHI = 1.618
-balance_point = lunar_step - 7.5
-lunar_modifier = balance_point * lunar_sign if lunar_sign == 1 else -balance_point
-result = (day_of_week * PHI) + lunar_modifier
+            <div id="deckA" class="deck text-left">
+                <div class="flex justify-between text-[10px]">
+                    <span style="color:#ff00de">DECK A</span>
+                    <span id="tA">00:00</span>
+                </div>
+                <div class="text-[11px] truncate">{sA}</div>
+                <div class="progress"><div id="barA" class="bar"></div></div>
+            </div>
 
-# 4. แสดงผลโชว์เพื่อน
-st.write("---")
-st.subheader(f"🔍 วิเคราะห์วันที่: {selected_date.strftime('%d/%m/%Y')}")
+            <div id="deckB" class="deck text-left">
+                <div class="flex justify-between text-[10px]">
+                    <span style="color:#00f3ff">DECK B</span>
+                    <span id="tB">00:00</span>
+                </div>
+                <div class="text-[11px] truncate">{sB}</div>
+                <div class="progress"><div id="barB" class="bar" style="background:#00f3ff"></div></div>
+            </div>
 
-col1, col2, col3 = st.columns(3)
-col1.metric("วัน", day_name_th)
-col2.metric("ปีนักษัตร", current_zodiac)
-col3.metric("จันทรคติ", f"{lunar_label} {lunar_step} ค่ำ")
+            <button onclick="start()" class="btn-mix">🚀 START MIXING</button>
+            <div id="status" class="text-[9px] mt-4 text-gray-500 uppercase">SYSTEM READY</div>
+        </div>
 
-st.write("### 🎯 เลขรหัสจักรวาลที่ได้")
-st.metric(label="Cosmic Index", value=f"{abs(result):.4f}")
+        <script>
+            let ctx, analyser, songA, songB, gA, gB, srcA, srcB;
+            let isPlaying = false, active = 'A', data;
 
-# 5. โชว์ที่มา (เน้นเช็ควันเกิด/เช็คดวง)
-with st.expander("📝 ขั้นตอนการถอดรหัส (สำหรับตรวจสอบ)"):
-    st.latex(r"Result = (Day \times 1.618) \pm (Lunar_{Balance})")
-    st.markdown(f"""
-    **วิเคราะห์ตามหลักการ:**
-    1. **ฐานวัน:** วัน{day_name_th} ({day_of_week}) × 1.618 = **{day_of_week * PHI:.3f}**
-    2. **แรงดึงดูดดวงจันทร์:** {lunar_label} {lunar_step} ค่ำ (ค่าเบี่ยงเบนจากจุดสมดุล: {lunar_modifier:.2f})
-    3. **สรุป:** ค่าความสั่นสะเทือนประจำวันคือ **{result:.4f}**
-    """)
-    
-    raw_num = str(abs(result)).replace('.', '')
-    st.success(f"**ตัวเลขเด่นที่ถอดรหัสได้:** {raw_num[1:3]} , {raw_num[2:4]}")
+            async function toBuf(b64) {{
+                const r = await fetch('data:audio/mp3;base64,' + b64);
+                const ab = await r.arrayBuffer();
+                return await ctx.decodeAudioData(ab);
+            }}
 
-st.info("💡 สามารถใช้เช็คข้อมูลย้อนหลังวันเกิด หรือวันที่สำคัญเพื่อหาค่าพลังงานตัวเลขได้")
+            async function start() {{
+                if(isPlaying) return;
+                try {{
+                    document.getElementById('status').innerText = "BOOTING...";
+                    ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = ctx.createAnalyser();
+                    data = new Uint8Array(analyser.frequencyBinCount);
+
+                    songA = await toBuf('{audio_a}');
+                    songB = await toBuf('{audio_b}');
+
+                    playDeckA();
+                    
+                    isPlaying = true;
+                    render();
+                }} catch(e) {{
+                    alert("Error: " + e);
+                }}
+            }}
+
+            function playDeckA() {{
+                active = 'A';
+                srcA = ctx.createBufferSource();
+                srcA.buffer = songA;
+                gA = ctx.createGain();
+                srcA.connect(gA).connect(analyser).connect(ctx.destination);
+                srcA.start(0);
+                srcA.t0 = ctx.currentTime;
+                document.getElementById('deckA').classList.add('active-a');
+                document.getElementById('status').innerText = "PLAYING DECK A";
+            }}
+
+            function playDeckB() {{
+                active = 'B';
+                srcB = ctx.createBufferSource();
+                srcB.buffer = songB;
+                gB = ctx.createGain();
+                srcB.connect(gB).connect(analyser).connect(ctx.destination);
+                gB.gain.value = 0; 
+                srcB.start(0);
+                srcB.t0 = ctx.currentTime;
+                
+                gB.gain.linearRampToValueAtTime(1, ctx.currentTime + 5);
+                document.getElementById('deckB').classList.add('active-b');
+                document.getElementById('deckA').classList.remove('active-a');
+            }}
+
+            function render() {{
+                requestAnimationFrame(render);
+                analyser.getByteFrequencyData(data);
+                const can = document.getElementById('scope');
+                const c = can.getContext('2d');
+                c.clearRect(0,0,can.width,can.height);
+                for(let i=0; i<data.length; i++) {{
+                    c.fillStyle = 'hsl(' + (i*2 + (active=='A'?300:190)) + ', 100%, 50%)';
+                    c.fillRect(i*3, can.height-(data[i]/2.5), 2, data[i]/2.5);
+                }}
+                updateProgress();
+            }}
+
+            function updateProgress() {{
+                if (active == 'A' && srcA) {{
+                    let elapsed = ctx.currentTime - srcA.t0;
+                    let rem = songA.duration - elapsed;
+                    
+                    document.getElementById('tA').innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
+                    document.getElementById('barA').style.width = (elapsed/songA.duration*100) + "%";
+
+                    if (rem < 8) {{
+                        active = 'B'; 
+                        gA.gain.linearRampToValueAtTime(0, ctx.currentTime + 5);
+                        playDeckB();
+                        document.getElementById('status').innerText = "CROSSFADING...";
+                    }}
+                }} else if (active == 'B' && srcB) {{
+                    let elapsed = ctx.currentTime - srcB.t0;
+                    let rem = songB.duration - elapsed;
+                    document.getElementById('tB').innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
+                    document.getElementById('barB').style.width = (elapsed/songB.duration*100) + "%";
+                    document.getElementById('status').innerText = "PLAYING DECK B";
+                }}
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    st.components.v1.html(html_code, height=600)
+    st.markdown("<div style='text-align:center; color:#444; font-size:10px;'>อยู่นิ่งๆ ไม่เจ็บตัว | MIXER V.2</div>", unsafe_allow_html=True)
