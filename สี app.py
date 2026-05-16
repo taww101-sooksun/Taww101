@@ -141,43 +141,8 @@ if not st.session_state.logged_in:
 
 st.markdown(f"<div style='text-align:right; color:{theme_color}; font-size:12px; padding-right:10px;'>📡 AGENT OUTPOST: {st.session_state.user}</div>", unsafe_allow_html=True)
 
-# =========================================================
-# 6. SIDEBAR NAVIGATION CONTROLLER
-# =========================================================
-st.sidebar.title("🎛️ COMMAND PANEL")
-menu_choice = st.sidebar.radio(
-    "เลือกฟังก์ชันระบบ:", 
-    ["💬 GLOBAL CHATROOM", "🛰️ GPS TRACER", "🔮 THE TRUTH SCANNER", "🎵 NEON MIXER"]
-)
 
-st.sidebar.divider()
-if st.sidebar.button("🔴 ออกจากระบบ (LOGOUT)", use_container_width=True):
-    st.session_state.logged_in = False
-    st.session_state.user = None
-    st.rerun()
-
-# =========================================================
-# 7. MODULE LOGIC APPLICATIONS
-# =========================================================
-
-# --- 7.1 ระบบแชทเรียลไทม์ ---
-if menu_choice == "💬 GLOBAL CHATROOM":
-    st.markdown(f"<h3 style='color:{theme_color};'>💬 GLOBAL CHATROOM</h3>", unsafe_allow_html=True)
-    
-    chat_display_html = f"""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        #chat-screen {{
-            background: rgba(0,0,0,0.95); border: 2px solid {theme_color}; border-radius: 12px;
-            height: 400px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column;
-            box-shadow: inset 0 0 15px {theme_color}33;
-        }}
-        .bubble {{ padding: 10px 15px; border-radius: 10px; margin: 8px 0; max-width: 85%; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 14px; line-height: 1.4; }}
-        .me {{ background: {theme_color}22; border-right: 4px solid {theme_color}; align-self: flex-end; }}
-        .others {{ background: #222; border-left: 4px solid #777; align-self: flex-start; }}
-        .notif-box {{ background: #333; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; transition: 0.3s; }}
-        .alert-red {{ background: #F00 !important; box-shadow: 0 0 15px #F00; font-weight: bold; }}
-    </style>
+ิำ
 
     <div id="chat-screen">
         <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom: 1px solid #333; padding-bottom: 5px;">
