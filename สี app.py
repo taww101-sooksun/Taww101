@@ -145,7 +145,6 @@ st.markdown(f"<div style='text-align:right; color:{theme_color}; font-size:12px;
 # =========================================================
 # 7. MODULE LOGIC APPLICATIONS
 # =========================================================
-
 # --- 7.1 ระบบแชทเรียลไทม์ ---
 if menu_choice == "💬 GLOBAL CHATROOM":
     st.markdown(f"<h3 style='color:{theme_color};'>💬 GLOBAL CHATROOM</h3>", unsafe_allow_html=True)
