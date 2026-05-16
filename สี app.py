@@ -142,7 +142,7 @@ if not st.session_state.logged_in:
 st.markdown(f"<div style='text-align:right; color:{theme_color}; font-size:12px; padding-right:10px;'>📡 AGENT OUTPOST: {st.session_state.user}</div>", unsafe_allow_html=True)
 
 
-ิำ
+
 
     <div id="chat-screen">
         <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom: 1px solid #333; padding-bottom: 5px;">
