@@ -17,9 +17,8 @@ from datetime import datetime, date, timedelta
 # =========================================================
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
 
-# เพิ่ม Color Picker ไว้ที่ Sidebar เพื่อให้บาสกดเลือกสีที่ชอบได้เองเลย
-st.sidebar.markdown("<h4 style='color:#fff; font-family:Orbitron;'>🎨 THEME CONTROLLER</h4>", unsafe_allow_html=True)
-theme_color = st.sidebar.color_picker("เลือกสีคลื่นพลังงานแอป (ธีม/ขอบ/ตัวหนังสือ):", "#39FF14")
+st.sidebar.markdown("<h4 style='color:#fff; font-family:Orbitron;'>🎨 SYSTEM CORE COLOR</h4>", unsafe_allow_html=True)
+theme_color = st.sidebar.color_picker("ปรับจูนสีคลื่นพลังงานหลักของแอป:", "#39FF14")
 
 def inject_cyberpunk_ui(color_code):
     st.markdown(f"""
@@ -49,13 +48,13 @@ def inject_cyberpunk_ui(color_code):
                 box-shadow: 0 0 15px {color_code}33;
             }}
             
-            .stTextInput>div>div>input, .stForm {{
+            .stTextInput>div>div>input, .stForm, .stTextArea>div>div>textarea {{
                 background-color: #090e12 !important;
                 border: 1px solid #1a2936 !important;
                 color: #fff !important;
                 border-radius: 8px !important;
             }}
-            .stTextInput>div>div>input:focus {{
+            .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {{
                 border-color: {color_code} !important;
                 box-shadow: 0 0 10px {color_code}80 !important;
             }}
@@ -84,12 +83,11 @@ def inject_cyberpunk_ui(color_code):
             .stDataFrame {{
                 border: 1px solid #1a2936 !important;
                 border-radius: 10px !important;
-                background-color: #0508ขb !important;
+                background-color: #05080b !important;
             }}
         </style>
     """, unsafe_allow_html=True)
 
-# เรียกใช้ UI คอนฟิกโดยส่งค่าสีที่บาสเลือกเข้าไปควบคุมดีไซน์
 inject_cyberpunk_ui(theme_color)
 
 def get_base64(file_path):
@@ -183,12 +181,12 @@ if not st.session_state.logged_in:
 st.markdown(f"<div style='text-align:right; color:{theme_color}; font-family:Orbitron; font-size:12px; padding-right:10px;'>📡 AGENT OUTPOST: {st.session_state.user}</div>", unsafe_allow_html=True)
 
 # =========================================================
-# 6. NAVIGATION CONTROLLER
+# 6. NAVIGATION CONTROLLER (เพิ่มฟังก์ชันพิเศษ)
 # =========================================================
 st.markdown("<h5 style='color:#6886a3; font-family:Orbitron; margin-bottom:5px;'>🎛️ NAVIGATION CONTROLLER</h5>", unsafe_allow_html=True)
 menu_choice = st.radio(
     "เลือกฟังก์ชันระบบ:", 
-    ["💬 GLOBAL CHATROOM", "🛰️ GPS TRACER", "🔮 THE TRUTH SCANNER", "🎵 NEON MIXER"],
+    ["💬 GLOBAL CHATROOM", "🛰️ GPS TRACER", "🔮 THE TRUTH SCANNER", "🎵 NEON MIXER & LYRICS", "🧠 QUANTUM BRAIN SCAN"],
     horizontal=True,
     key="main_menu_navigator",
     label_visibility="collapsed"
@@ -468,8 +466,8 @@ elif menu_choice == "🔮 THE TRUTH SCANNER":
     else:
         st.info("💡 กรุณาระบุข้อมูลวันที่ต้องการตรวจสอบรหัสพิกัดควอนตัมด้านบนเพื่อสตาร์ทระบบ")
 
-# --- 7.4 ระบบมิกเซอร์ครอสเฟดเพลง ---
-elif menu_choice == "🎵 NEON MIXER":
+# --- 7.4 ระบบมิกเซอร์ครอสเฟดเพลง + ออฟชั่นเศษ SPECIAL LYRICS PAD ---
+elif menu_choice == "🎵 NEON MIXER & LYRICS":
     all_songs = [f for f in os.listdir('.') if f.endswith('.mp3')]
     all_songs = sorted(all_songs)
     mixer_logo_b64 = get_base64("logo1.png")
@@ -489,13 +487,8 @@ elif menu_choice == "🎵 NEON MIXER":
         with col_mix1: sA = st.selectbox("DECK A (เริ่มก่อน)", all_songs, key="mixer_sA")
         with col_mix2: sB = st.selectbox("DECK B (เล่นต่อ)", all_songs, key="mixer_sB")
         
-        def get_audio_base64_local(file_path):
-            try:
-                with open(file_path, "rb") as f: return base64.b64encode(f.read()).decode()
-            except: return None
-
-        audio_a = get_audio_base64_local(sA)
-        audio_b = get_audio_base64_local(sB)
+        audio_a = get_audio_base64_local(sA) if 'get_audio_base64_local' in globals() else get_base64(sA)
+        audio_b = get_audio_base64_local(sB) if 'get_audio_base64_local' in globals() else get_base64(sB)
 
         html_code = f"""
         <!DOCTYPE html>
@@ -624,8 +617,87 @@ elif menu_choice == "🎵 NEON MIXER":
         </html>
         """
         components.html(html_code, height=480)
+        
+        # 💎 ออฟชั่นเสริมพิเศษ 1: สมุดจดเนื้อเพลงด่วน + จับจังหวะ Tap BPM (สำหรับสายทำเพลง R&B/HipHop บนมือถือ)
+        st.markdown(f"<h4 style='color:{theme_color}; font-family:Orbitron; margin-top:20px;'>🎵 REAL-TIME MUSICIAN LYRICS PAD</h4>", unsafe_allow_html=True)
+        st.write("เครื่องมือช่วยบาสเขียนเนื้อเพลงและคำนวณความเร็วบีทดนตรีแบบเคาะนิ้วสด")
+        
+        bpm_tap_html = f"""
+        <div style="background:#090e12; border:1px solid #1a2936; padding:15px; border-radius:12px; text-align:center;">
+            <span style="font-size:11px; color:#527394; font-family:'Orbitron';">BPM AUDIO COUNTER</span>
+            <h2 id="bpm-display" style="color:#ff00de; font-family:'Orbitron'; font-size:32px; margin:5px 0;">0.0 BPM</h2>
+            <button onclick="tapBPM()" style="background:{theme_color}; color:#000; font-weight:bold; padding:8px 20px; border-radius:6px; font-size:12px;">TAP HERE TO COMPOSING</button>
+        </div>
+        <script>
+            let taps = [];
+            function tapBPM() {{
+                const now = Date.now();
+                taps.push(now);
+                if(taps.length > 4) taps.shift();
+                if(taps.length > 1) {{
+                    let diffs = [];
+                    for(let i=1; i<taps.length; i++) {{ diffs.push(taps[i] - taps[i-1]); }}
+                    let avg = diffs.reduce((a,b) => a+b) / diffs.length;
+                    let bpm = Math.round(60000 / avg);
+                    document.getElementById('bpm-display').innerText = bpm + " BPM";
+                }}
+            }}
+        </script>
+        """
+        components.html(bpm_tap_html, height=130)
+        st.text_area("✍️ เขียน/วางท่อนแร็ป ท่อนร้องของคุณตรงนี้ได้เลยเพื่อน:", placeholder="คิดไอเดียเพลงออกปุ๊บ พิมพ์ล็อกลงตรงนี้ทันที...", height=150)
+        
     else:
         st.error("ไม่พบไฟล์เพลงนามสกุล .mp3 ในโฟลเดอร์หลัก")
+
+# --- 7.5 ออฟชั่นเสริมพิเศษ 2: ระบบจำลองคลื่นวิเคราะห์ความคิดและระดับจิตใต้สำนึก ---
+elif menu_choice == "🧠 QUANTUM BRAIN SCAN":
+    st.markdown(f"<h3 style='color:{theme_color}; font-family:Orbitron;'>🔮 QUANTUM CONSCIOUSNESS SCANNER</h3>", unsafe_allow_html=True)
+    st.write("ระบบถอดสมการแปลงค่าข้อความหรือปรัชญาความคิดให้กลายเป็นระดับคลื่นความถี่พลังงานจิตสำนึก ($Hz$)")
+    
+    thought_input = st.text_input("ป้อนวลี ความคิด หรือสโลแกนที่คุณต้องการสแกนความถี่:", "อยู่นิ่งๆ ไม่เจ็บตัว")
+    
+    if thought_input:
+        # ใช้หลักการทางคณิตศาสตร์แปลงรหัสอักขระเป็นระดับตัวเลขจำลองความถี่จริง ไม่มีการล็อคผลลัพธ์ล่วงหน้า
+        char_sum = sum(ord(c) for c in thought_input)
+        calculated_hz = (char_sum % 800) + 150.5
+        
+        if calculated_hz < 250: state_desc = "🟢 THETA WAVE - สภาวะจิตสงบนิ่ง เข้าใจสัจธรรม ลึกซึ้งสูงสุด"
+        elif 250 <= calculated_hz < 500: state_desc = "🔵 ALPHA WAVE - สภาวะสมองแล่น ไอเดียสร้างสรรค์ ค้นหาความจริง"
+        else: state_desc = "🔥 HIGH GAMMA - สภาวะจดจ่อขั้นเด็ดขาด พลังงานแรงขับเคลื่อนสูง"
+        
+        st.markdown(f"""
+            <div class="truth-card">
+                <span style="color:#6886a3; font-family:'Orbitron'; font-size:11px; letter-spacing:2px;">CONSCIOUSNESS FREQUENCY LEVEL</span>
+                <h1 style="color:#ff00de; font-family:'Orbitron'; font-size:54px; margin:5px 0;">{calculated_hz:.2f} Hz</h1>
+                <div style="color:{theme_color}; font-size:13px; font-weight:bold;">{state_desc}</div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # แสดงอนิเมชั่นกราฟประมวลผลคลื่นสมองจำลองแบบเรียลไทม์
+        canvas_html = f"""
+        <canvas id="brain-wave" style="width:100%; height:100px; background:#04070a; border:1px solid #1a2936; border-radius:8px;"></canvas>
+        <script>
+            const cv = document.getElementById('brain-wave');
+            const cx = cv.getContext('2d');
+            let offset = 0;
+            function draw() {{
+                cx.clearRect(0,0,cv.width,cv.height);
+                cx.strokeStyle = "{theme_color}";
+                cx.lineWidth = 2;
+                cx.beginPath();
+                for(let x=0; x<cv.width; x++) {{
+                    let y = cv.height/2 + Math.sin(x*0.05 + offset) * 20 * Math.sin(x*0.01);
+                    if(x==0) cx.moveTo(x,y); else cx.lineTo(x,y);
+                }}
+                cx.stroke();
+                offset += {calculated_hz / 1000};
+                requestAnimationFrame(draw);
+            }}
+            draw();
+        </script>
+        """
+        components.html(canvas_html, height=120)
 
 # =========================================================
 # 8. GLOBAL SYSTEM FOOTER
