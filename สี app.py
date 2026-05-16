@@ -84,7 +84,7 @@ def inject_cyberpunk_ui(color_code):
             .stDataFrame {{
                 border: 1px solid #1a2936 !important;
                 border-radius: 10px !important;
-                background-color: #05080b !important;
+                background-color: #0508ขb !important;
             }}
         </style>
     """, unsafe_allow_html=True)
