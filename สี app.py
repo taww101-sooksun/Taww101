@@ -22,20 +22,17 @@ def inject_cyberpunk_ui():
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Sarabun:wght@300;500&display=swap');
             
-            /* พื้นหลังระบบและฟอนต์หลัก */
             .stApp { 
                 background: radial-gradient(circle at 50% 50%, #080f14 0%, #030508 100%) !important;
                 font-family: 'Sarabun', sans-serif;
                 color: #e0e0e0;
             }
             
-            /* บล็อกซ่อน UI ปกติของ Streamlit */
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
             header {visibility: hidden;}
             .stApp { top: -60px; }
             
-            /* ปรับแต่งสไตล์ปุ่มแท็บ */
             .stTabs [data-baseweb="tab-list"] { gap: 12px; }
             .stTabs [data-baseweb="tab"] {
                 background-color: #0b1116; border: 1px solid #1a2936;
@@ -48,7 +45,6 @@ def inject_cyberpunk_ui():
                 box-shadow: 0 0 15px rgba(57, 255, 20, 0.3);
             }
             
-            /* ปรับแต่งกรอบ Form และ Input */
             .stTextInput>div>div>input, .stForm {
                 background-color: #090e12 !important;
                 border: 1px solid #1a2936 !important;
@@ -60,7 +56,6 @@ def inject_cyberpunk_ui():
                 box-shadow: 0 0 10px rgba(57, 255, 20, 0.5) !important;
             }
             
-            /* การ์ดความจริงสไตล์นีออน (Truth Card) */
             .truth-card {
                 background: linear-gradient(135deg, rgba(11,20,28,0.9) 0%, rgba(4,8,12,0.95) 100%);
                 border: 2px solid #39FF14;
@@ -71,7 +66,6 @@ def inject_cyberpunk_ui():
                 margin: 15px 0;
             }
             
-            /* บล็อกแสดงตรรกะเบื้องหลัง */
             .logic-stream-box {
                 background-color: #060a0d;
                 border-left: 4px solid #ff00de;
@@ -83,7 +77,6 @@ def inject_cyberpunk_ui():
                 box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             }
             
-            /* ปรับแต่งตารางข้อมูล */
             .stDataFrame {
                 border: 1px solid #1a2936 !important;
                 border-radius: 10px !important;
@@ -186,7 +179,7 @@ if not st.session_state.logged_in:
 st.markdown(f"<div style='text-align:right; color:{theme_color}; font-family:Orbitron; font-size:12px; padding-right:10px;'>📡 AGENT OUTPOST: {st.session_state.user}</div>", unsafe_allow_html=True)
 
 # =========================================================
-# 6. NAVIGATION CONTROLLER (ปุ่มนำทางหลักแนวตั้ง/แนวนอนรองรับมือถือ)
+# 6. NAVIGATION CONTROLLER
 # =========================================================
 st.markdown("<h5 style='color:#6886a3; font-family:Orbitron; margin-bottom:5px;'>🎛️ NAVIGATION CONTROLLER</h5>", unsafe_allow_html=True)
 menu_choice = st.radio(
@@ -359,7 +352,6 @@ elif menu_choice == "🛰️ GPS TRACER":
 elif menu_choice == "🔮 THE TRUTH SCANNER":
     st.markdown(f"<h2 style='color:#39FF14; text-shadow: 0 0 15px rgba(57,255,20,0.4); text-align:center; font-family:Orbitron;'>🧬 THE QUANTUM TRUTH SCANNERS</h2>", unsafe_allow_html=True)
     
-    # ฟังก์ชันคำนวณรหัสแบบลึกซึ้ง (คณิตศาสตร์ประยุกต์ดาราศาสตร์)
     def decode_truth(dt):
         if dt is None: return None
         ref_date = date(1900, 1, 1)
@@ -388,7 +380,6 @@ elif menu_choice == "🔮 THE TRUTH SCANNER":
             formula = f"({day_val} × 1.618) / {m_num}"
             p_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
             
-        # ระดับพลังงานความถี่ที่วิเคราะห์ได้เพิ่ม
         if res < 2.5: freq_level = "🟢 ALPHA CONSTANT (สงบนิ่งเสถียร)"
         elif 2.5 <= res < 5.0: freq_level = "🔵 BETA WAVE (พลังงานปฏิสัมพันธ์สูง)"
         elif 5.0 <= res < 9.0: freq_level = "🟡 GAMMA RADIATION (แรงผลักดันเฉียบพลัน)"
@@ -396,7 +387,6 @@ elif menu_choice == "🔮 THE TRUTH SCANNER":
 
         return {"res": round(res, 4), "phase": phase, "zodiac": zodiac, "element": element, "formula": formula, "type": p_type, "day_num": day_val, "lunar_num": m_num, "diff": diff, "level": freq_level}
 
-    # ฟังก์ชันสแกนพิกัดคู่ขนาน 1 ปี (ล่วงหน้า / ย้อนหลัง)
     def run_time_scanner(target_res, base_date, total_days, mode="future"):
         scan_list = []
         for i in range(total_days + 1):
@@ -419,14 +409,12 @@ elif menu_choice == "🔮 THE TRUTH SCANNER":
                 })
         return pd.DataFrame(scan_list)
 
-    # UI ส่วนสแกนรหัสชีวิตบุคคล
     st.subheader("📊 ตรวจสอบรหัสความถี่และสแกนพิกัดเวลาแบบวงจร")
     user_dob = st.date_input("กรอกวันเดือนปีเกิดของตัวคุณเพื่อจับสัญญาณพิกัดถอดรหัส", value=None, min_value=date(1940,1,1))
     
     if user_dob:
         u_data = decode_truth(user_dob)
         
-        # กล่องแสดงผลลัพธ์หลักสไตล์ดิจิทัลนีออน
         st.markdown(f"""
             <div class="truth-card">
                 <span style="color:#6886a3; font-family:'Orbitron'; font-size:12px; letter-spacing:3px;">QUANTUM DECODED INDEX</span>
@@ -449,7 +437,6 @@ elif menu_choice == "🔮 THE TRUTH SCANNER":
             </div>
         """, unsafe_allow_html=True)
 
-        # ส่วนขยายขอบเขตการสแกนไปในอนาคต-อดีต 365 วัน
         st.markdown("<h4 style='color:#fff; font-family:Orbitron;'>🛰️ AUTOMATIC TIME MATRIX SCANNER</h4>", unsafe_allow_html=True)
         st.write("ระบบจะทำค้นหาพิกัดวันเวลาที่คลื่นความถี่จักรวาลโคจรมาตรงกับค่าของคุณ เพื่อระบุสถานะชีวิตล่วงหน้าและย้อนหลัง")
         
@@ -477,7 +464,7 @@ elif menu_choice == "🔮 THE TRUTH SCANNER":
     else:
         st.info("💡 กรุณาระบุข้อมูลวันที่ต้องการตรวจสอบรหัสพิกัดควอนตัมด้านบนเพื่อสตาร์ทระบบ")
 
-# --- 7.4 ระบบมิกเซอร์ครอสเฟดเพลง V.2 ---
+# --- 7.4 ระบบมิกเซอร์ครอสเฟดเพลง V.2 (FIXED: แก้ไขบั๊กไม่เล่นต่อเรียบร้อย) ---
 elif menu_choice == "🎵 NEON MIXER":
     all_songs = [f for f in os.listdir('.') if f.endswith('.mp3')]
     all_songs = sorted(all_songs)
@@ -531,13 +518,13 @@ elif menu_choice == "🎵 NEON MIXER":
 
                 <div id="deckA" class="deck text-left">
                     <div class="flex justify-between text-[10px]"><span style="color:#ff00de">DECK A</span><span id="tA">00:00</span></div>
-                    <div class="text-[11px] truncate">${sA}</div>
+                    <div class="text-[11px] truncate">{sA}</div>
                     <div class="progress"><div id="barA" class="bar"></div></div>
                 </div>
 
                 <div id="deckB" class="deck text-left">
                     <div class="flex justify-between text-[10px]"><span style="color:#00f3ff">DECK B</span><span id="tB">00:00</span></div>
-                    <div class="text-[11px] truncate">${sB}</div>
+                    <div class="text-[11px] truncate">{sB}</div>
                     <div class="progress"><div id="barB" class="bar" style="background:#00f3ff"></div></div>
                 </div>
 
@@ -548,6 +535,7 @@ elif menu_choice == "🎵 NEON MIXER":
             <script>
                 let ctx, analyser, songA, songB, gA, gB, srcA, srcB;
                 let isPlaying = false, active = 'A', data;
+                let crossfadeTriggered = false; // ตัวแปรล็อกระบบป้องกันการสั่งเปลี่ยนเพลงซ้ำซ้อน
 
                 async function toBuf(b64) {{
                     const r = await fetch('data:audio/mp3;base64,' + b64);
@@ -566,6 +554,7 @@ elif menu_choice == "🎵 NEON MIXER":
                         songA = await toBuf('{audio_a}');
                         songB = await toBuf('{audio_b}');
 
+                        crossfadeTriggered = false;
                         playDeckA();
                         isPlaying = true;
                         render();
@@ -586,7 +575,10 @@ elif menu_choice == "🎵 NEON MIXER":
                     srcB = ctx.createBufferSource(); srcB.buffer = songB; gB = ctx.createGain();
                     srcB.connect(gB).connect(analyser).connect(ctx.destination);
                     gB.gain.value = 0; srcB.start(0); srcB.t0 = ctx.currentTime;
+                    
+                    // ค่อยๆ เฟดเสียง Deck B ขึ้นมาในเวลา 5 วินาที
                     gB.gain.linearRampToValueAtTime(1, ctx.currentTime + 5);
+                    
                     document.getElementById('deckB').classList.add('active-b');
                     document.getElementById('deckA').classList.remove('active-a');
                 }}
@@ -606,14 +598,22 @@ elif menu_choice == "🎵 NEON MIXER":
                 function updateProgress() {{
                     if (active == 'A' && srcA) {{
                         let elapsed = ctx.currentTime - srcA.t0; let rem = songA.duration - elapsed;
+                        if(rem < 0) rem = 0;
+                        
                         document.getElementById('tA').innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
                         document.getElementById('barA').style.width = (elapsed/songA.duration*100) + "%";
-                        if (rem < 8) {{
-                            active = 'B'; gA.gain.linearRampToValueAtTime(0, ctx.currentTime + 5);
-                            playDeckB(); document.getElementById('status').innerText = "CROSSFADING...";
+                        
+                        // เมื่อเหลือ 8 วินาทีสุดท้าย และยังไม่เคยสั่งเปลี่ยนเพลง ให้ทำการคัทข้ามไป Deck B ทันที
+                        if (rem < 8 && !crossfadeTriggered) {{
+                            crossfadeTriggered = true; // ล็อกสถานะทันที
+                            gA.gain.linearRampToValueAtTime(0, ctx.currentTime + 5);
+                            playDeckB(); 
+                            document.getElementById('status').innerText = "CROSSFADING...";
                         }}
                     }} else if (active == 'B' && srcB) {{
                         let elapsed = ctx.currentTime - srcB.t0; let rem = songB.duration - elapsed;
+                        if(rem < 0) rem = 0;
+                        
                         document.getElementById('tB').innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
                         document.getElementById('barB').style.width = (elapsed/songB.duration*100) + "%";
                         document.getElementById('status').innerText = "PLAYING DECK B";
