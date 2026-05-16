@@ -12,7 +12,7 @@ import os
 from datetime import datetime, date
 
 # =========================================================
-# 1. CONFIG & UI INITIALIZATION (ต้องอยู่บนสุดและทำครั้งเดียว)
+# 1. CONFIG & UI INITIALIZATION
 # =========================================================
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
 
@@ -24,7 +24,6 @@ def hide_st_ui():
             header {visibility: hidden;}
             .stApp { top: -60px; background-color: #0e1117; }
             
-            /* ปรับแต่ง Tab & Sidebar ให้เข้ากับธีม */
             .stTabs [data-baseweb="tab-list"] { gap: 10px; }
             .stTabs [data-baseweb="tab"] {
                 background-color: #111; border: 1px solid #333;
@@ -50,7 +49,6 @@ def hide_st_ui():
 
 hide_st_ui()
 
-# --- ฟังก์ชันจัดการแปลงไฟล์เป็น Base64 ---
 def get_base64(file_path):
     if os.path.exists(file_path):
         with open(file_path, "rb") as f:
@@ -71,7 +69,7 @@ if not firebase_admin._apps:
         cred = credentials.Certificate(fb_creds)
         firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
     except Exception as e:
-        st.error(f"โครงสร้างฐานข้อมูลผิดพลาดหรือยังไม่ได้ตั้งค่า Secrets: {e}")
+        st.error(f"การเชื่อมต่อฐานข้อมูลผิดพลาด: {e}")
 
 # =========================================================
 # 3. SESSION STATE CONFIGURATION
@@ -129,7 +127,7 @@ if not st.session_state.logged_in:
                     st.session_state.user = u_id
                     st.rerun()
                 else:
-                    st.error("ข้อมูลไม่ถูกต้อง หรือสิทธิ์ AGENT ถูกปฏิเสธ")
+                    st.error("ข้อมูลไม่ถูกต้อง")
     
     with tab2:
         with st.form("reg_form"):
@@ -141,16 +139,12 @@ if not st.session_state.logged_in:
                     st.success("ลงทะเบียนสำเร็จ! กรุณาสลับไปหน้าเข้าสู่ระบบ")
     st.stop()
 
-# แสดงสถานะผู้ใช้ที่เข้าสู่ระบบแล้ว
 st.markdown(f"<div style='text-align:right; color:{theme_color}; font-size:12px; padding-right:10px;'>📡 AGENT OUTPOST: {st.session_state.user}</div>", unsafe_allow_html=True)
 
 # =========================================================
 # 6. SIDEBAR NAVIGATION CONTROLLER
 # =========================================================
 st.sidebar.title("🎛️ COMMAND PANEL")
-st.sidebar.markdown(f"**Current Agent:** `{st.session_state.user}`")
-
-# รวมเมนูทั้ง 4 ระบบหลักเข้าด้วยกัน
 menu_choice = st.sidebar.radio(
     "เลือกฟังก์ชันระบบ:", 
     ["💬 GLOBAL CHATROOM", "🛰️ GPS TRACER", "🔮 THE TRUTH SCANNER", "🎵 NEON MIXER"]
@@ -273,7 +267,7 @@ if menu_choice == "💬 GLOBAL CHATROOM":
         db.reference('chat_notifications').set({'unread_count': 0})
         st.rerun()
 
-# --- 7.2 ระบบแผนที่ดาวเทียม GPS ---
+# --- 7.2 ระบบแผนที่ดาวเทียม GPS (แก้ไขตัด st.stop ออกแล้ว) ---
 elif menu_choice == "🛰️ GPS TRACER":
     st.markdown(f"<h3 style='color:#00FF00;'>🛰️ GLOBAL GPS TARGET TRACER</h3>", unsafe_allow_html=True)
     
@@ -311,7 +305,8 @@ elif menu_choice == "🛰️ GPS TRACER":
             except: 
                 st.error("Firebase Connection Error")
     else:
-        st.info("🛰️ กำลังจับพิกัดจากเครื่องอุปกรณ์... โปรดเปิด GPS หน้าจอมือถือของคุณ")
+        # แสดงคำเตือนรอสัญญาณเฉพาะในหน้านี้แทนการเบรกโค้ดทั้งหมด
+        st.info("🛰️ กำลังจับพิกัดจากเครื่องอุปกรณ์... โปรดเปิด GPS หน้าจอมือถือของคุณ (ระบบจะแสดงแผนที่เมื่อพิกัดมาครบ)")
 
 # --- 7.3 ระบบคำนวณถอดรหัสความจริง ---
 elif menu_choice == "🔮 THE TRUTH SCANNER":
@@ -382,11 +377,8 @@ elif menu_choice == "🔮 THE TRUTH SCANNER":
 
 # --- 7.4 ระบบมิกเซอร์ครอสเฟดเพลง V.2 ---
 elif menu_choice == "🎵 NEON MIXER":
-    # สแกนหาเพลงในโฟลเดอร์เครื่อง
     all_songs = [f for f in os.listdir('.') if f.endswith('.mp3')]
     all_songs = sorted(all_songs)
-    
-    # ดึงค่าไฟล์โลโก้ในเครื่อง
     mixer_logo_b64 = get_base64("logo1.png")
 
     st.markdown("""
@@ -404,7 +396,6 @@ elif menu_choice == "🎵 NEON MIXER":
         with col_mix1: sA = st.selectbox("DECK A (เริ่มก่อน)", all_songs, key="mixer_sA")
         with col_mix2: sB = st.selectbox("DECK B (เล่นต่อ)", all_songs, key="mixer_sB")
         
-        # ฟังก์ชันแปลงเสียงเฉพาะของโมดูลมิกเซอร์
         def get_audio_base64_local(file_path):
             try:
                 with open(file_path, "rb") as f: return base64.b64encode(f.read()).decode()
