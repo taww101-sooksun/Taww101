@@ -13,60 +13,64 @@ import pandas as pd
 from datetime import datetime, date, timedelta
 
 # =========================================================
-# 1. CONFIG & HIGH-LEVEL NEON UI INITIALIZATION
+# 1. CONFIG & SYSTEM THEME CONTROLLER (DYNAMIC NEON UI)
 # =========================================================
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
 
-def inject_cyberpunk_ui():
-    st.markdown("""
+# เพิ่ม Color Picker ไว้ที่ Sidebar เพื่อให้บาสกดเลือกสีที่ชอบได้เองเลย
+st.sidebar.markdown("<h4 style='color:#fff; font-family:Orbitron;'>🎨 THEME CONTROLLER</h4>", unsafe_allow_html=True)
+theme_color = st.sidebar.color_picker("เลือกสีคลื่นพลังงานแอป (ธีม/ขอบ/ตัวหนังสือ):", "#39FF14")
+
+def inject_cyberpunk_ui(color_code):
+    st.markdown(f"""
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Sarabun:wght@300;500&display=swap');
             
-            .stApp { 
+            .stApp {{ 
                 background: radial-gradient(circle at 50% 50%, #080f14 0%, #030508 100%) !important;
                 font-family: 'Sarabun', sans-serif;
                 color: #e0e0e0;
             }
             
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            header {visibility: hidden;}
-            .stApp { top: -60px; }
+            #MainMenu {{visibility: hidden;}}
+            footer {{visibility: hidden;}}
+            header {{visibility: hidden;}}
+            .stApp {{ top: -60px; }}
             
-            .stTabs [data-baseweb="tab-list"] { gap: 12px; }
-            .stTabs [data-baseweb="tab"] {
+            .stTabs [data-baseweb="tab-list"] {{ gap: 12px; }}
+            .stTabs [data-baseweb="tab"] {{
                 background-color: #0b1116; border: 1px solid #1a2936;
                 border-radius: 8px; padding: 12px 24px; color: #666;
                 font-family: 'Orbitron', sans-serif; transition: 0.3s;
-            }
-            .stTabs [aria-selected="true"] {
-                background-color: rgba(57, 255, 20, 0.1) !important;
-                border-color: #39FF14 !important; color: #39FF14 !important;
-                box-shadow: 0 0 15px rgba(57, 255, 20, 0.3);
-            }
+            }}
+            .stTabs [aria-selected="true"] {{
+                background-color: {color_code}15 !important;
+                border-color: {color_code} !important; color: {color_code} !important;
+                box-shadow: 0 0 15px {color_code}33;
+            }}
             
-            .stTextInput>div>div>input, .stForm {
+            .stTextInput>div>div>input, .stForm {{
                 background-color: #090e12 !important;
                 border: 1px solid #1a2936 !important;
                 color: #fff !important;
                 border-radius: 8px !important;
-            }
-            .stTextInput>div>div>input:focus {
-                border-color: #39FF14 !important;
-                box-shadow: 0 0 10px rgba(57, 255, 20, 0.5) !important;
-            }
+            }}
+            .stTextInput>div>div>input:focus {{
+                border-color: {color_code} !important;
+                box-shadow: 0 0 10px {color_code}80 !important;
+            }}
             
-            .truth-card {
+            .truth-card {{
                 background: linear-gradient(135deg, rgba(11,20,28,0.9) 0%, rgba(4,8,12,0.95) 100%);
-                border: 2px solid #39FF14;
+                border: 2px solid {color_code};
                 border-radius: 16px;
                 padding: 25px;
                 text-align: center;
-                box-shadow: 0 0 25px rgba(57, 255, 20, 0.15), inset 0 0 15px rgba(57, 255, 20, 0.1);
+                box-shadow: 0 0 25px {color_code}26, inset 0 0 15px {color_code}1a;
                 margin: 15px 0;
-            }
+            }}
             
-            .logic-stream-box {
+            .logic-stream-box {{
                 background-color: #060a0d;
                 border-left: 4px solid #ff00de;
                 padding: 15px;
@@ -75,17 +79,18 @@ def inject_cyberpunk_ui():
                 font-size: 13px;
                 margin-bottom: 15px;
                 box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            }
+            }}
             
-            .stDataFrame {
+            .stDataFrame {{
                 border: 1px solid #1a2936 !important;
                 border-radius: 10px !important;
                 background-color: #05080b !important;
-            }
+            }}
         </style>
     """, unsafe_allow_html=True)
 
-inject_cyberpunk_ui()
+# เรียกใช้ UI คอนฟิกโดยส่งค่าสีที่บาสเลือกเข้าไปควบคุมดีไซน์
+inject_cyberpunk_ui(theme_color)
 
 def get_base64(file_path):
     if os.path.exists(file_path):
@@ -95,7 +100,6 @@ def get_base64(file_path):
 
 logo_base64 = get_base64("logo1.png")
 audio_data = get_base64("notification.mp3")
-theme_color = "#39FF14"
 
 # =========================================================
 # 2. FIREBASE CONNECTION
@@ -310,7 +314,7 @@ if menu_choice == "💬 GLOBAL CHATROOM":
 
 # --- 7.2 ระบบแผนที่ดาวเทียม GPS ---
 elif menu_choice == "🛰️ GPS TRACER":
-    st.markdown(f"<h3 style='color:#00FF00; font-family:Orbitron;'>🛰️ GLOBAL GPS TARGET TRACER</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h3 style='color:{theme_color}; font-family:Orbitron;'>🛰️ GLOBAL GPS TARGET TRACER</h3>", unsafe_allow_html=True)
     
     loc = get_geolocation() 
 
@@ -350,7 +354,7 @@ elif menu_choice == "🛰️ GPS TRACER":
 
 # --- 7.3 ระบบคำนวณถอดรหัสความจริง ---
 elif menu_choice == "🔮 THE TRUTH SCANNER":
-    st.markdown(f"<h2 style='color:#39FF14; text-shadow: 0 0 15px rgba(57,255,20,0.4); text-align:center; font-family:Orbitron;'>🧬 THE QUANTUM TRUTH SCANNERS</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color:{theme_color}; text-shadow: 0 0 15px {theme_color}66; text-align:center; font-family:Orbitron;'>🧬 THE QUANTUM TRUTH SCANNERS</h2>", unsafe_allow_html=True)
     
     def decode_truth(dt):
         if dt is None: return None
@@ -418,7 +422,7 @@ elif menu_choice == "🔮 THE TRUTH SCANNER":
         st.markdown(f"""
             <div class="truth-card">
                 <span style="color:#6886a3; font-family:'Orbitron'; font-size:12px; letter-spacing:3px;">QUANTUM DECODED INDEX</span>
-                <h1 style="color:#39FF14; font-family:'Orbitron'; font-size:62px; margin:5px 0; font-weight:700; text-shadow:0 0 20px rgba(57,255,20,0.6);">{u_data['res']}</h1>
+                <h1 style="color:{theme_color}; font-family:'Orbitron'; font-size:62px; margin:5px 0; font-weight:700; text-shadow:0 0 20px {theme_color}99;">{u_data['res']}</h1>
                 <div style="color:#ff00de; font-size:14px; font-family:'Orbitron'; font-weight:bold; letter-spacing:1px; margin-bottom:10px;">{u_data['level']}</div>
                 <p style="color:#88aaee; margin:0; font-size:13px;">โครงสร้างสมการ: {u_data['type']}</p>
             </div>
@@ -428,12 +432,12 @@ elif menu_choice == "🔮 THE TRUTH SCANNER":
         with col_inf1:
             st.markdown(f"""<div class="logic-stream-box"><b>📅 ฐานค่าวันเกิด:</b> วันสัปดาห์ลำดับที่ {u_data['day_num']}<br><b>🌙 พิกัดวงรอบดวงจันทร์:</b> สภาพดวงจันทร์แบบ {u_data['phase']}</div>""", unsafe_allow_html=True)
         with col_inf2:
-            st.markdown(f"""<div class="logic-stream-box" style="border-left-color:#00e5ff;"><b>🐎 ปีนักษัตรดั้งเดิม:</b> ปี{u_data['zodiac']}<br><b>💎 ธาตุฟลักซ์ประจำวัน:</b> แรงธาตุ{u_data['element']}</div>""", unsafe_allow_html=True)
+            st.markdown(f"""<div class="logic-stream-box" style="border-left-color:{theme_color};"><b>🐎 ปีนักษัตรดั้งเดิม:</b> ปี{u_data['zodiac']}<br><b>💎 ธาตุฟลักซ์ประจำวัน:</b> แรงธาตุ{u_data['element']}</div>""", unsafe_allow_html=True)
 
         st.markdown(f"""
             <div style="background:#090f14; padding:12px; border:1px solid #1a2936; border-radius:8px; margin: 10px 0 25px 0;">
                 <span style="font-size:12px; color:#527394; font-family:'Orbitron';">MATHEMATICAL ROOT PROOF:</span><br>
-                <code style="color:#00ff41; font-size:13px;">{u_data['formula']}</code> (วิเคราะห์จากช่วงเวลารวบรวมรวมทั้งสิ้น {u_data['diff']:,} วัน จากจุดตั้งต้น)
+                <code style="color:{theme_color}; font-size:13px;">{u_data['formula']}</code> (วิเคราะห์จากช่วงเวลารวบรวมรวมทั้งสิ้น {u_data['diff']:,} วัน จากจุดตั้งต้น)
             </div>
         """, unsafe_allow_html=True)
 
@@ -464,18 +468,18 @@ elif menu_choice == "🔮 THE TRUTH SCANNER":
     else:
         st.info("💡 กรุณาระบุข้อมูลวันที่ต้องการตรวจสอบรหัสพิกัดควอนตัมด้านบนเพื่อสตาร์ทระบบ")
 
-# --- 7.4 ระบบมิกเซอร์ครอสเฟดเพลง V.2 (FIXED: แก้ไขบั๊กไม่เล่นต่อเรียบร้อย) ---
+# --- 7.4 ระบบมิกเซอร์ครอสเฟดเพลง ---
 elif menu_choice == "🎵 NEON MIXER":
     all_songs = [f for f in os.listdir('.') if f.endswith('.mp3')]
     all_songs = sorted(all_songs)
     mixer_logo_b64 = get_base64("logo1.png")
 
-    st.markdown("""
+    st.markdown(f"""
         <style>
-        .neon-mixer-text {
+        .neon-mixer-text {{
             font-family: 'Orbitron', sans-serif; color: #fff; text-align: center; font-size: 1.8rem; letter-spacing: 5px;
-            text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px #00f3ff; margin-bottom: 20px;
-        }
+            text-shadow: 0 0 10px #ff00de, 0 0 20px #ff00de, 0 0 40px {theme_color}; margin-bottom: 20px;
+        }}
         </style>
         <div class="neon-mixer-text">SYNAPSE MIXER ENGINE</div>
         """, unsafe_allow_html=True)
@@ -500,13 +504,13 @@ elif menu_choice == "🎵 NEON MIXER":
             <script src="https://cdn.tailwindcss.com"></script>
             <style>
                 body {{ background: transparent; color: white; font-family: sans-serif; overflow: hidden; }}
-                .neon-card {{ border: 2px solid #1a2936; background: rgba(5,9,14,0.95); box-shadow: 0 0 25px rgba(0,243,255,0.15); }}
-                .logo-box {{ width: 60px; height: 60px; margin: 0 auto 15px auto; background: url('data:image/png;base64,{mixer_logo_b64}') no-repeat center; background-size: contain; filter: drop-shadow(0 0 8px #00f3ff); }}
+                .neon-card {{ border: 2px solid #1a2936; background: rgba(5,9,14,0.95); box-shadow: 0 0 25px {theme_color}26; }}
+                .logo-box {{ width: 60px; height: 60px; margin: 0 auto 15px auto; background: url('data:image/png;base64,{mixer_logo_b64}') no-repeat center; background-size: contain; filter: drop-shadow(0 0 8px {theme_color}); }}
                 .visualizer {{ height: 80px; background: #020508; border-radius: 10px; border: 1px solid #101a24; }}
                 .deck {{ padding: 10px; border-radius: 10px; border: 1px solid #101a24; margin-top: 10px; transition: 0.3s; opacity: 0.4; }}
                 .active-a {{ border-color: #ff00de; box-shadow: 0 0 10px rgba(255,0,222,0.4); opacity: 1; }}
-                .active-b {{ border-color: #00f3ff; box-shadow: 0 0 10px rgba(0,243,255,0.4); opacity: 1; }}
-                .btn-mix {{ background: linear-gradient(45deg, #ff00de, #00f3ff); width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: pointer; letter-spacing: 1px; }}
+                .active-b {{ border-color: {theme_color}; box-shadow: 0 0 10px {theme_color}66; opacity: 1; }}
+                .btn-mix {{ background: linear-gradient(45deg, #ff00de, {theme_color}); width: 100%; padding: 12px; border-radius: 10px; font-weight: bold; margin-top: 15px; cursor: pointer; letter-spacing: 1px; }}
                 .progress {{ height: 4px; background: #111; margin-top: 5px; }}
                 .bar {{ height: 100%; width: 0%; background: #ff00de; }}
             </style>
@@ -523,9 +527,9 @@ elif menu_choice == "🎵 NEON MIXER":
                 </div>
 
                 <div id="deckB" class="deck text-left">
-                    <div class="flex justify-between text-[10px]"><span style="color:#00f3ff">DECK B</span><span id="tB">00:00</span></div>
+                    <div class="flex justify-between text-[10px]"><span style="color:{theme_color}">DECK B</span><span id="tB">00:00</span></div>
                     <div class="text-[11px] truncate">{sB}</div>
-                    <div class="progress"><div id="barB" class="bar" style="background:#00f3ff"></div></div>
+                    <div class="progress"><div id="barB" class="bar" style="background:{theme_color}"></div></div>
                 </div>
 
                 <button onclick="start()" class="btn-mix">🚀 START CORE ENGINE</button>
@@ -535,7 +539,7 @@ elif menu_choice == "🎵 NEON MIXER":
             <script>
                 let ctx, analyser, songA, songB, gA, gB, srcA, srcB;
                 let isPlaying = false, active = 'A', data;
-                let crossfadeTriggered = false; // ตัวแปรล็อกระบบป้องกันการสั่งเปลี่ยนเพลงซ้ำซ้อน
+                let crossfadeTriggered = false;
 
                 async function toBuf(b64) {{
                     const r = await fetch('data:audio/mp3;base64,' + b64);
@@ -575,10 +579,7 @@ elif menu_choice == "🎵 NEON MIXER":
                     srcB = ctx.createBufferSource(); srcB.buffer = songB; gB = ctx.createGain();
                     srcB.connect(gB).connect(analyser).connect(ctx.destination);
                     gB.gain.value = 0; srcB.start(0); srcB.t0 = ctx.currentTime;
-                    
-                    // ค่อยๆ เฟดเสียง Deck B ขึ้นมาในเวลา 5 วินาที
                     gB.gain.linearRampToValueAtTime(1, ctx.currentTime + 5);
-                    
                     document.getElementById('deckB').classList.add('active-b');
                     document.getElementById('deckA').classList.remove('active-a');
                 }}
@@ -603,9 +604,8 @@ elif menu_choice == "🎵 NEON MIXER":
                         document.getElementById('tA').innerText = Math.floor(rem/60) + ":" + Math.floor(rem%60).toString().padStart(2,'0');
                         document.getElementById('barA').style.width = (elapsed/songA.duration*100) + "%";
                         
-                        // เมื่อเหลือ 8 วินาทีสุดท้าย และยังไม่เคยสั่งเปลี่ยนเพลง ให้ทำการคัทข้ามไป Deck B ทันที
                         if (rem < 8 && !crossfadeTriggered) {{
-                            crossfadeTriggered = true; // ล็อกสถานะทันที
+                            crossfadeTriggered = true;
                             gA.gain.linearRampToValueAtTime(0, ctx.currentTime + 5);
                             playDeckB(); 
                             document.getElementById('status').innerText = "CROSSFADING...";
