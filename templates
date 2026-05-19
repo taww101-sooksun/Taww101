@@ -1,1 +1,340 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SYNAPSE COMMAND CENTER</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.socketjs.org/socket.io-4.0.1/socket.io.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root { --main-color: #39FF14; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: radial-gradient(circle at 50% 50%, #050a0f 0%, #010204 100%);
+            font-family: 'Sarabun', sans-serif;
+            color: #ffffff;
+            padding: 10px;
+            overflow-x: hidden;
+        }
+        
+        /* แอนิเมชันโลโก้และสโลแกนเต้นตามสั่งบาส */
+        .header-box { text-align: center; margin-bottom: 15px; border-bottom: 4px solid #0055ff; padding-bottom: 10px; }
+        .slogan { font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: bold; color: var(--main-color); text-shadow: 0 0 10px var(--main-color); animation: wink 3s infinite; }
+        @keyframes wink { 0%,100% { opacity:1; } 50% { opacity:0.4; color:#ff003c; text-shadow:0 0 10px #ff003c; } }
 
+        /* การจัดระเบียบหน้าล็อกอิน/ลงทะเบียน */
+        .auth-container { max-width: 400px; margin: 40px auto; background: rgba(6,17,28,0.9); border: 4px solid #0055ff; border-radius: 12px; padding: 20px; box-shadow: 0 0 15px rgba(0,85,255,0.3); }
+        .auth-tabs { display: flex; margin-bottom: 15px; }
+        .auth-tab { flex: 1; padding: 10px; text-align: center; background: #03070a; border: 2px solid #0055ff; cursor: pointer; font-weight: bold; }
+        .auth-tab.active { background: #ff003c; border-color: #ff003c; }
+        
+        input, select {
+            width: 100%; padding: 12px; margin: 8px 0; background: #020508; border: 4px solid #0055ff; border-radius: 8px; color: #fff; font-size: 16px; font-weight: bold;
+        }
+        button {
+            width: 100%; padding: 12px; background: linear-gradient(135deg, #ff003c 0%, #0055ff 100%); border: none; border-radius: 8px; color: #fff; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        /* 🎯 เมนูปุ่มกดที่กระชับ ขนาดเล็กลงพอดีนิ้วสัมผัสตามคำสั่งหนา 4px */
+        .nav-menu { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 15px; justify-content: center; }
+        .nav-btn {
+            flex: 1; min-width: 105px; padding: 8px 4px; font-size: 12px; text-align: center; background: #03070a; border: 4px solid #0055ff; border-radius: 8px; color: #00d2ff; font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        .nav-btn.active { border-color: var(--main-color); color: #fff; box-shadow: 0 0 10px var(--main-color); }
+
+        .app-panel { display: none; background: rgba(4,12,24,0.95); border: 4px solid var(--main-color); border-radius: 12px; padding: 15px; box-shadow: 0 0 15px rgba(0,0,0,0.5); }
+        .app-panel.active { display: block; }
+
+        /* ตู้กล่องข้อความห้องแชท */
+        .chat-area { height: 240px; overflow-y: auto; background: #020508; border: 4px solid #0055ff; border-radius: 8px; padding: 10px; margin-bottom: 10px; font-size: 14px; }
+        
+        /* หน้าปัดแผนที่ */
+        #map { height: 260px; border: 4px solid #ff003c; border-radius: 10px; margin-top: 10px; }
+
+        .result-card { background: #020508; border-left: 6px solid var(--main-color); padding: 15px; margin: 12px 0; border-radius: 0 8px 8px 0; }
+        .math-detail { font-size: 13px; color: #a0aec0; margin-top: 5px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+    <div class="header-box">
+        <div class="slogan" id="system-slogan">SYNAPSE COMMAND CENTER</div>
+        <div style="font-size: 11px; color:#666; margin-top: 3px;">อยู่นิ่งๆ ไม่เจ็บตัว | V.4.0 FULL-STACK</div>
+    </div>
+
+    <!-- ==================== PAGE: AUTHENTICATION ==================== -->
+    {% if page == 'auth' %}
+    <div class="auth-container">
+        <div class="auth-tabs">
+            <div class="auth-tab active" id="tab-login" onclick="switchAuth('login')">LOGIN</div>
+            <div class="auth-tab" id="tab-reg" onclick="switchAuth('register')">REGISTER</div>
+        </div>
+        <input type="text" id="auth-user" placeholder="AGENT ID (ชื่อผู้ใช้)">
+        <input type="password" id="auth-pass" placeholder="PASSWORD (รหัสผ่าน)">
+        <button onclick="submitAuth()" id="auth-btn">เข้าสู่ระบบระบบสายสัญญาณ ⚡</button>
+    </div>
+    <script>
+        let authMode = 'login';
+        function switchAuth(mode) {
+            authMode = mode;
+            document.getElementById('tab-login').classList.toggle('active', mode === 'login');
+            document.getElementById('tab-reg').classList.toggle('active', mode === 'register');
+            document.getElementById('auth-btn').innerText = mode === 'login' ? 'เข้าสู่ระบบสายสัญญาณ ⚡' : 'ลงทะเบียนฐานข้อมูลใหม่ 📝';
+        }
+        async function submitAuth() {
+            const u = document.getElementById('auth-user').value;
+            const p = document.getElementById('auth-pass').value;
+            const res = await axios.post('/api/auth', { action: authMode, username: u, password: p });
+            alert(res.data.msg);
+            if(res.data.status === 'success' && authMode === 'login') window.location.reload();
+        }
+    </script>
+    {% endif %}
+
+    <!-- ==================== PAGE: MAIN SYSTEMS ==================== -->
+    {% if page == 'main' %}
+    <div class="nav-menu">
+        <div class="nav-btn active" onclick="switchTab('tab-chat')">💬 แชทรวม/เดี่ยว</div>
+        <div class="nav-btn" onclick="switchTab('tab-gps')">🛰️ พิกัดดาวเทียม</div>
+        <div class="nav-btn" onclick="switchTab('tab-math')">🔮 ควอนตัมวันเกิด</div>
+        <div class="nav-btn" onclick="switchTab('tab-music')">🎵 ลูปเพลง (70)</div>
+        <div class="nav-btn" onclick="switchTab('tab-info')">📖 คู่มือจริง</div>
+        <div class="nav-btn" onclick="switchTab('tab-settings')">⚙️ ตั้งค่าแอป</div>
+    </div>
+
+    <!-- TAB: CHATROOM -->
+    <div id="tab-chat" class="app-panel active">
+        <h4 style="color:#00d2ff; margin-bottom:8px;">💬 ROOM: GLOBAL & DIRECT CHAT</h4>
+        <div class="chat-area" id="global-chat-box"></div>
+        <div style="display: flex; gap:5px; margin-bottom: 15px;">
+            <input type="text" id="global-msg" placeholder="พิมพ์ข้อความเข้าแชทรวม..." style="margin:0;">
+            <button onclick="sendGlobal()" style="width:80px;">ส่ง</button>
+        </div>
+        
+        <h4 style="color:#ff003c; margin-bottom:8px;">🔒 PRIVATE CHAT (ส่งข้อมูลเฉพาะบุคคล)</h4>
+        <input type="text" id="priv-target" placeholder="ใส่ชื่อ AGENT ID ปลายทางที่ต้องการส่งหา..." style="margin:2px 0;">
+        <div class="chat-area" id="private-chat-box" style="border-color:#ff003c; height:120px;"></div>
+        <div style="display: flex; gap:5px;">
+            <input type="text" id="priv-msg" placeholder="กระซิบข้อความส่วนตัว..." style="margin:0;">
+            <button onclick="sendPrivate()" style="width:80px; background:linear-gradient(135deg, #ff003c, #5500ff);">ส่งลับ</button>
+        </div>
+    </div>
+
+    <!-- TAB: GPS REALTIME -->
+    <div id="tab-gps" class="app-panel">
+        <h4>🛰️ HIGH-ACCURACY GPS TRACKER</h4>
+        <p style="font-size:12px; margin:5px 0;">ระบบดึงค่าพิกัดดิบ ละติจูด/ลองจิจูด ป้อนตรงเข้าสู่แผนที่ลดความคลาดเคลื่อนสัญญาณเคลื่อนที่</p>
+        <button onclick="triggerGPS()" style="margin:10px 0;">📡 สแกนล็อคเป้าสัญญาณพิกัด</button>
+        <div id="gps-coords-display" style="font-weight:bold; color:#39FF14;"></div>
+        <div id="map"></div>
+    </div>
+
+    <!-- TAB: QUANTUM TIME CALCULATION -->
+    <div id="tab-math" class="app-panel">
+        <h4>🔮 ANALYTICAL QUANTUM MATRIX</h4>
+        <p style="font-size:12px; margin-bottom:10px;">เลือกวันเกิดจริงเพื่อวิเคราะห์การแทรกสอดของมวลความถี่โครงสร้างวันและข้างขึ้นข้างแรม</p>
+        <input type="date" id="quantum-date" value="1996-08-17" onchange="runQuantumMath()">
+        <div id="quantum-results"></div>
+    </div>
+
+    <!-- TAB: JUKEBOX (70 SONGS) -->
+    <div id="tab-music" class="app-panel">
+        <h4>🎵 AUTOLOOP JUKEBOX FLUID</h4>
+        <p style="font-size:12px; margin-bottom:10px;" id="song-count-txt">ตรวจสอบจำนวนเพลงในระบบคู่ขนาน...</p>
+        <div style="background:#020508; border:4px solid #ff003c; padding:15px; border-radius:8px; text-align:center;">
+            <div id="current-track-title" style="color:#39FF14; font-weight:bold; font-size:14px; margin-bottom:10px;">หยุดการเล่น</div>
+            <audio id="audio-player" controls style="width:100%; margin-bottom:10px;"></audio>
+            <button onclick="playRandomSong()">⚡ สุ่มเพลงถัดไป (RANDOM NEXT)</button>
+        </div>
+    </div>
+
+    <!-- TAB: USER GUIDE -->
+    <div id="tab-info" class="app-panel">
+        <h4>📖 คู่มือรายละเอียดการใช้งานแอปพลิเคชันจริง</h4>
+        <div style="font-size:13px; line-height:1.7; margin-top:10px;">
+            <b style="color:#39FF14;">1. ระบบแชทคู่ขนาน:</b> แชทรวมจะเห็นทั้งหมด แชทส่วนตัวต้องระบุ AGENT ID ปลายทางให้ถูกต้อง ข้อมูลจะไม่หลุดไหลไปห้องอื่นแน่นอน<br><br>
+            <b style="color:#00d2ff;">2. ระบบดาวเทียม GPS:</b> ใช้ข้อมูลพิกัดละติจูดและลองจิจูดดั้งเดิมจากชิปมือถือโดยตรง ความแม่นยำขึ้นอยู่กับพื้นที่โล่งแจ้ง<br><br>
+            <b style="color:#ff003c;">3. เครื่องเล่นเพลง 70 เพลง:</b> ดึงรายชื่อตรงจากโฟลเดอร์เก็บแอป รันจบเพลงจะสุ่มแทร็กใหม่ขึ้นมาทันทีโดยอัตโนมัติ<br><br>
+            <b style="color:var(--main-color)">4. รหัสพลังงานวันเกิด:</b> ใช้การแปลงผลต่างเวลาปีฐานผสานสูตรเรขาคณิตวิเคราะห์เพื่อความจริงแท้ของค่าแปรผัน
+        </div>
+    </div>
+
+    <!-- TAB: SETTINGS & THEME -->
+    <div id="tab-settings" class="app-panel">
+        <h4>⚙️ MANAGEMENT COMMAND PANEL</h4>
+        <div style="margin-top:10px;">
+            <label style="font-size:12px; font-weight:bold;">เปลี่ยนรหัสผ่านความปลอดภัยใหม่:</label>
+            <input type="password" id="set-pass" placeholder="ปล่อยว่างไว้หากไม่ต้องการเปลี่ยน">
+            
+            <label style="font-size:12px; font-weight:bold; margin-top:10px; display:block;">ปรับแต่งสีแกนหลัก (THEME SYSTEM):</label>
+            <select id="set-theme" onchange="applyLiveTheme(this.value)">
+                <option value="#39FF14">เขียวเรืองแสง (Cyber Neon)</option>
+                <option value="#ff003c">แดงเข้มพิฆาต (Crimson Red)</option>
+                <option value="#0055ff">น้ำเงินเงาห้วงลึก (Deep Blue)</option>
+                <option value="#ffaa00">เหลืองอำพันสว่าง (Amber Sun)</option>
+                <option value="#e000ff">ม่วงคลื่นมิติ (Plasma Purple)</option>
+            </select>
+            
+            <button onclick="saveSettings()" style="margin-top:15px; background:linear-gradient(135deg, #39FF14, #0055ff)">บันทึกข้อมูลตั้งค่าระบบ 💾</button>
+            <a href="/api/logout"><button style="margin-top:10px; background:#4a0000; border:2px solid #ff003c;">🔴 ปิดระบบและออกจากบัญชี</button></a>
+        </div>
+    </div>
+
+    <!-- SYSTEM LOGIC JAVASCRIPT CORNER -->
+    <script>
+        const socket = io();
+        let currentPlaylist = [];
+        let mapInstance = null;
+        let mapMarker = null;
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.app-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+            if(tabId === 'tab-gps') setTimeout(() => { if(mapInstance) mapInstance.invalidateSize(); }, 200);
+        }
+
+        // --- REALTIME CHAT LOGIC ---
+        function sendGlobal() {
+            const txt = document.getElementById('global-msg').value;
+            if(!txt) return;
+            socket.emit('send_global_chat', { text: txt });
+            document.getElementById('global-msg').value = '';
+        }
+        function sendPrivate() {
+            const target = document.getElementById('priv-target').value;
+            const txt = document.getElementById('priv-msg').value;
+            if(!target || !txt) return alert('กรุณาระบุ AGENT ปลายทางและข้อความ');
+            socket.emit('send_private_chat', { target: target, text: txt });
+            document.getElementById('priv-msg').value = '';
+        }
+        socket.on('receive_global_chat', data => {
+            const box = document.getElementById('global-chat-box');
+            box.innerHTML += `<div><b style="color:#39FF14;">[${data.user}]</b> <span style="font-size:10px; color:#555;">(${data.time_display})</span>: ${data.text}</div>`;
+            box.scrollTop = box.scrollHeight;
+        });
+        socket.on('receive_private_chat', data => {
+            const u = "{{ username }}";
+            if(data.sender === u || data.receiver === u) {
+                const box = document.getElementById('private-chat-box');
+                const isMe = data.sender === u;
+                box.innerHTML += `<div><b style="color:${isMe?'#00d2ff':'#ff003c'};">[ลับจาก ${data.sender} ถึง ${data.receiver}]</b>: ${data.text}</div>`;
+                box.scrollTop = box.scrollHeight;
+            }
+        });
+        socket.on('private_error', data => alert(data.msg));
+
+        // --- HIGH ACCURACY GPS ---
+        function triggerGPS() {
+            if(!navigator.geolocation) return alert("มือถือของบาสไม่รองรับระบบพิกัดผ่านบราวเซอร์");
+            navigator.geolocation.getCurrentPosition(pos => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                document.getElementById('gps-coords-display').innerText = `ละติจูดจริง: ${lat.toFixed(7)} | ลองจิจูดจริง: ${lon.toFixed(7)}`;
+                
+                if(!mapInstance) {
+                    mapInstance = L.map('map').setView([lat, lon], 16);
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(mapInstance);
+                    mapMarker = L.marker([lat, lon]).addTo(mapInstance);
+                } else {
+                    const newPos = new L.LatLng(lat, lon);
+                    mapMarker.setLatLng(newPos);
+                    mapInstance.setView(newPos, 16);
+                }
+            }, err => alert("กรุณาเปิดสิทธิ์ให้แอปเข้าถึง GPS บนหน้าจอมือถือด้วยครับบาส!"), { enableHighAccuracy: true, timeout: 10000 });
+        }
+
+        // --- QUANTUM MATH DETAILED EXPLANATION ---
+        function runQuantumMath() {
+            const dateVal = new Date(document.getElementById('quantum-date').value);
+            if(isNaN(dateVal.getTime())) return;
+            
+            const baseDate = new Date('1900-01-01');
+            const diffTime = Math.abs(dateVal - baseDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            const dayOfWeek = dateVal.getDay() + 1; // 1 = อาทิตย์, 7 = เสาร์
+            const lunarCycle = 29.530589;
+            const currentPosition = (diffDays - 0.5) % lunarCycle;
+            const isWaxing = currentPosition <= 14.765;
+            const lunarNumber = Math.floor(isWaxing ? currentPosition + 1 : (currentPosition - 14.765) + 1);
+            
+            let finalIdx = 0;
+            let explanation = "";
+            
+            if(isWaxing) {
+                finalIdx = Math.sqrt(Math.pow(dayOfWeek, 2) + Math.pow(lunarNumber, 2));
+                explanation = `<b>วิเคราะห์เชิงลึกตัวเลขผลลัพธ์ (${finalIdx.toFixed(4)}):</b><br>` +
+                              `1. <u>เลขฐานวันเกิด [${dayOfWeek}]</u>: แทนค่าเวกเตอร์แนวตั้งของพลังงานสัปดาห์<br>` +
+                              `2. <u>เลขอิทธิพลจันทรคติ [${lunarNumber}]</u>: อยู่ในช่วง [ข้างขึ้น] ทางคณิตศาสตร์ควอนตัมพลังงานสว่างมีทิศทางเป็นบวก (+)<br>` +
+                              `3. <u>สูตรคำนวณจริง</u>: ใช้ทฤษฎีพีทาโกรัสสถิตยศาสตร์ $\\sqrt{X^2 + Y^2}$ เพื่อหาความยาวมวลลัพธ์ตัวเลขจริงสัมบูรณ์โดยไม่คลาดเคลื่อน`;
+            } else {
+                finalIdx = (dayOfWeek * 1.618) / (lunarNumber === 0 ? 1 : lunarNumber);
+                explanation = `<b>วิเคราะห์เชิงลึกตัวเลขผลลัพธ์ (${finalIdx.toFixed(4)}):</b><br>` +
+                              `1. <u>เลขฐานวันเกิด [${dayOfWeek}]</u>: แทนค่าจุดหมุนคงที่ของเวลา<br>` +
+                              `2. <u>เลขอิทธิพลจันทรคติ [${lunarNumber}]</u>: อยู่ในช่วง [ข้างแรม] คลื่นพลังงานแม่เหล็กโลกบีบอัดลงต่ำ ทิศทางต้านลบ (-)<br>` +
+                              `3. <u>สูตรคำนวณจริง</u>: นำเลขวันเกิดคูณอัตราส่วนทองคำ (Golden Ratio 1.618) แล้วหารด้วยระยะตัดแรมเพื่อหาจุดสมดุลพลังงานนิ่ง`;
+            }
+            
+            document.getElementById('quantum-results').innerHTML = `
+                <div class="result-card">
+                    <div style="font-size:12px; color:#00d2ff;">QUANTUM MASS MATRIX INDEX</div>
+                    <div style="font-size:32px; font-weight:bold; color:var(--main-color); margin:5px 0;">${finalIdx.toFixed(4)}</div>
+                    <div class="math-detail">${explanation}</div>
+                </div>`;
+        }
+
+        // --- JUKEBOX (70 MP3 LOOPS SYSTEM) ---
+        async function loadJukebox() {
+            const res = await axios.get('/api/get_songs');
+            if(res.data.status === 'success') {
+                currentPlaylist = res.data.songs;
+                document.getElementById('song-count-txt').innerText = `ระบบตรวจค้นพบไฟล์เพลงพร้อมทำงานในโฟลเดอร์: ${currentPlaylist.length} เพลง`;
+            }
+        }
+        function playRandomSong() {
+            if(currentPlaylist.length === 0) return alert("ไม่พบไฟล์เพลง .mp3 คู่ขนานกับแอป");
+            const ranSong = currentPlaylist[Math.floor(Math.random() * currentPlaylist.length)];
+            document.getElementById('current-track-title').innerText = `กำลังขับเคลื่อนคลื่นเสียง 🔄: ${ranSong}`;
+            const player = document.getElementById('audio-player');
+            player.src = `/${ranSong}`;
+            player.play();
+            player.onended = playRandomSong; // เล่นวนลูปสุ่มต่อเนื่องอัตโนมัติเมื่อเพลงจบ
+        }
+
+        // --- PROFILE & CUSTOM LIVE THEME CONFIG ---
+        function applyLiveTheme(color) {
+            document.documentElement.style.setProperty('--main-color', color);
+            document.getElementById('system-slogan').style.color = color;
+            document.getElementById('system-slogan').style.textShadow = `0 0 10px ${color}`;
+        }
+        async function loadProfile() {
+            const res = await axios.get('/api/get_profile');
+            if(res.data.status === 'success' && res.data.data) {
+                const theme = res.data.data.theme_color || '#39FF14';
+                document.getElementById('set-theme').value = theme;
+                applyLiveTheme(theme);
+            }
+        }
+        async function saveSettings() {
+            const pw = document.getElementById('set-pass').value;
+            const tm = document.getElementById('set-theme').value;
+            const res = await axios.post('/api/update_profile', { password: pw, theme: tm });
+            alert(res.data.msg);
+            if(res.data.status === 'success') window.location.reload();
+        }
+
+        // INITIALIZE RUNNERS
+        window.onload = () => {
+            loadProfile();
+            loadJukebox();
+            runQuantumMath();
+        }
+    </script>
+    {% endif %}
+</body>
+</html>
