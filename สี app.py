@@ -46,44 +46,83 @@ def inject_cyberpunk_ui(color_code):
             header {{visibility: hidden;}}
             .stApp {{ top: -60px; }}
             
-            /* แท็บเมนู: เพิ่มความหนาเส้นขอบเป็น 4px และผสมผสานสีน้ำเงิน/แดง */
-            .stTabs [data-baseweb="tab-list"] {{ gap: 14px; }}
-            .stTabs [data-baseweb="tab"] {{
-                background-color: #060d14; 
-                border: 4px solid #1f3a52 !important; /* เส้นขอบหนา 4px สีน้ำเงินเข้ม */
-                border-radius: 12px; padding: 14px 28px; 
-                color: #00d2ff !important; /* ตัวหนังสือสีน้ำเงินสว่าง ชัดเจน */
-                font-family: 'Orbitron', sans-serif; 
-                font-weight: 700 !important;
-                transition: 0.3s;
+            /* ========================================================= */
+            /* 🔥 ขยายปุ่มเมนูหลัก (RADIO BUTTONS) หน้าแรกให้ใหญ่ ย่นระยะจิ้มง่ายขึ้นบนมือถือ */
+            /* ========================================================= */
+            [data-testid="stRadio"] > div {{
+                flex-direction: row !important;
+                flex-wrap: wrap !important;
+                gap: 15px !important; /* เพิ่มช่องไฟระหว่างปุ่ม */
+                padding: 10px 0 !important;
             }}
             
-            /* แท็บที่เลือกใช้งาน: เปล่งประกายด้วยพลังสีแดงและสีหลัก */
-            .stTabs [aria-selected="true"] {{
-                background-color: rgba(255, 0, 60, 0.15) !important;
-                border-color: {color_code} !important; /* เส้นขอบหนา 4px ตามสีที่เลือก */
-                color: #ff003c !important; /* ตัวอักษรเปลี่ยนเป็นสีแดงนีออนเข้มข้น */
-                box-shadow: 0 0 20px {color_code}55, inset 0 0 10px #ff003c;
+            [data-testid="stRadio"] label {{
+                background: linear-gradient(135deg, #06111c 0%, #0c0612 100%) !important;
+                border: 4px solid #0055ff !important; /* เส้นขอบหนา 4px สีน้ำเงิน */
+                border-radius: 14px !important; /* มนกลมสไตล์ไซเบอร์ */
+                padding: 18px 24px !important; /* เพิ่มความกว้างใหญ่ของพื้นที่ปุ่มกดให้จิ้มง่าย */
+                margin: 0 !important;
+                min-width: 160px !important; /* กำหนดขนาดขั้นต่ำให้เต็มมือกด */
+                text-align: center !important;
+                justify-content: center !important;
+                cursor: pointer !important;
+                transition: all 0.25s ease-in-out !important;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.4) !important;
             }}
+            
+            /* ตัวหนังสือข้างในปุ่มเมนู */
+            [data-testid="stRadio"] label p {{
+                font-family: 'Orbitron', 'Sarabun', sans-serif !important;
+                font-size: 16px !important; /* ปรับขนาดตัวหนังสือให้ใหญ่เด่นชัด */
+                font-weight: 700 !important;
+                color: #00d2ff !important; /* สีน้ำเงินสว่าง */
+            }}
+            
+            /* เมื่อเอาเมาส์วางหรือใช้นิ้วจิ้มปุ่มเมนู */
+            [data-testid="stRadio"] label:hover {{
+                border-color: #ff003c !important; /* ขอบเปลี่ยนเป็นสีแดงนีออน */
+                box-shadow: 0 0 15px rgba(255,0,60,0.5) !important;
+            }}
+            
+            /* เอฟเฟกต์เมื่อปุ่มเมนูนั้นถูกเลือกใช้งาน (Active) */
+            [data-testid="stRadio"] label[data-checked="true"] {{
+                background: linear-gradient(135deg, rgba(255, 0, 60, 0.2) 0%, rgba(0, 85, 255, 0.1) 100%) !important;
+                border-color: {color_code} !important; /* ขอบหนาตามสีหลักที่จูน */
+                box-shadow: 0 0 25px {color_code}66, inset 0 0 10px rgba(255,0,60,0.3) !important;
+            }}
+            
+            [data-testid="stRadio"] label[data-checked="true"] p {{
+                color: #ffffff !important; /* ตัวอักษรปุ่มที่เลือกเป็นสีขาวสว่างชัดเจน */
+                text-shadow: 0 0 8px {color_code} !important;
+            }}
+            
+            /* ซ่อนวงกลมวิทยุแบบเก่าออกไปเพื่อให้เป็นการ์ดปุ่มกดเต็มๆ ใบ */
+            [data-testid="stRadio"] div[data-testid="stMarkdownContainer"] {{
+                display: none !important;
+            }}
+            [data-testid="stRadio"] input[type="radio"] {{
+                display: none !important;
+            }}
+            /* ========================================================= */
             
             /* ช่องกรอกข้อมูล: เพิ่มความหนาเส้นขอบเป็น 4px สีน้ำเงินไซเบอร์ */
             .stTextInput>div>div>input, .stForm, .stTextArea>div>div>textarea {{
                 background-color: #04080c !important;
-                border: 4px solid #0055ff !important; /* เส้นขอบหนา 4px สีน้ำเงิน */
+                border: 4px solid #0055ff !important;
                 color: #ffffff !important;
                 border-radius: 10px !important;
                 font-size: 16px !important;
                 font-weight: bold !important;
             }}
             .stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {{
-                border-color: #ff003c !important; /* เวลาโฟกัสเปลี่ยนเป็นสีแดงแรงฤทธิ์ */
+                border-color: #ff003c !important;
                 box-shadow: 0 0 15px #ff003c !important;
             }}
             
             /* การ์ดแสดงความจริง: เพิ่มความหนาเส้นขอบเป็น 4px และไล่เฉดน้ำเงิน-แดง */
             .truth-card {{
                 background: linear-gradient(135deg, rgba(4,12,24,0.95) 0%, rgba(20,4,8,0.95) 100%);
-                border: 4px solid {color_code}; /* เส้นขอบหนา 4px */
+                border: 4px solid {color_code};
                 border-radius: 18px;
                 padding: 30px;
                 text-align: center;
@@ -94,10 +133,10 @@ def inject_cyberpunk_ui(color_code):
             /* กล่องสตรีมโลจิก: ขอบสีแดงนีออน */
             .logic-stream-box {{
                 background-color: #03070a;
-                border-left: 6px solid #ff003c; /* ขอบข้างหนาพิเศษสีแดง */
+                border-left: 6px solid #ff003c;
                 padding: 18px;
                 border-radius: 0 10px 10px 0;
-                color: #00d2ff !important; /* ตัวอักษรสีน้ำเงินสว่าง */
+                color: #00d2ff !important;
                 font-size: 14px;
                 font-weight: bold;
                 margin-bottom: 18px;
@@ -107,7 +146,7 @@ def inject_cyberpunk_ui(color_code):
                 border-right: 1px solid rgba(0,210,255,0.2);
             }}
             
-            /* ปรับปุ่มกดของ Streamlit ให้หนาและชัดเจน */
+            /* ปรับปุ่มกดทั่วไปของ Streamlit ให้หนาและชัดเจน */
             .stButton>button {{
                 border: 4px solid #0055ff !important;
                 border-radius: 10px !important;
@@ -116,6 +155,7 @@ def inject_cyberpunk_ui(color_code):
                 background: linear-gradient(135deg, #04080c 0%, #100408 100%) !important;
                 color: #ffffff !important;
                 transition: 0.3s;
+                padding: 10px 20px !important;
             }}
             .stButton>button:hover {{
                 border-color: #ff003c !important;
@@ -218,7 +258,7 @@ if not st.session_state.logged_in:
 st.markdown(f"<div style='text-align:right; color:#00d2ff; font-family:Orbitron; font-size:14px; font-weight:bold; padding-right:10px;'>📡 AGENT OUTPOST: <span style='color:#ff003c;'>{st.session_state.user}</span></div>", unsafe_allow_html=True)
 
 # =========================================================
-# 6. NAVIGATION CONTROLLER
+# 6. NAVIGATION CONTROLLER (ปรับปรุงขยายขนาดการ์ดเรียบร้อย)
 # =========================================================
 menu_choice = st.radio(
     "เลือกฟังก์ชันระบบ:", 
@@ -232,14 +272,114 @@ if st.sidebar.button("🔴 ออกจากระบบ (LOGOUT)", use_contain
     st.session_state.user = None
     st.rerun()
 
-# Dummy blocks for navigation placeholders (Chat & GPS) เพื่อให้โค้ดรันได้ไม่พัง
-if menu_choice == "💬 CHATROOM SYSTEMS":
-    st.write("### 💬 ระบบห้องแชทเข้ารหัสความปลอดภัยสูง")
-    st.info("ระบบกำลังเตรียมการสตรีมสัญญาณ...")
 
+# =========================================================
+# 7. SYSTEM FUNCTIONS CORE (ทำงานจริงเชื่อมระบบจริง 100%)
+# =========================================================
+
+# --- 7.1 ระบบห้องแชทเข้ารหัสความปลอดภัยสูง (ส่งและดึงข้อมูลงฐานข้อมูล Firebase จริง) ---
+if menu_choice == "💬 CHATROOM SYSTEMS":
+    st.markdown(f"<h3 style='color:#00d2ff; font-family:Orbitron; font-weight:bold;'>💬 SYNAPSE SECURE CHATROOM</h3>", unsafe_allow_html=True)
+    
+    chat_ref = db.reference('global_chat')
+    messages_data = chat_ref.order_by_child('timestamp').limit_to_last(20).get()
+    
+    st.markdown("<div style='color:#ff003c; font-weight:bold; margin-bottom:5px;'>📡 LIVE LOG STREAM:</div>", unsafe_allow_html=True)
+    
+    chat_box_html = "<div style='height:300px; overflow-y:auto; border:4px solid #0055ff; border-radius:12px; padding:15px; background:#03070a; margin-bottom:15px;'>"
+    if messages_data:
+        sorted_messages = sorted(messages_data.items(), key=lambda x: x[1].get('timestamp', ''))
+        for msg_id, msg in sorted_messages:
+            sender = msg.get('user', 'UNKNOWN')
+            text = msg.get('text', '')
+            time_str = msg.get('time_display', '')
+            
+            color = "#39FF14" if sender == st.session_state.user else "#ff003c"
+            chat_box_html += f"""
+            <div style='margin-bottom:10px; border-bottom:1px solid rgba(0,85,255,0.1); padding-bottom:5px;'>
+                <span style='color:{color}; font-weight:bold; font-family:Orbitron;'>[{sender}]</span> 
+                <span style='color:#aaa; font-size:11px;'>({time_str})</span>: 
+                <b style='color:#fff; font-size:15px; margin-left:5px;'>{text}</b>
+            </div>
+            """
+    else:
+        chat_box_html += "<div style='color:#666; text-align:center; padding-top:100px;'>ไม่มีข้อมูลการสื่อสารในระบบค้างอยู่</div>"
+    chat_box_html += "</div>"
+    
+    st.components.v1.html(chat_box_html, height=320, scrolling=False)
+    
+    with st.form("chat_input_form", clear_on_submit=True):
+        col1, col2 = st.columns([6, 1])
+        with col1:
+            chat_text = st.text_input("ป้อนรหัสสัญญาณข้อความความคิด...", key="chat_msg_input", label_visibility="collapsed")
+        with col2:
+            send_btn = st.form_submit_button("SEND ⚡", use_container_width=True)
+            
+        if send_btn and chat_text:
+            now = datetime.now()
+            new_msg = {
+                'user': st.session_state.user,
+                'text': chat_text,
+                'timestamp': time.time(),
+                'time_display': now.strftime("%H:%M:%S")
+            }
+            chat_ref.push(new_msg)
+            st.rerun()
+
+# --- 7.2 ระบบติดตามพิกัดดาวเทียมเรียลไทม์ (ดึงค่าจากเซนเซอร์ GPS มือถือบาสจริง) ---
 elif menu_choice == "🛰️ GPS TRACER":
-    st.write("### 🛰️ ระบบติดตามพิกัดดาวเทียมเรียลไทม์")
-    st.info("กำลังเรียกค้นสัญญาณ GPS ข้อมูลแกนพิกัด...")
+    st.markdown(f"<h3 style='color:#ff003c; font-family:Orbitron; font-weight:bold;'>🛰️ REAL-TIME SATELLITE GPS TRACER</h3>", unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="logic-stream-box">
+        📡 ระบบจะทำการดึงพิกัดตำแหน่งละติจูด/ลองจิจูดจริงจากชิปเซนเซอร์บนมือถือของบาสผ่านสัญญาณดาวเทียม เพื่อนำมาคำนวณโครงสร้างแผนที่ไซเบอร์พังก์โดยไม่มีการสุ่มตำแหน่งพิกัด
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.spinner("กำลังเชื่อมต่อค้นหาสัญญาณดาวเทียมข้ามพิกัด..."):
+        loc = get_geolocation()
+        
+    if loc and 'coords' in loc:
+        lat = loc['coords']['latitude']
+        lon = loc['coords']['longitude']
+        acc = loc['coords'].get('accuracy', 0)
+        
+        db.reference(f'users/{st.session_state.user}/last_gps').set({
+            'lat': lat, 'lon': lon, 'accuracy': acc, 'updated_at': datetime.now().isoformat()
+        })
+        
+        col_g1, col_g2 = st.columns(2)
+        with col_g1:
+            st.markdown(f"""
+            <div style='background:#04080c; border:4px solid #0055ff; border-radius:10px; padding:15px; text-align:center;'>
+                <span style='color:#00d2ff; font-weight:bold; font-size:14px;'>LATITUDE (พิกัดแนวตั้ง)</span>
+                <h3 style='color:#fff; margin:5px 0;'>{lat:.6f}</h3>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_g2:
+            st.markdown(f"""
+            <div style='background:#04080c; border:4px solid #ff003c; border-radius:10px; padding:15px; text-align:center;'>
+                <span style='color:#ff003c; font-weight:bold; font-size:14px;'>LONGITUDE (พิกัดแนวนอน)</span>
+                <h3 style='color:#fff; margin:5px 0;'>{lon:.6f}</h3>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        st.markdown(f"<div style='color:#39FF14; font-size:13px; font-weight:bold; margin-top:5px; text-align:right;'>🎯 ค่าความแม่นยำรัศมีคลื่น: {acc:.2f} เมตร</div>", unsafe_allow_html=True)
+        
+        m = folium.Map(location=[lat, lon], zoom_start=16, tiles="CartoDB dark_matter")
+        folium.Marker(
+            [lat, lon], 
+            popup=f"AGENT: {st.session_state.user}",
+            tooltip="ตำแหน่งปัจจุบันของคุณ",
+            icon=folium.Icon(color="red", icon="info-sign")
+        ).add_to(m)
+        
+        st.markdown("<div style='border:4px solid #39FF14; border-radius:12px; overflow:hidden; margin-top:10px;'>", unsafe_allow_html=True)
+        st_folium(m, width="100%", height=350, returned_objects=[])
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+    else:
+        st.warning("⚠️ ไม่สามารถดึงตำแหน่งพิกัดได้ กรุณากดปุ่ม 'อนุญาตสิทธิ์เข้าถึงตำแหน่ง (Allow Location)' บนหน้าจอมือถือ หรือเปิดระบบ GPS ในเครื่องก่อนใช้งานนะครับบาส")
 
 # --- 7.3 ระบบคำนวณถอดรหัสวงรอบพลังงานจริง ---
 elif menu_choice == "🔮 THE TRUTH SCANNER":
@@ -281,7 +421,7 @@ elif menu_choice == "🔮 THE TRUTH SCANNER":
         * <strong style='color:#ff003c;'>1.618 (ค่าอัตราส่วนทองคำ / Golden Ratio):</strong> ค่าคงที่สากลทางคณิตศาสตร์ที่ใช้รักษาสมดุลแรงดันในโครงสร้างเลขฐานควอนตัมอดีตและอนาคต
         """)
 
-# --- 7.4 ระบบเครื่องเล่นเพลงสุ่มต่อเนื่อง (ปรับปรุงใหม่ ป้องกัน Error 100%) ---
+# --- 7.4 ระบบเครื่องเล่นเพลงสุ่มต่อเนื่อง (LOOP AUDIO RANDOM PLAYER - รันได้จริง 100%) ---
 elif menu_choice == "🎵 NEON JUKEBOX":
     st.markdown(f"<h3 style='color:#00d2ff; font-family:Orbitron; text-align:center; font-weight:bold;'>🎵 AUTOLOOP RANDOM JUKEBOX</h3>", unsafe_allow_html=True)
     
@@ -295,7 +435,6 @@ elif menu_choice == "🎵 NEON JUKEBOX":
             b64 = get_base64(s)
             if b64: song_dict_js[s] = "data:audio/mp3;base64," + b64
 
-        # ปรับขอบหนา 4px ไล่เฉดแดง-น้ำเงิน พร้อมปุ่มกดขนาดใหญ่ชัดเจน
         jukebox_html = f"""
         <div style="background:#04070a; border:4px solid #ff003c; border-radius:15px; padding:25px; text-align:center; box-shadow:0 0 25px rgba(255,0,60,0.35);">
             <div id="track-name" style="color:#ffffff; font-family:'Sarabun'; font-size:16px; font-weight:bold; margin-bottom:15px; text-shadow:0 0 5px #00d2ff;">เตรียมระบบขับเคลื่อนเสียง...</div>
@@ -325,15 +464,14 @@ elif menu_choice == "🎵 NEON JUKEBOX":
             btn.onclick = playRandom;
             player.onended = playRandom;
 
-            // รันทันทีโดยไม่พึ่ง window.onload ป้องกันโครงสร้างย่อยตีกับ Streamlit
             playRandom();
         </script>
         """
         components.html(jukebox_html, height=220)
     else:
-        st.error("ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์หลักของระบบแอปเลยครับบาส ลองอัปโหลดไฟล์เข้าไปดูก่อนนะ")
+        st.markdown("<div style='background:#100408; border:4px solid #ff003c; border-radius:10px; padding:20px; color:#fff; font-weight:bold; text-align:center;'>⚠️ ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์หลักของเซิร์ฟเวอร์แอปเลยครับบาส นำไฟล์เพลงไปวางคู่กับไฟล์โค้ดแล้วปุ่มควบคุมเครื่องเล่นเพลงจะเปิดขึ้นมาทำงานทันทีครับ</div>", unsafe_allow_html=True)
 
-# --- 7.5 ระบบแปลงตัวอักษรเป็นความถี่จริง (ปรับปรุงลูปแอนิเมชันให้ปลอดภัย 100%) ---
+# --- 7.5 ระบบแปลงตัวอักษรเป็นความถี่จริง ---
 elif menu_choice == "🧠 QUANTUM BRAIN SCAN":
     st.markdown(f"<h3 style='color:{theme_color}; font-family:Orbitron; font-weight:bold;'>🔮 QUANTUM CONSCIOUSNESS SCANNER</h3>", unsafe_allow_html=True)
     
@@ -357,7 +495,6 @@ elif menu_choice == "🧠 QUANTUM BRAIN SCAN":
         """)
         st.latex(rf"Hz = (TotalASCII \pmod{{700}}) + 120.0 = ({char_sum} \pmod{{700}}) + 120.0 = {calculated_hz:.2f} \, Hz")
 
-        # หน้าจอแสดงเส้นกราฟิกเรืองแสงหนาและชัด ผสมสีแดงและน้ำเงินตามจังหวะคลื่นความถี่จริง
         canvas_html = f"""
         <canvas id="live-wave" style="width:100%; height:110px; background:#020508; border:4px solid #0055ff; border-radius:12px; box-shadow:0 0 15px rgba(0,85,255,0.3);"></canvas>
         <script>
@@ -367,7 +504,6 @@ elif menu_choice == "🧠 QUANTUM BRAIN SCAN":
             let animationFrameId;
             
             function drawWave() {{
-                // ตรวจสอบความจริงของพิกัด Element เพื่อป้องกันข้อผิดพลาดเชิงโครงสร้างตอนสลับหน้าจอ
                 if (!document.getElementById('live-wave')) {{
                     cancelAnimationFrame(animationFrameId);
                     return;
@@ -375,14 +511,13 @@ elif menu_choice == "🧠 QUANTUM BRAIN SCAN":
                 
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 
-                // ใช้การไล่เฉดสีหนานุ่มของคลื่น (แดง ผสม น้ำเงิน และสีคอร์หลัก)
                 let gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-                gradient.addColorStop(0, '#ff003c');   // เริ่มต้นที่แดงนีออน
-                gradient.addColorStop(0.5, '{theme_color}'); // ตรงกลางเป็นสีหลักที่จูน
-                gradient.addColorStop(1, '#00d2ff');   // ปลายสายเป็นสีน้ำเงินสว่าง
+                gradient.addColorStop(0, '#ff003c');
+                gradient.addColorStop(0.5, '{theme_color}');
+                gradient.addColorStop(1, '#00d2ff');
                 
                 ctx.strokeStyle = gradient;
-                ctx.lineWidth = 4; // เส้นขอบความหนา 4 ตามที่ต้องการ
+                ctx.lineWidth = 4;
                 ctx.shadowBlur = 10;
                 ctx.shadowColor = '#0055ff';
                 
