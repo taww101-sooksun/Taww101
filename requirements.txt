@@ -1,4 +1,4 @@
-streamlit>=1.35.0
+Streamlit>=1.35.0
 google-generativeai>=0.8.3
 pandas
 numpy
@@ -13,7 +13,7 @@ pytz
 geopy
 folium
 streamlit-folium
-firebase-admin
+firebase-admin==6.5.0
 timezonefinder
 streamlit-webrtc
 streamlit-autorefresh
@@ -30,5 +30,4 @@ scipy
 opencv-python-headless
 python-dotenv
 Flask==3.0.3
-   Flask-SocketIO==5.3.6
-   firebase-admin==6.5.0
+Flask-SocketIO==5.3.6
