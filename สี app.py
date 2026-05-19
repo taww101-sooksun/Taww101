@@ -256,7 +256,6 @@ if menu_choice == "💬 แชทรวม/เดี่ยว":
                 })
                 st.rerun()
 
-        
         with st.form("send_p_form", clear_on_submit=True):
             col1, col2 = st.columns([5,1])
             with col1: p_msg = st.text_input("พิมพ์ข้อความลับ...", label_visibility="collapsed")
