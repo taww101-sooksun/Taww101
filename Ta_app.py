@@ -45,7 +45,7 @@ def inject_cyberpunk_mainframe():
                 gap: 15px !important;
             }
             .stRadio label {
-                font-size: 18px !not important;
+                font-size: 18px !important;
                 font-weight: bold !important;
                 color: #00e5ff !important;
                 padding: 10px 15px !important;
@@ -204,7 +204,6 @@ if 'user_lon' not in st.session_state: st.session_state.user_lon = None
 # 5. MAIN GATEWAY: AUTHENTICATION (LOGIN / REGISTER)
 # =========================================================
 if not st.session_state.logged_in:
-    # หน้าหัวข้อแบบดิบๆ ล้ำๆ
     header_gate = f"""
     <div style="text-align:center; padding:20px 0;">
         <h1 style="color:#ff00de; font-family:'Orbitron'; letter-spacing:5px; text-shadow: 0 0 15px #ff00de;">🛡️ SYNAPSE ACCESS GATEWAY</h1>
@@ -276,7 +275,6 @@ with st.sidebar:
     st.markdown(f"<h3 style='color:#39FF14; font-family:Orbitron; font-size:18px; text-shadow:0 0 5px #39FF14;'>📟 OPERATOR TERMINAL</h3>", unsafe_allow_html=True)
     st.markdown(f"<div style='color:#00e5ff; font-size:14px; font-weight:bold; margin-bottom:10px;'>CURRENT AGENT: {st.session_state.user}</div>", unsafe_allow_html=True)
     
-    # รกรุงรังสถานะคอมพิวเตอร์
     st.markdown(f"""
     <div class="matrix-box">
         >> NET_STATUS: LINK_ESTABLISHED<br>
@@ -290,7 +288,6 @@ with st.sidebar:
     
     st.write("---")
     
-    # ตัวเลือกเมนูขนาดใหญ่จิ้มง่ายบนมือถือ
     menu_selection = st.radio(
         "NAVIGATION_SYSTEM",
         ["💬 ROOM_01: GLOBAL COMMS", "🛰️ ROOM_02: GPS TARGET", "🔮 ROOM_03: TRUTH SCAN", "🧬 ROOM_04: DESTINY ANALYST", "🎵 ROOM_05: SOUND SYSTEM"],
@@ -462,7 +459,13 @@ elif menu_selection == "🔮 ROOM_03: TRUTH SCAN":
     st.markdown("<p style='color:#527394; font-size:13px;'>**คำอธิบายห้อง:** ห้องประมวลผลค่าความถี่อ้างอิงจากหลักดาราศาสตร์และจันทรคติไทย ป้อนวันเดือนปีเกิดเพื่อวิเคราะห์ระดับคลื่นสมดุลของโครงสร้างชีวิต โดยคำนวณตามจริงไม่มีการโกหกหลอกลวง</p>", unsafe_allow_html=True)
     
     st.write("---")
-    birth_date_input = st.date_input("📅 ENTER CHRONO DATE (ป้อนวัน/เดือน/ปีเกิดที่ต้องการสแกน)", value=None, min_value=date(1950,1,1))
+    # ขยายขอบเขตอายุตั้งแต่ปี 1960 - 2026 เพื่อให้รองรับคนใช้งานได้ทุกช่วงวัยตามต้องการ
+    birth_date_input = st.date_input(
+        "📅 ENTER CHRONO DATE (ป้อนวัน/เดือน/ปีเกิดที่ต้องการสแกน)", 
+        value=None, 
+        min_value=date(1960, 1, 1),
+        max_value=date(2026, 12, 31)
+    )
     
     if birth_date_input:
         scan_res = calculate_quantum_logic(birth_date_input)
@@ -494,7 +497,6 @@ elif menu_selection == "🔮 ROOM_03: TRUTH SCAN":
         </div>
         """, unsafe_allow_html=True)
         
-        # ถอดเลขเด่นโชว์รกรุงรัง
         extracted_digits = str(scan_res['res']).replace('.', '')
         st.success(f"🧬 EXTRAPOLATED CORE MATRIX CODE: {extracted_digits[1:3]} || {extracted_digits[2:4]}")
     else:
@@ -503,10 +505,18 @@ elif menu_selection == "🔮 ROOM_03: TRUTH SCAN":
 # --- 8.4 ห้องพยากรณ์วงจรพิกัดชีวิต (DESTINY ANALYST) ---
 elif menu_selection == "🧬 ROOM_04: DESTINY ANALYST":
     st.markdown("<h2 style='color:#39FF14; font-family:Orbitron; font-size:22px;'>🧬 ROOM_04 // FULL-CYCLE DESTINY RADAR SCANNERS</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color:#527394; font-size:13px;'>**คำอธิบายห้อง:** ห้องจำลองคลื่นความถี่ล่วงหน้าและย้อนหลัง 365 วัน ระบบจะทำการเทียบค่าน้ำหนักดวงดาวเพื่อตรวจหาจุด "บรรจบ", "สะท้อน (Gap 4)", หรือ "แยกตัว" จากค่ารหัสหลักของผู้ใช้อย่างละเอียด</p>", unsafe_allow_html=True)
+    # แก้ไข Syntax บั๊กเครื่องหมายคำพูดซ้อนกันตรงบรรทัดนี้แล้ว
+    st.markdown("<p style='color:#527394; font-size:13px;'>**คำอธิบายห้อง:** ห้องจำลองคลื่นความถี่ล่วงหน้าและย้อนหลัง 365 วัน ระบบจะทำการเทียบค่าน้ำหนักดวงดาวเพื่อตรวจหาจุด \"บรรจบ\", \"สะท้อน (Gap 4)\", หรือ \"แยกตัว\" จากค่ารหัสหลักของผู้ใช้อย่างละเอียด</p>", unsafe_allow_html=True)
     
     st.write("---")
-    base_dob = st.date_input("👤 SELECT CHRONO PROFILE ORIGIN (ป้อนวันเกิดของคุณเพื่อเป็นจุดศูนย์กลาง)", value=None, min_value=date(1950,1,1), key="destiny_dob")
+    # ขยายขอบเขตอายุตั้งแต่ปี 1960 - 2026 เพื่อให้ผู้ใช้ทุกช่วงอายุเข้ามาคีย์ข้อมูลระบบได้
+    base_dob = st.date_input(
+        "👤 SELECT CHRONO PROFILE ORIGIN (ป้อนวันเกิดของคุณเพื่อเป็นจุดศูนย์กลาง)", 
+        value=None, 
+        min_value=date(1960, 1, 1),
+        max_value=date(2026, 12, 31),
+        key="destiny_dob"
+    )
     
     if base_dob:
         origin_profile = calculate_quantum_logic(base_dob)
@@ -524,7 +534,6 @@ elif menu_selection == "🧬 ROOM_04: DESTINY ANALYST":
         with sc_col2:
             future_slider = st.slider("🔮 TIME RANGE FORWARD (สแกนล่วงหน้า/อนาคต - วัน)", 0, 365, 180)
             
-        # ฟังก์ชันวงรอบตรวจสอบพิกัดรหัสเวลาแบบรกรุงรังสะใจ
         def execute_timeline_scan(target_code, days_range, direction_mode="future"):
             scanned_records = []
             today_date = date.today()
@@ -574,7 +583,6 @@ elif menu_selection == "🎵 ROOM_05: SOUND SYSTEM":
     st.markdown("<h2 style='color:#00e5ff; font-family:Orbitron; font-size:22px;'>🎵 ROOM_05 // LOCAL ARCHIVE MP3 AUDIO PLAYER</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color:#527394; font-size:13px;'>**คำอธิบายห้อง:** ระบบเครื่องเล่นเพลงที่คัดกรองไฟล์นามสกุล `.mp3` ทั้งหมดในโฟลเดอร์ปฏิบัติการของแอปพลิเคชัน เพื่อส่งคลื่นสัญญาณเสียงปรับสภาพแวดล้อมทางสมอง</p>", unsafe_allow_html=True)
     
-    # ดึงรายชื่อไฟล์เพลง
     execution_directory = os.path.dirname(__file__) if __file__ else "."
     scanned_mp3_files = [file for file in os.listdir(execution_directory) if file.endswith('.mp3')]
     
@@ -583,7 +591,6 @@ elif menu_selection == "🎵 ROOM_05: SOUND SYSTEM":
     else:
         st.markdown("<p style='color:#fff; font-size:16px;'>🎚️ SELECT AUDIO WAVEFORM (คลิกเลือกไฟล์เพลงเพื่อส่งสัญญาณ):</p>", unsafe_allow_html=True)
         
-        # ตัวเลือกเพลงขนาดใหญ่กดง่าย
         user_picked_song = st.selectbox("AUDIO_FILE_SELECT", options=scanned_mp3_files, label_visibility="collapsed")
         
         if user_picked_song:
@@ -595,7 +602,6 @@ elif menu_selection == "🎵 ROOM_05: SOUND SYSTEM":
             </div>
             """, unsafe_allow_html=True)
             
-            # แปลงและฝัง HTML แท็กสำหรับเล่นเสียง
             try:
                 with open(target_audio_fullpath, "rb") as audio_file:
                     encoded_audio_bytes = base64.b64encode(audio_file.read()).decode()
