@@ -182,8 +182,6 @@ elif menu_choice == "🛰️ GPS TRACER":
     # แก้ไขจากของเดิมที่เป็น Error ให้เหลือแค่นี้พอครับ ทำงานได้จริงแน่นอน
 st_folium(m, width="100%", height=400)
 
-        st.warning("🔄 กำลังรอการตอบรับพิกัด หรือบราว์เซอร์ของคุณไม่ได้เปิดแชร์ตำแหน่งโลเคชั่น")
-
 # --- 7.3 ระบบคำนวณวงรอบพลังงาน ---
 elif menu_choice == "🔮 THE TRUTH SCANNER":
     st.markdown(f"<h2 style='color:{theme_color}; text-align:center; font-family:Orbitron;'>🧬 QUANTUM TIME DECODER</h2>", unsafe_allow_html=True)
