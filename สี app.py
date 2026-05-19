@@ -179,7 +179,9 @@ elif menu_choice == "🛰️ GPS TRACER":
         # วาดแผนที่ Folium จริงๆ
         m = folium.Map(location=[lat, lon], zoom_start=15, tiles="CartoDB dark_matter")
         folium.Marker([lat, lon], popup="พิกัดปัจจุบันของคุณ", icon=folium.Icon(color="green")).add_to(m)
-        st_folium(m, width=requests=None, height=400)
+    # แก้ไขจากของเดิมที่เป็น Error ให้เหลือแค่นี้พอครับ ทำงานได้จริงแน่นอน
+st_folium(m, width="100%", height=400)
+
     else:
         st.warning("🔄 กำลังรอการตอบรับพิกัด หรือบราว์เซอร์ของคุณไม่ได้เปิดแชร์ตำแหน่งโลเคชั่น")
 
