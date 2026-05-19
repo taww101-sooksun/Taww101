@@ -29,3 +29,6 @@ Pillow
 scipy
 opencv-python-headless
 python-dotenv
+Flask==3.0.3
+   Flask-SocketIO==5.3.6
+   firebase-admin==6.5.0
