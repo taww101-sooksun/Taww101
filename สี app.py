@@ -228,7 +228,7 @@ if menu_choice == "💬 แชทรวม/เดี่ยว":
     st.markdown("#### 🔒 PRIVATE DIRECT CHAT (ห้องกระซิบส่งข้อมูลลับส่วนตัว)")
     target_user = st.text_input("กรอก AGENT ID ปลายทางที่ต้องการส่งหาลับ ๆ:")
     
-        if target_user:
+    if target_user:
         room_id = "_".join(sorted([st.session_state.user, target_user.strip()]))
         # 🎯 จุดที่ 1: เปลี่ยนจาก priv-ref เป็น priv_ref (แก้ไข SyntaxError)
         priv_ref = db.reference(f'private_chats/{room_id}')
