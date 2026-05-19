@@ -228,10 +228,11 @@ if menu_choice == "💬 แชทรวม/เดี่ยว":
     st.markdown("#### 🔒 PRIVATE DIRECT CHAT (ห้องกระซิบส่งข้อมูลลับส่วนตัว)")
     target_user = st.text_input("กรอก AGENT ID ปลายทางที่ต้องการส่งหาลับ ๆ:")
     
-    if target_user:
+        if target_user:
         room_id = "_".join(sorted([st.session_state.user, target_user.strip()]))
-        priv-ref = db.reference(f'private_chats/{room_id}')
-        p_data = priv-ref.get()
+        # 🎯 จุดที่ 1: เปลี่ยนจาก priv-ref เป็น priv_ref (แก้ไข SyntaxError)
+        priv_ref = db.reference(f'private_chats/{room_id}')
+        p_data = priv_ref.get()
         
         p_chat_html = "<div style='height:120px; overflow-y:auto; border:4px solid #ff003c; border-radius:8px; padding:10px; background:#020508; color:#fff; font-size:13px;'>"
         if p_data and isinstance(p_data, dict):
@@ -242,6 +243,19 @@ if menu_choice == "💬 แชทรวม/เดี่ยว":
             p_chat_html += "<div style='color:#555; text-align:center; padding-top:40px;'>ไม่มีข้อมูลข้อความลับคู่นี้</div>"
         p_chat_html += "</div>"
         components.html(p_chat_html, height=135)
+        
+        with st.form("send_p_form", clear_on_submit=True):
+            col1, col2 = st.columns([5,1])
+            with col1: p_msg = st.text_input("พิมพ์ข้อความลับ...", label_visibility="collapsed")
+            with col2: p_sub = st.form_submit_button("ส่งลับ", use_container_width=True)
+            if p_sub and p_msg:
+                # 🎯 จุดที่ 2: เปลี่ยนตรงนี้ให้เป็น priv_ref เหมือนกันเพื่อเรียกใช้งาน
+                priv_ref.push({
+                    'sender': st.session_state.user, 'receiver': target_user.strip(),
+                    'text': p_msg, 'timestamp': time.time()
+                })
+                st.rerun()
+
         
         with st.form("send_p_form", clear_on_submit=True):
             col1, col2 = st.columns([5,1])
