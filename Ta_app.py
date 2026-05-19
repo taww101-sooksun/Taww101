@@ -5,7 +5,7 @@ import base64
 # ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (กู้คืนสีสัน Neon ขั้นสุด)
 # ==========================================
 
-st.set_page_config(page_title="Synapse Neon Mixer", layout="centered")
+st.set_page_config(page_title="Synapse", layout="centered")
 
 def get_base64_image(image_path):
     try:
@@ -62,7 +62,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">SYNAPSE NEON MIXER</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">SYNAPSE</h1>', unsafe_allow_html=True)
 
 # ==========================================
 # ส่วนที่ 2: HTML/JS - ระบบเล่นต่อเนื่อง + สีสันสะบัด
