@@ -11,6 +11,70 @@ import base64
 import os
 import pandas as pd
 from datetime import datetime, date, timedelta
+import streamlit as st
+
+# 1. ตั้งค่าสีและขนาดฟอนต์ตามที่ชอบ (เน้นปุ่มใหญ่ กดง่าย ชัดเจน)
+st.markdown("""
+    <style>
+    /* ปรับหัวข้อและปุ่มให้ใหญ่ขึ้น เหมาะกับจิ้มบนมือถือ */
+    .stButton>button {
+        width: 100%;
+        height: 55px;
+        font-size: 18px !important;
+        font-weight: bold;
+    }
+    h1, h2, h3 {
+        color: #FF4B4B; /* สีแดง/น้ำเงินตามคอนเซปต์แอป */
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# 2. จัดการระบบห้องด้วย Session State
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 'login' # เริ่มต้นที่หน้าล็อกอิน
+
+# ฟังก์ชันสำหรับเปลี่ยนห้องอย่างปลอดภัย
+def change_room(room_name):
+    st.session_state.current_page = room_name
+    st.invalidate() # ช่วยเคลียร์สถานะเก่า
+    st.rerun() # บังคับให้โหลดหน้าจอใหม่ทันที เพื่อป้องกันข้อผิดพลาด removeChild
+
+# --- การควบคุมการแสดงผลแต่ละห้อง ---
+placeholder = st.empty() # ใช้ Container เปล่าควบคุมเพื่อความเสถียร
+
+with placeholder.container():
+    if st.session_state.current_page == 'login':
+        st.title("ลงชื่อเข้าใช้งาน")
+        # โค้ดหน้าล็อกอิน...
+        if st.button("เข้าสู่ระบบ (ไปยังห้องหลัก)"):
+            change_room('main_room')
+
+    elif st.session_state.current_page == 'main_room':
+        st.title("ห้องหลัก (COMMAND CENTER)")
+        
+        # ปรับขนาดปุ่มเมนูให้ใหญ่ จิ้มง่าย ไม่หลุดไปโดนส่วนอื่น
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🎵 ห้องเครื่องเล่นเพลง"):
+                change_room('music_room')
+        with col2:
+            if st.button("💬 ห้องแชท"):
+                change_room('chat_room')
+
+    elif st.session_state.current_page == 'music_room':
+        st.title("🎵 ห้องเครื่องเล่นเพลง")
+        
+        # ตัวอย่างการดึงเพลงจากโฟลเดอร์เดียวกัน
+        st.write("รายชื่อเพลงในระบบ...")
+        
+        if st.button("⬅️ กลับหน้าหลัก"):
+            change_room('main_room')
+
+    elif st.session_state.current_page == 'chat_room':
+        st.title("💬 ห้องแชท")
+        # โค้ดห้องแชท...
+        if st.button("⬅️ กลับหน้าหลัก"):
+            change_room('main_room')
 
 # =========================================================
 # 1. INITIALIZATION & HIGH-LEVEL NEON CYBERPUNK UI
