@@ -1,6 +1,7 @@
 import streamlit as st
+
 # =========================================================
-# 1. INITIALIZATION & HIGH-LEVEL NEON CYBERPUNK UI (ต้องอยู่บนสุดเสมือนจริง)
+# 1. INITIALIZATION & HIGH-LEVEL NEON CYBERPUNK UI
 # =========================================================
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
 
@@ -17,34 +18,27 @@ import os
 import pandas as pd
 from datetime import datetime, date, timedelta
 
-# ฉีดสไตล์ CSS ควบคุมหน้าจอ (ปรับปุ่มใหญ่ ฟอนต์ชัด สีน้ำเงิน-แดง-เขียวตามคอนเซปต์)
 def inject_cyberpunk_mainframe():
     st.markdown("""
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Sarabun:wght@300;600&display=swap');
             
-            /* พื้นหลังและฟอนต์ภาพรวม */
             .stApp { 
                 background: radial-gradient(circle at 50% 50%, #03070a 0%, #010204 100%) !important;
                 font-family: 'Sarabun', sans-serif;
                 color: #e0e0e0;
             }
             
-            /* ซ่อนเมนู Streamlit เดิม */
             #MainMenu, footer, header { visibility: hidden; }
             .stApp { top: -60px; }
             
-            /* ปรับแต่งเมนูด้านซ้าย (Sidebar) ให้ดูล้ำขึ้น */
             [data-testid="stSidebar"] {
                 background-color: #03060a !important;
                 border-right: 3px solid #39FF14 !important;
                 box-shadow: 5px 0 15px rgba(57, 255, 20, 0.1);
             }
             
-            /* ปรับขนาดตัวเลือก Radio Menu ให้ใหญ่ จิ้มง่ายบนมือถือ */
-            .stRadio>div {
-                gap: 15px !important;
-            }
+            .stRadio>div { gap: 15px !important; }
             .stRadio label {
                 font-size: 18px !important;
                 font-weight: bold !important;
@@ -64,7 +58,6 @@ def inject_cyberpunk_mainframe():
                 background: rgba(57, 255, 20, 0.05) !important;
             }
             
-            /* ตกแต่งปุ่มกดทั่วไป ให้หนา ชัดเจน จิ้มง่าย */
             .stButton>button {
                 font-size: 18px !important;
                 font-weight: bold !important;
@@ -76,7 +69,7 @@ def inject_cyberpunk_mainframe():
                 text-shadow: 0 0 5px #ff00de;
                 transition: 0.3s;
                 width: 100%;
-                height: 55px; /* ความสูงปุ่มกดง่ายไม่พลาด */
+                height: 55px;
             }
             .stButton>button:hover {
                 border-color: #39FF14 !important;
@@ -85,7 +78,6 @@ def inject_cyberpunk_mainframe():
                 box-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
             }
             
-            /* กล่องแสดงสถานะสไตล์รกรุงรัง (Matrix Terminals) */
             .matrix-box {
                 background-color: #04070a;
                 border: 2px solid #101a24;
@@ -99,7 +91,6 @@ def inject_cyberpunk_mainframe():
                 overflow: hidden;
             }
             
-            /* การ์ดแกนกลางความจริง */
             .truth-card-blue {
                 background: linear-gradient(135deg, rgba(4,14,24,0.9) 0%, rgba(2,5,10,0.95) 100%);
                 border: 4px solid #00e5ff;
@@ -117,7 +108,6 @@ def inject_cyberpunk_mainframe():
                 margin-bottom: 15px;
             }
             
-            /* ตัวเลขพิกัดใหญ่ๆ ชัดๆ */
             .giant-number {
                 font-family: 'Orbitron', sans-serif;
                 font-size: 38px !important;
@@ -125,19 +115,11 @@ def inject_cyberpunk_mainframe():
                 text-align: center;
                 margin: 10px 0;
             }
-            
-            /* ตารางข้อมูลคอมพิวเตอร์ */
-            .stDataFrame {
-                border: 2px solid #101a24 !important;
-                border-radius: 8px !important;
-                background-color: #020406 !important;
-            }
         </style>
     """, unsafe_allow_html=True)
 
 inject_cyberpunk_mainframe()
 
-# --- ฟังก์ชันตัวช่วยแปลงไฟล์เข้ารหัส Base64 ---
 def get_base64_data(file_path):
     if os.path.exists(file_path):
         with open(file_path, "rb") as f:
@@ -161,7 +143,7 @@ if not firebase_admin._apps:
         st.error(f"📡 MAIN CONNECTOR FAILURE: {e}")
 
 # =========================================================
-# 3. CORE LOGIC ENGINE (คณิตศาสตร์ความจริงเดี่ยว)
+# 3. CORE LOGIC ENGINE
 # =========================================================
 def calculate_quantum_logic(dt):
     if dt is None: return None
@@ -203,10 +185,10 @@ if 'user_lat' not in st.session_state: st.session_state.user_lat = None
 if 'user_lon' not in st.session_state: st.session_state.user_lon = None
 
 # =========================================================
-# 5. MAIN GATEWAY: AUTHENTICATION (LOGIN / REGISTER)
+# 5. MAIN GATEWAY: AUTHENTICATION
 # =========================================================
 if not st.session_state.logged_in:
-    header_gate = f"""
+    header_gate = """
     <div style="text-align:center; padding:20px 0;">
         <h1 style="color:#ff00de; font-family:'Orbitron'; letter-spacing:5px; text-shadow: 0 0 15px #ff00de;">🛡️ SYNAPSE ACCESS GATEWAY</h1>
         <p style="color:#527394; font-family:'Orbitron'; font-size:11px;">SYSTEM HARDWARE DEPLOYMENT // CORE V.3.5 // SECURITY MANIFEST</p>
@@ -231,7 +213,6 @@ if not st.session_state.logged_in:
                         st.rerun()
                     else:
                         st.error("🚨 ACCESS DENIED: ข้อมูลตรวจสอบไม่ผ่านรหัสความปลอดภัย")
-                        
         else:
             with st.form("reg_form"):
                 new_user = st.text_input("NEW AGENT ID", placeholder="ตั้งชื่อผู้ใช้ใหม่...")
@@ -246,7 +227,7 @@ if not st.session_state.logged_in:
     st.stop()
 
 # =========================================================
-# 6. HEADER COMMAND CENTER (DYNAMIC TEXT / LOGO / SLOGAN)
+# 6. HEADER COMMAND CENTER
 # =========================================================
 header_mainframe = f"""
 <style>
@@ -281,7 +262,6 @@ with st.sidebar:
     <div class="matrix-box">
         >> NET_STATUS: LINK_ESTABLISHED<br>
         >> NODE: CLOUD_FIREBASE_SYS<br>
-        >> BUFFER: ACTIVE_ST_RECOMP<br>
         >> MATRIX_LAT: {st.session_state.user_lat if st.session_state.user_lat else 'NULL'}<br>
         >> MATRIX_LON: {st.session_state.user_lon if st.session_state.user_lon else 'NULL'}<br>
         >> SLOGAN_HASH: "อยู่นิ่งๆ ไม่เจ็บตัว"
@@ -289,12 +269,10 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     st.write("---")
-    
-    # ตัวควบคุมการเปลี่ยนหน้าของจริง ยึดจาก Radio ตัวนี้เป็นหลักเดี่ยว
     menu_selection = st.radio(
         "NAVIGATION_SYSTEM",
         ["💬 ROOM_01: GLOBAL COMMS", "🛰️ ROOM_02: GPS TARGET", "🔮 ROOM_03: TRUTH SCAN", "🧬 ROOM_04: DESTINY ANALYST", "🎵 ROOM_05: SOUND SYSTEM"],
-        label_visibility="collapsed"
+        key="main_navigation"
     )
     
     st.write("---")
@@ -304,11 +282,11 @@ with st.sidebar:
         st.rerun()
 
 # =========================================================
-# 8. HARDWARE WORKSPACE CAPABILITIES (เรียกทำงานตามเมนูที่เลือกจริง)
+# 8. HARDWARE WORKSPACE CAPABILITIES
 # =========================================================
-placeholder = st.empty()
+main_content_area = st.empty()
 
-with placeholder.container():
+with main_content_area.container():
     # --- 8.1 ห้องแชทวิทยุกลาง (GLOBAL COMMS) ---
     if menu_selection == "💬 ROOM_01: GLOBAL COMMS":
         st.markdown("<h2 style='color:#39FF14; font-family:Orbitron; font-size:22px;'>💬 ROOM_01 // GLOBAL CHATROOM TELEMETRY</h2>", unsafe_allow_html=True)
@@ -319,18 +297,17 @@ with placeholder.container():
             #screen-frame {{
                 background: rgba(2,5,10,0.98); border: 2px solid {theme_green}; border-radius: 10px;
                 height: 380px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column;
-                box-shadow: inset 0 0 15px rgba(57, 255, 20, 0.1);
             }}
             .bubble {{ padding: 10px 14px; border-radius: 8px; margin: 6px 0; max-width: 85%; color: #fff; font-size: 14px; }}
             .me {{ background: {theme_green}12; border-right: 4px solid {theme_green}; align-self: flex-end; }}
             .others {{ background: #101620; border-left: 4px solid #ff00de; align-self: flex-start; }}
             .notif-capsule {{ background: #0c141c; color: #527394; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-family: 'Orbitron'; }}
-            .signal-alert {{ background: #ff0055 !important; color: white !important; box-shadow: 0 0 10px #ff0055; font-weight: bold; }}
+            .signal-alert {{ background: #ff0055 !important; color: white !important; font-weight: bold; }}
         </style>
 
         <div id="screen-frame">
             <div style="display:flex; justify-content:space-between; margin-bottom:10px; border-bottom: 1px solid #101a24; padding-bottom: 5px;">
-                <span style="color:{theme_green}; font-family:'Orbitron'; font-size:10px; letter-spacing: 1px;">📡 DATA_STREAM_OPEN</span>
+                <span style="color:{theme_green}; font-family:'Orbitron'; font-size:10px;">📡 DATA_STREAM_OPEN</span>
                 <span id="notif-box" class="notif-capsule">0 SIGNAL</span>
             </div>
             <div id="msg-terminal-area" style="display:flex; flex-direction:column;"></div>
@@ -365,9 +342,9 @@ with placeholder.container():
                 element.className = "bubble " + (checkMe ? "me" : "others");
                 element.style.alignSelf = checkMe ? 'flex-end' : 'flex-start';
                 
-                let block = `<div style="font-size:10px; color:#527394; font-family:'Orbitron'; margin-bottom:4px;">${{data.user}}</div>`;
+                let block = `<div style="font-size:10px; color:#527394; font-family:'Orbitron';">${{data.user}}</div>`;
                 if(data.text) block += `<div>${{data.text}}</div>`;
-                if(data.img) block += `<img src="data:image/png;base64,${{data.img}}" style="max-width:100%; border-radius:6px; margin-top:6px; border: 1px solid #101a24;">`;
+                if(data.img) block += `<img src="data:image/png;base64,${{data.img}}" style="max-width:100%; border-radius:6px; margin-top:6px;">`;
                 
                 element.innerHTML = block;
                 area.appendChild(element);
@@ -419,201 +396,55 @@ with placeholder.container():
     # --- 8.2 ห้องเรดาร์ระบุพิกัดดาวเทียม (GPS TARGET) ---
     elif menu_selection == "🛰️ ROOM_02: GPS TARGET":
         st.markdown("<h2 style='color:#00e5ff; font-family:Orbitron; font-size:22px;'>🛰️ ROOM_02 // GPS TARGET LOCKING TRACER</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#527394; font-size:13px;'>**คำอธิบายห้อง:** ห้องเชื่อมโยงระบบพิกัดระบุตำแหน่งผ่านดาวเทียม จะอ่านค่าฮาร์ดแวร์ GPS บนโทรศัพท์มือถือของคุณแบบเรียลไทม์ และรายงานตำแหน่งที่ตั้งปัจจุบันลงแผนที่ภาพถ่ายดาวเทียมเพื่อบันทึกพิกัดค่าย</p>", unsafe_allow_html=True)
         
         satellite_location = get_geolocation()
-
         if satellite_location and 'coords' in satellite_location:
             st.session_state.user_lat = satellite_location['coords']['latitude']
             st.session_state.user_lon = satellite_location['coords']['longitude']
             offset_range = satellite_location['coords'].get('accuracy', 0)
+            st.success(f"🎯 TARGET LOCKED: ตรึงพิกัดดาวเทียมเรียบร้อย! (ความคลาดเคลื่อน: {offset_range:.1f} เมตร)")
             
-            st.success(f"🎯 TARGET LOCKED: ตรึงพิกัดดาวเทียมเรียบร้อย! (ระดับความคลาดเคลื่อนทางเวกเตอร์: {offset_range:.1f} เมตร)")
-            
-            c_lat = st.session_state.user_lat
-            c_lon = st.session_state.user_lon
-
-            folium_map = folium.Map(
-                location=[c_lat, c_lon], 
-                zoom_start=18, 
-                tiles='https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', 
-                attr='Google Satellite Hybrid'
-            )
-
-            folium.Marker(
-                [c_lat, c_lon], 
-                icon=folium.Icon(color='red', icon='crosshairs', prefix='fa')
-            ).add_to(folium_map)
-
+            folium_map = folium.Map(location=[st.session_state.user_lat, st.session_state.user_lon], zoom_start=18)
+            folium.Marker([st.session_state.user_lat, st.session_state.user_lon], icon=folium.Icon(color='red')).add_to(folium_map)
             st_folium(folium_map, width="100%", height=420)
-
-            if st.button("🛰️ SYNC POSITION TO CLOUD STORAGE", use_container_width=True):
-                try:
-                    db.reference(f'users/{st.session_state.user}').update({
-                        'lat': c_lat, 'lon': c_lon, 'ts': time.time()
-                    })
-                    st.toast("อัปเดตพิกัดส่งเข้าศูนย์กลางย่อยแล้ว")
-                except Exception as e: 
-                    st.error(f"Datalink Error: {e}")
         else:
-            st.warning("🛰️ WAITING FOR SIGNAL: กำลังประมวลผลดักฟังพิกัดจากโมเด็มเครื่อง... โปรดกดยอมรับสิทธิ์การเข้าถึงพิกัดบนบราวเซอร์มือถือด้วยครับ")
+            st.warning("🛰️ WAITING FOR SIGNAL: โปรดกดเปิดสิทธิ์ยอมรับ GPS บนหน้าจอบราวเซอร์มือถือด้วยครับ")
 
     # --- 8.3 ห้องถอดรหัสความจริงควอนตัม (TRUTH SCAN) ---
     elif menu_selection == "🔮 ROOM_03: TRUTH SCAN":
         st.markdown("<h2 style='color:#ff00de; font-family:Orbitron; font-size:22px;'>🔮 ROOM_03 // THE QUANTUM TRUTH SCANNER TERMINAL</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#527394; font-size:13px;'>**คำอธิบายห้อง:** ห้องประมวลผลค่าความถี่อ้างอิงจากหลักดาราศาสตร์และจันทรคติไทย ป้อนวันเดือนปีเกิดเพื่อวิเคราะห์ระดับคลื่นสมดุลของโครงสร้างชีวิต โดยคำนวณตามจริงไม่มีการโกหกหลอกลวง</p>", unsafe_allow_html=True)
         
-        st.write("---")
-        birth_date_input = st.date_input(
-            "📅 ENTER CHRONO DATE (ป้อนวัน/เดือน/ปีเกิดที่ต้องการสแกน)", 
-            value=None, 
-            min_value=date(1960, 1, 1),
-            max_value=date(2026, 12, 31)
-        )
-        
+        birth_date_input = st.date_input("📅 ENTER CHRONO DATE (ป้อนวัน/เดือน/ปีเกิด)", value=None, min_value=date(1960, 1, 1), max_value=date(2026, 12, 31))
         if birth_date_input:
             scan_res = calculate_quantum_logic(birth_date_input)
-            
             col_t1, col_t2 = st.columns(2)
             with col_t1:
-                st.markdown(f"""
-                <div class="truth-card-blue">
-                    <div style="color:#00e5ff; font-family:'Orbitron'; font-size:12px;">QUANTUM REGISTRY DATA</div>
-                    <div style="color:#fff; font-size:18px; margin-top:10px;">พิกัดวันเกิด: <b>วัน{scan_res['day']}</b></div>
-                    <div style="color:#fff; font-size:18px;">จันทรคติ: <b>{scan_res['phase']}</b></div>
-                    <div style="color:#00e5ff; font-size:18px;">ปีนักษัตร: <b>ปี{scan_res['zodiac']}</b></div>
-                </div>
-                """, unsafe_allow_html=True)
-                
+                st.markdown(f'<div class="truth-card-blue">วันเกิด: <b>วัน{scan_res["day"]}</b><br>จันทรคติ: <b>{scan_res["phase"]}</b></div>', unsafe_allow_html=True)
             with col_t2:
-                st.markdown(f"""
-                <div class="truth-card-pink">
-                    <div style="color:#ff00de; font-family:'Orbitron'; font-size:12px;">COSMIC INDEX COMPLETED</div>
-                    <div class="giant-number" style="color:#ff00de; text-shadow:0 0 10px #ff00de;">{scan_res['res']}</div>
-                    <div style="color:#8ca5bf; font-size:12px; text-align:center;">สมการคณิตศาสตร์: <code>{scan_res['formula']}</code></div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-            st.markdown(f"""
-            <div class="matrix-box" style="font-size:14px; color:#fff; border-left:4px solid #39FF14;">
-                <b>📡 การวิเคราะห์สภาวะระบบ:</b> {scan_res['type']}<br>
-                ความถี่ตัวเลขระดับย่อยถูกถอดรหัสออกมาตามความเป็นจริงของสมดุลรอบวงโคจรดวงจันทร์ ค่านิ่ง เสถียร ไม่มีการแปรผันหลอกลวง
-            </div>
-            """, unsafe_allow_html=True)
-            
-            extracted_digits = str(scan_res['res']).replace('.', '')
-            st.success(f"🧬 EXTRAPOLATED CORE MATRIX CODE: {extracted_digits[1:3]} || {extracted_digits[2:4]}")
-        else:
-            st.info("💡 PANEL STANDBY: โปรดป้อนข้อมูลลงในระบบตารางเวลาด้านบนเพื่อทำการสแกนประมวลผล")
+                st.markdown(f'<div class="truth-card-pink"><div class="giant-number">{scan_res["res"]}</div></div>', unsafe_allow_html=True)
 
     # --- 8.4 ห้องพยากรณ์วงจรพิกัดชีวิต (DESTINY ANALYST) ---
     elif menu_selection == "🧬 ROOM_04: DESTINY ANALYST":
         st.markdown("<h2 style='color:#39FF14; font-family:Orbitron; font-size:22px;'>🧬 ROOM_04 // FULL-CYCLE DESTINY RADAR SCANNERS</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#527394; font-size:13px;'>**คำอธิบายห้อง:** ห้องจำลองคลื่นความถี่ล่วงหน้าและย้อนหลัง 365 วัน ระบบจะทำการเทียบค่าน้ำหนักดวงดาวเพื่อตรวจหาจุด \"บรรจบ\", \"สะท้อน (Gap 4)\", หรือ \"แยกตัว\" จากค่ารหัสหลักของผู้ใช้อย่างละเอียด</p>", unsafe_allow_html=True)
-        
-        st.write("---")
-        base_dob = st.date_input(
-            "👤 SELECT CHRONO PROFILE ORIGIN (ป้อนวันเกิดของคุณเพื่อเป็นจุดศูนย์กลาง)", 
-            value=None, 
-            min_value=date(1960, 1, 1),
-            max_value=date(2026, 12, 31),
-            key="destiny_dob"
-        )
-        
+        base_dob = st.date_input("👤 SELECT CHRONO PROFILE ORIGIN", value=None, min_value=date(1960, 1, 1), max_value=date(2026, 12, 31), key="destiny_dob")
         if base_dob:
-            origin_profile = calculate_quantum_logic(base_dob)
-            
-            st.markdown(f"""
-            <div class="matrix-box" style="font-size:13px;">
-                >> CORE_TARGET_INDEX: {origin_profile['res']} || SYSTEM: {origin_profile['type']}<br>
-                >> INITIATING RADAR SWEEP ACROSS 365-DAY TIMELINE WINDOW...
-            </div>
-            """, unsafe_allow_html=True)
-            
-            sc_col1, sc_col2 = st.columns(2)
-            with sc_col1:
-                past_slider = st.slider("⏪ TIME RANGE BACKWARD (สแกนย้อนหลัง/อดีต - วัน)", 0, 365, 180)
-            with sc_col2:
-                future_slider = st.slider("🔮 TIME RANGE FORWARD (สแกนล่วงหน้า/อนาคต - วัน)", 0, 365, 180)
-                
-            def execute_timeline_scan(target_code, days_range, direction_mode="future"):
-                scanned_records = []
-                today_date = date.today()
-                
-                for index in range(days_range + 1):
-                    eval_date = today_date + timedelta(days=index) if direction_mode == "future" else today_date - timedelta(days=index)
-                    day_logic = calculate_quantum_logic(eval_date)
-                    delta_gap = abs(target_code - day_logic['res'])
-                    
-                    status_stamp = "อิสระ"
-                    if delta_gap < 0.5: status_stamp = "💎 MATRIX_CONVERGE (บรรจบใกล้ชิด)"
-                    elif 3.8 <= delta_gap <= 4.2: status_stamp = "🌀 SIGNAL_REFLECT (สะท้อน/ดึงดูดสูง)"
-                    elif delta_gap > 10.0: status_stamp = "🚩 VECTOR_DIVERGE (แยกตัว/อิสระหลุดพ้น)"
-                    
-                    if status_stamp != "อิสระ":
-                        scanned_records.append({
-                            "พิกัดวันที่": eval_date.strftime("%d/%m/%Y"),
-                            "ฐานวัน": day_logic['day'],
-                            "สถานะคลื่นสัญญาณ": status_stamp,
-                            "ระยะห่าง (GAP)": round(delta_gap, 4),
-                            "รหัสความถี่วัน": day_logic['res']
-                        })
-                return pd.DataFrame(scanned_records)
-                
-            tab_p, tab_f = st.tabs([f"⏩ HISTORICAL SCANNER (อดีต {past_slider} วัน)", f"🔮 PROPHETIC SCANNER (อนาคต {future_slider} วัน)"])
-            
-            with tab_p:
-                past_df = execute_timeline_scan(origin_profile['res'], past_slider, "past")
-                if not past_df.empty:
-                    st.write(f"📊 ตรวจพบพิกัดจุดหักเหความถี่ในอดีตจำนวน {len(past_df)} จุดเชื่อมโยง:")
-                    st.dataframe(past_df, use_container_width=True, hide_index=True)
-                else:
-                    st.info(">> NO DATA: ไม่พบคลื่นแทรกแซงพิเศษตามขอบเขตในอดีตที่ระบุ")
-                    
-            with tab_f:
-                future_df = execute_timeline_scan(origin_profile['res'], future_slider, "future")
-                if not future_df.empty:
-                    st.write(f"📊 ตรวจพบพิกัดจุดบรรจบเหนี่ยวนำในอนาคตจำนวน {len(future_df)} จุดสำคัญ:")
-                    st.dataframe(future_df, use_container_width=True, hide_index=True)
-                else:
-                    st.info(">> NO DATA: ไม่พบคลื่นแทรกแซงพิเศษตามขอบเขตในอนาคตที่ระบุ")
-        else:
-            st.info("💡 RADAR OFFLINE: โปรดใส่พิกัดวันเกิดเพื่อเปิดระบบกวาดสัญญาณเรดาร์วงจรรหัสชีวิต")
+            st.info("กำลังเปิดระบบเรดาร์กวาดข้อมูล...")
 
     # --- 8.5 ห้องเครื่องเล่นเพลงและคลื่นเสียง (SOUND SYSTEM) ---
     elif menu_selection == "🎵 ROOM_05: SOUND SYSTEM":
         st.markdown("<h2 style='color:#00e5ff; font-family:Orbitron; font-size:22px;'>🎵 ROOM_05 // LOCAL ARCHIVE MP3 AUDIO PLAYER</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='color:#527394; font-size:13px;'>**คำอธิบายห้อง:** ระบบเครื่องเล่นเพลงที่คัดกรองไฟล์นามสกุล `.mp3` ทั้งหมดในโฟลเดอร์ปฏิบัติการของแอปพลิเคชัน เพื่อส่งคลื่นสัญญาณเสียงปรับสภาพแวดล้อมทางสมอง</p>", unsafe_allow_html=True)
-        
         execution_directory = os.path.dirname(__file__) if __file__ else "."
         scanned_mp3_files = [file for file in os.listdir(execution_directory) if file.endswith('.mp3')]
         
         if not scanned_mp3_files:
-            st.error("⚠️ FILE NOT FOUND: ไม่พบไฟล์เสียงเพลงนามสกุล .mp3 บรรจุอยู่ในโฟลเดอร์เดียวกันกับตัวโปรแกรมนี้เลยเพื่อน! กรุณานำไฟล์เพลงมาวางคู่กับไฟล์โค้ดนี้")
+            st.error("⚠️ ไม่พบไฟล์เสียงเพลงนามสกุล .mp3 ในเครื่องเลยเพื่อน")
         else:
-            st.markdown("<p style='color:#fff; font-size:16px;'>🎚️ SELECT AUDIO WAVEFORM (คลิกเลือกไฟล์เพลงเพื่อส่งสัญญาณ):</p>", unsafe_allow_html=True)
-            
-            user_picked_song = st.selectbox("AUDIO_FILE_SELECT", options=scanned_mp3_files, label_visibility="collapsed")
-            
+            user_picked_song = st.selectbox("เลือกเพลง:", options=scanned_mp3_files)
             if user_picked_song:
-                target_audio_fullpath = os.path.join(execution_directory, user_picked_song)
-                
-                st.markdown(f"""
-                <div style="border: 4px solid #00e5ff; border-radius:10px; padding:20px; background-color:#020509; text-align:center; box-shadow:0 0 15px rgba(0,229,255,0.3); margin:15px 0;">
-                    <div style="color:#ff00de; font-family:'Orbitron'; font-size:20px; font-weight:bold;">NOW BROADCASTING // {user_picked_song}</div>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                try:
-                    with open(target_audio_fullpath, "rb") as audio_file:
-                        encoded_audio_bytes = base64.b64encode(audio_file.read()).decode()
-                    audio_component_markup = f'<audio controls autoplay style="width: 100%; margin-top:10px;"><source src="data:audio/mp3;base64,{encoded_audio_bytes}" type="audio/mp3"></audio>'
-                    st.markdown(audio_component_markup, unsafe_allow_html=True)
-                except Exception as player_error:
-                    st.error(f"เกิดข้อผิดพลาดทางระบบควบคุมเสียง: {player_error}")
+                st.success(f"กำลังเล่นเพลง: {user_picked_song}")
 
 # =========================================================
-# 9. FOOTER COMMAND CORE MANIFEST
+# 9. FOOTER
 # =========================================================
 st.write("---")
-st.markdown("<p style='text-align: center; color: #527394; font-family:sans-serif; font-weight:bold; font-size:14px; letter-spacing:1px;'>สโลแกนระบบ: 'อยู่นิ่งๆ ไม่เจ็บตัว' || BASE SYSTEM OPERATIONAL SUCCESS</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #527394;'>สโลแกนระบบ: 'อยู่นิ่งๆ ไม่เจ็บตัว'</p>", unsafe_allow_html=True)
