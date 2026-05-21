@@ -12,10 +12,13 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 
 # ==========================================
-# 1. INITIAL SETUP (ต้องรันก่อนอันดับแรก)
+# 1. INITIAL SETUP (ย้ายหน้าตั้งค่าพื้นฐานมาเปิดหัวระบบก่อน)
 # ==========================================
+st.set_page_config(page_title="SYNAPSE X", layout="wide")
+
 @st.cache_resource
 def init_system():
+    # บังคับสร้างค่าตัวแปรลงระบบจำลองเครื่องมือถือให้พร้อมอ่านข้อมูลทันที
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
     if 'user' not in st.session_state: st.session_state.user = "Ta101"
@@ -34,12 +37,12 @@ def init_system():
             st.error(f"🛰️ Firebase Connection Error: {e}")
     return True
 
+# เรียกใช้งานการตั้งค่า Session State หลังจากเปิด Page Config แล้วอย่างถูกต้อง
 init_system()
 
 # ==========================================
-# 2. UI STYLING
+# 2. UI STYLING (รันทำงานต่อได้โดยมีค่าสีพื้นหลังค้ำประกันแล้ว)
 # ==========================================
-st.set_page_config(page_title="SYNAPSE X", layout="wide")
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
@@ -202,7 +205,6 @@ def room_music():
 def room_sensor():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center; font-family:Orbitron;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
     
-    # รวม JS ทั้งหมดไว้ในตัวเดียวเพื่อประสิทธิภาพ
     all_sensors_js = f"""
     <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 20px; padding: 20px; font-family: 'Orbitron', monospace; color: white;">
         
@@ -252,7 +254,6 @@ def room_sensor():
         btn.onclick = async () => {{
             btn.style.display = 'none';
             
-            // --- AUDIO SYSTEM ---
             try {{
                 const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
                 const aCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -279,7 +280,6 @@ def room_sensor():
                 updateAudio();
             }} catch(e) {{ alert("Audio Error: " + e); }}
 
-            // --- MOTION SYSTEM ---
             if (typeof DeviceMotionEvent.requestPermission === 'function') {{
                 await DeviceMotionEvent.requestPermission();
             }}
@@ -301,6 +301,7 @@ def room_sensor():
     
     st.markdown("---")
     st.info("💡 เคล็ดลับ: วางมือถือนิ่งๆ เพื่อดูแรงโน้มถ่วงโลก (1.00G) หรือลองผิวปากใส่ไมค์เพื่อดูคลื่นความถี่ครับ")
+
 # ==========================================
 # 4. MAIN LAYOUT
 # ==========================================
