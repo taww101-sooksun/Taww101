@@ -12,18 +12,18 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 
 # ==========================================
-# 1. INITIAL SETUP (ย้ายหน้าตั้งค่าพื้นฐานมาเปิดหัวระบบก่อน)
+# 1. INITIAL SETUP (เปิดหน้าเว็บก่อนอันดับแรก)
 # ==========================================
 st.set_page_config(page_title="SYNAPSE X", layout="wide")
 
-@st.cache_resource
+# ลบ @st.cache_resource ออก เพื่อให้ตรวจสอบและค้ำประกันค่า session_state ได้จริงทุกวินาที
 def init_system():
-    # บังคับสร้างค่าตัวแปรลงระบบจำลองเครื่องมือถือให้พร้อมอ่านข้อมูลทันที
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
     if 'user' not in st.session_state: st.session_state.user = "Ta101"
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
 
+    # แยกเฉพาะ Firebase ไว้เช็คไม่ให้เชื่อมต่อซ้อนกันพอ
     if not firebase_admin._apps:
         try:
             fb_creds = dict(st.secrets["firebase_credentials"])
@@ -37,11 +37,11 @@ def init_system():
             st.error(f"🛰️ Firebase Connection Error: {e}")
     return True
 
-# เรียกใช้งานการตั้งค่า Session State หลังจากเปิด Page Config แล้วอย่างถูกต้อง
+# สั่งเริ่มระบบเซสชัน
 init_system()
 
 # ==========================================
-# 2. UI STYLING (รันทำงานต่อได้โดยมีค่าสีพื้นหลังค้ำประกันแล้ว)
+# 2. UI STYLING (มีค่าสี bg_color รองรับแน่นอน)
 # ==========================================
 st.markdown(f"""
     <style>
