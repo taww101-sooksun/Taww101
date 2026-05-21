@@ -5,7 +5,7 @@ import base64
 # ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (กู้คืนสีสัน Neon ขั้นสุด)
 # ==========================================
 
-st.set_page_config(page_title="Synapse Neon Mixer", layout="centered")
+st.set_page_config(page_title="Synapse อยู่นิ้งๆไม่เจ็บตัว", layout="centered")
 
 def get_base64_image(image_path):
     try:
