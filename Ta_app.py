@@ -62,7 +62,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">SYNAPSE NEON MIXER</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">SYNAPSE อยู่นิ้งๆไม่เจ็บตัว</h1>', unsafe_allow_html=True)
 
 # ==========================================
 # ส่วนที่ 2: HTML/JS - ระบบเล่นต่อเนื่อง + สีสันสะบัด
