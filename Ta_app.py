@@ -43,7 +43,6 @@ init_system()
 # ==========================================
 st.markdown(f"""
     <style>
-    /* ลบดีไซน์ยี่ห้อ Streamlit ออกทั้งหมด */
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     header {{visibility: hidden;}}
@@ -57,7 +56,6 @@ st.markdown(f"""
         font-family: 'Orbitron', sans-serif; 
     }}
     
-    /* ปุ่มสไตล์ Cyber ไฮบริดน้ำเงิน แดง นีออน */
     .stButton>button {{ 
         border: 2px solid {st.session_state.theme_color} !important; 
         color: #FFFFFF !important; 
@@ -72,7 +70,6 @@ st.markdown(f"""
         background: {st.session_state.theme_color} !important;
     }}
     
-    /* กล่องข้อความกรอบนีออน 4 มิติ */
     .neon-box {{ 
         border: 2px solid #0066FF; 
         padding: 15px; 
@@ -82,7 +79,6 @@ st.markdown(f"""
         background-color: rgba(0,0,0,0.8);
     }}
     
-    /* โลโก้เต้นระบำกรอบแสงนีออน 4 สี คมชัดสะใจ */
     @keyframes dance-neon {{
         0% {{ transform: scale(1) rotate(0deg); border-color: #FF0055; box-shadow: 0 0 20px #FF0055, inset 0 0 10px #FF0055; }}
         33% {{ transform: scale(1.03) rotate(1deg); border-color: #0066FF; box-shadow: 0 0 25px #0066FF, inset 0 0 15px #0066FF; }}
@@ -93,7 +89,7 @@ st.markdown(f"""
         width: 140px;
         height: 140px;
         margin: 0 auto;
-        border-radius: 25px; /* ปรับขอบโค้งมนเหลี่ยมสไตล์ปุ่มไซเบอร์ */
+        border-radius: 25px; 
         border: 4px solid #FFD700;
         animation: dance-neon 4s infinite ease-in-out;
         object-fit: cover;
@@ -143,7 +139,6 @@ def login_screen():
 # ==========================================
 
 def room_core():
-    # ตรวจสอบการโหลดไฟล์โลโก้ขอบนีออน
     if os.path.exists("logo1.png"):
         with open("logo1.png", "rb") as f:
             data = f.read()
@@ -203,34 +198,42 @@ def room_comms():
     t1, t2 = st.tabs(["🌐 โครงข่ายแชตสดไร้ดีเลย์", "📞 สัญญาณโทรความถี่สูง SECURE CALL"])
     
     with t1:
+        # แก้ไขจุดนี้: แยก URL ตัวแปรแชร์ร่วมออกมาข้างนอกเพื่อป้องกันปัญหาระบบจัดสตริงพัง
+        db_url = st.secrets['firebase_db_url']
+        current_agent = st.session_state.user
+        
         chat_js = f"""
         <div style="background:#000; border:2px solid #FF0055; padding:15px; border-radius:10px;">
             <div id="chat_logs" style="height:250px; overflow-y:auto; background:#0a0a0a; border:1px solid #333; padding:10px; margin-bottom:10px; font-family:monospace; color:#fff;">
                 <p style="color:#888;">>>> กำลังเปิดช่องรับส่งสัญญาณสด...</p>
             </div>
-            <input type="text" id="chat_msg" placeholder="พิมพ์ข้อความส่งเข้าเซิร์ฟเวอร์หลัก..." style="width:75%%; padding:10px; background:#111; color:#fff; border:1px solid #0066FF; border-radius:5px;">
-            <button id="send_btn" style="width:20%%; padding:10px; background:linear-gradient(45deg, #0066FF, #39FF14); color:#000; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">SEND</button>
+            <input type="text" id="chat_msg" placeholder="พิมพ์ข้อความส่งเข้าเซิร์ฟเวอร์หลัก..." style="width:75%; padding:10px; background:#111; color:#fff; border:1px solid #0066FF; border-radius:5px;">
+            <button id="send_btn" style="width:20%; padding:10px; background:linear-gradient(45deg, #0066FF, #39FF14); color:#000; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">SEND</button>
         </div>
 
         <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
         <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
         <script>
-            var firebaseConfig = {{ databaseURL: "{st.secrets['firebase_db_url']}" }};
+            var firebaseConfig = {{ databaseURL: "{db_url}" }};
             if (!firebase.apps.length) {{ firebase.initializeApp(firebaseConfig); }}
             var db = firebase.database();
 
-            // รันระบบรับส่งสัญญาณแบบ On-Value เฝ้าตรวจจับข้อมูลตลอดกาล
             db.ref('public_chat').limitToLast(20).on('value', function(snapshot) {{
                 var logs = document.getElementById('chat_logs');
                 logs.innerHTML = "";
                 if(!snapshot.exists()){{
-                    logs.innerHTML = "<p style='color:#555;'>[ สัญญาณว่างเปล่า - ไม่มีข้อความล่าสุดในระบบ ]</p>";
+                    logs.innerHTML = "<p style='color:#555;'>[ สัญญาณว่างเปล่า - พิมพ์แชตข้อความด้านล่างเพื่อเริ่มสื่อสารได้เลย ]</p>";
                 }}
                 snapshot.forEach(function(childSnapshot) {{
                     var data = childSnapshot.val();
                     var p = document.createElement('p');
                     p.style.margin = "4px 0";
-                    p.innerHTML = "<span style='color:#0066FF;'>[" + new Date(data.ts).toLocaleTimeString() + "]</span> <b style='color:#39FF14'>🟢 " + data.u + "</b>: " + data.m;
+                    
+                    var timeStr = "";
+                    if(data.ts) {{
+                        timeStr = "[" + new Date(data.ts).toLocaleTimeString() + "] ";
+                    }}
+                    p.innerHTML = "<span style='color:#0066FF;'>" + timeStr + "</span><b style='color:#39FF14'>🟢 " + (data.u || "Unknown") + "</b>: " + (data.m || "");
                     logs.appendChild(p);
                 }});
                 logs.scrollTop = logs.scrollHeight;
@@ -240,7 +243,7 @@ def room_comms():
                 var text = document.getElementById('chat_msg').value;
                 if(text.trim() !== "") {{
                     db.ref('public_chat').push({{
-                        u: "{st.session_state.user}",
+                        u: "{current_agent}",
                         m: text,
                         ts: Date.now()
                     }});
@@ -248,7 +251,6 @@ def room_comms():
                 }}
             }};
             
-            // ตรวจจับปุ่ม Enter เพื่อความสะดวกบนมือถือ
             document.getElementById('chat_msg').addEventListener("keypress", function(event) {{
                 if (event.key === "Enter") {{
                     event.preventDefault();
@@ -264,34 +266,36 @@ def room_comms():
         friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
         target = st.selectbox("🎯 เลือกเป้าหมายปลายทางเพื่อเชื่อมต่อสายตรง :", [""] + friends)
         if target:
-            call_js = """
+            # ป้องกันข้อผิดพลาด String format หลุดตำแหน่ง
+            u_current = st.session_state.user
+            call_html = f"""
             <div style="background:#050505; padding:15px; border:2px solid #0066FF; border-radius:10px; text-align:center;">
-                <h3 style="color:#fff; font-family:Orbitron;">📞 TARGET SECURE SIGNAL: %s</h3>
-                <button id="cBtn" style="width:100%%; padding:12px; background:linear-gradient(45deg, #FF0055, #0066FF); color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">[ กดเชื่อมต่อวงจรเสียง ]</button>
+                <h3 style="color:#fff; font-family:Orbitron;">📞 TARGET SECURE SIGNAL: {target}</h3>
+                <button id="cBtn" style="width:100%; padding:12px; background:linear-gradient(45deg, #FF0055, #0066FF); color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">[ กดเชื่อมต่อวงจรเสียง ]</button>
                 <audio id="rAudio" autoplay></audio>
             </div>
             <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
             <script>
-                const config = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}, {'urls': 'stun:stun1.l.google.com:19302'}]};
-                const peer = new Peer('%s', {config: config});
+                const config = {{'iceServers': [{{'urls': 'stun:stun.l.google.com:19302'}}, {{'urls': 'stun:stun1.l.google.com:19302'}}]}};
+                const peer = new Peer('{u_current}', {{config: config}});
                 
-                peer.on('call', c => { 
-                    navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{ 
+                peer.on('call', c => {{ 
+                    navigator.mediaDevices.getUserMedia({{audio:true}}).then(s=>{{ 
                         c.answer(s); 
-                        c.on('stream',rs=>{ document.getElementById('rAudio').srcObject=rs; }); 
-                    });
-                });
+                        c.on('stream',rs=>{{ document.getElementById('rAudio').srcObject=rs; }}); 
+                    }});
+                }});
                 
-                document.getElementById('cBtn').onclick = () => {
-                    navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{ 
-                        const c = peer.call('%s', s); 
-                        c.on('stream',rs=>{ document.getElementById('rAudio').srcObject=rs; }); 
-                    });
+                document.getElementById('cBtn').onclick = () => {{
+                    navigator.mediaDevices.getUserMedia({{audio:true}}).then(s=>{{ 
+                        const c = peer.call('{target}', s); 
+                        c.on('stream',rs=>{{ document.getElementById('rAudio').srcObject=rs; }}); 
+                    }});
                     document.getElementById('cBtn').innerText = "[ กำลังส่งความถี่ถอดรหัสสาย... ]";
-                };
+                }};
             </script>
-            """ % (target, st.session_state.user, target)
-            components.html(call_js, height=220)
+            """
+            components.html(call_html, height=220)
 
 def room_music():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>🎧 CONTINUOUS HOLOGRAPHIC STATION</h2>", unsafe_allow_html=True)
