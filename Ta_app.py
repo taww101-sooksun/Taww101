@@ -41,7 +41,6 @@ init_system()
 # ==========================================
 # 2. ADVANCED UI CUSTOMIZATION (BLUE-RED-NEON & DE-STREAMLIT)
 # ==========================================
-# แทรก CSS ซ่อนหัว/ท้ายสัญลักษณ์ของ Streamlit พร้อมเอฟเฟกต์สีสันใหม่และไฟขอบ 4 ทิศ
 st.markdown(f"""
     <style>
     /* ลบดีไซน์ยี่ห้อ Streamlit ออกทั้งหมด */
@@ -83,20 +82,23 @@ st.markdown(f"""
         background-color: rgba(0,0,0,0.8);
     }}
     
-    /* โลโก้เต้นระบำขอบทองสไตล์นีออน */
-    @keyframes dance {{
-        0% {{ transform: scale(1) rotate(0deg); box-shadow: 0 0 15px #FFD700, 0 0 5px #FF0000; }}
-        50% {{ transform: scale(1.05) rotate(2deg); box-shadow: 0 0 25px #39FF14, 0 0 15px #0066FF; }}
-        100% {{ transform: scale(1) rotate(0deg); box-shadow: 0 0 15px #FFD700, 0 0 5px #FF0000; }}
+    /* โลโก้เต้นระบำกรอบแสงนีออน 4 สี คมชัดสะใจ */
+    @keyframes dance-neon {{
+        0% {{ transform: scale(1) rotate(0deg); border-color: #FF0055; box-shadow: 0 0 20px #FF0055, inset 0 0 10px #FF0055; }}
+        33% {{ transform: scale(1.03) rotate(1deg); border-color: #0066FF; box-shadow: 0 0 25px #0066FF, inset 0 0 15px #0066FF; }}
+        66% {{ transform: scale(0.98) rotate(-1deg); border-color: #39FF14; box-shadow: 0 0 20px #39FF14, inset 0 0 10px #39FF14; }}
+        100% {{ transform: scale(1) rotate(0deg); border-color: #FFD700; box-shadow: 0 0 20px #FFD700, inset 0 0 10px #FFD700; }}
     }}
     .dancing-logo {{
-        width: 130px;
-        height: 130px;
+        width: 140px;
+        height: 140px;
         margin: 0 auto;
-        border-radius: 50%;
+        border-radius: 25px; /* ปรับขอบโค้งมนเหลี่ยมสไตล์ปุ่มไซเบอร์ */
         border: 4px solid #FFD700;
-        animation: dance 3s infinite ease-in-out;
+        animation: dance-neon 4s infinite ease-in-out;
         object-fit: cover;
+        background: #000000;
+        padding: 5px;
     }}
     </style>
     """, unsafe_allow_html=True)
@@ -141,14 +143,14 @@ def login_screen():
 # ==========================================
 
 def room_core():
-    # แสดงโลโก้เต้นระบำขอบทอง 4 มิติ (ดึงรูปภาพโลโก้ในเครื่องมาแสดง)
+    # ตรวจสอบการโหลดไฟล์โลโก้ขอบนีออน
     if os.path.exists("logo1.png"):
         with open("logo1.png", "rb") as f:
             data = f.read()
             b64_logo = base64.b64encode(data).decode()
         st.markdown(f'<center><img src="data:image/png;base64,{b64_logo}" class="dancing-logo"></center><br>', unsafe_allow_html=True)
     else:
-        st.markdown('<center><div class="dancing-logo" style="background:#222; display:flex; align-items:center; justify-content:center; color:#FFD700; font-weight:bold;">LOGO1</div></center><br>', unsafe_allow_html=True)
+        st.markdown('<center><div class="dancing-logo" style="display:flex; align-items:center; justify-content:center; color:#FFD700; font-weight:bold; font-size:20px;">[ NO LOGO ]</div></center><br>', unsafe_allow_html=True)
 
     st.markdown(f"<h2 style='text-align:center; color:#0066FF; text-shadow: 0 0 10px #FF0055;'>🚀 CORE COMMAND CENTER</h2>", unsafe_allow_html=True)
     now = datetime.utcnow() + timedelta(hours=7)
@@ -167,8 +169,6 @@ def room_core():
 
 def room_radar():
     st.markdown("<h2 style='color:#FF0055;'>🛰️ SATELLITE HIGH-ACCURACY GPS</h2>", unsafe_allow_html=True)
-    
-    # เปิดการตั้งค่าพิกัดความแม่นยำสูงระดับฮาร์ดแวร์อุปกรณ์ (EnableHighAccuracy=true)
     loc = get_geolocation()
     
     if loc and 'coords' in loc:
@@ -180,8 +180,6 @@ def room_radar():
         st.warning("⚠️ กำลังค้นหาสัญญาณพิกัดด่วน... เปิดพิกัด GPS บนมือถือเพื่อความแม่นยำสูงสุด")
 
     all_users = db.reference('users').get()
-    
-    # สร้าง Map ดึงภาพไฮบริดจากดาวเทียม ซูมพิกัดเจาะลึกความละเอียดสูง
     m = folium.Map(location=[lat, lon], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
     folium.Marker([lat, lon], tooltip="ตำแหน่งของคุณ", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
     
@@ -205,14 +203,13 @@ def room_comms():
     t1, t2 = st.tabs(["🌐 โครงข่ายแชตสดไร้ดีเลย์", "📞 สัญญาณโทรความถี่สูง SECURE CALL"])
     
     with t1:
-        # ยัดระบบรับส่งข้อความ Realtime ผ่าน Firebase Database JavaScript ตรงๆ แชตเด้งทันทีไม่ต้องรอ Rerun หน้าจอแอปทั้งหมด
         chat_js = f"""
         <div style="background:#000; border:2px solid #FF0055; padding:15px; border-radius:10px;">
             <div id="chat_logs" style="height:250px; overflow-y:auto; background:#0a0a0a; border:1px solid #333; padding:10px; margin-bottom:10px; font-family:monospace; color:#fff;">
                 <p style="color:#888;">>>> กำลังเปิดช่องรับส่งสัญญาณสด...</p>
             </div>
-            <input type="text" id="chat_msg" placeholder="พิมพ์ข้อความส่งเข้าเซิร์ฟเวอร์หลัก..." style="width:78%; padding:10px; background:#111; color:#fff; border:1px solid #0066FF; border-radius:5px;">
-            <button id="send_btn" style="width:18%; padding:10px; background:linear-gradient(45deg, #0066FF, #39FF14); color:#000; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">SEND</button>
+            <input type="text" id="chat_msg" placeholder="พิมพ์ข้อความส่งเข้าเซิร์ฟเวอร์หลัก..." style="width:75%%; padding:10px; background:#111; color:#fff; border:1px solid #0066FF; border-radius:5px;">
+            <button id="send_btn" style="width:20%%; padding:10px; background:linear-gradient(45deg, #0066FF, #39FF14); color:#000; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">SEND</button>
         </div>
 
         <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -222,14 +219,18 @@ def room_comms():
             if (!firebase.apps.length) {{ firebase.initializeApp(firebaseConfig); }}
             var db = firebase.database();
 
-            // ฟังฟังก์ชันเมื่อมีแชตใหม่เด้งเข้าดึงข้อมูลโชว์ทันที
-            db.ref('public_chat').limitToLast(15).on('value', function(snapshot) {{
+            // รันระบบรับส่งสัญญาณแบบ On-Value เฝ้าตรวจจับข้อมูลตลอดกาล
+            db.ref('public_chat').limitToLast(20).on('value', function(snapshot) {{
                 var logs = document.getElementById('chat_logs');
                 logs.innerHTML = "";
+                if(!snapshot.exists()){{
+                    logs.innerHTML = "<p style='color:#555;'>[ สัญญาณว่างเปล่า - ไม่มีข้อความล่าสุดในระบบ ]</p>";
+                }}
                 snapshot.forEach(function(childSnapshot) {{
                     var data = childSnapshot.val();
                     var p = document.createElement('p');
-                    p.innerHTML = "<b style='color:#39FF14'>🟢 " + data.u + "</b>: " + data.m;
+                    p.style.margin = "4px 0";
+                    p.innerHTML = "<span style='color:#0066FF;'>[" + new Date(data.ts).toLocaleTimeString() + "]</span> <b style='color:#39FF14'>🟢 " + data.u + "</b>: " + data.m;
                     logs.appendChild(p);
                 }});
                 logs.scrollTop = logs.scrollHeight;
@@ -246,6 +247,14 @@ def room_comms():
                     document.getElementById('chat_msg').value = "";
                 }}
             }};
+            
+            // ตรวจจับปุ่ม Enter เพื่อความสะดวกบนมือถือ
+            document.getElementById('chat_msg').addEventListener("keypress", function(event) {{
+                if (event.key === "Enter") {{
+                    event.preventDefault();
+                    document.getElementById('send_btn').click();
+                }}
+            }});
         </script>
         """
         components.html(chat_js, height=360)
@@ -255,7 +264,6 @@ def room_comms():
         friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
         target = st.selectbox("🎯 เลือกเป้าหมายปลายทางเพื่อเชื่อมต่อสายตรง :", [""] + friends)
         if target:
-            # เพิ่มการตั้งค่า ICE Servers เสริมเสถียรภาพการส่งคลื่นเสียงไม่หลุดง่ายในระบบเครือข่ายมือถือ
             call_js = """
             <div style="background:#050505; padding:15px; border:2px solid #0066FF; border-radius:10px; text-align:center;">
                 <h3 style="color:#fff; font-family:Orbitron;">📞 TARGET SECURE SIGNAL: %s</h3>
@@ -300,7 +308,6 @@ def room_music():
         st.session_state.song_index = songs.index(s_a)
         song_name = s_a
 
-    # เพิ่มระบการวนลูปต่อเนื่อง 'loop' ลงบนออบเจกต์เสียงโดยตรง
     visualizer_html = f"""
     <div style="background: #000; border: 3px solid #FF0055; border-radius: 20px; padding: 15px; box-shadow: 0 0 20px #0066FF;">
         <div style="overflow: hidden; white-space: nowrap; background: #050505; border: 1px solid {st.session_state.theme_color}55; border-radius: 8px; margin-bottom: 10px; padding: 8px;">
@@ -350,16 +357,13 @@ def room_music():
     components.html(visualizer_html, height=420)
 
 def room_math():
-    # 📟 ห้องแล็บคำนวณสูตรคณิตศาสตร์รหัสควอนตัม 1960 - 2026
     st.markdown("<h2 style='color:#FFD700; text-shadow: 0 0 10px #FFD700;'>📟 QUANTUM MATRIX LAB (1960 - 2026)</h2>", unsafe_allow_html=True)
-    
     st.markdown('<div class="neon-box">', unsafe_allow_html=True)
     birth_year = st.number_input("ป้อนปีคริสต์ศักราชที่ต้องการวิเคราะห์คำนวณ (ค.ศ. 1960 - 2026) :", min_value=1960, max_value=2026, value=1990)
     
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### 🧮 สมการคลื่นความถี่จำลอง")
-        # สูตรตัวเลขทางคณิตศาสตร์วิเคราะห์รอบวงโคจรชีวิต
         base_calc = (birth_year * 7) % 9
         quantum_code = (birth_year ** 2) / 1960
         st.info(f"🧬 ค่าฐานสมดุลวิเคราะห์: **{base_calc}**")
@@ -392,7 +396,6 @@ def main():
                 st.session_state.authenticated = False
                 st.rerun()
 
-        # แท็บโมดูลการทำงานของระบบ
         tabs = st.tabs(["🚀 CORE COMMAND", "🛰️ HIGH-GPS RADAR", "💬 COMM LIVE", "🎧 LOOP MUSIC", "📟 QUANTUM MATH"])
         rooms = [room_core, room_radar, room_comms, room_music, room_math]
         for i, tab in enumerate(tabs):
@@ -401,4 +404,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-ยังแชตไม่ได้
