@@ -2,29 +2,26 @@ import streamlit as st
 import os 
 import base64
 import time
-from datetime import datetime, timedelta
+import math
+from datetime import datetime, timedelta, date
 import firebase_admin
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
 import folium
 from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
 
 # ==========================================
 # 1. INITIAL SETUP & SECURITY CHECK
 # ==========================================
-st.set_page_config(page_title="SYNAPSE X", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide", initial_sidebar_state="expanded")
 
 def init_system():
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
-    if 'user' not in st.session_state: st.session_state.user = "Ta101"
-    if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    if 'user' not in st.session_state: st.session_state.user = None
     if 'authenticated' not in st.session_state: st.session_state.authenticated = False
-    
-    # ตัวแปรเก็บพิกัด GPS แม่นยำสูง
-    if 'device_lat' not in st.session_state: st.session_state.device_lat = 13.7367
-    if 'device_lon' not in st.session_state: st.session_state.device_lon = 100.5231
-    if 'gps_ready' not in st.session_state: st.session_state.gps_ready = False
+    if 'song_index' not in st.session_state: st.session_state.song_index = 0
 
     if not firebase_admin._apps:
         try:
@@ -89,8 +86,8 @@ st.markdown(f"""
         100% {{ transform: scale(1) rotate(0deg); border-color: #FFD700; box-shadow: 0 0 20px #FFD700, inset 0 0 10px #FFD700; }}
     }}
     .dancing-logo {{
-        width: 140px;
-        height: 140px;
+        width: 120px;
+        height: 120px;
         margin: 0 auto;
         border-radius: 25px; 
         border: 4px solid #FFD700;
@@ -102,8 +99,18 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
+# --- ฟังก์ชันดึงไฟล์ Base64 ---
+def get_base64_file(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return ""
+
+logo_base64 = get_base64_file("logo1.png")
+audio_base64 = get_base64_file("notification.mp3")
+
 # ==========================================
-# 3. AUTHENTICATION SYSTEM
+# 3. AUTHENTICATION SYSTEM (GATEWAY)
 # ==========================================
 def login_screen():
     st.markdown("<center><h1 style='color:#FF0055; text-shadow: 0 0 10px #FF0055;'>🔒 SYNAPSE GATEWAY</h1></center>", unsafe_allow_html=True)
@@ -118,23 +125,26 @@ def login_screen():
             if not user_input or not pass_input:
                 st.warning("❌ กรุณากรอกรหัสข้อมูลให้ครบถ้วน")
             else:
-                acc_ref = db.reference(f'accounts/{user_input}')
+                acc_ref = db.reference(f'users/{user_input}')
                 account_data = acc_ref.get()
                 
                 if mode == "ลงทะเบียนตัวแทนใหม่":
                     if account_data:
                         st.error("❌ มีรหัสตัวแทนนี้อยู่ในระบบสารสนเทศแล้ว")
                     else:
-                        acc_ref.set({'pass': pass_input, 'created': time.time()})
+                        acc_ref.set({
+                            'password': pass_input, 
+                            'created_at': datetime.now().isoformat()
+                        })
                         st.success("🛰️ ลงทะเบียนตัวแทนใหม่สำเร็จ เข้าสู่ระบบได้ทันที")
                 else:
-                    if account_data and account_data.get('pass') == pass_input:
+                    if account_data and account_data.get('password') == pass_input:
                         st.session_state.user = user_input
                         st.session_state.authenticated = True
                         st.success("🔓 อนุมัติสิทธิ์เข้าถึงฐานข้อมูลกลาง!")
                         st.rerun()
                     else:
-                        st.error("❌ รหัสตัวแทนหรือรหัสผ่านไม่ถูกต้องพ้นสภาพความปลอดภัย")
+                        st.error("❌ รหัสตัวแทนหรือรหัสผ่านไม่ถูกต้อง พ้นสภาพความปลอดภัย")
         st.markdown('</div>', unsafe_allow_html=True)
 
 # ==========================================
@@ -142,11 +152,8 @@ def login_screen():
 # ==========================================
 
 def room_core():
-    if os.path.exists("logo1.png"):
-        with open("logo1.png", "rb") as f:
-            data = f.read()
-            b64_logo = base64.b64encode(data).decode()
-        st.markdown(f'<center><img src="data:image/png;base64,{b64_logo}" class="dancing-logo"></center><br>', unsafe_allow_html=True)
+    if logo_base64:
+        st.markdown(f'<center><img src="data:image/png;base64,{logo_base64}" class="dancing-logo"></center><br>', unsafe_allow_html=True)
     else:
         st.markdown('<center><div class="dancing-logo" style="display:flex; align-items:center; justify-content:center; color:#FFD700; font-weight:bold; font-size:20px;">[ NO LOGO ]</div></center><br>', unsafe_allow_html=True)
 
@@ -165,40 +172,28 @@ def room_core():
     st.write(f"⏳ พลังงานขับเคลื่อนโครงข่ายรายวัน: {progress*100:.2f}%")
     st.progress(min(progress, 1.0))
 
+
 def room_radar():
     st.markdown("<h2 style='color:#FF0055;'>🛰️ SATELLITE HIGH-ACCURACY GPS</h2>", unsafe_allow_html=True)
+    loc = get_geolocation()
     
-    # สคริปต์ดึงพิกัดจาก Hardware GPS โดยตรง (เปิดโหมดความแม่นยำสูงสุด enableHighAccuracy)
-    gps_html = """
-    <script>
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            window.parent.postMessage({type: 'ST_GPS_DATA', lat: lat, lon: lon}, '*');
-        },
-        (error) => { console.error(error); },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-    </script>
-    """
-    components.html(gps_html, height=0, width=0)
-    
-    # จัดการรับค่าจากบราวเซอร์แอป (จำลองพิกัดถ้ายังดึงไม่ได้)
-    if st.session_state.gps_ready:
-        st.success(f"🎯 พิกัดดาวเทียมตรงจุดจริง (ชิปฮาร์ดแวร์): Lat {st.session_state.device_lat} | Lon {st.session_state.device_lon}")
+    # ดึงค่าพิกัดปัจจุบันจากเบราว์เซอร์มือถือ
+    if loc and 'coords' in loc:
+        lat = loc['coords']['latitude']
+        lon = loc['coords']['longitude']
+        st.success(f"🎯 พิกัดดาวเทียมตรงจุดจริง (อัปเดตสด): Lat {lat} | Lon {lon}")
     else:
-        st.warning("⚠️ กำลังเชื่อมต่อสัญญาณดาวเทียมเพื่อความแม่นยำ... (โปรดกดยอมรับการเข้าถึงสิทธิ์พิกัดบนอุปกรณ์)")
-        
-    lat, lon = st.session_state.device_lat, st.session_state.device_lon
+        lat, lon = 13.7367, 100.5231
+        st.warning("⚠️ กำลังค้นหาสัญญาณพิกัดด่วน... โปรดเปิดพิกัดตำแหน่งบนมือถือ")
 
+    # ดึงพิกัดของ Agents ทั้งหมดมาพล็อตลงแผนที่ดาวเทียม
     all_users = db.reference('users').get()
-    m = folium.Map(location=[lat, lon], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
-    folium.Marker([lat, lon], tooltip="ตำแหน่งจริงของคุณ", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
+    m = folium.Map(location=[lat, lon], zoom_start=16, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
+    folium.Marker([lat, lon], tooltip="ตำแหน่งของคุณ", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
     
     if all_users:
         for uid, data in all_users.items():
-            if uid != st.session_state.user and data.get('lat'):
+            if uid != st.session_state.user and isinstance(data, dict) and data.get('lat'):
                 folium.Marker([data['lat'], data['lon']], tooltip=f"Agent: {uid}", icon=folium.Icon(color='blue')).add_to(m)
                 
     st_folium(m, width="100%", height=450, key="radar_map")
@@ -207,81 +202,132 @@ def room_radar():
         db.reference(f'users/{st.session_state.user}').update({
             'lat': lat,
             'lon': lon,
-            'ts': time.time()
+            'gps_ts': time.time()
         })
-        st.toast("ส่งพิกัดดาวเทียมชุดสมบูรณ์เสร็จสิ้น!")
+        st.toast("ส่งพิกัดดาวเทียมชุดสมบูรณ์เข้าเซิร์ฟเวอร์กลางแล้ว!")
+
 
 def room_comms():
     st.markdown("<h2 style='color:#0066FF;'>💬 COMM LIVE SYNC CENTER</h2>", unsafe_allow_html=True)
-    t1, t2 = st.tabs(["🌐 โครงข่ายแชตสดไร้ดีเลย์", "📞 สัญญาณโทรความถี่สูง SECURE CALL"])
     
-    with t1:
-        st.markdown('<div class="neon-box" style="text-align: left;">', unsafe_allow_html=True)
-        
-        # ส่วนแสดงผลแชต ดึงตรงจาก Firebase Python มั่นใจได้ว่าแสดงผลชัวร์
-        chat_ref = db.reference('public_chat')
-        chat_snapshot = chat_ref.order_by_child('ts').limit_to_last(15).get()
-        
-        st.markdown("<p style='color:#888; font-family:monospace;'>>>> ช่องรับส่งสัญญาณสดความปลอดภัยสูง</p>", unsafe_allow_html=True)
-        
-        if chat_snapshot:
-            for key, data in chat_snapshot.items():
-                msg_time = ""
-                if 'ts' in data:
-                    msg_time = f"[{datetime.fromtimestamp(data['ts']/1000).strftime('%H:%M:%S')}] "
-                st.markdown(f"<p style='margin:4px 0; font-family:monospace;'><span style='color:#0066FF;'>{msg_time}</span><b style='color:#39FF14'>🟢 {data.get('u', 'Unknown')}</b>: {data.get('m', '')}</p>", unsafe_allow_html=True)
-        else:
-            st.markdown("<p style='color:#555;'>[ สัญญาณว่างเปล่า - พิมพ์แชตข้อความด้านล่างเพื่อเริ่มสื่อสาร ]</p>", unsafe_allow_html=True)
+    # ดึงตัวแปรที่จำเป็นส่งให้ JavaScript ทำงานร่วมกับ Firebase
+    db_url = st.secrets['firebase_db_url']
+    current_agent = st.session_state.user
+    
+    chat_js = f"""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        #chat-screen {{
+            background: rgba(0,0,0,0.95); border: 2px solid {st.session_state.theme_color}; border-radius: 12px;
+            height: 350px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column;
+            box-shadow: inset 0 0 15px {st.session_state.theme_color}33;
+        }}
+        .bubble {{ padding: 10px 15px; border-radius: 10px; margin: 8px 0; max-width: 85%; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 14px; line-height: 1.4; }}
+        .me {{ background: {st.session_state.theme_color}22; border-right: 4px solid {st.session_state.theme_color}; align-self: flex-end; }}
+        .others {{ background: #222; border-left: 4px solid #777; align-self: flex-start; }}
+        .notif-box {{ background: #333; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; }}
+        .alert-red {{ background: #F00 !important; box-shadow: 0 0 15px #F00; font-weight: bold; }}
+    </style>
+
+    <div id="chat-screen">
+        <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom: 1px solid #333; padding-bottom: 5px;">
+            <span style="color:{st.session_state.theme_color}; font-size:10px; letter-spacing: 2px;">📡 LIVE STREAM SIGNAL</span>
+            <span id="notif-box" class="notif-box">0 NEW SIGNAL</span>
+        </div>
+        <div id="msg-area" style="display:flex; flex-direction:column;"></div>
+    </div>
+
+    <div style="margin-top: 10px; display: flex; gap: 10px;">
+        <input type="text" id="chat_msg" placeholder="พิมพ์ข้อความส่งสัญญาณ..." style="flex-grow:1; padding:12px; background:#111; color:#fff; border:1px solid #0066FF; border-radius:8px;">
+        <button id="send_btn" style="width:100px; padding:12px; background:linear-gradient(45deg, #0066FF, #39FF14); color:#000; font-weight:bold; border:none; border-radius:8px; cursor:pointer;">SEND</button>
+    </div>
+
+    <audio id="notif-sound" preload="auto">
+        <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
+    </audio>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script>
+        const fb_conf = {{ databaseURL: "{db_url}" }};
+        if(!firebase.apps.length) firebase.initializeApp(fb_conf);
+        const database = firebase.database();
+        let lastCount = -1;
+        const beep = document.getElementById('notif-sound');
+
+        function unlock() {{
+            beep.play().then(() => {{ beep.pause(); beep.currentTime = 0; }}).catch(()=>{{\}});
+            window.removeEventListener('click', unlock);
+            window.removeEventListener('touchstart', unlock);
+        }}
+        window.addEventListener('click', unlock);
+        window.addEventListener('touchstart', unlock);
+
+        // โหลดข้อมูลและดักจับข้อความใหม่ในฐานข้อมูล global_chat หลัก
+        database.ref('global_chat').limitToLast(25).on('child_added', (snap) => {{
+            const msg = snap.val();
+            const area = document.getElementById('msg-area');
+            const div = document.createElement('div');
+            const isMe = msg.user === "{current_agent}";
             
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # ฟอร์มการส่งข้อความผ่านโครงสร้างหลังบ้านของ Streamlit
-        with st.form(key="chat_send_form", clear_on_submit=True):
-            user_msg = st.text_input(label="ข้อความ", placeholder="พิมพ์ข้อความส่งเข้าเซิร์ฟเวอร์หลัก...", label_visibility="collapsed")
-            submit_chat = st.form_submit_button("SEND PROTOCOL MESSAGE", use_container_width=True)
+            div.className = "bubble " + (isMe ? "me" : "others");
+            div.style.alignSelf = isMe ? 'flex-end' : 'flex-start';
             
-            if submit_chat and user_msg.strip() != "":
-                chat_ref.push({
-                    'u': st.session_state.user,
-                    'm': user_msg.strip(),
-                    'ts': int(time.time() * 1000)
-                })
-                st.rerun() # รีเฟรชหน้าทันทีเพื่อดึงแชตข้อความใหม่มาแสดงผล
-        
-    with t2:
-        all_u = db.reference('users').get()
-        friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
-        target = st.selectbox("🎯 เลือกเป้าหมายปลายทางเพื่อเชื่อมต่อสายตรง :", [""] + friends)
-        if target:
-            u_current = st.session_state.user
-            call_html = f"""
-            <div style="background:#050505; padding:15px; border:2px solid #0066FF; border-radius:10px; text-align:center;">
-                <h3 style="color:#fff; font-family:Orbitron;">📞 TARGET SECURE SIGNAL: {target}</h3>
-                <button id="cBtn" style="width:100%; padding:12px; background:linear-gradient(45deg, #FF0055, #0066FF); color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">[ กดเชื่อมต่อวงจรเสียง ]</button>
-                <audio id="rAudio" autoplay></audio>
-            </div>
-            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-            <script>
-                const config = {{'iceServers': [{{'urls': 'stun:stun.l.google.com:19302'}}, {{'urls': 'stun:stun1.l.google.com:19302'}}]}};
-                const peer = new Peer('{u_current}', {{config: config}});
-                
-                peer.on('call', c => {{ 
-                    navigator.mediaDevices.getUserMedia({{audio:true}}).then(s=>{{ 
-                        c.answer(s); 
-                        c.on('stream',rs=>{{ document.getElementById('rAudio').srcObject=rs; }}); 
-                    }});
+            let html = `<div style="font-size:10px; color:#777; margin-bottom:5px;">${{msg.user}}</div>`;
+            if(msg.text) html += `<div>${{msg.text}}</div>`;
+            if(msg.img) html += `<img src="data:image/png;base64,${{msg.img}}" style="max-width:100%; border-radius:8px; margin-top:8px; border: 1px solid #444;">`;
+            
+            div.innerHTML = html;
+            area.appendChild(div);
+            document.getElementById('chat-screen').scrollTop = 999999;
+        }});
+
+        // ปุ่มกดส่งข้อความทาง JS
+        document.getElementById('send_btn').onclick = function() {{
+            const txt = document.getElementById('chat_msg').value;
+            if(txt.trim() !== "") {{
+                database.ref('global_chat').push({{
+                    user: "{current_agent}",
+                    text: txt,
+                    ts: new Date().toISOString()
                 }});
+                document.getElementById('chat_msg').value = "";
                 
-                document.getElementById('cBtn').onclick = () => {{
-                    navigator.mediaDevices.getUserMedia({{audio:true}}).then(s=>{{ 
-                        const c = peer.call('{target}', s); 
-                        c.on('stream',rs=>{{ document.getElementById('rAudio').srcObject=rs; }}); 
-                    }});
-                    document.getElementById('cBtn').innerText = "[ กำลังส่งความถี่ถอดรหัสสาย... ]";
-                }};
-            </script>
-            """
-            components.html(call_html, height=220)
+                // กระตุ้นระบบสั่น/แจ้งเตือนเพื่อน
+                database.ref('chat_notifications/unread_count').transaction((cur) => {{
+                    return (cur || 0) + 1;
+                }});
+            }}
+        }};
+
+        document.getElementById('chat_msg').addEventListener("keypress", function(e) {{
+            if (e.key === "Enter") {{ e.preventDefault(); document.getElementById('send_btn').click(); }}
+        }});
+
+        // รับค่าชุดนับแจ้งเตือนส่งสัญญาณเสียงบี๊ป
+        database.ref('chat_notifications/unread_count').on('value', (snap) => {{
+            const val = snap.val() || 0;
+            const box = document.getElementById('notif-box');
+            box.innerText = val + " NEW SIGNAL";
+            if(val > 0) {{
+                box.classList.add('alert-red');
+                if(lastCount !== -1 && val > lastCount) {{
+                    beep.currentTime = 0;
+                    beep.play().catch(() => {{}});
+                }}
+            }} else {{
+                box.classList.remove('alert-red');
+            }}
+            lastCount = val;
+        }});
+    </script>
+    """
+    components.html(chat_js, height=450)
+    
+    if st.button("🔔 ล้างสถานะการแจ้งเตือนแชต (RESET NOTIFICATION)", use_container_width=True):
+        db.reference('chat_notifications').set({'unread_count': 0})
+        st.rerun()
+
 
 def room_music():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>🎧 CONTINUOUS HOLOGRAPHIC STATION</h2>", unsafe_allow_html=True)
@@ -346,51 +392,164 @@ def room_music():
     """
     components.html(visualizer_html, height=420)
 
+
 def room_math():
-    st.markdown("<h2 style='color:#FFD700; text-shadow: 0 0 10px #FFD700;'>📟 QUANTUM MATRIX LAB (1960 - 2026)</h2>", unsafe_allow_html=True)
-    st.markdown('<div class="neon-box">', unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>🧬 THE TRUTH DECODER</h2>", unsafe_allow_html=True)
     
-    # ปรับช่วงปีเริ่มต้นตั้งแต่ ค.ศ. 1960 ถึง 2026 ตามความต้องการจริง
-    birth_year = st.number_input("ป้อนปีคริสต์ศักราชที่ต้องการวิเคราะห์คำนวณ (ค.ศ. 1960 - 2026) :", min_value=1960, max_value=2026, value=1990)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("### 🧮 สมการคลื่นความถี่จำลอง")
-        base_calc = (birth_year * 7) % 9
-        quantum_code = (birth_year ** 2) / 1960
-        st.info(f"🧬 ค่าฐานสมดุลวิเคราะห์: **{base_calc}**")
-        st.success(f"🌀 ค่ารหัสลับคลื่นควอนตัม: **{quantum_code:.4f}**")
-    
-    with col2:
-        st.markdown("### 📈 ดัชนีสนามพลังงานคงที่")
-        current_year = 2026
-        age_span = current_year - birth_year
-        vibration_freq = (age_span * 3.1415) / 100
-        st.info(f"⏳ ระยะช่วงปีสะสมอายุไข: **{age_span} ปี**")
-        st.metric("ความถี่กระแสจิต (Consciousness Frequency)", f"{vibration_freq:.4f} Hz")
+    def decode_truth(dt):
+        ref_date = date(1900, 1, 1)
+        diff = (dt - ref_date).days
+        lunar_cycle = 29.530589
+        pos = (diff - 0.5) % lunar_cycle
+        day_val = dt.weekday() + 1
         
-    st.markdown('</div>', unsafe_allow_html=True)
+        thai_year = dt.year + 543
+        zodiacs = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
+        zodiac = zodiacs[thai_year % 12]
+        
+        elements = {1: "ดิน", 2: "น้ำ", 3: "ไฟ", 4: "ลม", 5: "ทอง", 6: "น้ำ", 7: "ดิน"}
+        element = elements.get(day_val, "ดิน")
+
+        if pos <= 14.765:
+            m_num = int(pos) + 1
+            phase = f"ขึ้น {m_num} ค่ำ"
+            res = math.sqrt((day_val**2) + (m_num**2))
+            formula = f"√({day_val}² + {m_num}²)"
+            p_type = "แรงผลักดันวงเวียนเวกเตอร์ (Vector)"
+        else:
+            m_num = int(pos - 14.765) + 1
+            phase = f"แรม {m_num} ค่ำ"
+            res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+            formula = f"({day_val} × 1.618) / {m_num}"
+            p_type = "สมดุลสัดส่วนทองคำศักดิ์สิทธิ์ (Phi)"
+            
+        return {"res": round(res, 4), "phase": phase, "zodiac": zodiac, "element": element, "formula": formula, "type": p_type, "day_num": day_val, "lunar_num": m_num, "diff": diff, "day_name": ["จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์","อาทิตย์"][dt.weekday()]}
+
+    # ฟังก์ชันสแกนหาไทม์ไลน์
+    def run_scanner(base_res, start_dt, days_range, direction="future"):
+        data_list = []
+        for i in range(1, days_range + 1):
+            target_step = start_dt + timedelta(days=i) if direction == "future" else start_dt - timedelta(days=i)
+            inf = decode_truth(target_step)
+            gap = abs(base_res - inf['res'])
+            
+            # บันทึกเฉพาะพิกัดสำคัญตามเกณฑ์ ธร-เพชร-กงจักร
+            status = ""
+            if gap <= 1.0: status = "💎 เพชร (บรรจบสูงสุด)"
+            elif 3.8 <= gap <= 4.2: status = "🌀 ธร (สะท้อนคู่ขนาน)"
+            elif gap >= 10.0: status = "⚙️ กงจักร (แยกตัวอิสระ)"
+            
+            if status:
+                data_list.append({
+                    "วันที่สแกนพบ": target_step.strftime('%Y-%m-%d'),
+                    "รหัสวัน": inf['res'],
+                    "ค่า GAP": round(gap, 4),
+                    "ระดับสัญญาณ": status,
+                    "รายละเอียด": f"วัน{inf['day_name']} {inf['phase']} ปี{inf['zodiac']}"
+                })
+        return data_list
+
+    st.subheader("1️⃣ ตรวจสอบพิกัดความจริงรายวัน (1960 - 2026)")
+    target_date = st.date_input("เลือกวันที่ตรวจสอบพิกัดสารสนเทศ", value=date.today(), min_value=date(1960,1,1), max_value=date(2026,12,31))
+    
+    if target_date:
+        d = decode_truth(target_date)
+        st.markdown(f"""
+            <div style="text-align:center; padding:20px; border:2px solid {st.session_state.theme_color}; border-radius:20px; background:rgba(0,0,0,0.3);">
+                <small>รหัสพิกัดคลื่นความถี่จักรวาล</small>
+                <h1 style="color:{st.session_state.theme_color}; font-size:60px; margin:0;">{d['res']}</h1>
+                <p style="color:#888;">{d['type']}</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"📅 **ฐานวัน ({d['day_num']}):** วัน{d['day_name']} (แรงดึงดูดโลก)")
+            st.info(f"🌙 **จันทรคติ ({d['phase']}):** พิกัด {d['lunar_num']} (แรงดึงดูดดวงจันทร์)")
+        with col2:
+            st.success(f"🐎 **ปีนักษัตรประจำวัน:** ปี{d['zodiac']}")
+            st.success(f"💎 **ธาตุสนามพลังงาน:** ธาตุ{d['element']}")
+
+        st.markdown(f"""
+            <div style="background:#111; padding:15px; border-left:5px solid {st.session_state.theme_color}; border-radius:10px; margin-top:10px;">
+                <p style="font-size:14px; color:#aaa; margin:0;">
+                    <b>สูตรการคำนวณถอดรหัสความจริง:</b> {d['formula']}<br>
+                    วิเคราะห์ผลรวมความต่อเนื่องนับจากปีหลัก 1900 รวมทั้งสิ้น {d['diff']:,} วัน
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # ---------------------------------------------------------
+        # 2. วิเคราะห์รหัสคู่ขนาน & หาค่า GAP (ธร-เพชร-กงจักร)
+        # ---------------------------------------------------------
+        st.divider()
+        st.subheader("2️⃣ วิเคราะห์รหัสคู่ขนาน & สัญญาณ GAP")
+        c1, c2 = st.columns(2)
+        with c1:
+            dob1 = st.date_input("👤 AGENT 1 (ตัวตั้งต้นความจริง)", value=date.today(), min_value=date(1960,1,1), key="u1_main")
+        with c2:
+            dob2 = st.date_input("👤 AGENT 2 (เป้าหมายร่วมสแกน)", value=None, min_value=date(1960,1,1), key="u2_main")
+
+        if dob1 and dob2:
+            dat1 = decode_truth(dob1)
+            dat2 = decode_truth(dob2)
+            g_val = abs(dat1['res'] - dat2['res'])
+
+            st.markdown("#### 🛠️ กระบวนการถอดรหัสและเปรียบเทียบสัญญาณสด")
+            col_ex1, col_ex2 = st.columns(2)
+            with col_ex1:
+                st.markdown(f"**AGENT 1:** {dob1}")
+                st.write(f"- วัน{dat1['day_name']} = `{dat1['day_num']}` | {dat1['phase']} = `{dat1['lunar_num']}`")
+                st.code(f"สูตร: {dat1['formula']} = {dat1['res']}")
+            with col_ex2:
+                st.markdown(f"**AGENT 2:** {dob2}")
+                st.write(f"- วัน{dat2['day_name']} = `{dat2['day_num']}` | {dat2['phase']} = `{dat2['lunar_num']}`")
+                st.code(f"สูตร: {dat2['formula']} = {dat2['res']}")
+
+            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; text-shadow: 0 0 15px {st.session_state.theme_color};'>GAPผลลัพธ์ห่าง: {g_val:.4f}</h1>", unsafe_allow_html=True)
+            
+            if g_val <= 1.0:
+                st.error("💎 **ระดับความเสถียร: เพชร (Diamond)** - รหัสคลื่นบรรจบขั้นสูงสุด")
+            elif 3.8 <= g_val <= 4.2:
+                st.warning("🌀 **ระดับความเสถียร: ธร (Tor)** - สัญญาณสะท้อนคู่ขนานเหนี่ยวนำสำคัญ")
+            elif g_val >= 10.0:
+                st.success("⚙️ **ระดับความเสถียร: กงจักร (Chakra)** - รหัสตัดขาดหรือแยกตัวเป็นอิสระต่อกัน")
+
+            # ---------------------------------------------------------
+            # 3. แผนที่พิกัดเวลา (Past & Future Timeline)
+            # ---------------------------------------------------------
+            st.divider()
+            st.subheader("3️⃣ ตารางแผนที่พิกัดกาลเวลาจุดเปลี่ยน (วิเคราะห์ล่วงหน้า-ย้อนหลัง 365 วัน)")
+            st.write(f"คำนวณฐานรอบวันของรหัสตัวตั้งต้น: **{dat1['res']}**")
+            t_back, t_next = st.tabs(["⏪ ตรวจสอบจุดพลังงานในอดีต", "🔮 พยากรณ์คลื่นความถี่ในอนาคต"])
+            with t_back:
+                past_data = run_scanner(dat1['res'], date.today(), 365, "past")
+                if past_data: st.dataframe(past_data, use_container_width=True)
+                else: st.info("--- ไม่พบสัญญาณแทรกแซงพิเศษในรอบ 365 วันที่ผ่านมา ---")
+            with t_next:
+                future_data = run_scanner(dat1['res'], date.today(), 365, "future")
+                if future_data: st.dataframe(future_data, use_container_width=True)
+                else: st.info("--- ไม่พบวันบรรจบพลังงานระดับวิกฤตล่วงหน้าใน 365 วันนี้ ---")
 
 # ==========================================
 # 5. MAIN ARCHITECTURE
 # ==========================================
 def main():
-    # ดักรับ Event สัญญาณค่าพิกัด GPS แม่นยำสูงส่งกลับมาที่ระบบหลังบ้านของ Python
-    # หมายเหตุ: ทำงานร่วมกับ JavaScript ในห้องเรดาร์ดึงพิกัดฮาร์ดแวร์จริง
     if not st.session_state.authenticated:
         login_screen()
     else:
         with st.sidebar:
             st.title("⚙️ SYNAPSE DASHBOARD")
-            st.markdown(f"**ตัวแทนใช้งาน:** <span style='color:{st.session_state.theme_color};'>{st.session_state.user}</span>", unsafe_allow_html=True)
-            st.session_state.theme_color = st.color_picker("ปรับแต่งคลื่นสีหน้าหลัก (THEME)", st.session_state.theme_color)
+            st.markdown(f"**ตัวแทนล็อกอิน:** <span style='color:{st.session_state.theme_color};'>{st.session_state.user}</span>", unsafe_allow_html=True)
+            st.session_state.theme_color = st.color_picker("ปรับแต่งหน้าสีธีม (THEME)", st.session_state.theme_color)
             st.session_state.bg_color = st.color_picker("สีพื้นหลังแกนกลาง (BG)", st.session_state.bg_color)
             st.markdown("---")
             if st.button("🔴 ออกจากระบบความปลอดภัย", use_container_width=True):
                 st.session_state.authenticated = False
+                st.session_state.user = None
                 st.rerun()
 
-        tabs = st.tabs(["🚀 CORE COMMAND", "🛰️ HIGH-GPS RADAR", "💬 COMM LIVE", "🎧 LOOP MUSIC", "📟 QUANTUM MATH"])
+        tabs = st.tabs(["🚀 CORE COMMAND", "🛰️ HIGH-GPS RADAR", "💬 COMM LIVEแชตสด", "🎧 LOOP MUSIC", "📟 QUANTUM MATRIX"])
         rooms = [room_core, room_radar, room_comms, room_music, room_math]
         for i, tab in enumerate(tabs):
             with tab: 
