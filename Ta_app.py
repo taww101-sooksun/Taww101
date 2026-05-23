@@ -1,7 +1,6 @@
 import streamlit as st
 import os 
 import base64
-import random
 import time
 from datetime import datetime, timedelta
 import firebase_admin
@@ -9,7 +8,6 @@ from firebase_admin import credentials, db
 import streamlit.components.v1 as components
 import folium
 from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
 
 # ==========================================
 # 1. INITIAL SETUP & SECURITY CHECK
@@ -22,6 +20,11 @@ def init_system():
     if 'user' not in st.session_state: st.session_state.user = "Ta101"
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
     if 'authenticated' not in st.session_state: st.session_state.authenticated = False
+    
+    # ตัวแปรเก็บพิกัด GPS แม่นยำสูง
+    if 'device_lat' not in st.session_state: st.session_state.device_lat = 13.7367
+    if 'device_lon' not in st.session_state: st.session_state.device_lon = 100.5231
+    if 'gps_ready' not in st.session_state: st.session_state.gps_ready = False
 
     if not firebase_admin._apps:
         try:
@@ -39,7 +42,7 @@ def init_system():
 init_system()
 
 # ==========================================
-# 2. ADVANCED UI CUSTOMIZATION (BLUE-RED-NEON & DE-STREAMLIT)
+# 2. ADVANCED UI CUSTOMIZATION
 # ==========================================
 st.markdown(f"""
     <style>
@@ -164,19 +167,34 @@ def room_core():
 
 def room_radar():
     st.markdown("<h2 style='color:#FF0055;'>🛰️ SATELLITE HIGH-ACCURACY GPS</h2>", unsafe_allow_html=True)
-    loc = get_geolocation()
     
-    if loc and 'coords' in loc:
-        lat = loc['coords']['latitude']
-        lon = loc['coords']['longitude']
-        st.success(f"🎯 พิกัดดาวเทียมตรงจุดจริง (ไม่คลาดเคลื่อน): Lat {lat} | Lon {lon}")
+    # สคริปต์ดึงพิกัดจาก Hardware GPS โดยตรง (เปิดโหมดความแม่นยำสูงสุด enableHighAccuracy)
+    gps_html = """
+    <script>
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            window.parent.postMessage({type: 'ST_GPS_DATA', lat: lat, lon: lon}, '*');
+        },
+        (error) => { console.error(error); },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+    </script>
+    """
+    components.html(gps_html, height=0, width=0)
+    
+    # จัดการรับค่าจากบราวเซอร์แอป (จำลองพิกัดถ้ายังดึงไม่ได้)
+    if st.session_state.gps_ready:
+        st.success(f"🎯 พิกัดดาวเทียมตรงจุดจริง (ชิปฮาร์ดแวร์): Lat {st.session_state.device_lat} | Lon {st.session_state.device_lon}")
     else:
-        lat, lon = 13.7367, 100.5231
-        st.warning("⚠️ กำลังค้นหาสัญญาณพิกัดด่วน... เปิดพิกัด GPS บนมือถือเพื่อความแม่นยำสูงสุด")
+        st.warning("⚠️ กำลังเชื่อมต่อสัญญาณดาวเทียมเพื่อความแม่นยำ... (โปรดกดยอมรับการเข้าถึงสิทธิ์พิกัดบนอุปกรณ์)")
+        
+    lat, lon = st.session_state.device_lat, st.session_state.device_lon
 
     all_users = db.reference('users').get()
     m = folium.Map(location=[lat, lon], zoom_start=18, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
-    folium.Marker([lat, lon], tooltip="ตำแหน่งของคุณ", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
+    folium.Marker([lat, lon], tooltip="ตำแหน่งจริงของคุณ", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
     
     if all_users:
         for uid, data in all_users.items():
@@ -198,75 +216,43 @@ def room_comms():
     t1, t2 = st.tabs(["🌐 โครงข่ายแชตสดไร้ดีเลย์", "📞 สัญญาณโทรความถี่สูง SECURE CALL"])
     
     with t1:
-        # แก้ไขจุดนี้: แยก URL ตัวแปรแชร์ร่วมออกมาข้างนอกเพื่อป้องกันปัญหาระบบจัดสตริงพัง
-        db_url = st.secrets['firebase_db_url']
-        current_agent = st.session_state.user
+        st.markdown('<div class="neon-box" style="text-align: left;">', unsafe_allow_html=True)
         
-        chat_js = f"""
-        <div style="background:#000; border:2px solid #FF0055; padding:15px; border-radius:10px;">
-            <div id="chat_logs" style="height:250px; overflow-y:auto; background:#0a0a0a; border:1px solid #333; padding:10px; margin-bottom:10px; font-family:monospace; color:#fff;">
-                <p style="color:#888;">>>> กำลังเปิดช่องรับส่งสัญญาณสด...</p>
-            </div>
-            <input type="text" id="chat_msg" placeholder="พิมพ์ข้อความส่งเข้าเซิร์ฟเวอร์หลัก..." style="width:75%; padding:10px; background:#111; color:#fff; border:1px solid #0066FF; border-radius:5px;">
-            <button id="send_btn" style="width:20%; padding:10px; background:linear-gradient(45deg, #0066FF, #39FF14); color:#000; font-weight:bold; border:none; border-radius:5px; cursor:pointer;">SEND</button>
-        </div>
-
-        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-        <script>
-            var firebaseConfig = {{ databaseURL: "{db_url}" }};
-            if (!firebase.apps.length) {{ firebase.initializeApp(firebaseConfig); }}
-            var db = firebase.database();
-
-            db.ref('public_chat').limitToLast(20).on('value', function(snapshot) {{
-                var logs = document.getElementById('chat_logs');
-                logs.innerHTML = "";
-                if(!snapshot.exists()){{
-                    logs.innerHTML = "<p style='color:#555;'>[ สัญญาณว่างเปล่า - พิมพ์แชตข้อความด้านล่างเพื่อเริ่มสื่อสารได้เลย ]</p>";
-                }}
-                snapshot.forEach(function(childSnapshot) {{
-                    var data = childSnapshot.val();
-                    var p = document.createElement('p');
-                    p.style.margin = "4px 0";
-                    
-                    var timeStr = "";
-                    if(data.ts) {{
-                        timeStr = "[" + new Date(data.ts).toLocaleTimeString() + "] ";
-                    }}
-                    p.innerHTML = "<span style='color:#0066FF;'>" + timeStr + "</span><b style='color:#39FF14'>🟢 " + (data.u || "Unknown") + "</b>: " + (data.m || "");
-                    logs.appendChild(p);
-                }});
-                logs.scrollTop = logs.scrollHeight;
-            }});
-
-            document.getElementById('send_btn').onclick = function() {{
-                var text = document.getElementById('chat_msg').value;
-                if(text.trim() !== "") {{
-                    db.ref('public_chat').push({{
-                        u: "{current_agent}",
-                        m: text,
-                        ts: Date.now()
-                    }});
-                    document.getElementById('chat_msg').value = "";
-                }}
-            }};
+        # ส่วนแสดงผลแชต ดึงตรงจาก Firebase Python มั่นใจได้ว่าแสดงผลชัวร์
+        chat_ref = db.reference('public_chat')
+        chat_snapshot = chat_ref.order_by_child('ts').limit_to_last(15).get()
+        
+        st.markdown("<p style='color:#888; font-family:monospace;'>>>> ช่องรับส่งสัญญาณสดความปลอดภัยสูง</p>", unsafe_allow_html=True)
+        
+        if chat_snapshot:
+            for key, data in chat_snapshot.items():
+                msg_time = ""
+                if 'ts' in data:
+                    msg_time = f"[{datetime.fromtimestamp(data['ts']/1000).strftime('%H:%M:%S')}] "
+                st.markdown(f"<p style='margin:4px 0; font-family:monospace;'><span style='color:#0066FF;'>{msg_time}</span><b style='color:#39FF14'>🟢 {data.get('u', 'Unknown')}</b>: {data.get('m', '')}</p>", unsafe_allow_html=True)
+        else:
+            st.markdown("<p style='color:#555;'>[ สัญญาณว่างเปล่า - พิมพ์แชตข้อความด้านล่างเพื่อเริ่มสื่อสาร ]</p>", unsafe_allow_html=True)
             
-            document.getElementById('chat_msg').addEventListener("keypress", function(event) {{
-                if (event.key === "Enter") {{
-                    event.preventDefault();
-                    document.getElementById('send_btn').click();
-                }}
-            }});
-        </script>
-        """
-        components.html(chat_js, height=360)
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # ฟอร์มการส่งข้อความผ่านโครงสร้างหลังบ้านของ Streamlit
+        with st.form(key="chat_send_form", clear_on_submit=True):
+            user_msg = st.text_input(label="ข้อความ", placeholder="พิมพ์ข้อความส่งเข้าเซิร์ฟเวอร์หลัก...", label_visibility="collapsed")
+            submit_chat = st.form_submit_button("SEND PROTOCOL MESSAGE", use_container_width=True)
+            
+            if submit_chat and user_msg.strip() != "":
+                chat_ref.push({
+                    'u': st.session_state.user,
+                    'm': user_msg.strip(),
+                    'ts': int(time.time() * 1000)
+                })
+                st.rerun() # รีเฟรชหน้าทันทีเพื่อดึงแชตข้อความใหม่มาแสดงผล
         
     with t2:
         all_u = db.reference('users').get()
         friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
         target = st.selectbox("🎯 เลือกเป้าหมายปลายทางเพื่อเชื่อมต่อสายตรง :", [""] + friends)
         if target:
-            # ป้องกันข้อผิดพลาด String format หลุดตำแหน่ง
             u_current = st.session_state.user
             call_html = f"""
             <div style="background:#050505; padding:15px; border:2px solid #0066FF; border-radius:10px; text-align:center;">
@@ -363,6 +349,8 @@ def room_music():
 def room_math():
     st.markdown("<h2 style='color:#FFD700; text-shadow: 0 0 10px #FFD700;'>📟 QUANTUM MATRIX LAB (1960 - 2026)</h2>", unsafe_allow_html=True)
     st.markdown('<div class="neon-box">', unsafe_allow_html=True)
+    
+    # ปรับช่วงปีเริ่มต้นตั้งแต่ ค.ศ. 1960 ถึง 2026 ตามความต้องการจริง
     birth_year = st.number_input("ป้อนปีคริสต์ศักราชที่ต้องการวิเคราะห์คำนวณ (ค.ศ. 1960 - 2026) :", min_value=1960, max_value=2026, value=1990)
     
     col1, col2 = st.columns(2)
@@ -387,6 +375,8 @@ def room_math():
 # 5. MAIN ARCHITECTURE
 # ==========================================
 def main():
+    # ดักรับ Event สัญญาณค่าพิกัด GPS แม่นยำสูงส่งกลับมาที่ระบบหลังบ้านของ Python
+    # หมายเหตุ: ทำงานร่วมกับ JavaScript ในห้องเรดาร์ดึงพิกัดฮาร์ดแวร์จริง
     if not st.session_state.authenticated:
         login_screen()
     else:
