@@ -22,6 +22,10 @@ def init_system():
     if 'user' not in st.session_state: st.session_state.user = None
     if 'authenticated' not in st.session_state: st.session_state.authenticated = False
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    
+    # ตัวแปรคอยจำเวลาการกดอ่านแชตเพื่อเช็กข้อความใหม่
+    if 'last_read_global' not in st.session_state: st.session_state.last_read_global = datetime.utcnow().isoformat()
+    if 'last_read_private' not in st.session_state: st.session_state.last_read_private = {}
 
     if not firebase_admin._apps:
         try:
@@ -132,17 +136,13 @@ def room_core():
 def room_radar():
     st.markdown("<h2 style='color:#FF0055;'>🛰️ SATELLITE HIGH-ACCURACY GPS</h2>", unsafe_allow_html=True)
     
-    # ดึงพิกัดจากเบราว์เซอร์
     loc = get_geolocation()
-    
-    # สร้างคอลัมน์เพื่อให้ใส่ค่าพิกัดแบบกำหนดเองได้หากดาวเทียมเพี้ยน
     col_lat, col_lon = st.columns(2)
     
     if loc and 'coords' in loc:
         default_lat = loc['coords']['latitude']
         default_lon = loc['coords']['longitude']
     else:
-        # พิกัดมาตรฐานกรุงเทพฯ หากดึงค่าเริ่มต้นไม่ได้
         default_lat, default_lon = 13.7367, 100.5231
         st.info("💡 หากพิกัดไม่ตรง ให้เปิดระบบระบุตำแหน่ง (GPS) บนมือถือ หรือพิมพ์กรอกตัวเลขโดยตรงได้เลย")
 
@@ -151,7 +151,6 @@ def room_radar():
     with col_lon:
         real_lon = st.number_input("ปรับแต่งพิกัดลองจิจูด (Longitude) ตรงจุดจริง", value=default_lon, format="%.6f")
 
-    # บันทึกพิกัดลง Firebase
     if st.button("📡 ซิงค์ล็อกพิกัดแท้จริงเข้าฐานข้อมูลกลาง", use_container_width=True):
         db.reference(f'users/{st.session_state.user}').update({
             'lat': real_lat,
@@ -160,11 +159,9 @@ def room_radar():
         })
         st.success("🎯 ยิงพิกัดความแม่นยำสูงเข้าสู่ระบบกลางเรียบร้อย!")
 
-    # แสดงแผนที่ดาวเทียม
     m = folium.Map(location=[real_lat, real_lon], zoom_start=17, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
     folium.Marker([real_lat, real_lon], tooltip="ตำแหน่งแท้จริงของคุณ", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
     
-    # ดึงพิกัดเพื่อนตัวแทนคนอื่นมาแสดงบนแผนที่ด้วย
     all_users = db.reference('users').get()
     if all_users:
         for uid, data in all_users.items():
@@ -174,19 +171,19 @@ def room_radar():
     st_folium(m, width="100%", height=400, key="radar_map")
 
 # ==========================================
-# 5. ROOM COMMS (แก้ระบบแชตรวม & แชตส่วนตัว)
+# 5. ROOM COMMS (ระบบแชต + แจ้งเตือนสแกนความจริง)
 # ==========================================
 def room_comms():
     chat_mode = st.radio("เลือกช่องทางสื่อสาร :", ["💬 แชตรวมกลาง (Global Chat)", "🔒 แชตส่วนตัว (Direct Message)"], horizontal=True)
     
     if chat_mode == "💬 แชตรวมกลาง (Global Chat)":
+        st.session_state.last_read_global = datetime.utcnow().isoformat()  # เคลียร์สถานะการอ่านแชตรวม
         st.subheader("ช่องสัญญาณแชตรวม")
         chat_ref = db.reference('global_chat')
         
-        # ดึงข้อความแชตรวม
-        messages_data = chat_ref.limit_to_last(15).get()
+        # FIXED: ใส่ .order_by_key() เรียงลำดับก่อนดึงข้อมูล ป้องกันแอปพัง
+        messages_data = chat_ref.order_by_key().limit_to_last(15).get()
         
-        # แสดงกล่องข้อความ HTML
         chat_html = "<div style='background:#111; padding:10px; border-radius:10px; height:250px; overflow-y:auto; display:flex; flex-direction:column;'>"
         if messages_data:
             for msg_id, msg in messages_data.items():
@@ -200,7 +197,6 @@ def room_comms():
         chat_html += "</div>"
         st.markdown(chat_html, unsafe_allow_html=True)
         
-        # ฟอร์มส่งข้อความแชตรวม
         with st.form(key="global_chat_form", clear_on_submit=True):
             user_message = st.text_input("พิมพ์ข้อความส่งเข้าแชตรวม...", key="g_msg")
             if st.form_submit_button("ส่งข้อความรวม ⚡", use_container_width=True) and user_message.strip():
@@ -222,12 +218,14 @@ def room_comms():
             
             target_agent = st.selectbox("เลือกตัวแทนปลายทางที่ต้องการส่งรหัสลับ", agent_list)
             
-            # สร้าง ID ห้องแชตคู่เฉพาะตัว (เรียงตามตัวอักษรเพื่อไม่ให้ห้องสลับกัน)
             room_id = f"room_{min(st.session_state.user, target_agent)}_{max(st.session_state.user, target_agent)}"
+            st.session_state.last_read_private[room_id] = datetime.utcnow().isoformat()  # เคลียร์สถานะการอ่านห้องลับนี้
+            
             priv_ref = db.reference(f'private_chats/{room_id}')
             
-            # แสดงแชตส่วนตัว
-            priv_data = priv_ref.limit_to_last(15).get()
+            # FIXED: ใส่ .order_by_key() แชตส่วนตัวไม่ให้บอร์ดโปรแกรมพัง
+            priv_data = priv_ref.order_by_key().limit_to_last(15).get()
+            
             chat_html = "<div style='background:#111; padding:10px; border-radius:10px; height:250px; overflow-y:auto; display:flex; flex-direction:column;'>"
             if priv_data:
                 for msg_id, msg in priv_data.items():
@@ -241,7 +239,6 @@ def room_comms():
             chat_html += "</div>"
             st.markdown(chat_html, unsafe_allow_html=True)
             
-            # ฟอร์มส่งข้อความแชตส่วนตัว
             with st.form(key="private_chat_form", clear_on_submit=True):
                 priv_message = st.text_input("พิมพ์รหัสลับส่งส่วนตัว...", key="p_msg")
                 if st.form_submit_button("ส่งข้อความลับคู่ขนาน 🔒", use_container_width=True) and priv_message.strip():
@@ -258,7 +255,7 @@ def room_comms():
         st.rerun()
 
 # ==========================================
-# 6. ROOM MUSIC (แก้ระบบเล่นเพลงลูปวนต่อเนื่อง)
+# 6. ROOM MUSIC (ระบบคิวเพลง เล่นต่อเนื่องวนลูป)
 # ==========================================
 def room_music():
     st.markdown("<h2 style='color:#39FF14; text-align:center;'>🎧 CONTINUOUS HOLOGRAPHIC STATION</h2>", unsafe_allow_html=True)
@@ -268,21 +265,15 @@ def room_music():
         st.warning("⚠️ ไม่พบไฟล์ .mp3 ใน Directory หลักของแอปโปรแกรม")
         return
         
-    st.write(f"พบไฟล์เพลงในระบบทั้งหมด: {len(songs)} เพลง")
-    
-    # ตรวจสอบ index คิวเพลงปัจจุบัน
     if st.session_state.song_index >= len(songs):
         st.session_state.song_index = 0
         
     current_song = songs[st.session_state.song_index]
-    st.success(f"กำลังเล่นเพลงคิวปัจจุบันลำดับที่ {st.session_state.song_index + 1}: {current_song}")
+    st.success(f"กำลังเปิดเครื่องขยายสัญญาณเพลงคิวที่ {st.session_state.song_index + 1}: {current_song}")
     
-    # แปลงไฟล์เสียง
     with open(current_song, "rb") as f:
         song_b64 = base64.b64encode(f.read()).decode()
         
-    # คอนโทรลควบคุมด้วย HTML5 + JavaScript ฟังจบแล้วขยับคิวส่งกลับไปหลังบ้าน
-    # ใส่ปุ่มเพื่อเปลี่ยนเพลงแบบ Manual หรือปล่อยให้ตัวแอปเล่นต่ออัตโนมัติได้เมื่อเพลงจบ
     col_p1, col_p2 = st.columns(2)
     with col_p1:
         if st.button("⏮️ เพลงก่อนหน้า", use_container_width=True):
@@ -293,7 +284,6 @@ def room_music():
             st.session_state.song_index = (st.session_state.song_index + 1) % len(songs)
             st.rerun()
 
-    # หน้าต่างควบคุมเครื่องเล่นเสียงแบบ Embedded ลูปคิวต่อเนื่อง
     audio_html = f"""
     <div style="background:#000; border:2px solid #39FF14; padding:15px; border-radius:10px; text-align:center;">
         <p style="color:#fff;">AUDIO STREAMING: {current_song}</p>
@@ -301,18 +291,11 @@ def room_music():
             <source src="data:audio/mp3;base64,{song_b64}" type="audio/mp3">
         </audio>
     </div>
-    <script>
-    var audio = document.getElementById('hologram-player');
-    audio.onended = function() {{
-        // เมื่อเพลงจบตัวเล่นจะสั่งให้ระบบทำอะไรบางอย่าง หรือส่งค่าเพื่อขยับคิวได้แบบอัตโนมัติ
-        console.log("Song finished, ready for next station track");
-    }};
-    </script>
     """
     components.html(audio_html, height=130)
 
 # ==========================================
-# 7. ROOM MATH (ปีนักษัตรและความจริงที่ถูกต้อง 100%)
+# 7. ROOM MATH (แก้แกนปีนักษัตรให้ถูกต้องตรงความจริง)
 # ==========================================
 def room_math():
     st.markdown("<h2 style='text-align:center;'>🧬 THE TRUTH DECODER</h2>", unsafe_allow_html=True)
@@ -325,7 +308,7 @@ def room_math():
         pos = (diff - 0.5) % lunar_cycle
         day_val = current_date.weekday() + 1
         
-        # สูตรการคำนวณปีนักษัตรสากลที่ตรงตามจริง ค.ศ. 2026 ต้องได้ปีมะเมีย
+        # FIXED: แก้ไขเรียงอาร์เรย์ปีสากลใหม่ทั้งหมดให้แกนโลกตรงจุดจริง พ.ศ. 2569 ต้องได้ ปีมะเมีย
         zodiacs = ["ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม", "วอก", "ระกา", "จอ", "กุน"]
         zodiac = zodiacs[(current_date.year - 4) % 12]
         
@@ -425,15 +408,49 @@ def room_math():
                 else: st.info("--- ไม่พบวันบรรจบพลังงานระดับวิกฤตล่วงหน้าใน 365 วันนี้ ---")
 
 # ==========================================
-# 8. MAIN ARCHITECTURE
+# 8. MAIN ARCHITECTURE (ตัวสแกนแจ้งเตือนอัตโนมัติ)
 # ==========================================
 def main():
     if not st.session_state.authenticated:
         login_screen()
     else:
+        # ฟังก์ชันสแกนหาข้อความแชตเข้าเพื่อแจ้งเตือน
+        global_notif = False
+        private_notif = False
+        
+        try:
+            # 1. เช็กแจ้งเตือนแชตรวม
+            last_msg = db.reference('global_chat').order_by_key().limit_to_last(1).get()
+            if last_msg and isinstance(last_msg, dict):
+                for k, m in last_msg.items():
+                    if m.get('user') != st.session_state.user and m.get('ts', '') > st.session_state.last_read_global:
+                        global_notif = True
+            
+            # 2. เช็กแจ้งเตือนแชตส่วนตัว (สแกนทุกห้องที่มีคุณอยู่)
+            all_rooms = db.reference('private_chats').get()
+            if all_rooms and isinstance(all_rooms, dict):
+                for r_id, msgs in all_rooms.items():
+                    if f"room_" in r_id and st.session_state.user in r_id:
+                        if isinstance(msgs, dict):
+                            # หาข้อความสุดท้ายของห้องนั้น
+                            last_p_k = sorted(msgs.keys())[-1]
+                            last_p_m = msgs[last_p_k]
+                            last_read = st.session_state.last_read_private.get(r_id, "")
+                            if last_p_m.get('user') != st.session_state.user and last_p_m.get('ts', '') > last_read:
+                                private_notif = True
+        except:
+            pass # กันระบบหน่วงถ้าเน็ตช้า
+
         with st.sidebar:
             st.title("⚙️ SYNAPSE DASHBOARD")
             st.markdown(f"**ตัวแทนล็อกอิน:** <span style='color:{st.session_state.theme_color};'>{st.session_state.user}</span>", unsafe_allow_html=True)
+            
+            # แสดงไฟแจ้งเตือนที่แถบด้านข้าง (Sidebar) ให้เห็นตลอดเวลา
+            if global_notif:
+                st.markdown("<p style='background:#1b4d3e; color:#39FF14; padding:8px; border-radius:5px; font-size:12px; text-align:center; font-weight:bold;'>🟢 มีข้อความใหม่ในแชตรวมกลาง!</p>", unsafe_allow_html=True)
+            if private_notif:
+                st.markdown("<p style='background:#4a1525; color:#FF0055; padding:8px; border-radius:5px; font-size:12px; text-align:center; font-weight:bold;'>🚨 🔒 มีข้อความลับส่งถึงคุณ!</p>", unsafe_allow_html=True)
+                
             st.session_state.theme_color = st.color_picker("ปรับแต่งหน้าสีธีม (THEME)", st.session_state.theme_color)
             st.session_state.bg_color = st.color_picker("สีพื้นหลังแกนกลาง (BG)", st.session_state.bg_color)
             if st.button("🔴 ออกจากระบบความปลอดภัย", use_container_width=True):
@@ -441,7 +458,10 @@ def main():
                 st.session_state.user = None
                 st.rerun()
 
-        tabs = st.tabs(["🚀 CORE COMMAND", "🛰️ HIGH-GPS RADAR", "💬 COMM SYSTEM", "🎧 LOOP MUSIC", "📟 QUANTUM MATRIX"])
+        # แทรกตัวบอกสถานะแจ้งเตือนในป้ายเมนูหลัก
+        tab_comm_label = "💬 COMM SYSTEM 🔔" if (global_notif or private_notif) else "💬 COMM SYSTEM"
+        
+        tabs = st.tabs(["🚀 CORE COMMAND", "🛰️ HIGH-GPS RADAR", tab_comm_label, "🎧 LOOP MUSIC", "📟 QUANTUM MATRIX"])
         rooms = [room_core, room_radar, room_comms, room_music, room_math]
         for i, tab in enumerate(tabs):
             with tab: 
