@@ -99,7 +99,6 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# --- ฟังก์ชันดึงไฟล์ Base64 ---
 def get_base64_file(file_path):
     if os.path.exists(file_path):
         with open(file_path, "rb") as f:
@@ -107,7 +106,6 @@ def get_base64_file(file_path):
     return ""
 
 logo_base64 = get_base64_file("logo1.png")
-audio_base64 = get_base64_file("notification.mp3")
 
 # ==========================================
 # 3. AUTHENTICATION SYSTEM (GATEWAY)
@@ -177,16 +175,14 @@ def room_radar():
     st.markdown("<h2 style='color:#FF0055;'>🛰️ SATELLITE HIGH-ACCURACY GPS</h2>", unsafe_allow_html=True)
     loc = get_geolocation()
     
-    # ดึงค่าพิกัดปัจจุบันจากเบราว์เซอร์มือถือ
     if loc and 'coords' in loc:
         lat = loc['coords']['latitude']
         lon = loc['coords']['longitude']
         st.success(f"🎯 พิกัดดาวเทียมตรงจุดจริง (อัปเดตสด): Lat {lat} | Lon {lon}")
     else:
         lat, lon = 13.7367, 100.5231
-        st.warning("⚠️ กำลังค้นหาสัญญาณพิกัดด่วน... โปรดเปิดพิกัดตำแหน่งบนมือถือ")
+        st.warning("⚠️ กำลังค้นหาสัญญาณพิกัดด่วน... โปรดเปิดพิกัดตำแหน่งบนมือถือเพื่อความแม่นยำสูงสุด")
 
-    # ดึงพิกัดของ Agents ทั้งหมดมาพล็อตลงแผนที่ดาวเทียม
     all_users = db.reference('users').get()
     m = folium.Map(location=[lat, lon], zoom_start=16, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
     folium.Marker([lat, lon], tooltip="ตำแหน่งของคุณ", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
@@ -207,27 +203,17 @@ def room_radar():
         st.toast("ส่งพิกัดดาวเทียมชุดสมบูรณ์เข้าเซิร์ฟเวอร์กลางแล้ว!")
 
 
-            const txt = document.getElementById('chat_msg').value;
-            }});
-            }}
-        }};
-
-        document.getElementById('chat_msg').addEventListener("keypress", function(e) {{
-            if (e.key === "Enter") {{ e.preventDefault(); document.getElementById('send_btn').click(); }}
 def room_comms():
     st.markdown("<h2 style='color:#0066FF;'>💬 COMM LIVE SYNC CENTER</h2>", unsafe_allow_html=True)
     
-    # 1. ส่วนแสดงผลข้อความแชต (ดึงข้อมูลล่าสุด 15 ข้อความจาก Firebase ด้วย Python)
     chat_ref = db.reference('global_chat')
     
-    # ดึงข้อมูลแชต
     try:
-        messages_data = chat_ref.order_by_child('ts').limit_to_last(15).get()
+        messages_data = chat_ref.limit_to_last(15).get()
     except Exception as e:
         st.error(f"ไม่สามารถเชื่อมต่อฐานข้อมูลแชตได้: {e}")
         messages_data = None
 
-    # สไตล์กล่องแชต
     chat_html = f"""
     <style>
         .chat-container {{
@@ -235,7 +221,7 @@ def room_comms():
             border: 2px solid {st.session_state.theme_color}; 
             border-radius: 12px;
             padding: 15px;
-            max-height: 300px;
+            height: 300px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
@@ -252,7 +238,6 @@ def room_comms():
             background: rgba(57, 255, 20, 0.15);
             border-right: 4px solid {st.session_state.theme_color};
             align-self: flex-end;
-            text-align: right;
         }}
         .msg-others {{
             background: #222;
@@ -269,7 +254,6 @@ def room_comms():
     """
     
     if messages_data:
-        # เรียงลำดับข้อความจากเก่าไปใหม่ตามเวลา
         for msg_id, msg in messages_data.items():
             if isinstance(msg, dict):
                 user_name = msg.get('user', 'Unknown')
@@ -293,34 +277,27 @@ def room_comms():
         chat_html += "<center style='color:#666;'>[ ยังไม่มีสัญญาณข้อความในระบบ ]</center>"
         
     chat_html += "</div>"
-    
-    # แสดงผลกล่องแชต
     st.markdown(chat_html, unsafe_allow_html=True)
     
-    # 2. ฟอร์มสำหรับพิมพ์และส่งข้อความ (ใช้เทคนิคตู้คอนเทนเนอร์ของ Streamlit เพื่อล้างค่าหลังกดส่ง)
     with st.form(key="chat_form", clear_on_submit=True):
         user_message = st.text_input("พิมพ์ข้อความส่งสัญญาณ...", placeholder="ข้อความของคุณ...", key="input_msg")
-        submit_button = st.form_submit_input(label="SEND SIGNAL")
+        submit_button = st.form_submit_button(label="SEND SIGNAL ⚡")
         
         if submit_button and user_message.strip() != "":
-            # ส่งข้อมูลเข้า Firebase ทันทีผ่านสิทธิ์ Admin หลังบ้าน
             chat_ref.push({
                 'user': st.session_state.user,
                 'text': user_message.strip(),
                 'ts': datetime.utcnow().isoformat()
             })
             
-            # อัปเดตตัวนับแจ้งเตือนเพื่อให้เพื่อนๆ รู้ว่ามีข้อความเข้า
             notif_ref = db.reference('chat_notifications/unread_count')
             current_count = notif_ref.get() or 0
             notif_ref.set(current_count + 1)
-            
-            # รีเฟรชหน้าจอเพื่อให้ข้อความใหม่ขึ้นทันที
             st.rerun()
 
     if st.button("🔄 อัปเดตห้องแชตสด (REFRESH CHAT)", use_container_width=True):
         st.rerun()
- 
+
 
 def room_music():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>🎧 CONTINUOUS HOLOGRAPHIC STATION</h2>", unsafe_allow_html=True)
@@ -418,7 +395,6 @@ def room_math():
             
         return {"res": round(res, 4), "phase": phase, "zodiac": zodiac, "element": element, "formula": formula, "type": p_type, "day_num": day_val, "lunar_num": m_num, "diff": diff, "day_name": ["จันทร์","อังคาร","พุธ","พฤหัสบดี","ศุกร์","เสาร์","อาทิตย์"][dt.weekday()]}
 
-    # ฟังก์ชันสแกนหาไทม์ไลน์
     def run_scanner(base_res, start_dt, days_range, direction="future"):
         data_list = []
         for i in range(1, days_range + 1):
@@ -426,7 +402,6 @@ def room_math():
             inf = decode_truth(target_step)
             gap = abs(base_res - inf['res'])
             
-            # บันทึกเฉพาะพิกัดสำคัญตามเกณฑ์ ธร-เพชร-กงจักร
             status = ""
             if gap <= 1.0: status = "💎 เพชร (บรรจบสูงสุด)"
             elif 3.8 <= gap <= 4.2: status = "🌀 ธร (สะท้อนคู่ขนาน)"
@@ -472,9 +447,6 @@ def room_math():
             </div>
         """, unsafe_allow_html=True)
 
-        # ---------------------------------------------------------
-        # 2. วิเคราะห์รหัสคู่ขนาน & หาค่า GAP (ธร-เพชร-กงจักร)
-        # ---------------------------------------------------------
         st.divider()
         st.subheader("2️⃣ วิเคราะห์รหัสคู่ขนาน & สัญญาณ GAP")
         c1, c2 = st.columns(2)
@@ -508,9 +480,6 @@ def room_math():
             elif g_val >= 10.0:
                 st.success("⚙️ **ระดับความเสถียร: กงจักร (Chakra)** - รหัสตัดขาดหรือแยกตัวเป็นอิสระต่อกัน")
 
-            # ---------------------------------------------------------
-            # 3. แผนที่พิกัดเวลา (Past & Future Timeline)
-            # ---------------------------------------------------------
             st.divider()
             st.subheader("3️⃣ ตารางแผนที่พิกัดกาลเวลาจุดเปลี่ยน (วิเคราะห์ล่วงหน้า-ย้อนหลัง 365 วัน)")
             st.write(f"คำนวณฐานรอบวันของรหัสตัวตั้งต้น: **{dat1['res']}**")
