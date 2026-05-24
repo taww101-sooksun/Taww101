@@ -207,127 +207,120 @@ def room_radar():
         st.toast("ส่งพิกัดดาวเทียมชุดสมบูรณ์เข้าเซิร์ฟเวอร์กลางแล้ว!")
 
 
-def room_comms():
-    st.markdown("<h2 style='color:#0066FF;'>💬 COMM LIVE SYNC CENTER</h2>", unsafe_allow_html=True)
-    
-    # ดึงตัวแปรที่จำเป็นส่งให้ JavaScript ทำงานร่วมกับ Firebase
-    db_url = st.secrets['firebase_db_url']
-    current_agent = st.session_state.user
-    
-    chat_js = f"""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-        #chat-screen {{
-            background: rgba(0,0,0,0.95); border: 2px solid {st.session_state.theme_color}; border-radius: 12px;
-            height: 350px; overflow-y: auto; padding: 15px; display: flex; flex-direction: column;
-            box-shadow: inset 0 0 15px {st.session_state.theme_color}33;
-        }}
-        .bubble {{ padding: 10px 15px; border-radius: 10px; margin: 8px 0; max-width: 85%; color: #fff; font-family: 'Orbitron', sans-serif; font-size: 14px; line-height: 1.4; }}
-        .me {{ background: {st.session_state.theme_color}22; border-right: 4px solid {st.session_state.theme_color}; align-self: flex-end; }}
-        .others {{ background: #222; border-left: 4px solid #777; align-self: flex-start; }}
-        .notif-box {{ background: #333; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; }}
-        .alert-red {{ background: #F00 !important; box-shadow: 0 0 15px #F00; font-weight: bold; }}
-    </style>
-
-    <div id="chat-screen">
-        <div style="display:flex; justify-content:space-between; margin-bottom:12px; border-bottom: 1px solid #333; padding-bottom: 5px;">
-            <span style="color:{st.session_state.theme_color}; font-size:10px; letter-spacing: 2px;">📡 LIVE STREAM SIGNAL</span>
-            <span id="notif-box" class="notif-box">0 NEW SIGNAL</span>
-        </div>
-        <div id="msg-area" style="display:flex; flex-direction:column;"></div>
-    </div>
-
-    <div style="margin-top: 10px; display: flex; gap: 10px;">
-        <input type="text" id="chat_msg" placeholder="พิมพ์ข้อความส่งสัญญาณ..." style="flex-grow:1; padding:12px; background:#111; color:#fff; border:1px solid #0066FF; border-radius:8px;">
-        <button id="send_btn" style="width:100px; padding:12px; background:linear-gradient(45deg, #0066FF, #39FF14); color:#000; font-weight:bold; border:none; border-radius:8px; cursor:pointer;">SEND</button>
-    </div>
-
-    <audio id="notif-sound" preload="auto">
-        <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
-    </audio>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script>
-        const fb_conf = {{ databaseURL: "{db_url}" }};
-        if(!firebase.apps.length) firebase.initializeApp(fb_conf);
-        const database = firebase.database();
-        let lastCount = -1;
-        const beep = document.getElementById('notif-sound');
-
-        function unlock() {{
-            beep.play().then(() => {{ beep.pause(); beep.currentTime = 0; }}).catch(()=>{{\}});
-            window.removeEventListener('click', unlock);
-            window.removeEventListener('touchstart', unlock);
-        }}
-        window.addEventListener('click', unlock);
-        window.addEventListener('touchstart', unlock);
-
-        // โหลดข้อมูลและดักจับข้อความใหม่ในฐานข้อมูล global_chat หลัก
-        database.ref('global_chat').limitToLast(25).on('child_added', (snap) => {{
-            const msg = snap.val();
-            const area = document.getElementById('msg-area');
-            const div = document.createElement('div');
-            const isMe = msg.user === "{current_agent}";
-            
-            div.className = "bubble " + (isMe ? "me" : "others");
-            div.style.alignSelf = isMe ? 'flex-end' : 'flex-start';
-            
-            let html = `<div style="font-size:10px; color:#777; margin-bottom:5px;">${{msg.user}}</div>`;
-            if(msg.text) html += `<div>${{msg.text}}</div>`;
-            if(msg.img) html += `<img src="data:image/png;base64,${{msg.img}}" style="max-width:100%; border-radius:8px; margin-top:8px; border: 1px solid #444;">`;
-            
-            div.innerHTML = html;
-            area.appendChild(div);
-            document.getElementById('chat-screen').scrollTop = 999999;
-        }});
-
-        // ปุ่มกดส่งข้อความทาง JS
-        document.getElementById('send_btn').onclick = function() {{
             const txt = document.getElementById('chat_msg').value;
-            if(txt.trim() !== "") {{
-                database.ref('global_chat').push({{
-                    user: "{current_agent}",
-                    text: txt,
-                    ts: new Date().toISOString()
-                }});
-                document.getElementById('chat_msg').value = "";
-                
-                // กระตุ้นระบบสั่น/แจ้งเตือนเพื่อน
-                database.ref('chat_notifications/unread_count').transaction((cur) => {{
-                    return (cur || 0) + 1;
-                }});
+            }});
             }}
         }};
 
         document.getElementById('chat_msg').addEventListener("keypress", function(e) {{
             if (e.key === "Enter") {{ e.preventDefault(); document.getElementById('send_btn').click(); }}
-        }});
-
-        // รับค่าชุดนับแจ้งเตือนส่งสัญญาณเสียงบี๊ป
-        database.ref('chat_notifications/unread_count').on('value', (snap) => {{
-            const val = snap.val() || 0;
-            const box = document.getElementById('notif-box');
-            box.innerText = val + " NEW SIGNAL";
-            if(val > 0) {{
-                box.classList.add('alert-red');
-                if(lastCount !== -1 && val > lastCount) {{
-                    beep.currentTime = 0;
-                    beep.play().catch(() => {{}});
-                }}
-            }} else {{
-                box.classList.remove('alert-red');
-            }}
-            lastCount = val;
-        }});
-    </script>
-    """
-    components.html(chat_js, height=450)
+def room_comms():
+    st.markdown("<h2 style='color:#0066FF;'>💬 COMM LIVE SYNC CENTER</h2>", unsafe_allow_html=True)
     
-    if st.button("🔔 ล้างสถานะการแจ้งเตือนแชต (RESET NOTIFICATION)", use_container_width=True):
-        db.reference('chat_notifications').set({'unread_count': 0})
-        st.rerun()
+    # 1. ส่วนแสดงผลข้อความแชต (ดึงข้อมูลล่าสุด 15 ข้อความจาก Firebase ด้วย Python)
+    chat_ref = db.reference('global_chat')
+    
+    # ดึงข้อมูลแชต
+    try:
+        messages_data = chat_ref.order_by_child('ts').limit_to_last(15).get()
+    except Exception as e:
+        st.error(f"ไม่สามารถเชื่อมต่อฐานข้อมูลแชตได้: {e}")
+        messages_data = None
 
+    # สไตล์กล่องแชต
+    chat_html = f"""
+    <style>
+        .chat-container {{
+            background: rgba(0,0,0,0.9); 
+            border: 2px solid {st.session_state.theme_color}; 
+            border-radius: 12px;
+            padding: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }}
+        .msg-box {{
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin: 5px 0;
+            max-width: 80%;
+            color: #fff;
+            font-size: 14px;
+        }}
+        .msg-me {{
+            background: rgba(57, 255, 20, 0.15);
+            border-right: 4px solid {st.session_state.theme_color};
+            align-self: flex-end;
+            text-align: right;
+        }}
+        .msg-others {{
+            background: #222;
+            border-left: 4px solid #0066FF;
+            align-self: flex-start;
+        }}
+        .msg-user {{
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 3px;
+        }}
+    </style>
+    <div class="chat-container">
+    """
+    
+    if messages_data:
+        # เรียงลำดับข้อความจากเก่าไปใหม่ตามเวลา
+        for msg_id, msg in messages_data.items():
+            if isinstance(msg, dict):
+                user_name = msg.get('user', 'Unknown')
+                text_content = msg.get('text', '')
+                
+                if user_name == st.session_state.user:
+                    chat_html += f"""
+                    <div class="msg-box msg-me">
+                        <div class="msg-user">{user_name}</div>
+                        <div>{text_content}</div>
+                    </div>
+                    """
+                else:
+                    chat_html += f"""
+                    <div class="msg-box msg-others">
+                        <div class="msg-user">{user_name}</div>
+                        <div>{text_content}</div>
+                    </div>
+                    """
+    else:
+        chat_html += "<center style='color:#666;'>[ ยังไม่มีสัญญาณข้อความในระบบ ]</center>"
+        
+    chat_html += "</div>"
+    
+    # แสดงผลกล่องแชต
+    st.markdown(chat_html, unsafe_allow_html=True)
+    
+    # 2. ฟอร์มสำหรับพิมพ์และส่งข้อความ (ใช้เทคนิคตู้คอนเทนเนอร์ของ Streamlit เพื่อล้างค่าหลังกดส่ง)
+    with st.form(key="chat_form", clear_on_submit=True):
+        user_message = st.text_input("พิมพ์ข้อความส่งสัญญาณ...", placeholder="ข้อความของคุณ...", key="input_msg")
+        submit_button = st.form_submit_input(label="SEND SIGNAL")
+        
+        if submit_button and user_message.strip() != "":
+            # ส่งข้อมูลเข้า Firebase ทันทีผ่านสิทธิ์ Admin หลังบ้าน
+            chat_ref.push({
+                'user': st.session_state.user,
+                'text': user_message.strip(),
+                'ts': datetime.utcnow().isoformat()
+            })
+            
+            # อัปเดตตัวนับแจ้งเตือนเพื่อให้เพื่อนๆ รู้ว่ามีข้อความเข้า
+            notif_ref = db.reference('chat_notifications/unread_count')
+            current_count = notif_ref.get() or 0
+            notif_ref.set(current_count + 1)
+            
+            # รีเฟรชหน้าจอเพื่อให้ข้อความใหม่ขึ้นทันที
+            st.rerun()
+
+    if st.button("🔄 อัปเดตห้องแชตสด (REFRESH CHAT)", use_container_width=True):
+        st.rerun()
+ 
 
 def room_music():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>🎧 CONTINUOUS HOLOGRAPHIC STATION</h2>", unsafe_allow_html=True)
