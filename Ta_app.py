@@ -1,81 +1,77 @@
 import streamlit as st
-from datetime import datetime
+import streamlit.components.v1 as components
 
-# 1. สไตล์แบบอาจารย์ต๊ะ (Dark Neon)
-st.set_page_config(page_title="Cosmic Auto-Decoder", layout="centered")
-st.markdown("""
-    <style>
-    .main { background-color: #0e1117; color: #00ff00; }
-    h1 { color: #ff00ff; text-shadow: 2px 2px #000000; text-align: center; }
-    .stMetric { background-color: #1e2130; border-radius: 10px; padding: 15px; border: 1px solid #00ff00; }
-    </style>
-    """, unsafe_allow_html=True)
+st.set_page_config(page_title="SYNAPSE X - MOTION SENSOR", layout="centered")
+st.markdown("<style>.stApp {background-color: #000; color: #FFD700;}</style>", unsafe_allow_html=True)
 
-st.title("🌌 Cosmic Auto-Decoder")
-st.write("<center>ระบบถอดรหัสวันที่และสมดุลจันทรคติอัตโนมัติ</center>", unsafe_allow_html=True)
+st.subheader("📳 REAL-TIME VIBRATION DETECTOR")
+st.write("สถานะ: ตรวจจับการสั่นสะเทือนรอบตัว (หน่วย: G-Force)")
 
-# 2. ส่วนรับข้อมูลเพียงอย่างเดียว
-selected_date = st.date_input("📅 กรอก วัน/เดือน/ปี ที่ต้องการเช็ค", datetime.now())
+# JavaScript เพื่อดึงค่า Accelerometer จากมือถือโดยตรง
+motion_js = """
+<div style="background-color: #111; color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 15px; font-family: monospace; text-align: center;">
+    <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+        <div>
+            <small>แรงสั่นสะเทือนรวม (Magnitude)</small>
+            <h1 id="mag_val" style="font-size: 50px; color: #0f0;">0.000</h1>
+            <p>G (m/s²)</p>
+        </div>
+        <hr style="border-color: #333;">
+        <div style="display: flex; justify-content: space-around; font-size: 14px;">
+            <div>แกน X: <span id="x_val">0</span></div>
+            <div>แกน Y: <span id="y_val">0</span></div>
+            <div>แกน Z: <span id="z_val">0</span></div>
+        </div>
+    </div>
+    <p id="motion_info" style="margin-top: 15px; color: #888;">สถานะ: รอการขยับ...</p>
+</div>
 
-# 3. Logic คำนวณอัตโนมัติ
-# A. วันในสัปดาห์
-day_of_week = selected_date.isoweekday()
-day_name_th = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][day_of_week-1]
-
-# B. ปีนักษัตร (ไทย)
-thai_year = selected_date.year + 543
-zodiac_list = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
-current_zodiac = zodiac_list[thai_year % 12]
-
-# C. คำนวณข้างขึ้นข้างแรมอัตโนมัติ (Approximate Lunar Phase)
-def get_lunar_phase(date):
-    # อ้างอิงวันที่ 6 ม.ค. 2000 เป็นวันแรม 15 ค่ำ (New Moon)
-    reference_date = datetime(2000, 1, 6)
-    diff = (date - reference_date.date()).days
-    lunar_cycle = 29.530588853
-    phase_pos = (diff % lunar_cycle) / lunar_cycle # ค่า 0.0 - 1.0
+<script>
+    let sensor = null;
     
-    # แปลงเป็นวันที่ในรอบเดือน (1-29)
-    current_pos = phase_pos * 29.53
-    
-    if current_pos <= 14.76: # ข้างขึ้น
-        step = round(current_pos if current_pos >= 1 else 1)
-        return "ข้างขึ้น (-)", step, -1
-    else: # ข้างแรม
-        step = round(current_pos - 14.76 if (current_pos - 14.76) >= 1 else 1)
-        return "ข้างแรม (+)", step, 1
+    async function startMotion() {
+        // ขอสิทธิ์สำหรับ iOS (ถ้ามี)
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            const permission = await DeviceMotionEvent.requestPermission();
+            if (permission !== 'granted') {
+                document.getElementById('motion_info').innerText = "❌ ถูกปฏิเสธสิทธิ์";
+                return;
+            }
+        }
 
-lunar_label, lunar_step, lunar_sign = get_lunar_phase(selected_date)
+        window.addEventListener('devicemotion', (event) => {
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
 
-# D. สูตรสมดุลจักรวาล
-PHI = 1.618
-balance_point = lunar_step - 7.5
-lunar_modifier = balance_point * lunar_sign if lunar_sign == 1 else -balance_point
-result = (day_of_week * PHI) + lunar_modifier
+            let x = acc.x || 0;
+            let y = acc.y || 0;
+            let z = acc.z || 0;
 
-# 4. แสดงผลโชว์เพื่อน
-st.write("---")
-st.subheader(f"🔍 วิเคราะห์วันที่: {selected_date.strftime('%d/%m/%Y')}")
+            // คำนวณแรงรวม (Magnitude)
+            let magnitude = Math.sqrt(x*x + y*y + z*z) / 9.80665; // หารด้วยแรงโน้มถ่วงโลกเพื่อให้ค่านิ่งที่ ~1.0 เมื่อวางเฉยๆ
 
-col1, col2, col3 = st.columns(3)
-col1.metric("วัน", day_name_th)
-col2.metric("ปีนักษัตร", current_zodiac)
-col3.metric("จันทรคติ", f"{lunar_label} {lunar_step} ค่ำ")
+            document.getElementById('x_val').innerText = x.toFixed(3);
+            document.getElementById('y_val').innerText = y.toFixed(3);
+            document.getElementById('z_val').innerText = z.toFixed(3);
+            document.getElementById('mag_val').innerText = magnitude.toFixed(4);
 
-st.write("### 🎯 เลขรหัสจักรวาลที่ได้")
-st.metric(label="Cosmic Index", value=f"{abs(result):.4f}")
+            if (magnitude > 1.05 || magnitude < 0.95) {
+                document.getElementById('mag_val').style.color = "#f00";
+                document.getElementById('motion_info').innerText = "⚠️ ตรวจพบแรงสั่นสะเทือน!";
+            } else {
+                document.getElementById('mag_val').style.color = "#0f0";
+                document.getElementById('motion_info').innerText = "🟢 สถานะนิ่ง (ความจริงคงที่)";
+            }
+        });
+    }
 
-# 5. โชว์ที่มา (เน้นเช็ควันเกิด/เช็คดวง)
-with st.expander("📝 ขั้นตอนการถอดรหัส (สำหรับตรวจสอบ)"):
-    st.latex(r"Result = (Day \times 1.618) \pm (Lunar_{Balance})")
-    st.markdown(f"""
-    **วิเคราะห์ตามหลักการ:**
-    1. **ฐานวัน:** วัน{day_name_th} ({day_of_week}) × 1.618 = **{day_of_week * PHI:.3f}**
-    2. **แรงดึงดูดดวงจันทร์:** {lunar_label} {lunar_step} ค่ำ (ค่าเบี่ยงเบนจากจุดสมดุล: {lunar_modifier:.2f})
-    3. **สรุป:** ค่าความสั่นสะเทือนประจำวันคือ **{result:.4f}**
-    """)
-    
-    raw_num = str(abs(result)).replace('.', '')
-    st.success(f"**ตัวเลขเด่นที่ถอดรหัสได้:** {raw_num[1:3]} , {raw_num[2:4]}")
+    startMotion();
+</script>
+"""
 
-st.info("💡 สามารถใช้เช็คข้อมูลย้อนหลังวันเกิด หรือวันที่สำคัญเพื่อหาค่าพลังงานตัวเลขได้")
+components.html(motion_js, height=300)
+
+st.write("**ความจริงหน้างาน:**")
+st.write("1. วางมือถือบนพื้นที่นิ่งที่สุด ค่าจะเข้าใกล้ **1.0000 G** (แรงโน้มถ่วงโลก)")
+st.write("2. ลองเคาะโต๊ะเบาๆ หรือเดินใกล้ๆ มือถือ ตัวเลขจะดีดทันที")
+st.write("3. นี่คือค่าดิบจากเซนเซอร์ **Accelerometer** ไม่มีการแต่งตัวเลขครับ")
