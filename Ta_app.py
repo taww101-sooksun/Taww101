@@ -2,6 +2,39 @@ import streamlit as st
 from datetime import datetime, timedelta
 import time
 import streamlit as st
+import streamlit as st
+
+# 1. ส่วนเคลียร์พื้นที่ (ซ่อนติ้งทุกอย่างตามที่เราคุยกัน)
+hide_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .viewerBadge_container__1QSob,
+    [data-testid="stActionButton"],
+    button[title="View source code"],
+    .stAppToolbar,
+    div[data-testid="stStatusWidget"] {
+        display: none !important;
+    }
+    iframe + div {display: none !important;}
+    </style>
+"""
+st.markdown(hide_style, unsafe_allow_html=True)
+
+# 2. ส่วนใส่โลโก้ต่อกันเลย (จัดให้โลโก้เด่นอยู่ตรงกลางหน้าเว็บ)
+col1, col2, col3 = st.columns([1, 2, 1])  # แบ่งคอลัมน์เพื่อบีบให้รูปอยู่ตรงกลาง
+
+with col2:
+    try:
+        # ใส่ชื่อไฟล์รูปของคุณตรงนี้ (ปรับความกว้าง width ได้ตามใจชอบ)
+        st.image("logo1.png", use_container_width=True) 
+    except Exception:
+        # กรณีรันในเครื่องแล้วยังไม่มีไฟล์รูป จะได้ไม่ขึ้นหน้าจอเออร์เรอร์สีแดงให้ตกใจ
+        st.info("📌 อย่าลืมอัปโหลดไฟล์ logo1.png ขึ้น GitHub ในโฟลเดอร์เดียวกับโค้ดนี้ด้วยนะ")
+
+# 3. เริ่มเขียนเนื้อหาแอปของคุณต่อจากตรงนี้ได้เลย...
+st.title("ยินดีต้อนรับเข้าสู่ระบบ")
 
 # 1. ส่วนลบติ้งทุกอย่าง (รวมถึงมุมขวาล่างด้วย JavaScript) ทำได้จริงแน่นอน
 st.markdown(
