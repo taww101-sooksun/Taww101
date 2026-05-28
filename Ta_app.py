@@ -51,7 +51,7 @@ st.markdown(f"""
         text-align: center;
         text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
         font-size: 1.6rem;
-        margin-top: 100px;
+        margin-top: 50px;
         letter-spacing: 6px;
         animation: text-flicker 2s infinite;
     }}
@@ -67,7 +67,7 @@ st.markdown(f"""
         font-size: 5px; 
         font-family: "Orbitron", sans-serif; 
         letter-spacing: 8px;
-        margin-top: 200px;
+        margin-top:1000px;
         text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #00f3ff;
         animation: slogan-wink 1s infinite alternate;
     }}
@@ -142,7 +142,7 @@ html_code = """
 
         <button id="playBtn" onclick="togglePlay()" class="btn-main w-full mb-4">▶ PLAY TRACK</button>
 
-        <div class="border border-gray-800 p-3 rounded-xl bg-black/40">
+        <div class="border border-gray-600 p-3 rounded-xl bg-black/40">
             <div class="text-[10px] text-gray-500 font-bold tracking-wider mb-2 text-center uppercase">LIVE SOUND EFFECTS PANEL</div>
             <div class="grid grid-cols-2 gap-2">
                 <button onclick="playFX('airhorn')" class="btn-fx">📣 AIRHORN</button>
@@ -167,7 +167,7 @@ html_code = """
             if (!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = ctx.createAnalyser();
-                analyser.fftSize = 128;
+                analyser.fftSize = 256;
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
                 
                 gainNode = ctx.createGain();
