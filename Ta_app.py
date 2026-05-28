@@ -64,9 +64,9 @@ st.markdown(f"""
     .neon-slogan {{
         text-align: center; 
         color: #fff; 
-        font-size: 5px; 
+        font-size: 2px; 
         font-family: "Orbitron", sans-serif; 
-        letter-spacing: 4px;
+        letter-spacing: 2px;
         margin-top:100px;
         text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #00f3ff;
         animation: slogan-wink 1s infinite alternate;
