@@ -51,7 +51,7 @@ st.markdown(f"""
         text-align: center;
         text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
         font-size: 1.6rem;
-        margin-top: 200px;
+        margin-top: 500px;
         letter-spacing: 6px;
         animation: text-flicker 2s infinite;
     }}
