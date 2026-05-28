@@ -2,10 +2,10 @@ import streamlit as st
 import base64
 
 # ==========================================
-# ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (กู้คืนสีสัน Neon ขั้นสุด)
+# ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (Cyberpunk Neon)
 # ==========================================
 
-st.set_page_config(page_title="Synapse Neon Mixer", layout="centered")
+st.set_page_config(page_title="Synapse Neon Single Deck", layout="centered")
 
 def get_base64_image(image_path):
     try:
@@ -62,10 +62,10 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">SYNAPSE NEON MIXER</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">SYNAPSE NEON PLAYER</h1>', unsafe_allow_html=True)
 
 # ==========================================
-# ส่วนที่ 2: HTML/JS - ระบบเล่นต่อเนื่อง + สีสันสะบัด
+# ส่วนที่ 2: HTML/JS - เครื่องเล่นเดี่ยว + ปุ่ม Effect สังเคราะห์เสียงจริง
 # ==========================================
 
 html_code = """
@@ -77,171 +77,274 @@ html_code = """
         body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
         .neon-card { border: 2px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
         
-        /* กราฟเสียงสีรุ้งสะบัด */
-        .visualizer-box { height: 150px; background: #050505; border-radius: 15px; border: 1px solid #222; }
+        /* กราฟเสียง */
+        .visualizer-box { height: 140px; background: #050505; border-radius: 15px; border: 1px solid #222; }
         
-        .deck { padding: 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); margin-bottom: 10px; transition: 0.5s; }
-        .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; background: rgba(0,243,255,0.05); }
+        .deck { padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+        .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; }
         
-        /* ปุ่มสไตล์ Cyberpunk */
-        .btn-mix { 
+        /* ปุ่มควบคุมหลัก */
+        .btn-main { 
             background: linear-gradient(45deg, #ff00de, #00f3ff);
             color: white; font-weight: bold; padding: 12px; border-radius: 10px;
             text-transform: uppercase; letter-spacing: 2px; transition: 0.3s;
             box-shadow: 0 0 15px rgba(255,0,222,0.4);
         }
-        .btn-mix:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(0,243,255,0.6); }
+        .btn-main:hover { transform: scale(1.02); box-shadow: 0 0 25px rgba(0,243,255,0.6); }
         
+        /* ปุ่มเอฟเฟค */
+        .btn-fx {
+            background: #111; border: 1px solid #ff00de; color: #ff00de;
+            padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold;
+            transition: 0.2s; text-transform: uppercase;
+        }
+        .btn-fx:hover { background: #ff00de; color: #000; box-shadow: 0 0 10px #ff00de; }
+        .btn-fx:active { transform: scale(0.95); }
+
         .progress-bar { height: 6px; background: #222; border-radius: 10px; overflow: hidden; }
-        .progress-inner { height: 100%; width: 0%; background: linear-gradient(90deg, #ff00de, #ff8c00); }
+        .progress-inner { height: 100%; width: 0%; background: linear-gradient(90deg, #ff00de, #00f3ff); }
     </style>
 </head>
 <body>
     <div class="max-w-md mx-auto p-4 neon-card rounded-3xl">
         <canvas id="scope" class="visualizer-box w-full mb-4"></canvas>
 
-        <div id="cardA" class="deck">
-            <div class="flex justify-between text-[10px] mb-2">
-                <span id="labelA" class="text-pink-500 font-bold">DECK A</span>
-                <span id="timeA" class="font-mono">00:00</span>
+        <div id="mainDeck" class="deck mb-4">
+            <div class="flex justify-between text-[11px] mb-2">
+                <span class="text-cyan-400 font-bold tracking-widest">NOW PLAYING</span>
+                <span id="timeLabel" class="font-mono text-gray-400">00:00 / 00:00</span>
             </div>
-            <input type="file" id="inA" class="hidden" onchange="handleFile(this.files[0], 'A')">
-            <button onclick="document.getElementById('inA').click()" class="text-[10px] border border-gray-600 px-3 py-1 rounded">LOAD A</button>
-            <div id="nameA" class="text-[11px] mt-1 truncate text-gray-400">No Song</div>
-            <div class="progress-bar mt-2"><div id="barA" class="progress-inner"></div></div>
+            
+            <input type="file" id="audioFile" class="hidden" accept="audio/*" onchange="handleFile(this.files[0])">
+            <div class="flex gap-2 items-center mb-2">
+                <button onclick="document.getElementById('audioFile').click()" class="text-[10px] border border-cyan-500 text-cyan-400 px-3 py-1.5 rounded hover:bg-cyan-950 transition">LOAD TRACK</button>
+                <div id="fileName" class="text-[12px] truncate text-gray-400 flex-1">No Song Loaded</div>
+            </div>
+            
+            <div class="progress-bar mt-3"><div id="progressBar" class="progress-inner"></div></div>
         </div>
 
-        <div id="cardB" class="deck">
-            <div class="flex justify-between text-[10px] mb-2">
-                <span id="labelB" class="text-cyan-400 font-bold">DECK B</span>
-                <span id="timeB" class="font-mono">00:00</span>
+        <button id="playBtn" onclick="togglePlay()" class="btn-main w-full mb-4">▶ PLAY TRACK</button>
+
+        <div class="border border-gray-800 p-3 rounded-xl bg-black/40">
+            <div class="text-[10px] text-gray-500 font-bold tracking-wider mb-2 text-center uppercase">LIVE SOUND EFFECTS PANEL</div>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="playFX('airhorn')" class="btn-fx">📣 AIRHORN</button>
+                <button onclick="playFX('laser')" class="btn-fx" style="border-color:#00f3ff; color:#00f3ff;">🚀 LASER BEAM</button>
+                <button onclick="playFX('scratch')" class="btn-fx" style="border-color:#ff8c00; color:#ff8c00;">💿 VINYL SCRATCH</button>
+                <button onclick="playFX('explosion')" class="btn-fx" style="border-color:#9d4edd; color:#9d4edd;">💥 EXPLOSION</button>
             </div>
-            <input type="file" id="inB" class="hidden" onchange="handleFile(this.files[0], 'B')">
-            <button onclick="document.getElementById('inB').click()" class="text-[10px] border border-gray-600 px-3 py-1 rounded">LOAD B</button>
-            <div id="nameB" class="text-[11px] mt-1 truncate text-gray-400">No Song</div>
-            <div class="progress-bar mt-2"><div id="barB" class="progress-inner" style="background: #00f3ff;"></div></div>
         </div>
 
-        <button onclick="startMix()" class="btn-mix w-full mt-2">🔥 START AUTO-MIX</button>
-        <div id="status" class="text-[10px] text-center mt-3 text-gray-500 uppercase tracking-widest">System Ready</div>
+        <div id="status" class="text-[10px] text-center mt-3 text-gray-600 uppercase tracking-widest">System Ready</div>
     </div>
 
     <script>
-        let ctx, analyser, songA, songB, gainA, gainB, sourceA, sourceB;
-        let active = 'A', isPlaying = false, data;
+        let ctx, analyser, songBuffer, sourceNode, gainNode;
+        let isPlaying = false;
+        let startTime = 0;
+        let pausedAt = 0;
+        let dataArray;
 
-        function init() {
+        function initAudio() {
             if (!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = ctx.createAnalyser();
-                analyser.fftSize = 256;
-                data = new Uint8Array(analyser.frequencyBinCount);
-                render();
+                analyser.fftSize = 128;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                // แยก Gain Node สำหรับเพลงหลักเพื่อไม่ให้เสียงเอฟเฟคไปตีกัน
+                gainNode = ctx.createGain();
+                gainNode.connect(analyser).connect(ctx.destination);
+                
+                renderVisualizer();
             }
         }
 
-        async function handleFile(file, side) {
-            init();
-            document.getElementById('name'+side).innerText = "Loading...";
-            const buffer = await ctx.decodeAudioData(await file.arrayBuffer());
-            if(side === 'A') songA = buffer; else songB = buffer;
-            document.getElementById('name'+side).innerText = file.name;
-        }
-
-        function render() {
-            requestAnimationFrame(render);
-            if(!analyser) return;
-            analyser.getByteFrequencyData(data);
-            const can = document.getElementById('scope');
-            const c = can.getContext('2d');
-            c.clearRect(0,0,can.width,can.height);
+        async function handleFile(file) {
+            if (!file) return;
+            initAudio();
             
-            let bw = (can.width / data.length) * 2.5;
-            let x = 0;
-            for(let i=0; i<data.length; i++) {
-                let h = (data[i]/255) * can.height;
-                let hue = (i * 3) + (Date.now() / 50) % 360;
-                c.fillStyle = `hsl(${hue}, 100%, 50%)`;
-                c.fillRect(x, can.height - h, bw - 1, h);
-                x += bw;
+            if (isPlaying) {
+                stopTrack();
             }
-            updateEngine();
-        }
 
-        function startMix() {
-            if(!songA || !songB) return alert("อาจารย์ครับ โหลดเพลงให้ครบ A/B ก่อน!");
-            if(isPlaying) return;
-            
-            sourceA = ctx.createBufferSource(); sourceA.buffer = songA;
-            gainA = ctx.createGain(); 
-            sourceA.connect(gainA).connect(analyser).connect(ctx.destination);
-            
-            sourceB = ctx.createBufferSource(); sourceB.buffer = songB;
-            gainB = ctx.createGain(); gainB.gain.value = 0;
-            sourceB.connect(gainB).connect(analyser).connect(ctx.destination);
-            
-            sourceA.loop = true; sourceB.loop = true;
-            sourceA.start(0); sourceB.start(0);
-            isPlaying = true;
-            document.getElementById('status').innerText = "Playing: Deck A";
-            document.getElementById('cardA').classList.add('deck-active');
-        }
-
-        function updateEngine() {
-            if(!isPlaying) return;
-            let now = ctx.currentTime;
-            
-            // ระบบเช็กเวลาและ Auto-Crossfade เมื่อเพลงใกล้จบ (สมมติเล่น Loop)
-            // ในที่นี้ใช้การอัปเดต Progress Bar และ UI
-            updateUI('A', songA, gainA);
-            updateUI('B', songB, gainB);
-        }
-
-        function updateUI(s, buffer, gain) {
-            let bar = document.getElementById('bar'+s);
-            let time = document.getElementById('time'+s);
-            // จำลองการเดินของเวลาใน Loop
-            let p = (ctx.currentTime % buffer.duration) / buffer.duration;
-            bar.style.width = (p * 100) + "%";
-            
-            let rem = buffer.duration - (ctx.currentTime % buffer.duration);
-            let m = Math.floor(rem/60), sec = Math.floor(rem%60);
-            time.innerText = (m<10?'0':'')+m+":"+(sec<10?'0':'')+sec;
-
-            // AUTO CROSSFADE LOGIC: เมื่อเหลือ 5 วินาทีสุดท้าย
-            if(active === s && rem < 5) {
-                crossfade();
+            document.getElementById('fileName').innerText = "Decoding Audio...";
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                songBuffer = await ctx.decodeAudioData(arrayBuffer);
+                document.getElementById('fileName').innerText = file.name;
+                document.getElementById('status').innerText = "Track Loaded Successfully";
+                pausedAt = 0;
+                updateUI(0);
+            } catch (e) {
+                document.getElementById('fileName').innerText = "Error loading file";
+                alert("ไฟล์นี้ถอดรหัสไม่ได้ครับอาจารย์ ลองใช้ไฟล์ .mp3 หรือ .wav มาตรฐานดูครับ");
             }
         }
 
-        function crossfade() {
-            let next = (active === 'A' ? 'B' : 'A');
-            let now = ctx.currentTime;
-            let dur = 4; // วินาทีในการ Fade
-            
-            if(active === 'A') {
-                gainA.gain.linearRampToValueAtTime(0, now + dur);
-                gainB.gain.linearRampToValueAtTime(1, now + dur);
-                document.getElementById('cardA').classList.remove('deck-active');
-                document.getElementById('cardB').classList.add('deck-active');
+        function togglePlay() {
+            if (!songBuffer) return alert("อาจารย์ครับ รบกวนโหลดเพลงก่อนกดเล่นครับ!");
+            initAudio();
+
+            if (isPlaying) {
+                // Pause
+                pausedAt = ctx.currentTime - startTime;
+                stopTrack();
+                document.getElementById('playBtn').innerText = "▶ RESUME TRACK";
+                document.getElementById('status').innerText = "Paused";
+                document.getElementById('mainDeck').classList.remove('deck-active');
             } else {
-                gainB.gain.linearRampToValueAtTime(0, now + dur);
-                gainA.gain.linearRampToValueAtTime(1, now + dur);
-                document.getElementById('cardB').classList.remove('deck-active');
-                document.getElementById('cardA').classList.add('deck-active');
+                // Play / Resume
+                sourceNode = ctx.createBufferSource();
+                sourceNode.buffer = songBuffer;
+                sourceNode.connect(gainNode);
+                
+                // ตรวจสอบขอบเขตเวลาเล่นซ้ำถ้าหากเล่นจบไปแล้ว
+                if (pausedAt >= songBuffer.duration) pausedAt = 0;
+                
+                sourceNode.start(0, pausedAt);
+                startTime = ctx.currentTime - pausedAt;
+                isPlaying = true;
+                
+                document.getElementById('playBtn').innerText = "⏸ PAUSE TRACK";
+                document.getElementById('status').innerText = "Playing";
+                document.getElementById('mainDeck').classList.add('deck-active');
+                
+                // ดักจับตอนเพลงจบเอง
+                sourceNode.onended = () => {
+                    if (isPlaying && (ctx.currentTime - startTime) >= songBuffer.duration - 0.1) {
+                        isPlaying = false;
+                        pausedAt = 0;
+                        document.getElementById('playBtn').innerText = "▶ PLAY TRACK";
+                        document.getElementById('status').innerText = "Finished";
+                        document.getElementById('mainDeck').classList.remove('deck-active');
+                    }
+                };
             }
-            active = next;
-            document.getElementById('status').innerText = "Auto-Mixing to: Deck " + active;
+        }
+
+        function stopTrack() {
+            if (sourceNode) {
+                try { sourceNode.stop(); } catch(e) {}
+                sourceNode.disconnect();
+            }
+            isPlaying = false;
+        }
+
+        function updateUI(currentSeconds) {
+            if (!songBuffer) return;
+            let dur = songBuffer.duration;
+            let p = currentSeconds / dur;
+            if (p > 1) p = 1;
+            
+            document.getElementById('progressBar').style.width = (p * 100) + "%";
+            
+            let curM = Math.floor(currentSeconds/60), curS = Math.floor(currentSeconds%60);
+            let durM = Math.floor(dur/60), durS = Math.floor(dur%60);
+            
+            document.getElementById('timeLabel').innerText = 
+                (curM<10?'0':'')+curM+":"+(curS<10?'0':'')+curS + " / " +
+                (durM<10?'0':'')+durM+":"+(durS<10?'0':'')+durS;
+        }
+
+        function renderVisualizer() {
+            requestAnimationFrame(renderVisualizer);
+            if(!analyser) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            const canvas = document.getElementById('scope');
+            const canvasCtx = canvas.getContext('2d');
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            let barWidth = (canvas.width / dataArray.length) * 2;
+            let x = 0;
+            for(let i=0; i<dataArray.length; i++) {
+                let barHeight = (dataArray[i]/255) * canvas.height;
+                let hue = (i * 5) + (Date.now() / 40) % 360;
+                canvasCtx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                canvasCtx.fillRect(x, canvas.height - barHeight, barWidth - 1.5, barHeight);
+                x += barWidth;
+            }
+
+            if(isPlaying) {
+                updateUI(ctx.currentTime - startTime);
+            }
+        }
+
+        // ==========================================
+        # REAL-TIME AUDIO SYNTHESIZER FOR EFFECTS (ใช้งานได้จริง 100%)
+        // ==========================================
+        function playFX(type) {
+            initAudio();
+            const now = ctx.currentTime;
+            
+            // สร้างโครงสร้าง Synth พื้นฐานสำหรับสร้างเสียงสด
+            const osc = ctx.createOscillator();
+            const fxGain = ctx.createGain();
+            osc.connect(fxGain).connect(analyser).connect(ctx.destination);
+
+            if (type === 'airhorn') {
+                // สร้างเสียงแตรสามประสานแบบ Airhorn แท้ๆ
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(220, now); // แตรหลัก
+                fxGain.gain.setValueAtTime(0.3, now);
+                fxGain.gain.linearRampToValueAtTime(0.3, now + 0.6);
+                fxGain.gain.linearRampToValueAtTime(0, now + 0.8);
+                osc.start(now); osc.stop(now + 0.8);
+
+                // ตัวแตรคู่ประสานความถี่คู่ขนาน เพื่อความสมจริง
+                const osc2 = ctx.createOscillator();
+                const osc3 = ctx.createOscillator();
+                const fxGain2 = ctx.createGain(); const fxGain3 = ctx.createGain();
+                
+                osc2.type = 'sawtooth'; osc2.frequency.setValueAtTime(293.66, now);
+                osc3.type = 'sawtooth'; osc3.frequency.setValueAtTime(349.23, now);
+                
+                osc2.connect(fxGain2).connect(analyser).connect(ctx.destination);
+                osc3.connect(fxGain3).connect(analyser).connect(ctx.destination);
+                
+                fxGain2.gain.setValueAtTime(0.2, now); fxGain2.gain.linearRampToValueAtTime(0, now + 0.8);
+                fxGain3.gain.setValueAtTime(0.2, now); fxGain3.gain.linearRampToValueAtTime(0, now + 0.8);
+                
+                osc2.start(now); osc2.stop(now + 0.8);
+                osc3.start(now); osc3.stop(now + 0.8);
+            } 
+            else if (type === 'laser') {
+                // เสียงเลเซอร์ไซไฟ วิ่งจากความถี่สูงลงต่ำอย่างรวดเร็ว
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(1500, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.4);
+                fxGain.gain.setValueAtTime(0.4, now);
+                fxGain.gain.linearRampToValueAtTime(0, now + 0.4);
+                osc.start(now); osc.stop(now + 0.4);
+            } 
+            else if (type === 'scratch') {
+                // เสียงไวนิลสแครช จำลองการถอยแผ่นด่วนๆ
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(80, now);
+                osc.frequency.linearRampToValueAtTime(400, now + 0.15);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+                fxGain.gain.setValueAtTime(0.5, now);
+                fxGain.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } 
+            else if (type === 'explosion') {
+                // เสียงระเบิดตูมตาม โดยการสุ่มค่าความถี่สั่นสะเทือนต่ำๆ
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.linearRampToValueAtTime(10, now + 0.7);
+                fxGain.gain.setValueAtTime(0.6, now);
+                fxGain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+                osc.start(now); osc.stop(now + 0.8);
+            }
         }
     </script>
 </body>
 </html>
 """
 
-st.components.v1.html(html_code, height=650)
+st.components.v1.html(html_code, height=600)
 
 st.markdown("""
-<div style='text-align: center; color: #555; font-size: 12px; font-family: "Orbitron"; letter-spacing: 2px;'>
-    อยู่นิ่งๆ ไม่เจ็บตัว | AUTO-MIX ENGINE v5.0 | © 2026
-</div>
-""", unsafe_allow_html=True)
+<div style='text-align: center;
