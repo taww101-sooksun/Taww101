@@ -59,13 +59,32 @@ st.markdown(f"""
         0%, 100% {{ opacity: 1; }}
         50% {{ opacity: 0.8; }}
     }}
+
+    /* สโลแกนแสงนีออนวิ้งๆ วิ่งสลับสี */
+    .neon-slogan {{
+        text-align: center; 
+        color: #fff; 
+        font-size: 13px; 
+        font-family: "Orbitron", sans-serif; 
+        letter-spacing: 4px;
+        margin-top: 20px;
+        text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #00f3ff;
+        animation: slogan-wink 3s infinite alternate;
+    }}
+
+    @keyframes slogan-wink {{
+        0%, 100% {{ text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #ff00de; color: #fff; }}
+        50% {{ text-shadow: 0 0 8px #00f3ff, 0 0 15px #00f3ff, 0 0 25px #00f3ff; color: #e0ffff; }}
+        82% {{ text-shadow: none; color: #555; }} /* มีจังหวะไฟกะพริบดับนิดๆ แบบหลอดไฟนีออนจริง */
+        85% {{ text-shadow: 0 0 8px #00f3ff; color: #fff; }}
+    }}
     </style>
     """, unsafe_allow_html=True)
 
 st.markdown('<h1 class="neon-title">SYNAPSE NEON PLAYER</h1>', unsafe_allow_html=True)
 
 # ==========================================
-# ส่วนที่ 2: HTML/JS - เครื่องเล่นเดี่ยว + ปุ่ม Effect สังเคราะห์เสียงจริง
+# ส่วนที่ 2: HTML/JS - ระบบปลดล็อกเสียงอัตโนมัติเมื่อกดปุ่ม
 # ==========================================
 
 html_code = """
@@ -77,13 +96,11 @@ html_code = """
         body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
         .neon-card { border: 2px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
         
-        /* กราฟเสียง */
         .visualizer-box { height: 140px; background: #050505; border-radius: 15px; border: 1px solid #222; }
         
         .deck { padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
         .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; }
         
-        /* ปุ่มควบคุมหลัก */
         .btn-main { 
             background: linear-gradient(45deg, #ff00de, #00f3ff);
             color: white; font-weight: bold; padding: 12px; border-radius: 10px;
@@ -92,7 +109,6 @@ html_code = """
         }
         .btn-main:hover { transform: scale(1.02); box-shadow: 0 0 25px rgba(0,243,255,0.6); }
         
-        /* ปุ่มเอฟเฟค */
         .btn-fx {
             background: #111; border: 1px solid #ff00de; color: #ff00de;
             padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold;
@@ -146,24 +162,27 @@ html_code = """
         let pausedAt = 0;
         let dataArray;
 
-        function initAudio() {
+        // ฟังก์ชันบังคับปลดล็อก AudioContext เพื่อสู้กับระบบเบราว์เซอร์
+        async function ensureAudioContext() {
             if (!ctx) {
                 ctx = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = ctx.createAnalyser();
                 analyser.fftSize = 128;
                 dataArray = new Uint8Array(analyser.frequencyBinCount);
                 
-                // แยก Gain Node สำหรับเพลงหลักเพื่อไม่ให้เสียงเอฟเฟคไปตีกัน
                 gainNode = ctx.createGain();
                 gainNode.connect(analyser).connect(ctx.destination);
                 
                 renderVisualizer();
             }
+            if (ctx.state === 'suspended') {
+                await ctx.resume();
+            }
         }
 
         async function handleFile(file) {
             if (!file) return;
-            initAudio();
+            await ensureAudioContext();
             
             if (isPlaying) {
                 stopTrack();
@@ -183,24 +202,21 @@ html_code = """
             }
         }
 
-        function togglePlay() {
+        async function togglePlay() {
+            await ensureAudioContext();
             if (!songBuffer) return alert("อาจารย์ครับ รบกวนโหลดเพลงก่อนกดเล่นครับ!");
-            initAudio();
 
             if (isPlaying) {
-                // Pause
                 pausedAt = ctx.currentTime - startTime;
                 stopTrack();
                 document.getElementById('playBtn').innerText = "▶ RESUME TRACK";
                 document.getElementById('status').innerText = "Paused";
                 document.getElementById('mainDeck').classList.remove('deck-active');
             } else {
-                // Play / Resume
                 sourceNode = ctx.createBufferSource();
                 sourceNode.buffer = songBuffer;
                 sourceNode.connect(gainNode);
                 
-                // ตรวจสอบขอบเขตเวลาเล่นซ้ำถ้าหากเล่นจบไปแล้ว
                 if (pausedAt >= songBuffer.duration) pausedAt = 0;
                 
                 sourceNode.start(0, pausedAt);
@@ -211,7 +227,6 @@ html_code = """
                 document.getElementById('status').innerText = "Playing";
                 document.getElementById('mainDeck').classList.add('deck-active');
                 
-                // ดักจับตอนเพลงจบเอง
                 sourceNode.onended = () => {
                     if (isPlaying && (ctx.currentTime - startTime) >= songBuffer.duration - 0.1) {
                         isPlaying = false;
@@ -272,70 +287,45 @@ html_code = """
             }
         }
 
-        // ==========================================
-        # REAL-TIME AUDIO SYNTHESIZER FOR EFFECTS (ใช้งานได้จริง 100%)
-        // ==========================================
-        function playFX(type) {
-            initAudio();
+        async function playFX(type) {
+            await ensureAudioContext();
             const now = ctx.currentTime;
             
-            // สร้างโครงสร้าง Synth พื้นฐานสำหรับสร้างเสียงสด
             const osc = ctx.createOscillator();
             const fxGain = ctx.createGain();
             osc.connect(fxGain).connect(analyser).connect(ctx.destination);
 
             if (type === 'airhorn') {
-                // สร้างเสียงแตรสามประสานแบบ Airhorn แท้ๆ
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(220, now); // แตรหลัก
-                fxGain.gain.setValueAtTime(0.3, now);
-                fxGain.gain.linearRampToValueAtTime(0.3, now + 0.6);
-                fxGain.gain.linearRampToValueAtTime(0, now + 0.8);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, now);
+                fxGain.gain.setValueAtTime(0.3, now); fxGain.gain.linearRampToValueAtTime(0, now + 0.8);
                 osc.start(now); osc.stop(now + 0.8);
 
-                // ตัวแตรคู่ประสานความถี่คู่ขนาน เพื่อความสมจริง
-                const osc2 = ctx.createOscillator();
-                const osc3 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator(); const osc3 = ctx.createOscillator();
                 const fxGain2 = ctx.createGain(); const fxGain3 = ctx.createGain();
-                
                 osc2.type = 'sawtooth'; osc2.frequency.setValueAtTime(293.66, now);
                 osc3.type = 'sawtooth'; osc3.frequency.setValueAtTime(349.23, now);
-                
                 osc2.connect(fxGain2).connect(analyser).connect(ctx.destination);
                 osc3.connect(fxGain3).connect(analyser).connect(ctx.destination);
-                
                 fxGain2.gain.setValueAtTime(0.2, now); fxGain2.gain.linearRampToValueAtTime(0, now + 0.8);
                 fxGain3.gain.setValueAtTime(0.2, now); fxGain3.gain.linearRampToValueAtTime(0, now + 0.8);
-                
-                osc2.start(now); osc2.stop(now + 0.8);
-                osc3.start(now); osc3.stop(now + 0.8);
+                osc2.start(now); osc2.stop(now + 0.8); osc3.start(now); osc3.stop(now + 0.8);
             } 
             else if (type === 'laser') {
-                // เสียงเลเซอร์ไซไฟ วิ่งจากความถี่สูงลงต่ำอย่างรวดเร็ว
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(1500, now);
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(1500, now);
                 osc.frequency.exponentialRampToValueAtTime(40, now + 0.4);
-                fxGain.gain.setValueAtTime(0.4, now);
-                fxGain.gain.linearRampToValueAtTime(0, now + 0.4);
+                fxGain.gain.setValueAtTime(0.4, now); fxGain.gain.linearRampToValueAtTime(0, now + 0.4);
                 osc.start(now); osc.stop(now + 0.4);
             } 
             else if (type === 'scratch') {
-                // เสียงไวนิลสแครช จำลองการถอยแผ่นด่วนๆ
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(80, now);
-                osc.frequency.linearRampToValueAtTime(400, now + 0.15);
-                osc.frequency.linearRampToValueAtTime(100, now + 0.3);
-                fxGain.gain.setValueAtTime(0.5, now);
-                fxGain.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(80, now);
+                osc.frequency.linearRampToValueAtTime(400, now + 0.15); osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+                fxGain.gain.setValueAtTime(0.5, now); fxGain.gain.linearRampToValueAtTime(0, now + 0.3);
                 osc.start(now); osc.stop(now + 0.3);
             } 
             else if (type === 'explosion') {
-                // เสียงระเบิดตูมตาม โดยการสุ่มค่าความถี่สั่นสะเทือนต่ำๆ
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(100, now);
+                osc.type = 'square'; osc.frequency.setValueAtTime(100, now);
                 osc.frequency.linearRampToValueAtTime(10, now + 0.7);
-                fxGain.gain.setValueAtTime(0.6, now);
-                fxGain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+                fxGain.gain.setValueAtTime(0.6, now); fxGain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
                 osc.start(now); osc.stop(now + 0.8);
             }
         }
@@ -346,8 +336,5 @@ html_code = """
 
 st.components.v1.html(html_code, height=600)
 
-st.markdown("""
-<div style='text-align: center; color: #555; font-size: 12px; font-family: "Orbitron"; letter-spacing: 2px;'>
-    อยู่นิ่งๆ ไม่เจ็บตัว | SINGLE DECK AUDIO CONSOLE v6.0 | © 2026
-</div>
-""")  # <--- ตรวจสอบให้แน่ใจว่ามี """) ปิดท้ายแบบนี้เป๊ะๆ นะครับ
+# แสดงสโลแกนวิ้งๆ นีออนแบบเก๋ๆ ปิดท้ายไฟล์อย่างสมบูรณ์แบบ
+st.markdown('<div class="neon-slogan">อยู่นิ่งๆ ไม่เจ็บตัว | CONSOLE v6.2</div>', unsafe_allow_html=True)
