@@ -81,7 +81,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">  อยู่นิ้งๆเจ็บตัว</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">  SYNAPSE</h1>', unsafe_allow_html=True)
 
 # ==========================================
 # ส่วนที่ 2: HTML/JS - ระบบปลดล็อกเสียงอัตโนมัติเมื่อกดปุ่ม
@@ -96,9 +96,9 @@ html_code = """
         body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
         .neon-card { border: 4px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
         
-        .visualizer-box { height: 10px; background: #050505; border-radius: 15px; border: 1px solid #222; }
+        .visualizer-box { height: 30px; background: #050505; border-radius: 15px; border: 1px solid #222; }
         
-        .deck { padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+        .deck { padding: 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
         .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; }
         
         .btn-main { 
