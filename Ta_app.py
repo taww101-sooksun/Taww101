@@ -347,4 +347,7 @@ html_code = """
 st.components.v1.html(html_code, height=600)
 
 st.markdown("""
-<div style='text-align: center;
+<div style='text-align: center; color: #555; font-size: 12px; font-family: "Orbitron"; letter-spacing: 2px;'>
+    อยู่นิ่งๆ ไม่เจ็บตัว | SINGLE DECK AUDIO CONSOLE v6.0 | © 2026
+</div>
+""")  # <--- ตรวจสอบให้แน่ใจว่ามี """) ปิดท้ายแบบนี้เป๊ะๆ นะครับ
