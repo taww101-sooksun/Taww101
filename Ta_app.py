@@ -34,7 +34,7 @@ st.markdown(f"""
         background-image: url("{logo_html_link}");
         background-size: contain;
         background-repeat: no-repeat;
-        z-index: 1200;
+        z-index: 999;
         filter: drop-shadow(0 0 10px #ff00de);
         animation: logo-glow 4s infinite alternate;
     }}
@@ -96,9 +96,9 @@ html_code = """
         body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
         .neon-card { border: 4px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
         
-        .visualizer-box { height: 30px; background: #050505; border-radius: 15px; border: 1px solid #222; }
+        .visualizer-box { height: 40px; background: #050505; border-radius: 15px; border: 1px solid #222; }
         
-        .deck { padding: 30px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+        .deck { padding: 40px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
         .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; }
         
         .btn-main { 
