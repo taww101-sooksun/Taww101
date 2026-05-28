@@ -7,7 +7,7 @@ st.set_page_config(page_title="TA GPS", layout="centered")
 st.title("📍 ศูนย์จับพิกัดความจริง")
 
 # มีบรรทัดนี้ "แค่นี้ที่เดียว" ทั้งไฟล์ ห้ามมีคำว่า streamlit_geolocation ซ้ำอีกเด็ดขาด!
-location = streamlit_geolocation(key="ta_the_only_one_geo_2026")
+location = streamlit_geolocation(key="fixed_real_loc_final_final_9999_xyz")
 
 if location and location['latitude'] is not None:
     lat = location['latitude']
