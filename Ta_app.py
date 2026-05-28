@@ -334,7 +334,7 @@ html_code = """
 </html>
 """
 
-st.components.v1.html(html_code, height=600)
+st.components.v1.html(html_code, height=500)
 
 # แสดงสโลแกนวิ้งๆ นีออนแบบเก๋ๆ ปิดท้ายไฟล์อย่างสมบูรณ์แบบ
 st.markdown('<div class="neon-slogan">อยู่นิ่งๆ ไม่เจ็บตัว | CONSOLE v6.2</div>', unsafe_allow_html=True)
