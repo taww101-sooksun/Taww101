@@ -30,7 +30,7 @@ st.markdown(f"""
         position: absolute;
         top: 10px; left: 50%;
         transform: translateX(-50%);
-        width: 100px; height: 100px;
+        width: 50px; height: 50px;
         background-image: url("{logo_html_link}");
         background-size: contain;
         background-repeat: no-repeat;
@@ -41,7 +41,7 @@ st.markdown(f"""
 
     @keyframes logo-glow {{
         0% {{ filter: drop-shadow(0 0 10px #ff00de); transform: translateX(-50%) scale(1); }}
-        50% {{ filter: drop-shadow(0 0 25px #00f3ff); transform: translateX(-50%) scale(1.1); }}
+        50% {{ filter: drop-shadow(0 0 15px #00f3ff); transform: translateX(-50%) scale(1.1); }}
         100% {{ filter: drop-shadow(0 0 10px #ff8c00); transform: translateX(-50%) scale(1); }}
     }}
 
@@ -67,7 +67,7 @@ st.markdown(f"""
         font-size: 5px; 
         font-family: "Orbitron", sans-serif; 
         letter-spacing: 8px;
-        margin-top: 10px;
+        margin-top: 200px;
         text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #00f3ff;
         animation: slogan-wink 1s infinite alternate;
     }}
@@ -152,7 +152,7 @@ html_code = """
             </div>
         </div>
 
-        <div id="status" class="text-[10px] text-center mt-3 text-gray-600 uppercase tracking-widest">System Ready</div>
+        <div id="status" class="text-[10px] text-center mt-3 text-gray-800 uppercase tracking-widest">System Ready</div>
     </div>
 
     <script>
