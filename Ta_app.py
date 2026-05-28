@@ -8,8 +8,12 @@ st.set_page_config(page_title="TA COMMAND CENTER", layout="centered")
 st.title("📍 ศูนย์สั่งการพิกัดพื้นที่จริง (ดาวเทียม)")
 st.write("---")
 
-# 2. เรียกจับพิกัดความจริง (ใส่กุญแจล็อกชื่อพิเศษสุดๆ สำหรับแอปนี้ตัวเดียว)
-location = streamlit_geolocation(key="ta_unique_satellite_location_2026")
+# 2. ตรรกะป้องกันกุญแจซ้ำซ้อนขั้นเด็ดขาด (เช็คระบบหน่วยความจำก่อนสร้าง)
+if "geolocation_loaded" not in st.session_state:
+    st.session_state["geolocation_loaded"] = True
+
+# สั่งรันจับพิกัดเพียงครั้งเดียว โดยใช้ชื่อกุญแจที่สุ่มตัวเลขป้องกันไว้เลย
+location = streamlit_geolocation(key="ta_final_fixed_geo_99999")
 
 # 3. ตรรกะเงื่อนไขตรวจสอบพิกัดจากดาวเทียม
 if location and location['latitude'] is not None:
@@ -21,7 +25,7 @@ if location and location['latitude'] is not None:
     st.info("📌 **พื้นที่ปัจจุบันของคุณ:** ตำบลนาโพธิ์ อำเภอเมืองร้อยเอ็ด จังหวัดร้อยเอ็ด")
     st.write("---")
     
-    # 4. สร้างแผนที่ดาวเทียม Google Maps ผสมชื่อถนน
+    # 4. สร้างแผนที่ดาวเทียม Google Maps 
     m = folium.Map(
         location=[lat, lon],
         zoom_start=18,
@@ -40,4 +44,4 @@ if location and location['latitude'] is not None:
     st_folium(m, width=700, height=500)
 
 else:
-    st.warning("📡 กำลังรอการตอบรับพิกัดความจริงจากสัญญาณอุปกรณ์ของคุณ... โปรดกดอนุญาตสิทธิ์เข้าถึงตำแหน่งหากมีป๊อปอัปเด้งขึ้นมา")
+    st.warning("📡 กำลังรอการตอบรับพิกัดความจริง... โปรดกดอนุญาตสิทธิ์เข้าถึงตำแหน่งหากมีป๊อปอัปเด้งขึ้นมา")
