@@ -69,7 +69,7 @@ st.markdown(f"""
         letter-spacing: 4px;
         margin-top: 20px;
         text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #00f3ff;
-        animation: slogan-wink 3s infinite alternate;
+        animation: slogan-wink 1s infinite alternate;
     }}
 
     @keyframes slogan-wink {{
@@ -81,7 +81,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">SYNAPSE NEON PLAYER</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">SYNAPSE PLAYER</h1>', unsafe_allow_html=True)
 
 # ==========================================
 # ส่วนที่ 2: HTML/JS - ระบบปลดล็อกเสียงอัตโนมัติเมื่อกดปุ่ม
