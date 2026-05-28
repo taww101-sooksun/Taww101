@@ -51,7 +51,7 @@ st.markdown(f"""
         text-align: center;
         text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
         font-size: 1.6rem;
-        margin-top: 500px;
+        margin-top: 100px;
         letter-spacing: 6px;
         animation: text-flicker 2s infinite;
     }}
@@ -64,10 +64,10 @@ st.markdown(f"""
     .neon-slogan {{
         text-align: center; 
         color: #fff; 
-        font-size: 13px; 
+        font-size: 5px; 
         font-family: "Orbitron", sans-serif; 
         letter-spacing: 8px;
-        margin-top: 20px;
+        margin-top: 10px;
         text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #00f3ff;
         animation: slogan-wink 1s infinite alternate;
     }}
@@ -96,7 +96,7 @@ html_code = """
         body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
         .neon-card { border: 4px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
         
-        .visualizer-box { height: 50px; background: #050505; border-radius: 15px; border: 1px solid #222; }
+        .visualizer-box { height: 20px; background: #050505; border-radius: 15px; border: 1px solid #222; }
         
         .deck { padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
         .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; }
