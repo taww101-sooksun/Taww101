@@ -94,9 +94,9 @@ html_code = """
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
-        .neon-card { border: 2px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
+        .neon-card { border: 4px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
         
-        .visualizer-box { height: 140px; background: #050505; border-radius: 15px; border: 1px solid #222; }
+        .visualizer-box { height: 100px; background: #050505; border-radius: 15px; border: 1px solid #222; }
         
         .deck { padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
         .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; }
@@ -104,7 +104,7 @@ html_code = """
         .btn-main { 
             background: linear-gradient(45deg, #ff00de, #00f3ff);
             color: white; font-weight: bold; padding: 12px; border-radius: 10px;
-            text-transform: uppercase; letter-spacing: 2px; transition: 0.3s;
+            text-transform: uppercase; letter-spacing: 2px; transition: 0.1s;
             box-shadow: 0 0 15px rgba(255,0,222,0.4);
         }
         .btn-main:hover { transform: scale(1.02); box-shadow: 0 0 25px rgba(0,243,255,0.6); }
