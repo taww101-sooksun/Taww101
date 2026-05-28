@@ -34,7 +34,7 @@ st.markdown(f"""
         background-image: url("{logo_html_link}");
         background-size: contain;
         background-repeat: no-repeat;
-        z-index: 999;
+        z-index: 1200;
         filter: drop-shadow(0 0 10px #ff00de);
         animation: logo-glow 4s infinite alternate;
     }}
@@ -81,7 +81,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">[อยู่นิ้งๆเจ็บตัว</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">  อยู่นิ้งๆเจ็บตัว</h1>', unsafe_allow_html=True)
 
 # ==========================================
 # ส่วนที่ 2: HTML/JS - ระบบปลดล็อกเสียงอัตโนมัติเมื่อกดปุ่ม
