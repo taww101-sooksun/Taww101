@@ -51,8 +51,8 @@ st.markdown(f"""
         text-align: center;
         text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
         font-size: 1.6rem;
-        margin-top: 110px;
-        letter-spacing: 3px;
+        margin-top: 200px;
+        letter-spacing: 6px;
         animation: text-flicker 2s infinite;
     }}
     @keyframes text-flicker {{
@@ -81,7 +81,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="neon-title">SYNAPSE อยู่นิ้งๆ</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="neon-title">อยู่นิ้งๆไม่เจ็บตัว</h1>', unsafe_allow_html=True)
 
 # ==========================================
 # ส่วนที่ 2: HTML/JS - ระบบปลดล็อกเสียงอัตโนมัติเมื่อกดปุ่ม
