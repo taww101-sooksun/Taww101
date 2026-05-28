@@ -41,7 +41,7 @@ st.markdown(f"""
 
     @keyframes logo-glow {{
         0% {{ filter: drop-shadow(0 0 10px #ff00de); transform: translateX(-50%) scale(1); }}
-        50% {{ filter: drop-shadow(0 0 15px #00f3ff); transform: translateX(-50%) scale(1.1); }}
+        50% {{ filter: drop-shadow(0 0 20px #00f3ff); transform: translateX(-50%) scale(1.1); }}
         100% {{ filter: drop-shadow(0 0 10px #ff8c00); transform: translateX(-50%) scale(1); }}
     }}
 
@@ -67,7 +67,7 @@ st.markdown(f"""
         font-size: 5px; 
         font-family: "Orbitron", sans-serif; 
         letter-spacing: 8px;
-        margin-top:1000px;
+        margin-top:100px;
         text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #00f3ff;
         animation: slogan-wink 1s infinite alternate;
     }}
