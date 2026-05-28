@@ -30,7 +30,7 @@ st.markdown(f"""
         position: absolute;
         top: 10px; left: 50%;
         transform: translateX(-50%);
-        width: 50px; height: 50px;
+        width: 150px; height: 150px;
         background-image: url("{logo_html_link}");
         background-size: contain;
         background-repeat: no-repeat;
