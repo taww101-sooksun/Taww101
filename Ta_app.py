@@ -3,156 +3,129 @@ import pandas as pd
 from datetime import datetime, date, timedelta
 import math
 
-# --- CONFIG & UI ---
-st.set_page_config(page_title="SYNAPSE: THE COMPLETE TRUTH", layout="wide")
+# --- CONFIG & STYLING ---
+st.set_page_config(page_title="SYNAPSE : FULL CYCLE SCANNER", layout="wide")
 
 st.markdown("""
     <style>
-    .main { background-color: #050a0e; color: #00ff41; }
-    .logic-box { 
-        background-color: #101a24; 
-        padding: 15px; 
-        border-left: 5px solid #00ff41; 
+    .main { background-color: #050a0e; color: #00e5ff; }
+    .stApp { background: linear-gradient(180deg, #050a0e 0%, #101a24 100%); }
+    
+    /* Neon Formula Card */
+    .formula-box {
+        background: rgba(0, 229, 255, 0.03);
+        border-left: 5px solid #00e5ff;
         border-radius: 10px;
-        margin-bottom: 20px;
-        color: #f0f0f0;
-        box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+        padding: 15px;
+        margin: 10px 0;
     }
-    .stMetric { background-color: #0e161f; border: 1px solid #00ff41; border-radius: 10px; }
-    h1, h2, h3 { color: #00ff41; font-family: 'Courier New', Courier, monospace; }
-    .guide-text { color: #a0a0a0; font-size: 0.9rem; line-height: 1.6; }
+    
+    /* Data Table Styling */
+    .stDataFrame { border: 1px solid rgba(0, 229, 255, 0.2); border-radius: 10px; }
+    
+    h1, h2, h3 { color: #ffffff; text-shadow: 0 0 10px rgba(0, 229, 255, 0.5); }
+    .highlight { color: #ff7f50; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- CORE LOGIC (ฟังก์ชันคำนวณ) ---
-def get_detailed_logic(dt):
-    # 1. ข้อมูลพื้นฐานทางดาราศาสตร์
+# --- CORE LOGIC (สูตรที่ไม่มั่ว) ---
+def get_synapse_logic(dt):
+    if dt is None: return None
     ref_date = date(1900, 1, 1)
     diff = (dt - ref_date).days
     lunar_cycle = 29.530589
     pos = (diff - 0.5) % lunar_cycle
     day_val = dt.weekday() + 1
-    
     day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
-    day_name = day_names[dt.weekday()]
-
-    # 2. คำนวณตาม Logic (ความจริงทางคณิตศาสตร์)
-    if pos <= 14.765:
-        m_num = int(pos) + 1
-        phase = f"ขึ้น {m_num} ค่ำ"
+    
+    is_waxing = pos <= 14.765
+    m_num = int(pos) + 1 if is_waxing else int(pos - 14.765) + 1
+    
+    if is_waxing:
         res = math.sqrt((day_val**2) + (m_num**2))
         formula = f"√({day_val}² + {m_num}²)"
-        logic_type = "แรงผลักดัน (Vector Energy)"
+        type_text = "Vector Energy (ขึ้น)"
     else:
-        m_num = int(pos - 14.765) + 1
-        phase = f"แรม {m_num} ค่ำ"
         res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
         formula = f"({day_val} × 1.618) / {m_num}"
-        logic_type = "สมดุลสัดส่วนทองคำ (Golden Ratio)"
+        type_text = "Golden Ratio (แรม)"
 
     return {
-        "res": round(res, 4), "phase": phase, "day_name": day_name,
-        "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type
+        "res": round(res, 4), "phase": f"{'ขึ้น' if is_waxing else 'แรม'} {m_num} ค่ำ",
+        "day": day_names[dt.weekday()], "formula": formula, "type": type_text
     }
 
-# --- FUTURE SCANNER (ฟังก์ชันพยากรณ์อนาคต) ---
-def scan_destiny(target_res, days=180):
-    future_data = []
-    start_date = date.today()
-    
-    for i in range(days):
-        current_date = start_date + timedelta(days=i)
-        d = get_detailed_logic(current_date)
-        current_gap = abs(d['res'] - target_res)
+def run_scanner(target_res, base_date, days, mode="future"):
+    results = []
+    for i in range(days + 1):
+        current_date = base_date + timedelta(days=i) if mode == "future" else base_date - timedelta(days=i)
+        d = get_synapse_logic(current_date)
+        gap = abs(target_res - d['res'])
         
-        status = ""
-        if current_gap < 0.5: 
-            status = "💎 วันที่รหัสบรรจบ (เจอ/รวมตัว)"
-        elif 3.8 <= current_gap <= 4.2: 
-            status = "🌀 วันที่สัญญาณสะท้อน (ดึงดูดสูง)"
-        elif current_gap > 10.0: 
-            status = "🚩 วันที่รหัสแยกตัว (จาก/อิสระ)"
+        status = "อิสระ"
+        if gap < 0.5: status = "💎 บรรจบ"
+        elif 3.8 <= gap <= 4.2: status = "🌀 สะท้อน (Gap 4)"
+        elif gap > 10.0: status = "🚩 แยกตัว"
         
-        if status:
-            future_data.append({
-                "วันที่": current_date.strftime('%d/%m/%Y'),
-                "พิกัดวัน": d['day_name'],
-                "สถานะ": status,
-                "ค่า Gap": round(current_gap, 4)
+        if status != "อิสระ":
+            results.append({
+                "วันที่": current_date.strftime("%d/%m/%Y"),
+                "วัน": d['day'],
+                "สถานะพิกัด": status,
+                "Gap": round(gap, 4),
+                "รหัสวันนั้น": d['res']
             })
-            
-    return pd.DataFrame(future_data)
+    return pd.DataFrame(results)
 
 # --- MAIN INTERFACE ---
-st.title("🛰️ SYNAPSE: สแกนพิกัดรหัสคู่ขนาน")
-st.write("ระบบวิเคราะห์ความถี่รหัสชีวิตรายบุคคลด้วยสมการ Quantum | ID: Ta101")
+st.title("🛰️ SYNAPSE : ระบบสแกนวงจรชีวิต 365 วัน")
+st.write("ตรวจสอบพิกัดรหัสย้อนหลังและล่วงหน้า 1 ปี เพื่อหาจังหวะที่ 'ตรง' กับคุณ")
 
-st.divider()
+# 1. ข้อมูลตั้งต้น
+with st.container():
+    st.subheader("👤 ข้อมูลผู้ใช้งาน")
+    user_dob = st.date_input("เลือกวันเดือนปีเกิดของคุณ", value=None, min_value=date(1920,1,1))
 
-# ส่วนการกรอกข้อมูล
-c1, c2 = st.columns(2)
-with c1:
-    st.subheader("👤 บุคคลที่ 1 (ตัวตั้งต้น)")
-    dob1 = st.date_input("เลือกวันเกิด (1)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u1")
-with c2:
-    st.subheader("👤 บุคคลที่ 2 (คู่สแกน)")
-    dob2 = st.date_input("เลือกวันเกิด (2)", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="u2")
+if user_dob:
+    user_data = get_synapse_logic(user_dob)
+    st.markdown(f"""
+        <div class="formula-box">
+            <span style='font-size: 1.2rem;'>รหัสประจำตัวของคุณคือ: <b style='color:#00e5ff;'>{user_data['res']}</b></span><br>
+            พิกัด: {user_data['day']} ({user_data['phase']}) | ระบบ: {user_data['type']}<br>
+            ที่มาตัวเลข: <code>{user_data['formula']}</code>
+        </div>
+    """, unsafe_allow_html=True)
 
-if dob1 and dob2:
-    d1 = get_detailed_logic(dob1)
-    d2 = get_detailed_logic(dob2)
-
-    # แสดงผลลัพธ์รายบุคคล
-    res_a, res_b = st.columns(2)
-    with res_a:
-        st.metric("รหัสประจำตัว (1)", d1['res'])
-        st.markdown(f"""<div class="logic-box"><b>📍 พิกัด:</b> {d1['day_name']} ({d1['phase']})<br><b>🧬 สูตร:</b> <code>{d1['formula']}</code><br><b>⚙️ ระบบ:</b> {d1['type']}</div>""", unsafe_allow_html=True)
-
-    with res_b:
-        st.metric("รหัสประจำตัว (2)", d2['res'])
-        st.markdown(f"""<div class="logic-box"><b>📍 พิกัด:</b> {d2['day_name']} ({d2['phase']})<br><b>🧬 สูตร:</b> <code>{d2['formula']}</code><br><b>⚙️ ระบบ:</b> {d2['type']}</div>""", unsafe_allow_html=True)
-
-    # --- การวิเคราะห์ Gap ปัจจุบัน ---
     st.divider()
-    gap = abs(d1['res'] - d2['res'])
-    st.subheader(f"🔍 ผลการวิเคราะห์ Gap ปัจจุบัน: {gap:.4f}")
-    
-    progress_val = min(gap / 15.0, 1.0) 
-    st.progress(progress_val)
 
-    if gap < 1.0:
-        st.warning("🔮 **ระดับ: รหัสแฝด (Twin Code)**")
-    elif 3.5 <= gap <= 4.5:
-        st.error("⚠️ **ระดับ: รหัสคู่ขนาน (Parallel Connection)**")
-        st.balloons()
-    elif 7.0 <= gap <= 9.0:
-        st.info("🌀 **ระดับ: รหัสส่งเสริม (Supporting Code)**")
-    else:
-        st.success("✅ **ระดับ: รหัสอิสระ (Independent Energy)**")
+    # 2. ส่วนควบคุมการสแกน
+    st.subheader("🔍 ตั้งค่าขอบเขตการสแกน")
+    c1, c2 = st.columns(2)
+    with c1:
+        past_range = st.slider("สแกนย้อนหลัง (วัน)", 0, 365, 180)
+    with c2:
+        future_range = st.slider("สแกนไปข้างหน้า (วัน)", 0, 365, 180)
 
-    # --- ส่วนที่เพิ่มใหม่: พยากรณ์พิกัดเวลาในอนาคต ---
-    st.divider()
-    st.subheader("🗓️ พยากรณ์พิกัดเวลา (180 วันข้างหน้า)")
-    st.write(f"ค้นหาจังหวะชีวิตที่สอดคล้องกับรหัสประจำตัว: **{d1['res']}**")
-    
-    timeline_df = scan_destiny(d1['res'])
-    
-    if not timeline_df.empty:
-        st.dataframe(timeline_df, use_container_width=True, hide_index=True)
-    else:
-        st.info("ยังไม่พบพิกัดที่สอดคล้องในช่วง 180 วันนี้")
+    # 3. ผลการสแกน
+    tab_past, tab_future = st.tabs([f"⏪ อดีต ({past_range} วัน)", f"🔮 อนาคต ({future_range} วัน)"])
 
-    # --- คัมภีร์อ่านค่า ---
-    st.divider()
-    with st.expander("📖 คัมภีร์ถอดรหัสความจริง", expanded=False):
-        st.markdown("""
-        * **วันที่จะเจอ (รหัสบรรจบ):** คือวันที่รหัสจักรวาลวิ่งมาทับกับรหัสคุณพอดี
-        * **วันที่จะจาก (รหัสแยกตัว):** คือวันที่พลังงานดีดตัวออกจากกันจนเป็นอิสระ
-        * **สัญญาณสะท้อน:** วันที่เกิดแรงดึงดูดประหลาด (Gap 4) มักมีเรื่องไม่คาดคิดเกิดขึ้น
-        """)
+    with tab_past:
+        df_p = run_scanner(user_data['res'], date.today(), past_range, "past")
+        if not df_p.empty:
+            st.write(f"พบพิกัดที่น่าสนใจในอดีต {len(df_p)} จุด")
+            st.dataframe(df_p, use_container_width=True)
+        else:
+            st.write("ไม่พบพิกัดพิเศษในช่วงวันที่เลือก")
 
+    with tab_future:
+        df_f = run_scanner(user_data['res'], date.today(), future_range, "future")
+        if not df_f.empty:
+            st.write(f"พบพิกัดที่น่าสนใจในอนาคต {len(df_f)} จุด")
+            st.dataframe(df_f, use_container_width=True)
+        else:
+            st.write("ไม่พบพิกัดพิเศษในช่วงวันที่เลือก")
+            
 else:
-    st.info("🛰️ ระบบ Standby... กรุณากรอกข้อมูลวันเกิดเพื่อเริ่มการสแกนรหัสชีวิต")
+    st.info("💡 กรุณาระบุวันเกิดของคุณเพื่อเริ่มการสแกนพิกัดย้อนหลังและอนาคต")
 
-st.divider()
-st.caption(f"สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE CORE v2.1 | {date.today().year}")
+st.caption("สโลแกน: 'อยู่นิ่งๆ ไม่เจ็บตัว' | SYNAPSE ENGINE v3.2")
