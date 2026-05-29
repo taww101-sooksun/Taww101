@@ -1,285 +1,79 @@
-import json
-import os
+import streamlit as st
+import numpy as np
 import time
+from datetime import datetime
 
-import requests
-from requests import get as rget
-# -*- coding:utf-8 -*-
+# 1. UI SETTING (เข้มสุด ลกสุด)
+st.set_page_config(page_title="SYNAPSE X - COMMAND CENTER", layout="wide")
+st.markdown("""
+    <style>
+    .stApp { background-color: #000000; color: #00FF00; font-family: 'Courier New', Courier, monospace; }
+    .metric-box { border: 1px solid #333; padding: 10px; background: #050505; border-radius: 5px; }
+    .status-text { color: #FFD700; font-size: 12px; }
+    </style>
+    """, unsafe_allow_html=True)
 
-import json
+# --- HEADER & SLOGAN ---
+st.markdown("<h1 style='text-align: center; color: #FF0000;'>🔴 SYNAPSE X : MASTER CONTROL</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #FFD700;'>\"อยู่นิ่งๆ ไม่เจ็บตัว\" | มองโลกในแง่ดีเสมอ แม้ข้างในจะเจ็บปวด</p>", unsafe_allow_html=True)
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.middleware.cors import CORSMiddleware
+# 2. MASTER CLOCK (นาฬิกา 8 ช่วงเวลา)
+now = datetime.now()
+current_time = now.strftime("%H:%M:%S")
+hour = now.hour
 
-from deps import get_token
-from utils import generate_lyrics, generate_music, get_feed, get_lyrics, get_credits
-# -*- coding:utf-8 -*-
+# 3. LOGIC DETERMINATION (กำหนดโหมดจากเวลาจริง)
+if 6 <= hour < 9:
+    mode, freq, mood_color = "AWAKENING", 528, "#FFD700"
+elif 21 <= hour or hour < 3:
+    mode, freq, mood_color = "DEEP HEALING", 432, "#00008B"
+else:
+    mode, freq, mood_color = "EQUILIBRIUM", 440, "#FFFFFF"
 
-import json
+# 4. DASHBOARD (Metrics ลกๆ 4 คอลัมน์)
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.markdown(f"<div class='metric-box'>❤️ PULSE (Real-time)<br><h2 style='color:red;'>72 BPM</h2><span class='status-text'>STABLE</span></div>", unsafe_allow_html=True)
+with col2:
+    st.markdown(f"<div class='metric-box'>📍 GPS COORDS<br><h2 style='color:#00f2fe;'>13.75, 100.52</h2><span class='status-text'>LOCATED: THAILAND</span></div>", unsafe_allow_html=True)
+with col3:
+    st.markdown(f"<div class='metric-box'>☁️ BARO / LIGHT<br><h2 style='color:#00FF00;'>1012 hPa</h2><span class='status-text'>LIGHT: 450 LUX</span></div>", unsafe_allow_html=True)
+with col4:
+    st.markdown(f"<div class='metric-box'>🕒 SYSTEM TIME<br><h2 style='color:white;'>{current_time}</h2><span class='status-text'>MODE: {mode}</span></div>", unsafe_allow_html=True)
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
-from fastapi.middleware.cors import CORSMiddleware
+# 5. ASSASSIN 144 MATH ENGINE (สูตรคณิตศาสตร์แท้)
+st.markdown("---")
+st.subheader("📐 Assassin 144 : Matrix Calculation")
+st.latex(r"Sound(t) = \int_{144} Matrix(V,A) \cdot \Phi(f,T) dt")
+st.code(f"# Current Matrix State\nFrequency_Target: {freq}Hz\nAmplitude_Mod: 0.85\nPhase_Shift: 0.002", language='python')
 
+# 6. YOUTUBE PLAYLIST & 7. EMOTION LED (แสดงผลข้างกัน)
+st.markdown("---")
+left_col, right_col = st.columns([2, 1])
 
-from deps import get_token
-from utils import generate_lyrics, generate_music, get_feed, get_lyrics, get_credits
+with left_col:
+    st.subheader("📺 S.S.S STATION (24/7 LIVE)")
+    playlist_id = "PL6S211I3urvpt47sv8mhbexif2YOzs2gO"
+    st.markdown(f'<iframe width="100%" height="400" src="https://www.youtube.com/embed/videoseries?list={playlist_id}" frameborder="0" allowfullscreen></iframe>', unsafe_allow_html=True)
 
-app = FastAPI()
+with right_col:
+    st.subheader("💡 Emotion LED")
+    st.markdown(f"<div style='width:100%; height:150px; background-color:{mood_color}; border-radius:20px; border: 5px solid #333;'></div>", unsafe_allow_html=True)
+    st.write(f"Current Hue: {mood_color}")
+    
+    # 8. MATRIX V1.0/V2.0 Sliders
+    st.slider("Valence (Joy/Sad)", 0.0, 1.0, 0.7)
+    st.slider("Arousal (Energy)", 0.0, 1.0, 0.5)
 
+# 9. CONSOLE LOGS (ตัวหนังสือวิ่งรกๆ)
+st.markdown("---")
+st.subheader("📋 System Console Logs")
+st.text_area("Live Data Stream", value="[INFO] Synchronizing GPS...\n[SUCCESS] Matrix 144 Loaded.\n[ACTIVE] Frequency adjusted to " + str(freq) + "Hz\n[READY] Awaiting User Interaction...", height=100)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.get("/")
-async def get_root():
-    return schemas.Response()
-
-
-@app.post("/generate")
-async def generate(
-    data: schemas.CustomModeGenerateParam, token: str = Depends(get_token)
-):
-    try:
-        resp = await generate_music(data.dict(), token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@app.post("/generate/description-mode")
-async def generate_with_song_description(
-    data: schemas.DescriptionModeGenerateParam, token: str = Depends(get_token)
-):
-    try:
-        resp = await generate_music(data.dict(), token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@app.get("/feed/{aid}")
-async def fetch_feed(aid: str, token: str = Depends(get_token)):
-    try:
-        resp = await get_feed(aid, token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@app.post("/generate/lyrics/")
-async def generate_lyrics_post(request: Request, token: str = Depends(get_token)):
-    req = await request.json()
-    prompt = req.get("prompt")
-    if prompt is None:
-        raise HTTPException(
-            detail="prompt is required", status_code=status.HTTP_400_BAD_REQUEST
-        )
-
-    try:
-        resp = await generate_lyrics(prompt, token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@app.get("/lyrics/{lid}")
-async def fetch_lyrics(lid: str, token: str = Depends(get_token)):
-    try:
-        resp = await get_lyrics(lid, token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@app.get("/get_credits")
-async def fetch_credits(token: str = Depends(get_token)):
-    try:
-        resp = await get_credits(token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-app = FastAPI()
-
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-@app.get("/")
-async def get_root():
-    return schemas.Response()
-
-
-@app.post("/generate")
-async def generate(
-    data: schemas.CustomModeGenerateParam, token: str = Depends(get_token)
-):
-    try:
-        resp = await generate_music(data.dict(), token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@app.post("/generate/description-mode")
-async def generate_with_song_description(
-    data: schemas.DescriptionModeGenerateParam, token: str = Depends(get_token)
-):
-    try:
-        resp = await generate_music(data.dict(), token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@app.get("/feed/{aid}")
-async def fetch_feed(aid: str, token: str = Depends(get_token)):
-    try:
-        resp = await get_feed(aid, token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@app.post("/generate/lyrics/")
-async def generate_lyrics_post(request: Request, token: str = Depends(get_token)):
-    req = await request.json()
-    prompt = req.get("prompt")
-    if prompt is None:
-        raise HTTPException(
-            detail="prompt is required", status_code=status.HTTP_400_BAD_REQUEST
-        )
-
-    try:
-        resp = await generate_lyrics(prompt, token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@app.get("/lyrics/{lid}")
-async def fetch_lyrics(lid: str, token: str = Depends(get_token)):
-    try:
-        resp = await get_lyrics(lid, token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@app.get("/get_credits")
-async def fetch_credits(token: str = Depends(get_token)):
-    try:
-        resp = await get_credits(token)
-        return resp
-    except Exception as e:
-        raise HTTPException(
-            detail=str(e), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-def test_generate_music():
-    data = {
-        "prompt": "[Verse]\nWake up in the morning, feeling brand new\nGonna shake off the worries, leave 'em in the rearview\nStep outside, feeling the warmth on my face\nThere's something 'bout the sunshine that puts me in my place\n\n[Verse 2]\nWalking down the street, got a spring in my step\nThe rhythm in my heart, it just won't forget\nEverywhere I go, people smiling at me\nThey can feel the joy, it's contagious, can't you see?\n\n[Chorus]\nI got sunshine in my pocket, happiness in my soul\nA skip in my stride, and I'm ready to go\nNothing gonna bring me down, gonna keep on shining bright\nI got sunshine in my pocket, this world feels so right",
-        "tags": "heartfelt anime",
-        "mv": "chirp-v3-0",
-        "title": "Sunshine in your Pocket",
-        "continue_clip_id": None,
-        "continue_at": None,
-    }
-
-    r = requests.post(
-        "http://127.0.0.1:8000/generate/description-mode", data=json.dumps(data)
-    )
-
-    resp = r.text
-    print(resp)
-
-
-def test_generate_music_with_description():
-    data = {
-        "gpt_description_prompt": "A Blues song about a person who is feeling happy and optimistic about the future.",
-        "make_instrumental": False,
-        "mv": "chirp-v3-0",
-    }
-
-    r = requests.post("http://127.0.0.1:8000/generate", data=json.dumps(data))
-
-    resp = r.text
-    print(resp)
-
-
-def test_generate_lyrics():
-    data = {"prompt": ""}
-
-    r = requests.post("http://127.0.0.1:8000/generate/lyrics/", data=json.dumps(data))
-    print(r.text)
-
-
-def get_lyrics(lid):
-    r = requests.get(f"http://127.0.0.1:8000/lyrics/{lid}")
-    print(r.text)
-
-
-def get_info(aid):
-    response = requests.get(f"http://127.0.0.1:8000/feed/{aid}")
-
-    data = json.loads(response.text)[0]
-
-    return data["audio_url"], data["metadata"]
-
-
-def save_song(aid, output_path="output"):
-    start_time = time.time()
-    while True:
-        audio_url, metadata = get_info(aid)
-        if audio_url:
-            break
-        elif time.time() - start_time > 90:
-            raise TimeoutError("Failed to get audio_url within 90 seconds")
-        time.sleep(30)
-    response = rget(audio_url, allow_redirects=False, stream=True)
-    if response.status_code != 200:
-        raise Exception("Could not download song")
-    index = 0
-    while os.path.exists(os.path.join(output_path, f"suno_{index}.mp3")):
-        index += 1
-    path = os.path.join(output_path, f"suno_{index}.mp3")
-    with open(path, "wb") as output_file:
-        for chunk in response.iter_content(chunk_size=1024):
-            # If the chunk is not empty, write it to the file.
-            if chunk:
-                output_file.write(chunk)
+# 10. TURBO CONTROL BUTTONS
+st.markdown("---")
+cb1, cb2, cb3, cb4 = st.columns(4)
+with cb1: st.button("🚀 TURBO BOOST", use_container_width=True)
+with cb2: st.button("💾 SAVE STATE", use_container_width=True)
+with cb3: st.button("📡 SHARE MATRIX", use_container_width=True)
+with cb4: st.button("🛑 EMERGENCY RESET", use_container_width=True)
