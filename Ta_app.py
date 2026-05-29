@@ -5,7 +5,7 @@ import base64
 # ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (Cyberpunk Neon)
 # ==========================================
 
-st.set_page_config(page_title="Synapse Neon Single Deck", layout="centered")
+st.set_page_config(page_title="Synapse Neon Video Deck", layout="centered")
 
 def get_base64_image(image_path):
     try:
@@ -75,7 +75,7 @@ st.markdown(f"""
     @keyframes slogan-wink {{
         0%, 100% {{ text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #ff00de; color: #fff; }}
         50% {{ text-shadow: 0 0 8px #00f3ff, 0 0 15px #00f3ff, 0 0 25px #00f3ff; color: #e0ffff; }}
-        82% {{ text-shadow: none; color: #555; }} /* มีจังหวะไฟกะพริบดับนิดๆ แบบหลอดไฟนีออนจริง */
+        82% {{ text-shadow: none; color: #555; }}
         85% {{ text-shadow: 0 0 8px #00f3ff; color: #fff; }}
     }}
     </style>
@@ -84,7 +84,7 @@ st.markdown(f"""
 st.markdown('<h1 class="neon-title">อยู่นิ้งๆไม่เจ็บตัว</h1>', unsafe_allow_html=True)
 
 # ==========================================
-# ส่วนที่ 2: HTML/JS - ระบบปลดล็อกเสียงอัตโนมัติเมื่อกดปุ่ม
+# ส่วนที่ 2: HTML/JS - ระบบเล่นวิดีโอ (Video Player Deck)
 # ==========================================
 
 html_code = """
@@ -96,245 +96,157 @@ html_code = """
         body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
         .neon-card { border: 2px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
         
-        .visualizer-box { height: 140px; background: #050505; border-radius: 15px; border: 1px solid #222; }
+        /* กรอบหน้าจอ Video Player */
+        .video-box { 
+            width: 100%; 
+            height: 220px; 
+            background: #050505; 
+            border-radius: 15px; 
+            border: 2px solid #222; 
+            object-fit: contain;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+        .video-active { border-color: #00f3ff; box-shadow: 0 0 15px rgba(0,243,255,0.3); }
         
-        .deck { padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
-        .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; }
+        .deck { padding: 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
         
         .btn-main { 
             background: linear-gradient(45deg, #ff00de, #00f3ff);
             color: white; font-weight: bold; padding: 12px; border-radius: 10px;
             text-transform: uppercase; letter-spacing: 2px; transition: 0.3s;
             box-shadow: 0 0 15px rgba(255,0,222,0.4);
+            cursor: pointer;
         }
         .btn-main:hover { transform: scale(1.02); box-shadow: 0 0 25px rgba(0,243,255,0.6); }
         
-        .btn-fx {
-            background: #111; border: 1px solid #ff00de; color: #ff00de;
-            padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold;
-            transition: 0.2s; text-transform: uppercase;
-        }
-        .btn-fx:hover { background: #ff00de; color: #000; box-shadow: 0 0 10px #ff00de; }
-        .btn-fx:active { transform: scale(0.95); }
-
-        .progress-bar { height: 6px; background: #222; border-radius: 10px; overflow: hidden; }
+        .progress-bar { height: 6px; background: #222; border-radius: 10px; overflow: hidden; cursor: pointer; }
         .progress-inner { height: 100%; width: 0%; background: linear-gradient(90deg, #ff00de, #00f3ff); }
     </style>
 </head>
 <body>
     <div class="max-w-md mx-auto p-4 neon-card rounded-3xl">
-        <canvas id="scope" class="visualizer-box w-full mb-4"></canvas>
+        
+        <!-- ส่วนแสดงผลวิดีโอ -->
+        <div class="relative mb-4">
+            <video id="videoPlayer" class="video-box" preload="metadata"></video>
+        </div>
 
-        <div id="mainDeck" class="deck mb-4">
+        <!-- แผงควบคุมควบคุมไฟล์ -->
+        <div class="deck mb-4">
             <div class="flex justify-between text-[11px] mb-2">
-                <span class="text-cyan-400 font-bold tracking-widest">NOW PLAYING</span>
+                <span id="playStatus" class="text-cyan-400 font-bold tracking-widest">VIDEO DECK READY</span>
                 <span id="timeLabel" class="font-mono text-gray-400">00:00 / 00:00</span>
             </div>
             
-            <input type="file" id="audioFile" class="hidden" accept="audio/*" onchange="handleFile(this.files[0])">
+            <input type="file" id="videoFile" class="hidden" accept="video/mp4, video/webm, video/ogg" onchange="handleVideoFile(this.files[0])">
             <div class="flex gap-2 items-center mb-2">
-                <button onclick="document.getElementById('audioFile').click()" class="text-[10px] border border-cyan-500 text-cyan-400 px-3 py-1.5 rounded hover:bg-cyan-950 transition">LOAD TRACK</button>
-                <div id="fileName" class="text-[12px] truncate text-gray-400 flex-1">No Song Loaded</div>
+                <button onclick="document.getElementById('videoFile').click()" class="text-[10px] border border-cyan-500 text-cyan-400 px-3 py-1.5 rounded hover:bg-cyan-950 transition">LOAD VIDEO</button>
+                <div id="fileName" class="text-[12px] truncate text-gray-400 flex-1">No Video Loaded</div>
             </div>
             
-            <div class="progress-bar mt-3"><div id="progressBar" class="progress-inner"></div></div>
-        </div>
-
-        <button id="playBtn" onclick="togglePlay()" class="btn-main w-full mb-4">▶ PLAY TRACK</button>
-
-        <div class="border border-gray-800 p-3 rounded-xl bg-black/40">
-            <div class="text-[10px] text-gray-500 font-bold tracking-wider mb-2 text-center uppercase">LIVE SOUND EFFECTS PANEL</div>
-            <div class="grid grid-cols-2 gap-2">
-                <button onclick="playFX('airhorn')" class="btn-fx">📣 AIRHORN</button>
-                <button onclick="playFX('laser')" class="btn-fx" style="border-color:#00f3ff; color:#00f3ff;">🚀 LASER BEAM</button>
-                <button onclick="playFX('scratch')" class="btn-fx" style="border-color:#ff8c00; color:#ff8c00;">💿 VINYL SCRATCH</button>
-                <button onclick="playFX('explosion')" class="btn-fx" style="border-color:#9d4edd; color:#9d4edd;">💥 EXPLOSION</button>
+            <!-- แถบเล่นวิดีโอ (กดคลิกเพื่อข้ามเวลาได้) -->
+            <div class="progress-bar mt-3" onclick="seekVideo(event)">
+                <div id="progressBar" class="progress-inner"></div>
             </div>
         </div>
 
-        <div id="status" class="text-[10px] text-center mt-3 text-gray-600 uppercase tracking-widest">System Ready</div>
+        <!-- ปุ่มหลักสำหรับ เล่น / หยุด -->
+        <button id="playBtn" onclick="togglePlay()" class="btn-main w-full">▶ PLAY VIDEO</button>
+
+        <div id="status" class="text-[10px] text-center mt-3 text-gray-600 uppercase tracking-widest">System Online</div>
     </div>
 
     <script>
-        let ctx, analyser, songBuffer, sourceNode, gainNode;
-        let isPlaying = false;
-        let startTime = 0;
-        let pausedAt = 0;
-        let dataArray;
+        const video = document.getElementById('videoPlayer');
+        const playBtn = document.getElementById('playBtn');
+        const progressBar = document.getElementById('progressBar');
+        const timeLabel = document.getElementById('timeLabel');
+        const fileName = document.getElementById('fileName');
+        const playStatus = document.getElementById('playStatus');
+        const statusText = document.getElementById('status');
 
-        // ฟังก์ชันบังคับปลดล็อก AudioContext เพื่อสู้กับระบบเบราว์เซอร์
-        async function ensureAudioContext() {
-            if (!ctx) {
-                ctx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = ctx.createAnalyser();
-                analyser.fftSize = 128;
-                dataArray = new Uint8Array(analyser.frequencyBinCount);
-                
-                gainNode = ctx.createGain();
-                gainNode.connect(analyser).connect(ctx.destination);
-                
-                renderVisualizer();
-            }
-            if (ctx.state === 'suspended') {
-                await ctx.resume();
-            }
-        }
-
-        async function handleFile(file) {
+        // ฟังก์ชันรับไฟล์วิดีโอเข้าเครื่องเล่น
+        function handleVideoFile(file) {
             if (!file) return;
-            await ensureAudioContext();
             
-            if (isPlaying) {
-                stopTrack();
-            }
-
-            document.getElementById('fileName').innerText = "Decoding Audio...";
-            try {
-                const arrayBuffer = await file.arrayBuffer();
-                songBuffer = await ctx.decodeAudioData(arrayBuffer);
-                document.getElementById('fileName').innerText = file.name;
-                document.getElementById('status').innerText = "Track Loaded Successfully";
-                pausedAt = 0;
-                updateUI(0);
-            } catch (e) {
-                document.getElementById('fileName').innerText = "Error loading file";
-                alert("ไฟล์นี้ถอดรหัสไม่ได้ครับอาจารย์ ลองใช้ไฟล์ .mp3 หรือ .wav มาตรฐานดูครับ");
-            }
+            fileName.innerText = "Loading Video...";
+            const fileURL = URL.createObjectURL(file);
+            video.src = fileURL;
+            video.load();
+            
+            fileName.innerText = file.name;
+            statusText.innerText = "Video Loaded Successfully";
+            playStatus.innerText = "READY TO PLAY";
+            
+            // รีเซ็ตปุ่มและแถบเวลา
+            playBtn.innerText = "▶ PLAY VIDEO";
+            progressBar.style.width = "0%";
+            video.classList.remove('video-active');
         }
 
-        async function togglePlay() {
-            await ensureAudioContext();
-            if (!songBuffer) return alert("อาจารย์ครับ รบกวนโหลดเพลงก่อนกดเล่นครับ!");
+        // ฟังก์ชันเล่น/หยุดวิดีโอ
+        function togglePlay() {
+            if (!video.src) {
+                alert("อาจารย์ครับ รบกวนโหลดวิดีโอก่อนกดเล่นครับ!");
+                return;
+            }
 
-            if (isPlaying) {
-                pausedAt = ctx.currentTime - startTime;
-                stopTrack();
-                document.getElementById('playBtn').innerText = "▶ RESUME TRACK";
-                document.getElementById('status').innerText = "Paused";
-                document.getElementById('mainDeck').classList.remove('deck-active');
+            if (video.paused) {
+                video.play();
+                playBtn.innerText = "⏸ PAUSE VIDEO";
+                playStatus.innerText = "NOW PLAYING";
+                statusText.innerText = "Playing";
+                video.classList.add('video-active');
             } else {
-                sourceNode = ctx.createBufferSource();
-                sourceNode.buffer = songBuffer;
-                sourceNode.connect(gainNode);
-                
-                if (pausedAt >= songBuffer.duration) pausedAt = 0;
-                
-                sourceNode.start(0, pausedAt);
-                startTime = ctx.currentTime - pausedAt;
-                isPlaying = true;
-                
-                document.getElementById('playBtn').innerText = "⏸ PAUSE TRACK";
-                document.getElementById('status').innerText = "Playing";
-                document.getElementById('mainDeck').classList.add('deck-active');
-                
-                sourceNode.onended = () => {
-                    if (isPlaying && (ctx.currentTime - startTime) >= songBuffer.duration - 0.1) {
-                        isPlaying = false;
-                        pausedAt = 0;
-                        document.getElementById('playBtn').innerText = "▶ PLAY TRACK";
-                        document.getElementById('status').innerText = "Finished";
-                        document.getElementById('mainDeck').classList.remove('deck-active');
-                    }
-                };
+                video.pause();
+                playBtn.innerText = "▶ RESUME VIDEO";
+                playStatus.innerText = "PAUSED";
+                statusText.innerText = "Paused";
+                video.classList.remove('video-active');
             }
         }
 
-        function stopTrack() {
-            if (sourceNode) {
-                try { sourceNode.stop(); } catch(e) {}
-                sourceNode.disconnect();
-            }
-            isPlaying = false;
-        }
-
-        function updateUI(currentSeconds) {
-            if (!songBuffer) return;
-            let dur = songBuffer.duration;
-            let p = currentSeconds / dur;
-            if (p > 1) p = 1;
+        // อัปเดตแถบเวลาและเวลาตัวเลขแบบ Real-time
+        video.ontimeupdate = function() {
+            if (!video.duration) return;
             
-            document.getElementById('progressBar').style.width = (p * 100) + "%";
+            const current = video.currentTime;
+            const duration = video.duration;
+            const percentage = (current / duration) * 100;
             
-            let curM = Math.floor(currentSeconds/60), curS = Math.floor(currentSeconds%60);
-            let durM = Math.floor(dur/60), durS = Math.floor(dur%60);
+            progressBar.style.width = percentage + "%";
             
-            document.getElementById('timeLabel').innerText = 
-                (curM<10?'0':'')+curM+":"+(curS<10?'0':'')+curS + " / " +
-                (durM<10?'0':'')+durM+":"+(durS<10?'0':'')+durS;
-        }
-
-        function renderVisualizer() {
-            requestAnimationFrame(renderVisualizer);
-            if(!analyser) return;
+            let curM = Math.floor(current / 60), curS = Math.floor(current % 60);
+            let durM = Math.floor(duration / 60), durS = Math.floor(duration % 60);
             
-            analyser.getByteFrequencyData(dataArray);
-            const canvas = document.getElementById('scope');
-            const canvasCtx = canvas.getContext('2d');
-            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            let barWidth = (canvas.width / dataArray.length) * 2;
-            let x = 0;
-            for(let i=0; i<dataArray.length; i++) {
-                let barHeight = (dataArray[i]/255) * canvas.height;
-                let hue = (i * 5) + (Date.now() / 40) % 360;
-                canvasCtx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-                canvasCtx.fillRect(x, canvas.height - barHeight, barWidth - 1.5, barHeight);
-                x += barWidth;
-            }
+            timeLabel.innerText = 
+                (curM < 10 ? '0' : '') + curM + ":" + (curS < 10 ? '0' : '') + curS + " / " +
+                (durM < 10 ? '0' : '') + durM + ":" + (durS < 10 ? '0' : '') + durS;
+        };
 
-            if(isPlaying) {
-                updateUI(ctx.currentTime - startTime);
-            }
-        }
+        // เมื่อวิดีโอเล่นจบตัว
+        video.onended = function() {
+            playBtn.innerText = "▶ PLAY VIDEO";
+            playStatus.innerText = "FINISHED";
+            statusText.innerText = "End of Video";
+            video.classList.remove('video-active');
+        };
 
-        async function playFX(type) {
-            await ensureAudioContext();
-            const now = ctx.currentTime;
-            
-            const osc = ctx.createOscillator();
-            const fxGain = ctx.createGain();
-            osc.connect(fxGain).connect(analyser).connect(ctx.destination);
-
-            if (type === 'airhorn') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, now);
-                fxGain.gain.setValueAtTime(0.3, now); fxGain.gain.linearRampToValueAtTime(0, now + 0.8);
-                osc.start(now); osc.stop(now + 0.8);
-
-                const osc2 = ctx.createOscillator(); const osc3 = ctx.createOscillator();
-                const fxGain2 = ctx.createGain(); const fxGain3 = ctx.createGain();
-                osc2.type = 'sawtooth'; osc2.frequency.setValueAtTime(293.66, now);
-                osc3.type = 'sawtooth'; osc3.frequency.setValueAtTime(349.23, now);
-                osc2.connect(fxGain2).connect(analyser).connect(ctx.destination);
-                osc3.connect(fxGain3).connect(analyser).connect(ctx.destination);
-                fxGain2.gain.setValueAtTime(0.2, now); fxGain2.gain.linearRampToValueAtTime(0, now + 0.8);
-                fxGain3.gain.setValueAtTime(0.2, now); fxGain3.gain.linearRampToValueAtTime(0, now + 0.8);
-                osc2.start(now); osc2.stop(now + 0.8); osc3.start(now); osc3.stop(now + 0.8);
-            } 
-            else if (type === 'laser') {
-                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(1500, now);
-                osc.frequency.exponentialRampToValueAtTime(40, now + 0.4);
-                fxGain.gain.setValueAtTime(0.4, now); fxGain.gain.linearRampToValueAtTime(0, now + 0.4);
-                osc.start(now); osc.stop(now + 0.4);
-            } 
-            else if (type === 'scratch') {
-                osc.type = 'triangle'; osc.frequency.setValueAtTime(80, now);
-                osc.frequency.linearRampToValueAtTime(400, now + 0.15); osc.frequency.linearRampToValueAtTime(100, now + 0.3);
-                fxGain.gain.setValueAtTime(0.5, now); fxGain.gain.linearRampToValueAtTime(0, now + 0.3);
-                osc.start(now); osc.stop(now + 0.3);
-            } 
-            else if (type === 'explosion') {
-                osc.type = 'square'; osc.frequency.setValueAtTime(100, now);
-                osc.frequency.linearRampToValueAtTime(10, now + 0.7);
-                fxGain.gain.setValueAtTime(0.6, now); fxGain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
-                osc.start(now); osc.stop(now + 0.8);
-            }
+        // สามารถกดที่แถบความคืบหน้าเพื่อข้ามเวลา (Seek) ไปจุดที่ต้องการได้
+        function seekVideo(event) {
+            if (!video.duration) return;
+            const bar = event.currentTarget;
+            const clickX = event.offsetX;
+            const width = bar.offsetWidth;
+            const percentage = clickX / width;
+            video.currentTime = percentage * video.duration;
         }
     </script>
 </body>
 </html>
 """
 
-st.components.v1.html(html_code, height=600)
+st.components.v1.html(html_code, height=450)
 
-# แสดงสโลแกนวิ้งๆ นีออนแบบเก๋ๆ ปิดท้ายไฟล์อย่างสมบูรณ์แบบ
-st.markdown('<div class="neon-slogan">อยู่นิ่งๆ ไม่เจ็บตัว | CONSOLE v6.2</div>', unsafe_allow_html=True)
+# แสดงสโลแกนวิ้งๆ นีออนปิดท้ายแบบเก๋ๆ
+st.markdown('<div class="neon-slogan">อยู่นิ่งๆ ไม่เจ็บตัว | VIDEO CONSOLE v7.0</div>', unsafe_allow_html=True)
