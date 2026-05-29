@@ -1,263 +1,87 @@
-import streamlit as st
-import base64
-import time
+# -*- coding: utf-8 -*-
+"""Setup module."""
+try:
+    from setuptools import setup
+except ImportError:
+    from distutils.core import setup
 
-# ==========================================
-# ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (Cyberpunk Neon)
-# ==========================================
 
-st.set_page_config(page_title="Synapse Neon Video Deck", layout="centered")
+MINIMAL_DESCRIPTION = '''ASCII art is also known as "computer text art".
+    It involves the smart placement of typed special characters or
+    letters to make a visual shape that is spread over multiple lines of text.
+    ART is a Python lib for text converting to ASCII art fancy.'''
 
-def get_base64_image(image_path):
+
+def get_dev_requires():
+    """Read dev-requirements.txt."""
+    requirements = open("dev-requirements.txt", "r").read()
+    return [x for x in requirements.split() if x]
+
+
+def read_description():
+    """Read README.md and CHANGELOG.md."""
     try:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-    except: return ""
+        with open("README.md") as r:
+            description = "\n"
+            description += r.read()
+        with open("CHANGELOG.md") as c:
+            description += "\n"
+            description += c.read()
+        return description
+    except Exception:
+        return MINIMAL_DESCRIPTION
 
-logo_base64 = get_base64_image("logo1.png")
-logo_html_link = f"data:image/png;base64,{logo_base64}" if logo_base64 else ""
 
-st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    header {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    #MainMenu {{visibility: hidden;}}
-    .stApp {{ background-color: #000; }}
-
-    .neon-title {{
-        font-family: 'Orbitron', sans-serif;
-        color: #fff;
-        text-align: center;
-        text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
-        font-size: 1.6rem;
-        margin-top: 40px;
-        letter-spacing: 6px;
-        animation: text-flicker 2s infinite;
-    }}
-    @keyframes text-flicker {{
-        0%, 100% {{ opacity: 1; }}
-        50% {{ opacity: 0.8; }}
-    }}
-
-    /* สโลแกนแสงนีออนวิ้งๆ วิ่งสลับสี */
-    .neon-slogan {{
-        text-align: center; 
-        color: #fff; 
-        font-size: 13px; 
-        font-family: "Orbitron", sans-serif; 
-        letter-spacing: 4px;
-        margin-top: 20px;
-        text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #00f3ff;
-        animation: slogan-wink 1s infinite alternate;
-    }}
-
-    @keyframes slogan-wink {{
-        0%, 100% {{ text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #ff00de; color: #fff; }}
-        50% {{ text-shadow: 0 0 8px #00f3ff, 0 0 15px #00f3ff, 0 0 25px #00f3ff; color: #e0ffff; }}
-        82% {{ text-shadow: none; color: #555; }}
-        85% {{ text-shadow: 0 0 8px #00f3ff; color: #fff; }}
-    }}
-    </style>
-    """, unsafe_allow_html=True)
-
-st.markdown('<h1 class="neon-title">อยู่นิ้งๆไม่เจ็บตัว</h1>', unsafe_allow_html=True)
-
-# ==========================================
-# ส่วนที่ 2: HTML/JS - ระบบเล่นวิดีโอพร้อมโลโก้ในกรอบ
-# ==========================================
-
-html_template = """
-<!DOCTYPE html>
-<html>
-<head>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
-        .neon-card { border: 2px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
-        
-        .video-container {
-            position: relative;
-            width: 100%;
-            height: 220px;
-            background: #050505;
-            border-radius: 15px;
-            border: 2px solid #222;
-            overflow: hidden;
-        }
-        .video-box { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: contain;
-        }
-        .video-active { border-color: #00f3ff; box-shadow: 0 0 15px rgba(0,243,255,0.3); }
-        
-        .player-logo {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            width: 45px;
-            height: 45px;
-            background-image: url("__LOGO_LINK_PLACEHOLDER__");
-            background-size: contain;
-            background-repeat: no-repeat;
-            z-index: 10;
-            pointer-events: none;
-            filter: drop-shadow(0 0 6px #ff00de);
-            animation: logo-glow 4s infinite alternate;
-            opacity: 0.85;
-        }
-
-        @keyframes logo-glow {
-            0% { filter: drop-shadow(0 0 6px #ff00de); transform: scale(1); }
-            50% { filter: drop-shadow(0 0 14px #00f3ff); transform: scale(1.05); }
-            100% { filter: drop-shadow(0 0 6px #ff8c00); transform: scale(1); }
-        }
-        
-        .deck { padding: 15px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
-        
-        .btn-main { 
-            background: linear-gradient(45deg, #ff00de, #00f3ff);
-            color: white; font-weight: bold; padding: 12px; border-radius: 10px;
-            text-transform: uppercase; letter-spacing: 2px; transition: 0.3s;
-            box-shadow: 0 0 15px rgba(255,0,222,0.4);
-            cursor: pointer;
-        }
-        .btn-main:hover { transform: scale(1.02); box-shadow: 0 0 25px rgba(0,243,255,0.6); }
-        
-        .progress-bar { height: 6px; background: #222; border-radius: 10px; overflow: hidden; cursor: pointer; }
-        .progress-inner { height: 100%; width: 0%; background: linear-gradient(90deg, #ff00de, #00f3ff); }
-    </style>
-</head>
-<body>
-    <div class="max-w-md mx-auto p-4 neon-card rounded-3xl">
-        
-        <div id="videoWrapper" class="video-container mb-4">
-            <div class="player-logo"></div>
-            <video id="videoPlayer" class="video-box" preload="metadata"></video>
-        </div>
-
-        <div class="deck mb-4">
-            <div class="flex justify-between text-[11px] mb-2">
-                <span id="playStatus" class="text-cyan-400 font-bold tracking-widest">VIDEO DECK READY</span>
-                <span id="timeLabel" class="font-mono text-gray-400">00:00 / 00:00</span>
-            </div>
-            
-            <input type="file" id="videoFile" class="hidden" accept="video/mp4, video/webm, video/ogg" onchange="handleVideoFile(this.files[0])">
-            <div class="flex gap-2 items-center mb-2">
-                <button onclick="document.getElementById('videoFile').click()" class="text-[10px] border border-cyan-500 text-cyan-400 px-3 py-1.5 rounded hover:bg-cyan-950 transition">LOAD VIDEO</button>
-                <div id="fileName" class="text-[12px] truncate text-gray-400 flex-1">No Video Loaded</div>
-            </div>
-            
-            <div class="progress-bar mt-3" onclick="seekVideo(event)">
-                <div id="progressBar" class="progress-inner"></div>
-            </div>
-        </div>
-
-        <button id="playBtn" onclick="togglePlay()" class="btn-main w-full">▶ PLAY VIDEO</button>
-
-        <div id="status" class="text-[10px] text-center mt-3 text-gray-600 uppercase tracking-widest">System Online</div>
-    </div>
-
-    <script>
-        const video = document.getElementById('videoPlayer');
-        const videoWrapper = document.getElementById('videoWrapper');
-        const playBtn = document.getElementById('playBtn');
-        const progressBar = document.getElementById('progressBar');
-        const timeLabel = document.getElementById('timeLabel');
-        const fileName = document.getElementById('fileName');
-        const playStatus = document.getElementById('playStatus');
-        const statusText = document.getElementById('status');
-
-        function handleVideoFile(file) {
-            if (!file) return;
-            
-            fileName.innerText = "Loading Video...";
-            const fileURL = URL.createObjectURL(file);
-            video.src = fileURL;
-            video.load();
-            
-            fileName.innerText = file.name;
-            statusText.innerText = "Video Loaded Successfully";
-            playStatus.innerText = "READY TO PLAY";
-            
-            playBtn.innerText = "▶ PLAY VIDEO";
-            progressBar.style.width = "0%";
-            videoWrapper.classList.remove('video-active');
-        }
-
-        function togglePlay() {
-            if (!video.src) {
-                alert("อาจารย์ครับ รบกวนโหลดวิดีโอก่อนกดเล่นครับ!");
-                return;
-            }
-
-            if (video.paused) {
-                video.play();
-                playBtn.innerText = "⏸ PAUSE VIDEO";
-                playStatus.innerText = "NOW PLAYING";
-                statusText.innerText = "Playing";
-                videoWrapper.classList.add('video-active');
-            } else {
-                video.pause();
-                playBtn.innerText = "▶ RESUME VIDEO";
-                playStatus.innerText = "PAUSED";
-                statusText.innerText = "Paused";
-                videoWrapper.classList.remove('video-active');
-            }
-        }
-
-        video.ontimeupdate = function() {
-            if (!video.duration) return;
-            
-            const current = video.currentTime;
-            const duration = video.duration;
-            const percentage = (current / duration) * 100;
-            
-            progressBar.style.width = percentage + "%";
-            
-            let curM = Math.floor(current / 60), curS = Math.floor(current % 60);
-            let durM = Math.floor(duration / 60), durS = Math.floor(duration % 60);
-            
-            timeLabel.innerText = 
-                (curM < 10 ? '0' : '') + curM + ":" + (curS < 10 ? '0' : '') + curS + " / " +
-                (durM < 10 ? '0' : '') + durM + ":" + (durS < 10 ? '0' : '') + durS;
-        };
-
-        video.onended = function() {
-            playBtn.innerText = "▶ PLAY VIDEO";
-            playStatus.innerText = "FINISHED";
-            statusText.innerText = "End of Video";
-            videoWrapper.classList.remove('video-active');
-        };
-
-        function seekVideo(event) {
-            if (!video.duration) return;
-            const bar = event.currentTarget;
-            const clickX = event.offsetX;
-            const width = bar.offsetWidth;
-            const percentage = clickX / width;
-            video.currentTime = percentage * video.duration;
-        }
-    </script>
-</body>
-</html>
-"""
-
-html_code = html_template.replace("__LOGO_LINK_PLACEHOLDER__", logo_html_link)
-st.components.v1.html(html_code, height=450)
-
-# ==========================================
-# ส่วนที่ 3: ระบบทดลองสั่งการ AI (เวอร์ชันปลอดภัย ไม่พัง)
-# ==========================================
-st.write("---")
-user_prompt = st.text_input("🤖 [ห้องทดลอง] ลองพิมพ์สั่ง AI สร้างเพลงตรงนี้:", "ขอเพลงแร็พ ดนตรีเดือดๆ เอาสโลแกน อยู่นิ่งๆไม่เจ็บตัว")
-
-if st.button("🎬 ส่งคำสั่งให้ระบบประมวลผลจำลอง"):
-    with st.spinner("กำลังจำลองการส่งข้อมูลหาเซิร์ฟเวอร์ AI..."):
-        # ทำการหน่วงเวลาสมจริง 2 วินาทีเพื่อให้เห็นกระบวนการทำงาน
-        time.sleep(2.0)
-        st.success(f"ระบบได้รับคำสั่ง '{user_prompt}' เรียบร้อยแล้ว! (นี่คือระบบจำลองสถานการณ์ ความสามารถจริงจะใช้งานได้เมื่อเราเชื่อมต่อ API คีย์ของจริงในอนาคตครับ)")
-
-# แสดงสโลแกนวิ้งๆ นีออนปิดท้ายแบบเก๋ๆ
-st.markdown('<div class="neon-slogan">อยู่นิ่งๆ ไม่เจ็บตัว | VIDEO CONSOLE v7.4</div>', unsafe_allow_html=True)
+setup(
+    name='art',
+    packages=['art', 'art.data', 'art.tests'],
+    version='6.5',
+    description='ASCII Art Library For Python',
+    long_description=read_description(),
+    long_description_content_type='text/markdown',
+    author='Sepand Haghighi',
+    author_email='info@ascii-art.site',
+    url='https://github.com/sepandhaghighi/art',
+    keywords="ascii art python3 python text font non-ascii printing",
+    project_urls={
+        'Webpage': 'https://www.ascii-art.site',
+        'Source': 'https://github.com/sepandhaghighi/art',
+        'Tracker': 'https://github.com/sepandhaghighi/art/issues',
+        'Discord': 'https://discord.com/invite/FAAyq3QJqP',
+    },
+    install_requires=[],
+    extras_require={
+        "dev": get_dev_requires()
+    },
+    python_requires='>=3.6',
+    classifiers=[
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Developers',
+        'Intended Audience :: Education',
+        'Intended Audience :: End Users/Desktop',
+        'Intended Audience :: Science/Research',
+        'Natural Language :: English',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
+        'Topic :: Text Processing :: Fonts',
+        'Topic :: Text Editors',
+        'Topic :: Text Processing :: General',
+        'Topic :: Utilities',
+        'Topic :: Multimedia',
+        'Topic :: Printing',
+    ],
+    license='MIT',
+    include_package_data=True,
+    entry_points={
+        'console_scripts': [
+            'art = art.__main__:main',
+        ]}
+    )
