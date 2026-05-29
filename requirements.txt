@@ -35,3 +35,9 @@ streamlit-geolocation
 folium
 streamlit-folium
 pydeck
+aiohttp
+python-dotenv
+fastapi
+uvicorn
+pydantic
+requests
