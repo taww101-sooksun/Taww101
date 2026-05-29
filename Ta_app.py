@@ -1,137 +1,340 @@
 import streamlit as st
-from datetime import date, timedelta
+import base64
 
-# --- 1. ฟังก์ชันดึงเลขฐาน (ห้ามเอาออก โชว์ที่มาความจริง) ---
-def get_step_by_step_data(dt):
-    if dt is None: return None
-    day_val = {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}[dt.weekday()]
-    day_name = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()]
-    date_val = dt.day
-    ref = date(1900, 1, 1)
-    diff = (dt - ref).days
-    lunar_pos = (diff - 0.5) % 29.530589
-    if lunar_pos <= 14.765:
-        moon_num = int(lunar_pos) + 1
-        l_logic = -7.5
-        l_type = f"ขึ้น {moon_num} ค่ำ"
-    else:
-        moon_num = int(lunar_pos - 14.765) + 1
-        l_logic = 7.5
-        l_type = f"แรม {moon_num} ค่ำ"
-    month_val = dt.month
-    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
-    z_map = {0:9, 1:10, 2:11, 3:12, 4:1, 5:2, 6:3, 7:4, 8:5, 9:6, 10:7, 11:8}
-    zv = z_map[dt.year % 12]
-    z_name = z_names[dt.year % 12]
-    m, d = dt.month, dt.day
-    if (m == 5 and d >= 14) or (m == 6 and d <= 14): ev, en = 1, "ดิน"
-    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): ev, en = 2, "น้ำ"
-    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): ev, en = 4, "ไฟ"
-    else: ev, en = 3, "ลม"
-    return {
-        "day": day_val, "day_n": day_name, "date": date_val, "moon": moon_num, 
-        "l_logic": l_logic, "l_type": l_type, "month": month_val, "zv": zv, 
-        "zn": z_name, "ev": ev, "en": en, "year": dt.year
-    }
+# ==========================================
+# ส่วนที่ 1: การตั้งค่าหน้าจอและ CSS (Cyberpunk Neon)
+# ==========================================
 
-def get_grade_info(val):
-    s_val = str(abs(val)).replace('.', '').lstrip('0')
-    digit = int(s_val[0]) if s_val else 0
-    if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
-    elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
-    else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
+st.set_page_config(page_title="Synapse Neon Single Deck", layout="centered")
 
-# --- 2. หน้าจอแอป ---
-st.set_page_config(page_title="SYNAPSE STEP-BY-STEP", layout="wide")
-st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
+def get_base64_image(image_path):
+    try:
+        with open(image_path, "rb") as img_file:
+            return base64.b64encode(img_file.read()).decode()
+    except: return ""
 
-tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล", "👥 วิเคราะห์คู่ขนาน"])
+logo_base64 = get_base64_image("logo1.png")
+logo_html_link = f"data:image/png;base64,{logo_base64}" if logo_base64 else ""
 
-# --- 👤 TAB 1: วิเคราะห์บุคคล ---
-with tab1:
-    u_birth = st.date_input("กรอกวันเกิดของคุณ", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="single")
-    if u_birth:
-        d = get_step_by_step_data(u_birth)
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    header {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    #MainMenu {{visibility: hidden;}}
+    .stApp {{ background-color: #000; }}
+
+    /* Logo ตรงกลางพร้อมแสง Neon หมุนสลับสี */
+    .block-container::before {{
+        content: "";
+        position: absolute;
+        top: 10px; left: 50%;
+        transform: translateX(-50%);
+        width: 100px; height: 100px;
+        background-image: url("{logo_html_link}");
+        background-size: contain;
+        background-repeat: no-repeat;
+        z-index: 999;
+        filter: drop-shadow(0 0 10px #ff00de);
+        animation: logo-glow 4s infinite alternate;
+    }}
+
+    @keyframes logo-glow {{
+        0% {{ filter: drop-shadow(0 0 10px #ff00de); transform: translateX(-50%) scale(1); }}
+        50% {{ filter: drop-shadow(0 0 25px #00f3ff); transform: translateX(-50%) scale(1.1); }}
+        100% {{ filter: drop-shadow(0 0 10px #ff8c00); transform: translateX(-50%) scale(1); }}
+    }}
+
+    .neon-title {{
+        font-family: 'Orbitron', sans-serif;
+        color: #fff;
+        text-align: center;
+        text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
+        font-size: 1.6rem;
+        margin-top: 200px;
+        letter-spacing: 6px;
+        animation: text-flicker 2s infinite;
+    }}
+    @keyframes text-flicker {{
+        0%, 100% {{ opacity: 1; }}
+        50% {{ opacity: 0.8; }}
+    }}
+
+    /* สโลแกนแสงนีออนวิ้งๆ วิ่งสลับสี */
+    .neon-slogan {{
+        text-align: center; 
+        color: #fff; 
+        font-size: 13px; 
+        font-family: "Orbitron", sans-serif; 
+        letter-spacing: 4px;
+        margin-top: 20px;
+        text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #00f3ff;
+        animation: slogan-wink 1s infinite alternate;
+    }}
+
+    @keyframes slogan-wink {{
+        0%, 100% {{ text-shadow: 0 0 5px #ff00de, 0 0 10px #ff00de, 0 0 20px #ff00de; color: #fff; }}
+        50% {{ text-shadow: 0 0 8px #00f3ff, 0 0 15px #00f3ff, 0 0 25px #00f3ff; color: #e0ffff; }}
+        82% {{ text-shadow: none; color: #555; }} /* มีจังหวะไฟกะพริบดับนิดๆ แบบหลอดไฟนีออนจริง */
+        85% {{ text-shadow: 0 0 8px #00f3ff; color: #fff; }}
+    }}
+    </style>
+    """, unsafe_allow_html=True)
+
+st.markdown('<h1 class="neon-title">อยู่นิ้งๆไม่เจ็บตัว</h1>', unsafe_allow_html=True)
+
+# ==========================================
+# ส่วนที่ 2: HTML/JS - ระบบปลดล็อกเสียงอัตโนมัติเมื่อกดปุ่ม
+# ==========================================
+
+html_code = """
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: transparent; color: white; overflow: hidden; font-family: 'Inter', sans-serif; }
+        .neon-card { border: 2px solid #333; background: rgba(0,0,0,0.9); box-shadow: 0 0 30px rgba(255,0,222,0.2); }
         
-        st.markdown("### 🛠 กระดานแยกพิกัดตัวเลข")
-        st.write(f"1. วัน{d['day_n']}: `{d['day']}` | 2. วันที่: `{d['date']}` | 3. {d['l_type']}: `{d['moon']}`")
-        st.write(f"4. เดือน: `{d['month']}` | 5. ปี{d['zn']}: `{d['zv']}` | 6. ธาตุ{d['en']}: `{d['ev']}`")
+        .visualizer-box { height: 140px; background: #050505; border-radius: 15px; border: 1px solid #222; }
         
-        st.write("---")
-        base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
-        raw_code = (base_sum + d['l_logic']) * 1.618
-        days_alive = (date.today() - u_birth).days
-        final_val = (raw_code + days_alive) / 1.618
+        .deck { padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.02); }
+        .deck-active { border: 1px solid #00f3ff; box-shadow: 0 0 15px #00f3ff; }
         
-        st.write(f"**ขั้นตอนที่ 1 (บวกฐาน):** `{d['day']}+{d['date']}+{d['moon']}+{d['month']}+{d['zv']}+{d['ev']} = {base_sum}`")
-        st.write(f"**ขั้นตอนที่ 2 (คูณ 1.618):** `({base_sum} + {d['l_logic']}) x 1.618 = {round(raw_code, 2)}`")
-        st.write(f"**ขั้นตอนที่ 3 (บวกวันชีวิต/หาร):** `({round(raw_code, 2)} + {days_alive}) / 1.618 = {round(final_val, 4)}`")
-
-        digit, grade, color = get_grade_info(final_val)
-        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid {color}; border-radius:15px; text-align:center;">
-            <h1 style="color:{color}; font-size:60px;">{round(final_val, 4)}</h1>
-            <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
-        </div>""", unsafe_allow_html=True)
-
-        # --- 🕒 สแกนไทม์ไลน์บุคคล ---
-        st.write("---")
-        st.subheader("🕒 รายงานการบรรจบของพิกัดบุคคล (730 วัน)")
-        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน", "🗓️ อนาคต 365 วัน"])
+        .btn-main { 
+            background: linear-gradient(45deg, #ff00de, #00f3ff);
+            color: white; font-weight: bold; padding: 12px; border-radius: 10px;
+            text-transform: uppercase; letter-spacing: 2px; transition: 0.3s;
+            box-shadow: 0 0 15px rgba(255,0,222,0.4);
+        }
+        .btn-main:hover { transform: scale(1.02); box-shadow: 0 0 25px rgba(0,243,255,0.6); }
         
-        with t_past:
-            past_results = []
-            for i in range(-365, 0):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit:
-                    past_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
-            st.table(past_results[:10] if past_results else "ไม่พบข้อมูล")
+        .btn-fx {
+            background: #111; border: 1px solid #ff00de; color: #ff00de;
+            padding: 8px; border-radius: 8px; font-size: 11px; font-weight: bold;
+            transition: 0.2s; text-transform: uppercase;
+        }
+        .btn-fx:hover { background: #ff00de; color: #000; box-shadow: 0 0 10px #ff00de; }
+        .btn-fx:active { transform: scale(0.95); }
 
-        with t_future:
-            future_results = []
-            for i in range(1, 366):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit:
-                    future_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
-            st.table(future_results[:10] if future_results else "ไม่พบข้อมูล")
+        .progress-bar { height: 6px; background: #222; border-radius: 10px; overflow: hidden; }
+        .progress-inner { height: 100%; width: 0%; background: linear-gradient(90deg, #ff00de, #00f3ff); }
+    </style>
+</head>
+<body>
+    <div class="max-w-md mx-auto p-4 neon-card rounded-3xl">
+        <canvas id="scope" class="visualizer-box w-full mb-4"></canvas>
 
-# --- 👥 TAB 2: วิเคราะห์คู่ขนาน ---
-with tab2:
-    col1, col2 = st.columns(2)
-    with col1: birth_a = st.date_input("วันเกิดคนที่ 1", value=None, key="ba", min_value=date(1960,1,1))
-    with col2: birth_b = st.date_input("วันเกิดคนที่ 2", value=None, key="bb", min_value=date(1960,1,1))
-    
-    if birth_a and birth_b:
-        d1 = get_step_by_step_data(birth_a)
-        d2 = get_step_by_step_data(birth_b)
-        r1 = ((d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']) + d1['l_logic']) * 1.618
-        r2 = ((d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']) + d2['l_logic']) * 1.618
-        
-        resonance = (r1 + r2) / 1.618
-        digit_p, grade_p, color_p = get_grade_info(resonance)
-        
-        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
-        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid gold; border-radius:15px; text-align:center;">
-            <h1 style="color:white; font-size:60px;">{round(resonance, 4)}</h1>
-            <h2 style="color:{color_p};">เลขหน้าคือ {digit_p} : {grade_p}</h2>
-        </div>""", unsafe_allow_html=True)
+        <div id="mainDeck" class="deck mb-4">
+            <div class="flex justify-between text-[11px] mb-2">
+                <span class="text-cyan-400 font-bold tracking-widest">NOW PLAYING</span>
+                <span id="timeLabel" class="font-mono text-gray-400">00:00 / 00:00</span>
+            </div>
+            
+            <input type="file" id="audioFile" class="hidden" accept="audio/*" onchange="handleFile(this.files[0])">
+            <div class="flex gap-2 items-center mb-2">
+                <button onclick="document.getElementById('audioFile').click()" class="text-[10px] border border-cyan-500 text-cyan-400 px-3 py-1.5 rounded hover:bg-cyan-950 transition">LOAD TRACK</button>
+                <div id="fileName" class="text-[12px] truncate text-gray-400 flex-1">No Song Loaded</div>
+            </div>
+            
+            <div class="progress-bar mt-3"><div id="progressBar" class="progress-inner"></div></div>
+        </div>
 
-        # --- 🕒 สแกนไทม์ไลน์คู่ขนาน ---
-        st.write("---")
-        st.subheader("⏳ จุด Sync คู่ขนานในอนาคต (365 วัน)")
-        p_future = []
-        for i in range(1, 366):
-            target = date.today() + timedelta(days=i)
-            td = get_step_by_step_data(target)
-            t_code = ((td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']) + td['l_logic']) * 1.618
-            t_digit, _, _ = get_grade_info(t_code)
-            if t_digit == digit_p:
-                p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
-        st.table(p_future[:10] if p_future else "ไม่พบข้อมูล")
+        <button id="playBtn" onclick="togglePlay()" class="btn-main w-full mb-4">▶ PLAY TRACK</button>
+
+        <div class="border border-gray-800 p-3 rounded-xl bg-black/40">
+            <div class="text-[10px] text-gray-500 font-bold tracking-wider mb-2 text-center uppercase">LIVE SOUND EFFECTS PANEL</div>
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="playFX('airhorn')" class="btn-fx">📣 AIRHORN</button>
+                <button onclick="playFX('laser')" class="btn-fx" style="border-color:#00f3ff; color:#00f3ff;">🚀 LASER BEAM</button>
+                <button onclick="playFX('scratch')" class="btn-fx" style="border-color:#ff8c00; color:#ff8c00;">💿 VINYL SCRATCH</button>
+                <button onclick="playFX('explosion')" class="btn-fx" style="border-color:#9d4edd; color:#9d4edd;">💥 EXPLOSION</button>
+            </div>
+        </div>
+
+        <div id="status" class="text-[10px] text-center mt-3 text-gray-600 uppercase tracking-widest">System Ready</div>
+    </div>
+
+    <script>
+        let ctx, analyser, songBuffer, sourceNode, gainNode;
+        let isPlaying = false;
+        let startTime = 0;
+        let pausedAt = 0;
+        let dataArray;
+
+        // ฟังก์ชันบังคับปลดล็อก AudioContext เพื่อสู้กับระบบเบราว์เซอร์
+        async function ensureAudioContext() {
+            if (!ctx) {
+                ctx = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = ctx.createAnalyser();
+                analyser.fftSize = 128;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                gainNode = ctx.createGain();
+                gainNode.connect(analyser).connect(ctx.destination);
+                
+                renderVisualizer();
+            }
+            if (ctx.state === 'suspended') {
+                await ctx.resume();
+            }
+        }
+
+        async function handleFile(file) {
+            if (!file) return;
+            await ensureAudioContext();
+            
+            if (isPlaying) {
+                stopTrack();
+            }
+
+            document.getElementById('fileName').innerText = "Decoding Audio...";
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                songBuffer = await ctx.decodeAudioData(arrayBuffer);
+                document.getElementById('fileName').innerText = file.name;
+                document.getElementById('status').innerText = "Track Loaded Successfully";
+                pausedAt = 0;
+                updateUI(0);
+            } catch (e) {
+                document.getElementById('fileName').innerText = "Error loading file";
+                alert("ไฟล์นี้ถอดรหัสไม่ได้ครับอาจารย์ ลองใช้ไฟล์ .mp3 หรือ .wav มาตรฐานดูครับ");
+            }
+        }
+
+        async function togglePlay() {
+            await ensureAudioContext();
+            if (!songBuffer) return alert("อาจารย์ครับ รบกวนโหลดเพลงก่อนกดเล่นครับ!");
+
+            if (isPlaying) {
+                pausedAt = ctx.currentTime - startTime;
+                stopTrack();
+                document.getElementById('playBtn').innerText = "▶ RESUME TRACK";
+                document.getElementById('status').innerText = "Paused";
+                document.getElementById('mainDeck').classList.remove('deck-active');
+            } else {
+                sourceNode = ctx.createBufferSource();
+                sourceNode.buffer = songBuffer;
+                sourceNode.connect(gainNode);
+                
+                if (pausedAt >= songBuffer.duration) pausedAt = 0;
+                
+                sourceNode.start(0, pausedAt);
+                startTime = ctx.currentTime - pausedAt;
+                isPlaying = true;
+                
+                document.getElementById('playBtn').innerText = "⏸ PAUSE TRACK";
+                document.getElementById('status').innerText = "Playing";
+                document.getElementById('mainDeck').classList.add('deck-active');
+                
+                sourceNode.onended = () => {
+                    if (isPlaying && (ctx.currentTime - startTime) >= songBuffer.duration - 0.1) {
+                        isPlaying = false;
+                        pausedAt = 0;
+                        document.getElementById('playBtn').innerText = "▶ PLAY TRACK";
+                        document.getElementById('status').innerText = "Finished";
+                        document.getElementById('mainDeck').classList.remove('deck-active');
+                    }
+                };
+            }
+        }
+
+        function stopTrack() {
+            if (sourceNode) {
+                try { sourceNode.stop(); } catch(e) {}
+                sourceNode.disconnect();
+            }
+            isPlaying = false;
+        }
+
+        function updateUI(currentSeconds) {
+            if (!songBuffer) return;
+            let dur = songBuffer.duration;
+            let p = currentSeconds / dur;
+            if (p > 1) p = 1;
+            
+            document.getElementById('progressBar').style.width = (p * 100) + "%";
+            
+            let curM = Math.floor(currentSeconds/60), curS = Math.floor(currentSeconds%60);
+            let durM = Math.floor(dur/60), durS = Math.floor(dur%60);
+            
+            document.getElementById('timeLabel').innerText = 
+                (curM<10?'0':'')+curM+":"+(curS<10?'0':'')+curS + " / " +
+                (durM<10?'0':'')+durM+":"+(durS<10?'0':'')+durS;
+        }
+
+        function renderVisualizer() {
+            requestAnimationFrame(renderVisualizer);
+            if(!analyser) return;
+            
+            analyser.getByteFrequencyData(dataArray);
+            const canvas = document.getElementById('scope');
+            const canvasCtx = canvas.getContext('2d');
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            let barWidth = (canvas.width / dataArray.length) * 2;
+            let x = 0;
+            for(let i=0; i<dataArray.length; i++) {
+                let barHeight = (dataArray[i]/255) * canvas.height;
+                let hue = (i * 5) + (Date.now() / 40) % 360;
+                canvasCtx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+                canvasCtx.fillRect(x, canvas.height - barHeight, barWidth - 1.5, barHeight);
+                x += barWidth;
+            }
+
+            if(isPlaying) {
+                updateUI(ctx.currentTime - startTime);
+            }
+        }
+
+        async function playFX(type) {
+            await ensureAudioContext();
+            const now = ctx.currentTime;
+            
+            const osc = ctx.createOscillator();
+            const fxGain = ctx.createGain();
+            osc.connect(fxGain).connect(analyser).connect(ctx.destination);
+
+            if (type === 'airhorn') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, now);
+                fxGain.gain.setValueAtTime(0.3, now); fxGain.gain.linearRampToValueAtTime(0, now + 0.8);
+                osc.start(now); osc.stop(now + 0.8);
+
+                const osc2 = ctx.createOscillator(); const osc3 = ctx.createOscillator();
+                const fxGain2 = ctx.createGain(); const fxGain3 = ctx.createGain();
+                osc2.type = 'sawtooth'; osc2.frequency.setValueAtTime(293.66, now);
+                osc3.type = 'sawtooth'; osc3.frequency.setValueAtTime(349.23, now);
+                osc2.connect(fxGain2).connect(analyser).connect(ctx.destination);
+                osc3.connect(fxGain3).connect(analyser).connect(ctx.destination);
+                fxGain2.gain.setValueAtTime(0.2, now); fxGain2.gain.linearRampToValueAtTime(0, now + 0.8);
+                fxGain3.gain.setValueAtTime(0.2, now); fxGain3.gain.linearRampToValueAtTime(0, now + 0.8);
+                osc2.start(now); osc2.stop(now + 0.8); osc3.start(now); osc3.stop(now + 0.8);
+            } 
+            else if (type === 'laser') {
+                osc.type = 'sawtooth'; osc.frequency.setValueAtTime(1500, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.4);
+                fxGain.gain.setValueAtTime(0.4, now); fxGain.gain.linearRampToValueAtTime(0, now + 0.4);
+                osc.start(now); osc.stop(now + 0.4);
+            } 
+            else if (type === 'scratch') {
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(80, now);
+                osc.frequency.linearRampToValueAtTime(400, now + 0.15); osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+                fxGain.gain.setValueAtTime(0.5, now); fxGain.gain.linearRampToValueAtTime(0, now + 0.3);
+                osc.start(now); osc.stop(now + 0.3);
+            } 
+            else if (type === 'explosion') {
+                osc.type = 'square'; osc.frequency.setValueAtTime(100, now);
+                osc.frequency.linearRampToValueAtTime(10, now + 0.7);
+                fxGain.gain.setValueAtTime(0.6, now); fxGain.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+                osc.start(now); osc.stop(now + 0.8);
+            }
+        }
+    </script>
+</body>
+</html>
+"""
+
+st.components.v1.html(html_code, height=600)
+
+# แสดงสโลแกนวิ้งๆ นีออนแบบเก๋ๆ ปิดท้ายไฟล์อย่างสมบูรณ์แบบ
+st.markdown('<div class="neon-slogan">อยู่นิ่งๆ ไม่เจ็บตัว | CONSOLE v6.2</div>', unsafe_allow_html=True)
