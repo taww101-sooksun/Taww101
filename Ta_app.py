@@ -21,7 +21,7 @@ import json
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 
-import schemas
+
 from deps import get_token
 from utils import generate_lyrics, generate_music, get_feed, get_lyrics, get_credits
 
