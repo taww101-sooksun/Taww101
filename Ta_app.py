@@ -61,7 +61,7 @@ with tabs[0]:
     st.markdown("### 📍 ระบบดึงพิกัดดาวเทียม (Real-Time)")
     st.write("กดปุ่มด้านล่างเพื่อสั่งให้มือถือค้นหาตำแหน่งพิกัดที่แท้จริงของคุณ")
 
-    # แก้ไขจุดนี้: ใช้สตริงธรรมดา (บวกสายอักขระแทน f-string) เพื่อป้องกันไม่ให้ปีกกาของ JavaScript ตีกับ Python
+    # สคริปต์ JavaScript ดึงพิกัด (ใช้ .replace หลบเลี่ยงการตีกันของปีกกา)
     js_gps_html = """
     <div style="text-align: center;">
         <button onclick="getLocation()" style="
@@ -111,11 +111,11 @@ with tabs[0]:
         );
     }
     </script>
-    """.replace("NEON_COLOR", st.session_state.theme_color) # ใช้ .replace แทน f-string ปลอดภัย 100%
+    """.replace("NEON_COLOR", st.session_state.theme_color)
 
     st.components.v1.html(js_gps_html, height=120)
 
-    # ดึงค่าพิกัดที่ JavaScript ยิงกลับมาเกาะบน URL
+    # ดึงค่าพิกัดจาก URL
     query_params = st.query_params
     
     if "lat" in query_params and "lon" in query_params:
@@ -124,7 +124,7 @@ with tabs[0]:
         
         st.success(f"🎯 สัญญาณดาวเทียมล็อกเป้าสำเร็จ: {lat}, {lon}")
         
-        # บันทึกลง Firebase อัตโนมัติ
+        # บันทึกลง Firebase
         try:
             db.reference(f'users/{my_id}').update({
                 'lat': lat, 'lon': lon, 'last_update': time.time()
@@ -144,12 +144,15 @@ with tabs[1]:
     except Exception as e:
         st.error(f"ดึงข้อมูลไม่ได้: {e}")
     
+    # พิกัดเริ่มต้นระบบ (กรุงเทพฯ)
     view_lat, view_lon = 13.75, 100.5 
     
     if all_users and my_id in all_users:
-        view_lat = all_users[my_id].get('lat', 13.75)
-        view_lon = all_users[my_id].get('lon', 100.5)
+        if isinstance(all_users[my_id], dict):
+            view_lat = all_users[my_id].get('lat', 13.75)
+            view_lon = all_users[my_id].get('lon', 100.5)
 
+    # สร้างแผนที่หลัก
     m = folium.Map(
         location=[view_lat, view_lon], 
         zoom_start=15, 
@@ -157,11 +160,16 @@ with tabs[1]:
         attr="Google Satellite"
     )
 
+    # วนลูปปักหมุดผู้ใช้งานทุกคน (ตรวจเช็กวงเล็บปิดเรียบร้อย)
     if all_users:
         for name, info in all_users.items():
             if isinstance(info, dict) and 'lat' in info and 'lon' in info:
                 color = 'blue' if name == my_id else 'red'
                 folium.Marker(
-                    [info['lat'], info['lon']], 
+                    location=[info['lat'], info['lon']], 
                     tooltip=name,
-                    icon=folium.Icon
+                    icon=folium.Icon(color=color, icon='star')
+                ).add_to(m)
+                
+    # แสดงผลแผนที่บนเว็บ Streamlit
+    st_folium(m, width="100%", height=500)
