@@ -1,35 +1,72 @@
 import streamlit as st
 import requests
+from datetime import datetime
 
-st.title("🔌 ทดสอบการเชื่อมต่อ Firebase")
+# ตั้งค่าหน้าแอป
+st.set_page_config(page_title="Firebase Realtime Chat", page_icon="💬")
+st.title("💬 แอปแชตต่อระบบฐานข้อมูลจริง")
 
-# 1. ดึงข้อมูลจาก st.secrets ที่เราตั้งค่าไว้
-try:
-    firebase_url = st.secrets["firebase"]["firebase_url"]
-    api_key = st.secrets["firebase"]["api_key"]
+# 1. ดึงค่าคอนฟิกจาก Secrets ที่เราทดสอบผ่านแล้ว
+firebase_url = st.secrets["firebase"]["firebase_url"]
+api_key = st.secrets["firebase"]["api_key"]
+
+# กำหนด Path ใน Firebase สำหรับเก็บข้อความแชต (จะเก็บไว้ในห้องชื่อ room_1)
+CHAT_URL = f"{firebase_url}/chat_room_1.json?auth={api_key}"
+
+# ฟังก์ชันสำหรับดึงข้อมูลแชตล่าสุดจาก Firebase
+def load_chat_history():
+    try:
+        response = requests.get(CHAT_URL)
+        if response.status_code == 200 and response.json():
+            # ดึงข้อมูลออกมา (Firebase จะส่งกลับมาเป็น Dictionary ที่มีคีย์สุ่ม)
+            raw_data = response.json()
+            # แปลงข้อมูลและเรียงลำดับตามเวลา (Timestamp)
+            messages = list(raw_data.values())
+            return sorted(messages, key=lambda x: x.get("timestamp", ""))
+    except Exception as e:
+        st.error(f"โหลดข้อมูลล้มเหลว: {e}")
+    return []
+
+# ฟังก์ชันสำหรับส่งข้อความใหม่ไปบันทึกบน Firebase
+def send_message_to_firebase(role, content):
+    try:
+        payload = {
+            "role": role,
+            "content": content,
+            "timestamp": datetime.now().isoformat()
+        }
+        # ใช้ POST เพื่อสร้างโหนดข้อมูลใหม่เพิ่มเข้าไปเรื่อยๆ
+        requests.post(CHAT_URL, json=payload)
+    except Exception as e:
+        st.error(f"ส่งข้อมูลล้มเหลว: {e}")
+
+# --- เริ่มทำงานบนหน้าจอ Streamlit ---
+
+# 2. โหลดประวัติการคุยจาก Firebase จริงๆ มาแสดง
+chat_history = load_chat_history()
+
+for message in chat_history:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# 3. ช่องรับข้อความแชตจากผู้ใช้
+if prompt := st.chat_input("พิมพ์ข้อความส่งไป Firebase..."):
     
-    st.write(f"🔄 กำลังพยายามเชื่อมต่อฐานข้อมูล: `{firebase_url}`")
+    # แสดงฝั่งผู้ใช้ทันทีบนหน้าจอ
+    with st.chat_message("user"):
+        st.markdown(prompt)
     
-    # 2. ยิงคำสั่งไปดึงข้อมูลที่ฐานข้อมูล (ลองดึงที่รูท / หรือโฟลเดอร์ test)
-    # เราจะใส่ .json ต่อท้าย URL ตามหลักการของ Firebase REST API
-    test_url = f"{firebase_url}/.json"
+    # บันทึกข้อความผู้ใช้ลง Firebase database
+    send_message_to_firebase("user", prompt)
     
-    response = requests.get(test_url)
+    # จำลองการตอบกลับจากบอท (บอทระบบ)
+    bot_reply = f"ระบบได้รับข้อความ '{prompt}' ของคุณและบันทึกสถิติลงฐานข้อมูลเรียบร้อยแล้ว!"
     
-    # 3. ตรวจสอบผลลัพธ์
-    if response.status_code == 200:
-        st.success("✅ เชื่อมต่อ Firebase สำเร็จ! JSON ของคุณใช้งานได้จริง")
+    with st.chat_message("assistant"):
+        st.markdown(bot_reply)
         
-        # แสดงข้อมูลที่มีอยู่ในฐานข้อมูลออกมาดู
-        data = response.json()
-        st.write("ข้อมูลปัจจุบันในฐานข้อมูลของคุณ:")
-        st.json(data)
-        
-    else:
-        st.error(f"❌ เชื่อมต่อไม่สำเร็จ (Error Code: {response.status_code})")
-        st.write("เหตุผลที่เป็นไปได้: คุณอาจจะยังไม่ได้ตั้งค่า Rules ใน Firebase ให้เป็นสาธารณะ (Public)")
-
-except KeyError:
-    st.error("❌ ไม่พบข้อมูลคอนฟิกใน `.streamlit/secrets.toml` กรุณาตรวจสอบชื่อตัวแปร")
-except Exception as e:
-    st.error(f"❌ เกิดข้อผิดพลาด: {e}")
+    # บันทึกข้อความของบอทลง Firebase database เช่นกัน
+    send_message_to_firebase("assistant", bot_reply)
+    
+    # สั่งให้ Streamlit รีเฟรชหน้าจอเพื่ออัปเดตลำดับแชตให้เสร็จสรรพ
+    st.rerun()
