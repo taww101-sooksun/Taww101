@@ -4,7 +4,6 @@ from firebase_admin import credentials, db
 import folium
 from streamlit_folium import st_folium
 import time
-import json
 
 # 1. ตั้งค่าหน้าจอและระบบสีพื้นหลัง (Theme Selector)
 st.set_page_config(page_title="SYNAPSE CLEAR", layout="wide")
@@ -20,7 +19,7 @@ with st.sidebar:
     st.write("---")
     st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
-# ใช้ CSS ปรับแต่งตามสีนีออนที่เลือก
+# ใช้ CSS ปรับแต่งตามสีนีออนที่เลือก (ซ้อนปีกกา 2 ชั้นสำหรับ CSS)
 st.markdown(f"""
     <style>
     .stApp {{ 
@@ -62,41 +61,107 @@ with tabs[0]:
     st.markdown("### 📍 ระบบดึงพิกัดดาวเทียม (Real-Time)")
     st.write("กดปุ่มด้านล่างเพื่อสั่งให้มือถือค้นหาตำแหน่งพิกัดที่แท้จริงของคุณ")
 
-    # ใช้ระบบ HTML5 / JavaScript ฝั่งหน้าบ้านดึงพิกัด (หมดปัญหาค้าง, หมดปัญหา None)
-    # มันจะยิงข้อมูลกลับมาฝั่ง Streamlit ผ่านฟังก์ชัน st.components
-    js_gps_html = f"""
+    # แก้ไขจุดนี้: ใช้สตริงธรรมดา (บวกสายอักขระแทน f-string) เพื่อป้องกันไม่ให้ปีกกาของ JavaScript ตีกับ Python
+    js_gps_html = """
     <div style="text-align: center;">
         <button onclick="getLocation()" style="
             background-color: transparent; 
-            color: {st.session_state.theme_color}; 
-            border: 2px solid {st.session_state.theme_color}; 
+            color: NEON_COLOR; 
+            border: 2px solid NEON_COLOR; 
             padding: 15px 32px; 
             font-size: 16px; 
             cursor: pointer; 
             border-radius: 8px;
             font-weight: bold;
             width: 100%;
-            box-shadow: 0 0 10px {st.session_state.theme_color};
+            box-shadow: 0 0 10px NEON_COLOR;
         ">📡 กดปุ่มนี้เพื่อแชร์พิกัดปัจจุบันจริง</button>
         <p id="status" style="margin-top: 10px; color: #fff; font-size: 14px;">สถานะ: รอการกดปุ่ม...</p>
     </div>
 
     <script>
-    function getLocation() {{
+    function getLocation() {
         const status = document.getElementById('status');
-        if (!navigator.geolocation) {{
+        if (!navigator.geolocation) {
             status.innerHTML = '❌ เบราว์เซอร์ของคุณไม่รองรับระบบ GPS';
             return;
-        }}
+        }
         
         status.innerHTML = '⚡ กำลังค้นหาสัญญาณดาวเทียม...';
         
         navigator.geolocation.getCurrentPosition(
-            (position) => {{
+            (position) => {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
                 status.innerHTML = '✅ เจอพิกัดแล้ว! กำลังส่งเข้าดาวเทียมหลัก...';
                 
-                // ส่งพิกัดกลับไปให้ Python ทันทีผ่าน URL query parameters เพื่อความชัวร์
                 const currentUrl = new URL(window.parent.location.href);
-                currentUrl.searchParams.set('lat
+                currentUrl.searchParams.set('lat', lat);
+                currentUrl.searchParams.set('lon', lon);
+                window.parent.location.href = currentUrl.toString();
+            },
+            (error) => {
+                if(error.code == 1) {
+                    status.innerHTML = '❌ กรุณากด "อนุญาต" สิทธิ์ GPS บนมือถือของคุณด้วยครับ';
+                } else {
+                    status.innerHTML = '❌ สัญญาณดาวเทียมขัดข้อง ลองเปิด GPS ในเครื่องดูครับ';
+                }
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    }
+    </script>
+    """.replace("NEON_COLOR", st.session_state.theme_color) # ใช้ .replace แทน f-string ปลอดภัย 100%
+
+    st.components.v1.html(js_gps_html, height=120)
+
+    # ดึงค่าพิกัดที่ JavaScript ยิงกลับมาเกาะบน URL
+    query_params = st.query_params
+    
+    if "lat" in query_params and "lon" in query_params:
+        lat = float(query_params["lat"])
+        lon = float(query_params["lon"])
+        
+        st.success(f"🎯 สัญญาณดาวเทียมล็อกเป้าสำเร็จ: {lat}, {lon}")
+        
+        # บันทึกลง Firebase อัตโนมัติ
+        try:
+            db.reference(f'users/{my_id}').update({
+                'lat': lat, 'lon': lon, 'last_update': time.time()
+            })
+            st.toast("🛰️ อัปเดตพิกัดลงฐานข้อมูลสำเร็จ!", icon="🚀")
+        except Exception as e:
+            st.error(f"ส่งพิกัดเข้าเซิร์ฟเวอร์ไม่สำเร็จ: {e}")
+            
+        if st.button("🔄 ล้างค่าพิกัดเก่าเพื่อจับสัญญาณใหม่"):
+            st.query_params.clear()
+            st.rerun()
+
+with tabs[1]:
+    all_users = None
+    try:
+        all_users = db.reference('users').get()
+    except Exception as e:
+        st.error(f"ดึงข้อมูลไม่ได้: {e}")
+    
+    view_lat, view_lon = 13.75, 100.5 
+    
+    if all_users and my_id in all_users:
+        view_lat = all_users[my_id].get('lat', 13.75)
+        view_lon = all_users[my_id].get('lon', 100.5)
+
+    m = folium.Map(
+        location=[view_lat, view_lon], 
+        zoom_start=15, 
+        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+        attr="Google Satellite"
+    )
+
+    if all_users:
+        for name, info in all_users.items():
+            if isinstance(info, dict) and 'lat' in info and 'lon' in info:
+                color = 'blue' if name == my_id else 'red'
+                folium.Marker(
+                    [info['lat'], info['lon']], 
+                    tooltip=name,
+                    icon=folium.Icon
