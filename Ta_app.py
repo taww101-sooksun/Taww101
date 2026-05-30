@@ -1,72 +1,90 @@
 import streamlit as st
-import requests
-from datetime import datetime
+import time
+import base64
+# สมมติว่ามี db จาก firebase_admin เข้ามาแล้วตามที่คุณใช้
 
-# ตั้งค่าหน้าแอป
-st.set_page_config(page_title="Firebase Realtime Chat", page_icon="💬")
-st.title("💬 แอปแชตต่อระบบฐานข้อมูลจริง")
+def room_private(db): # รับค่า db เข้ามาใช้งาน
+    st.subheader("🔐 แชตส่วนตัวสายลับ (Secure Media Chat)")
+    
+    # ตรวจสอบตัวแปรความปลอดภัยเบื้องต้น
+    if "user" not in st.session_state:
+        st.error("❌ กรุณาเข้าสู่ระบบก่อนใช้งาน")
+        return
 
-# 1. ดึงค่าคอนฟิกจาก Secrets ที่เราทดสอบผ่านแล้ว
-firebase_url = st.secrets["firebase"]["firebase_url"]
-api_key = st.secrets["firebase"]["api_key"]
-
-# กำหนด Path ใน Firebase สำหรับเก็บข้อความแชต (จะเก็บไว้ในห้องชื่อ room_1)
-CHAT_URL = f"{firebase_url}/chat_room_1.json?auth={api_key}"
-
-# ฟังก์ชันสำหรับดึงข้อมูลแชตล่าสุดจาก Firebase
-def load_chat_history():
+    # ดึงรายชื่อ AGENT ทั้งหมดมาให้เลือก
     try:
-        response = requests.get(CHAT_URL)
-        if response.status_code == 200 and response.json():
-            # ดึงข้อมูลออกมา (Firebase จะส่งกลับมาเป็น Dictionary ที่มีคีย์สุ่ม)
-            raw_data = response.json()
-            # แปลงข้อมูลและเรียงลำดับตามเวลา (Timestamp)
-            messages = list(raw_data.values())
-            return sorted(messages, key=lambda x: x.get("timestamp", ""))
-    except Exception as e:
-        st.error(f"โหลดข้อมูลล้มเหลว: {e}")
-    return []
-
-# ฟังก์ชันสำหรับส่งข้อความใหม่ไปบันทึกบน Firebase
-def send_message_to_firebase(role, content):
-    try:
-        payload = {
-            "role": role,
-            "content": content,
-            "timestamp": datetime.now().isoformat()
-        }
-        # ใช้ POST เพื่อสร้างโหนดข้อมูลใหม่เพิ่มเข้าไปเรื่อยๆ
-        requests.post(CHAT_URL, json=payload)
-    except Exception as e:
-        st.error(f"ส่งข้อมูลล้มเหลว: {e}")
-
-# --- เริ่มทำงานบนหน้าจอ Streamlit ---
-
-# 2. โหลดประวัติการคุยจาก Firebase จริงๆ มาแสดง
-chat_history = load_chat_history()
-
-for message in chat_history:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-# 3. ช่องรับข้อความแชตจากผู้ใช้
-if prompt := st.chat_input("พิมพ์ข้อความส่งไป Firebase..."):
+        users = db.reference('users').get()
+        friends = [u for u in users.keys() if u != st.session_state.user] if users else []
+    except Exception:
+        friends = [] # ป้องกันกรณีฐานข้อมูลว่างเปล่า
     
-    # แสดงฝั่งผู้ใช้ทันทีบนหน้าจอ
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    target = st.selectbox("🎯 เลือกคู่สาย AGENT:", ["-- เลือกเป้าหมาย --"] + friends)
     
-    # บันทึกข้อความผู้ใช้ลง Firebase database
-    send_message_to_firebase("user", prompt)
-    
-    # จำลองการตอบกลับจากบอท (บอทระบบ)
-    bot_reply = f"ระบบได้รับข้อความ '{prompt}' ของคุณและบันทึกสถิติลงฐานข้อมูลเรียบร้อยแล้ว!"
-    
-    with st.chat_message("assistant"):
-        st.markdown(bot_reply)
+    if target != "-- เลือกเป้าหมาย --":
+        # สร้าง ID ห้องแชตเฉพาะระหว่าง 2 คน (เรียงชื่อตามตัวอักษร)
+        rid = "_".join(sorted([st.session_state.user, target]))
         
-    # บันทึกข้อความของบอทลง Firebase database เช่นกัน
-    send_message_to_firebase("assistant", bot_reply)
-    
-    # สั่งให้ Streamlit รีเฟรชหน้าจอเพื่ออัปเดตลำดับแชตให้เสร็จสรรพ
-    st.rerun()
+        # 1. ส่วนส่งข้อความและลากไฟล์วาง
+        with st.form("private_media_form", clear_on_submit=True):
+            msg = st.text_input(f"🔒 ส่งข้อความลับถึง {target}...")
+            uploaded_file = st.file_uploader("📸 ส่งรูป/คลิปส่วนตัว (จำกัดขนาดไม่เกิน 1MB)", type=['jpg', 'png', 'mp4', 'mov'])
+            
+            if st.form_submit_button("🚀 LOCK & SEND"):
+                file_data = None
+                file_type = None
+                
+                if uploaded_file is not None:
+                    # เช็คขนาดไฟล์ตามความเป็นจริงเพื่อไม่ให้ Firebase พัง (จำกัดไว้ที่ 1MB สำหรับ Base64)
+                    bytes_data = uploaded_file.getvalue()
+                    if len(bytes_data) > 1 * 1024 * 1024:
+                        st.error("⚠️ ไฟล์มีขนาดใหญ่เกิน 1MB (ฐานข้อมูล Realtime ไม่รองรับ Base64 ขนาดใหญ่)")
+                    else:
+                        file_data = base64.b64encode(bytes_data).decode()
+                        file_type = uploaded_file.type
+
+                if msg or file_data:
+                    db.reference(f'private_rooms/{rid}').push({
+                        'u': st.session_state.user,
+                        'm': msg,
+                        'file': file_data,
+                        'ft': file_type,
+                        'ts': time.time()
+                    })
+                    st.rerun()
+
+        # 2. ส่วนแสดงผลข้อความในห้องลับ
+        st.write("---")
+        
+        # ดึงข้อความและเรียงลำดับจากเก่าไปใหม่ เพื่อให้แชตไหลลงข้างล่างตามธรรมชาติของแอปแชต
+        msgs_ref = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(15).get()
+        
+        if msgs_ref:
+            # เรียงจากเก่าไปใหม่เพื่อแสดงผลใน Chat UI
+            for k, v in msgs_ref.items():
+                u_name = v.get('u', 'Unknown')
+                msg_text = v.get('m', '')
+                f_data = v.get('file')
+                f_type = v.get('ft')
+                
+                # กำหนดบทบาทเพื่อแยกซ้ายขวาอัตโนมัติด้วย st.chat_message
+                role = "user" if u_name == st.session_state.user else "assistant"
+                avatar = "👤" if role == "user" else "🕵️"
+                
+                # ใช้ st.chat_message ตัวจริงของ streamlit ข้อความและมีเดียจะรวมอยู่ในกล่องเดียวกัน ไม่เบี้ยว
+                with st.chat_message(role, avatar=avatar):
+                    st.write(f"**{u_name}**")
+                    if msg_text:
+                        st.write(msg_text)
+                    
+                    # ถ้ามีไฟล์แนบ ให้ถอดรหัสและแสดงผลในกล่องข้อความนั้นๆ เลย
+                    if f_data:
+                        try:
+                            decoded = base64.b64decode(f_data)
+                            if "image" in f_type:
+                                st.image(decoded, caption="รูปภาพลับ")
+                            elif "video" in f_type:
+                                st.video(decoded)
+                        except Exception:
+                            st.caption("⚠️ ไฟล์สื่อแสดงผลล้มเหลว")
+        else:
+            st.caption("🌑 ยังไม่มีการสนทนาในห้องลับนี้")
