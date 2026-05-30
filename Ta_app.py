@@ -1,83 +1,118 @@
-import streamlit as st
+import os
+import threading
+import time
+import tkinter as tk
+from tkinter import messagebox
+# ต้องติดตั้งเพิ่มเติม: pip install pygame
+import pygame
 
-# ตั้งค่าหน้าจอให้ออกโทนเข้ม ดุดัน
-st.set_page_config(page_title="Sooksun1 Command Center", page_icon="📱", layout="centered")
 
-# สไตล์หน้าจอแอปยิ้มซิ
-st.markdown("""
-    <style>
-    .stApp { background-color: #111827; }
-    h2, h3, p, label { color: white !important; }
-    div.stButton > button { font-weight: bold !important; }
-    </style>
-""", unsafe_allow_html=True)
+class MultiApp:
 
-# 1. สร้างตัวแปรเก็บสถานะการล็อกอิน (Session State)
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-if 'user_phone' not in st.session_state:
-    st.session_state.user_phone = ""
+    def __init__(self, root):
+        self.root = root
+        self.root.title("ระบบรวม GPS, แชต, เพลง")
+        self.root.geometry("500x400")
 
-# =========================================================
-# หน้าจอที่ 1: หน้าล็อกอิน (ถ้ายังไม่ได้ล็อกอิน ให้แสดงหน้านี้)
-# =========================================================
-if not st.session_state.logged_in:
-    st.title("📱 ระบบล็อกอินยิ้มซิ (Sooksun1)")
-    st.markdown("<p style='color: #f87171 !important; font-style: italic;'>\"อยู่นิ่งๆ ไม่เจ็บตัว ปลอดภัยร้อยเปอร์เซ็นต์\"</p>", unsafe_allow_html=True)
-    
-    # กล่องครอบดีไซน์
-    with st.container():
-        st.subheader("เข้าสู่ระบบด้วยเบอร์โทรศัพท์")
-        
-        # ช่องกรอกเบอร์โทรศัพท์
-        phone_input = st.text_input(
-            "เบอร์โทรศัพท์ (ใส่รูปแบบสากล เช่น +66970801941):", 
-            value="+66970801941"
+        # 1. ตั้งค่าระบบเพลง (ดึงไฟล์จากโฟลเดอร์เดียวกับ .py)
+        pygame.mixer.init()
+        # หาโฟลเดอร์ปัจจุบันที่ไฟล์ .py นี้เซฟอยู่
+        self.current_dir = os.path.dirname(os.path.abspath(__file__))
+        # เปลี่ยนชื่อไฟล์ให้ตรงกับที่มีในโฟลเดอร์จริง
+        self.music_file = os.path.join(self.current_dir, "song.mp3")
+
+        # ตัวแปรจำลองระบบ
+        self.gps_status = "กำลังค้นหาสัญญาณ..."
+        self.chat_history = []
+
+        # สเกลหน้าจอ GUI
+        self.create_widgets()
+
+        # 2. เริ่มทำงานเบื้องหลัง (Background Threads) เพื่อไม่ให้หน้าจอค้าง
+        self.start_threads()
+
+    def create_widgets(self):
+        # ส่วนแสดงผล GPS
+        self.lbl_gps = tk.Label(
+            self.root, text=f"GPS: {self.gps_status}", fg="blue"
         )
-        
-        # ปุ่มขอรหัส OTP (กดแล้วให้แจ้งเตือนบอกผู้ใช้)
-        if st.button("📲 ขอรหัส OTP", use_container_width=True):
-            if phone_input in ["+66970801941", "+66970801941"]: # เช็กเบอร์สัจจะของต๊ะ
-                st.toast("⏳ ระบบจับคู่เบอร์ทดสอบใน Firebase สำเร็จ!")
-                st.success("✅ ดำเนินการสำเร็จ! กรุณากรอกรหัส 6 หลักเพื่อข้ามผ่านระบบความปลอดภัย")
-            else:
-                st.error("❌ ไม่พบเบอร์โทรศัพท์นี้ในระบบทดสอบ")
+        self.lbl_gps.pack(pady=10)
 
-        st.write("---")
-        
-        # ช่องกรอกรหัส OTP
-        otp_input = st.text_input(
-            "กรอกรหัส OTP 6 หลักที่ตั้งไว้ หรือได้รับจาก SMS:", 
-            value="753275", 
-            type="password"
+        # ส่วนระบบเพลง
+        self.btn_play = tk.Button(
+            self.root, text="เล่นเพลง (song.mp3)", command=self.play_music
         )
-        
-        # ปุ่มยืนยัน (เช็กค่าตรงๆ ถ้ายอมรับให้เปลี่ยนสถานะทันที!)
-        if st.button("✅ ยืนยันรหัสผ่าน", type="primary", use_container_width=True):
-            # ตรวจสอบฐานข้อมูลสัจจะตามที่ต๊ะเซ็ตไว้ใน Firebase ตัวจริง
-            if phone_input == "+66970801941" and otp_input == "753275":
-                st.session_state.logged_in = True
-                st.session_state.user_phone = phone_input
-                st.success("🔓 รหัสผ่านถูกต้องสัจจะ!")
-                st.rerun() # สั่งรีเฟรชหน้าจอเพื่อเปลี่ยนหน้าทันที
-            else:
-                st.error("❌ รหัสไม่ถูกต้องตามที่บันทึกไว้ใน Firebase")
+        self.btn_play.pack(pady=5)
 
-# =========================================================
-# หน้าจอที่ 2: หน้าหลักของแอป (พอล็อกอินผ่านแล้ว จะเด้งมาหน้านี้ทันที)
-# =========================================================
-else:
-    st.balloons() # ยิงลูกโป่งฉลองความสำเร็จ
-    st.title("🛸 COMMAND CENTER (Sooksun1)")
-    st.success(f"🔓 ยินดีต้อนรับเพื่อนต๊ะเข้าสู่ระบบ! (เบอร์: {st.session_state.user_phone})")
-    
-    st.markdown("---")
-    # พื้นที่ใส่ฟังก์ชันการจัดการแอปหลักของต๊ะ
-    st.subheader("🛠️ แผงควบคุมและจัดการแอป")
-    st.info("สถานะระบบ: อยู่นิ่งๆ ไม่เจ็บตัว กำลังทำงานเปิดสัญญาณ...")
-    
-    # ปุ่มออกจากระบบ กลับไปหน้าแรก
-    if st.button("🚪 ออกจากระบบ (Logout)", use_container_width=True):
-        st.session_state.logged_in = False
-        st.session_state.user_phone = ""
-        st.rerun()
+        # ส่วนแชต (จำลองหน้าต่างแชต)
+        self.txt_chat = tk.Text(self.root, height=10, width=50)
+        self.txt_chat.pack(pady=10)
+
+        self.entry_msg = tk.Entry(self.root, width=40)
+        self.entry_msg.pack(side=tk.LEFT, padx=10, pady=5)
+
+        self.btn_send = tk.Button(
+            self.root, text="ส่งแชต", command=self.send_message
+        )
+        self.btn_send.pack(side=tk.LEFT, pady=5)
+
+    def start_threads(self):
+        # แยกเธรดสำหรับอัปเดต GPS เพื่อไม่ให้ขัดจังหวะการพิมพ์แชตหรือเล่นเพลง
+        gps_thread = threading.Thread(target=self.update_gps_loop, daemon=True)
+        gps_thread.start()
+
+        # แยกเธรดสำหรับรับข้อมูลแชตจาก Server (ถ้ามีระบบ Backend Network)
+        chat_thread = threading.Thread(
+            target=self.receive_chat_loop, daemon=True
+        )
+        chat_thread.start()
+
+    # --- ฟังก์ชันจัดการเสียงเพลง ---
+    def play_music(self):
+        if os.path.exists(self.music_file):
+            try:
+                pygame.mixer.music.load(self.music_file)
+                pygame.mixer.music.play()
+                messagebox.showinfo("ระบบเพลง", "กำลังเล่นเสียง...")
+            except Exception as e:
+                messagebox.showerror("ข้อผิดพลาด", f"ไม่สามารถเล่นเพลงได้: {e}")
+        else:
+            messagebox.showwarning(
+                "ไม่พบไฟล์",
+                f"กรุณานำไฟล์ 'song.mp3' ไปวางไว้ที่เดียวกับไฟล์โปรแกรม\n{self.current_dir}",
+            )
+
+    # --- ฟังก์ชันจำลอง GPS Real-time (ทำงานแยกใน Thread) ---
+    def update_gps_loop(self):
+        import random  # ใช้จำลองพิกัดเปลี่ยนไปเรื่อยๆ
+
+        while True:
+            # ของจริงจุดนี้จะดึงค่าจากโมดูล Hardware GPS หรือ GPS API
+            lat = round(random.uniform(13.0, 14.0), 4)
+            lng = round(random.uniform(100.0, 101.0), 4)
+
+            # อัปเดตข้อความบนหน้าจอหลักอย่างปลอดภัย
+            self.lbl_gps.config(text=f"GPS Real-time พิกัด: {lat}, {lng}")
+            time.sleep(2)  # อัปเดตทุกๆ 2 วินาที โดยไม่ทำให้โปรแกรมค้าง
+
+    # --- ฟังก์ชันระบบแชต ---
+    def send_message(self):
+        msg = self.entry_msg.get()
+        if msg:
+            # ในระบบจริง คุณต้องส่งค่า msg นี้ไปที่ Server (Socket / Webhook)
+            self.txt_chat.insert(tk.END, f"คุณ: {msg}\n")
+            self.entry_msg.delete(0, tk.END)
+
+    def receive_chat_loop(self):
+        # จำลองการรอรับข้อมูลแชตจากคนอื่นเข้ามาในระบบ
+        while True:
+            time.sleep(5)  # สมมุติว่าทุก 5 วินาที มีข้อความใหม่เข้า
+            # ของจริงจะต้องเขียนโค้ดดึงข้อมูลจาก Socket connection ตรงนี้
+            # self.txt_chat.insert(tk.END, "เพื่อน: สวัสดีพิกัดนายอยู่ไหนนะ?\n")
+            pass
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = MultiApp(root)
+    root.mainloop()
