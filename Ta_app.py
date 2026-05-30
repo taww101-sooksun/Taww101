@@ -3,10 +3,10 @@ import firebase_admin
 from firebase_admin import credentials, db
 import folium
 from streamlit_folium import st_folium
-from streamlit_js_eval import get_geolocation
 import time
+import json
 
-# 1. ⚡ ตั้งค่าหน้าจอและระบบสีพื้นหลัง (Theme Selector)
+# 1. ตั้งค่าหน้าจอและระบบสีพื้นหลัง (Theme Selector)
 st.set_page_config(page_title="SYNAPSE CLEAR", layout="wide")
 
 if 'theme_color' not in st.session_state:
@@ -20,29 +20,23 @@ with st.sidebar:
     st.write("---")
     st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
-# วิธีแก้ SyntaxError: ต้องใช้ปีกกาซ้อน 2 ชั้น {{ }} เมื่อต้องการเขียน CSS ใน f-string ของ Python
+# ใช้ CSS ปรับแต่งตามสีนีออนที่เลือก
 st.markdown(f"""
     <style>
     .stApp {{ 
         background: #000 !important; 
         color: {st.session_state.theme_color} !important; 
     }}
-    .chat-box {{ 
-        border: 1px solid {st.session_state.theme_color}; 
-        padding: 10px; 
-        border-radius: 10px; 
-        margin-bottom: 5px;
-        background: rgba(255,255,255,0.05);
-    }}
     .stButton>button {{ 
         border: 1px solid {st.session_state.theme_color} !important; 
         color: {st.session_state.theme_color} !important; 
         background-color: transparent !important;
+        width: 100%;
     }}
     </style>
     """, unsafe_allow_html=True)
 
-# 2. 🛰️ เชื่อมต่อ FIREBASE (ดึงค่าความปลอดภัยจาก Secrets)
+# 2. เชื่อมต่อ FIREBASE
 if not firebase_admin._apps:
     try:
         fb_dict = dict(st.secrets["firebase"])
@@ -56,63 +50,53 @@ if not firebase_admin._apps:
 
 st.title("🛰️ SYNAPSE COMMAND CENTER")
 
-# 3. 🎵 บังคับเล่นเพลง (ยักษ์ในตัวฉัน)
+# 3. บังคับเล่นเพลง (ยักษ์ในตัวฉัน)
 music_url = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
 st.audio(music_url, format="audio/mpeg", loop=True)
-
-# 4. 🚀 ระบบดึงพิกัดจริงจากเบราว์เซอร์ผู้ใช้งาน
-loc = get_geolocation()
 
 tabs = st.tabs(["🚀 CORE", "🛰️ RADAR"])
 
 with tabs[0]:
     my_id = st.text_input("ระบุชื่อรหัสของคุณ:", value="Ta101")
-    if loc and 'coords' in loc:
-        lat = loc['coords']['latitude']
-        lon = loc['coords']['longitude']
-        st.success(f"📍 ตรวจพบตำแหน่งจริงของคุณ: {lat}, {lon}")
-        
-        if st.button("🛰️ บันทึกพิกัดจริงลงระบบ"):
-            try:
-                db.reference(f'users/{my_id}').update({
-                    'lat': lat, 'lon': lon, 'last_update': time.time()
-                })
-                st.balloons()
-                st.success("บันทึกพิกัดเข้า Firebase เรียบร้อยแล้วเพื่อน!")
-            except Exception as e:
-                st.error(f"เกิดข้อผิดพลาดขณะส่งข้อมูล: {e}")
-    else:
-        st.warning("🚨 ระบบกำลังรอตำแหน่ง... กรุณากด 'อนุญาต' (Allow) การเข้าถึงตำแหน่งบนเบราว์เซอร์ด้วยนะ")
-
-with tabs[1]:
-    all_users = None
-    try:
-        all_users = db.reference('users').get()
-    except Exception as e:
-        st.error(f"ดึงข้อมูลจากด่านดาวเทียมไม่สำเร็จ: {e}")
     
-    # ดึงพิกัดของเรามาตั้งค่าจุดกึ่งกลางแผนที่ ถ้าหาไม่เจอให้ไปจุดตั้งต้น (กรุงเทพฯ)
-    view_lat, view_lon = 13.75, 100.5 
-    if all_users and my_id in all_users:
-        view_lat = all_users[my_id].get('lat', 13.75)
-        view_lon = all_users[my_id].get('lon', 100.5)
+    st.markdown("### 📍 ระบบดึงพิกัดดาวเทียม (Real-Time)")
+    st.write("กดปุ่มด้านล่างเพื่อสั่งให้มือถือค้นหาตำแหน่งพิกัดที่แท้จริงของคุณ")
 
-    m = folium.Map(
-        location=[view_lat, view_lon], 
-        zoom_start=15, 
-        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
-        attr="Google Satellite"
-    )
+    # ใช้ระบบ HTML5 / JavaScript ฝั่งหน้าบ้านดึงพิกัด (หมดปัญหาค้าง, หมดปัญหา None)
+    # มันจะยิงข้อมูลกลับมาฝั่ง Streamlit ผ่านฟังก์ชัน st.components
+    js_gps_html = f"""
+    <div style="text-align: center;">
+        <button onclick="getLocation()" style="
+            background-color: transparent; 
+            color: {st.session_state.theme_color}; 
+            border: 2px solid {st.session_state.theme_color}; 
+            padding: 15px 32px; 
+            font-size: 16px; 
+            cursor: pointer; 
+            border-radius: 8px;
+            font-weight: bold;
+            width: 100%;
+            box-shadow: 0 0 10px {st.session_state.theme_color};
+        ">📡 กดปุ่มนี้เพื่อแชร์พิกัดปัจจุบันจริง</button>
+        <p id="status" style="margin-top: 10px; color: #fff; font-size: 14px;">สถานะ: รอการกดปุ่ม...</p>
+    </div>
 
-    if all_users:
-        for name, info in all_users.items():
-            if isinstance(info, dict) and 'lat' in info and 'lon' in info:
-                # 🔵 ตัวคุณสีน้ำเงิน | 🔴 คนอื่นสีแดง
-                color = 'blue' if name == my_id else 'red'
-                folium.Marker(
-                    [info['lat'], info['lon']], 
-                    tooltip=name,
-                    icon=folium.Icon(color=color, icon='star')
-                ).add_to(m)
+    <script>
+    function getLocation() {{
+        const status = document.getElementById('status');
+        if (!navigator.geolocation) {{
+            status.innerHTML = '❌ เบราว์เซอร์ของคุณไม่รองรับระบบ GPS';
+            return;
+        }}
+        
+        status.innerHTML = '⚡ กำลังค้นหาสัญญาณดาวเทียม...';
+        
+        navigator.geolocation.getCurrentPosition(
+            (position) => {{
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                status.innerHTML = '✅ เจอพิกัดแล้ว! กำลังส่งเข้าดาวเทียมหลัก...';
                 
-        st_folium(m, width="100%", height=500)
+                // ส่งพิกัดกลับไปให้ Python ทันทีผ่าน URL query parameters เพื่อความชัวร์
+                const currentUrl = new URL(window.parent.location.href);
+                currentUrl.searchParams.set('lat
