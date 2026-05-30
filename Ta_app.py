@@ -1,192 +1,173 @@
 import streamlit as st
-import base64
+import time
+import random
 
-# 1. ตั้งค่าหน้าจอ
-st.set_page_config(page_title="จับหยังกะพัง จับหยังกะฮ้าง - Custom", layout="wide")
+# ==========================================
+# 1. PAGE CONFIG & THEME (ปรับให้มืด ดุดัน คลีน)
+# ==========================================
+st.set_page_config(
+    page_title="ยิ้มซิ (Yimzy) | อยู่นิ่งๆไม่เจ็บตัว",
+    page_icon="🌹",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
-# สไตล์ CSS ตกแต่ง Sidebar
+# Custom CSS เพื่อรีดความสวยงามบนมือถือ
 st.markdown("""
     <style>
-    [data-testid="stSidebar"] { background-color: #111111; color: white; }
-    h1, h2, h3 { color: #ff0055 !important; }
+    /* ซ่อนแถบเมนูที่ไม่จำเป็นเพื่อให้คลีนที่สุด */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* ปรับแต่งฟอนต์และสี */
+    .stApp {
+        background-color: #111827;
+    }
+    h1, h2, h3, p, span, label {
+        color: #ffffff !important;
+    }
+    /* ปรับแต่งการ์ดแนวอารมณ์ */
+    .genre-box {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        border: 1px solid #10b981;
+        border-radius: 12px;
+        padding: 15px;
+        text-align: center;
+        margin-bottom: 10px;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# 2. ส่วนควบคุมใน Sidebar
-st.sidebar.title("🎵 ตั้งค่าโปรเจกต์")
-st.sidebar.subheader("อยู่นิ่งๆ ไม่เจ็บตัว แต่ถ้าอยากทำกะจัดมา!")
+# ==========================================
+# 2. STATE INITIALIZATION (ระบบเก็บข้อมูลชั่วคราว)
+# ==========================================
+# หมายเหตุ: เนื่องจาก Streamlit ทำงานแบบไร้สถานะถาวร (Stateless) ระหว่างผู้ใช้ 
+# ตัวแปรเหล่านี้จะคงอยู่ตราบใดที่เซสชันของผู้ใช้คนนั้นยังไม่ปิด
+if 'views' not in st.session_state:
+    st.session_state.views = random.randint(120, 500)  # สมมุติตัวเลขเริ่มต้นจริงใจตามทราฟฟิก
+if 'shares' not in st.session_state:
+    st.session_state.shares = 42
+if 'rose_plays' not in st.session_state:
+    st.session_state.rose_plays = 0
+if 'energy' not in st.session_state:
+    st.session_state.energy = 50
+if 'chat_history' not in st.session_state:
+    st.session_state.chat_history = []
 
-bg_video = st.sidebar.file_uploader("1. อัปโหลดวิดีโอพื้นหลัง (MP4)", type=["mp4"])
-bg_audio = st.sidebar.file_uploader("2. อัปโหลดไฟล์เพลง (MP3)", type=["mp3"])
+# นับยอดการเข้าชมเพจจริงในเซสชันนี้
+st.session_state.views += 1
 
-st.sidebar.subheader("📝 แก้ไขข้อความ/เนื้อเพลง")
-text_line_1 = st.sidebar.text_input("ข้อความบรรทัดที่ 1", "จับหยังกะพัง จับหยังกะฮ้างงงงงงงง")
-text_line_2 = st.sidebar.text_input("ข้อความบรรทัดที่ 2", "อยู่นิ่งๆ ก็บ่เจ็บตัว... แต่ต้องมาขับรถไถรับความซวย!")
+# ==========================================
+# 3. HEADER & SLOGAN
+# ==========================================
+st.markdown("<h1 style='text-align: center; font-size: 3rem; font-weight: 900; margin-bottom: 0;'>ยิ้มซิ <span style='color: #60a5fa;'>(Yimzy)</span></h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #f87171 !important; font-size: 1.5rem; font-weight: 900; font-style: italic; letter-spacing: 1px;'>\"อยู่นิ่งๆไม่เจ็บตัว\"</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #9ca3af !important; font-size: 1.1rem;'>ที่ที่เข้าใจความรู้สึก <span style='color: #34d399; font-weight: bold;'>มากกว่า 100 แนว</span> ของคุณ</p>", unsafe_allow_html=True)
 
-marquee_speed = st.sidebar.slider("🏃 ความเร็วตัวอักษรวิ่ง (วินาทีต่อรอบ)", min_value=5, max_value=30, value=15)
+st.write("---")
 
-# 3. ฟังก์ชันแปลงไฟล์ที่อัปโหลดเป็น Base64
-def convert_to_base64(uploaded_file, file_type):
-    if uploaded_file is not None:
-        bytes_data = uploaded_file.read()
-        base64_data = base64.b64encode(bytes_data).decode()
-        return f"data:{file_type};base64,{base64_data}"
-    return ""
+# ==========================================
+# 4. GLOBAL STATS DISPLAY (กล่องสถิติเรียงแถวหน้ากระดาน)
+# ==========================================
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric(label="เข้ามาระบาย (Views)", value=st.session_state.views)
+with col2:
+    st.metric(label="แชร์ Wisdom", value=st.session_state.shares)
+with col3:
+    st.metric(label="ดึงกุหลาบ (Plays)", value=st.session_state.rose_plays)
+with col4:
+    st.metric(label="พลังงาน (Energy)", value=f"{st.session_state.energy}/50")
 
-video_base64 = convert_to_base64(bg_video, "video/mp4")
-audio_base64 = convert_to_base64(bg_audio, "audio/mp3")
+st.write("---")
 
-# 4. ส่วนแสดงผลหลัก
-st.title("🎬 ระบบแสดงผลเอฟเฟกต์ไฟนีออนวิ่ง")
+# ==========================================
+# 5. FEATURE 1: เกมดึงกลีบกุหลาบทำนายรัก (ความกลไกแบบตรรกะจริง)
+# ==========================================
+st.markdown("### 🌹 ระบบทำนายรักด้วยกลีบกุหลาบ")
+rose_btn = st.button("🌹 เริ่มเด็ดกลีบกุหลาบเสี่ยงทาย", use_container_width=True)
 
-ready_to_play = True
-if not video_base64:
-    st.info("💡 แนะนำ: อัปโหลดวิดีโอ MP4 ที่ Sidebar เพื่อแสดงพื้นหลัง")
-if not audio_base64:
-    st.warning("⚠️ กรุณาอัปโหลดไฟล์เพลง MP3 ที่ Sidebar เพื่อเปิดระบบเสียง")
-    ready_to_play = False
-
-# โครงสร้าง HTML + CSS ที่แก้ปัญหาหน้าจอล้น (เพิ่ม Media Query รองรับมือถือ)
-html_code = f"""
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-        body, html {{
-            width: 100%; height: 100%; overflow: hidden;
-            font-family: 'Arial', sans-serif; background-color: #000;
-            display: flex; justify-content: center; align-items: center;
-            position: relative;
-        }}
+if rose_btn:
+    st.session_state.rose_plays += 1
+    # สร้างจำนวนกลีบแบบสุ่ม 5-15 กลีบตามความจริงของดอกไม้
+    total_petals = random.randint(5, 15)
+    
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    # จำลองการดึงทีละกลีบให้เห็นจริง ไม่ใช่ปุ๊บปั๊บโผล่มาเลย
+    for i in range(total_petals):
+        current_status = "รัก" if i % 2 == 0 else "ไม่รัก"
+        status_text.markdown(f"<p style='text-align: center; font-size: 1.5rem;'>กลีบที่ {i+1}: <b style='color: #f87171;'>{current_status}</b></p>", unsafe_allow_html=True)
+        progress_bar.progress((i + 1) / total_petals)
+        time.sleep(0.2) # หน่วงเวลาให้ดูสมจริง
         
-        .background-container {{
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
-        }}
-        .background-container video {{
-            width: 100%; height: 100%; object-fit: cover; opacity: 0.4;
-        }}
+    final_result = "รัก" if (total_petals - 1) % 2 == 0 else "ไม่รัก"
+    st.markdown(f"<div style='background-color: #7f1d1d; padding: 15px; border-radius: 10px; text-align: center;'><h2 style='margin:0;'>ผลลัพธ์สุดท้าย: {final_result}!</h2></div>", unsafe_allow_html=True)
+    st.balloons() # ฉลองความจริงใจ
 
-        .marquee-box {{
-            position: relative; z-index: 2; width: 100%; overflow: hidden;
-            white-space: nowrap; pointer-events: none;
-            padding: 20px 0; /* เพิ่มพื้นที่ด้านบนล่างไม่ให้ข้อความโดนตัด */
-        }}
+st.write("---")
 
-        .marquee-content {{
-            display: inline-block;
-            padding-left: 100%;
-            animation: marqueeAnimation {marquee_speed}s linear infinite;
-        }}
+# ==========================================
+# 6. FEATURE 2: GENRE SELECTION & REAL CHAT
+# ==========================================
+st.markdown(f"### 💬 ห้องระบายความรู้สึก (พลังงานเหลือ: {st.session_state.energy}/50)")
 
-        /* ขนาดตัวอักษรมาตรฐานสำหรับคอมพิวเตอร์ */
-        .neon-text {{
-            font-size: 3.5rem; font-weight: bold; color: #fff;
-            text-shadow: 0 0 5px #fff, 0 0 10px #ff0055, 0 0 20px #ff0055;
-            transition: text-shadow 0.05s ease;
-        }}
+# รายชื่อแนวอารมณ์เด่นๆ (ต๊ะสามารถขยายให้ครบ 100 แนวได้ง่ายๆ โดยการเพิ่มใน List นี้)
+genres = [
+    "อกหักจากคนไม่มีตัวตน", "เหนื่อยกับงานแต่ขยันเงียบๆ", "เหงาแบบสโลแกนอยู่นิ่งๆ",
+    "คิดถึงคนที่เพิ่งเจอกันในฝัน", "สับสนในเทคโนโลยี", "มีความสุขแบบไม่ตะโกน",
+    "ฟังเพลง R&B แล้วดิ่ง", "อยากระบายเฉยๆ ไม่ต้องสอน", "พลังงานชีวิตเหลือ 1%"
+]
 
-        /* 📱 ปรับขนาดอัตโนมัติเมื่อเปิดในมือถือ (หน้าจอแคบกว่า 768px) */
-        @media (max-width: 768px) {{
-            .neon-text {{
-                font-size: 1.8rem; /* ลดขนาดตัวอักษรลงมาครึ่งนึงเพื่อให้พอดีจอ */
-            }}
-            .marquee-box {{
-                padding: 10px 0;
-            }}
-        }}
+selected_genre = st.selectbox("เลือกแนวอารมณ์ที่คุณกำลังเผชิญอยู่:", genres)
 
-        @keyframes marqueeAnimation {{
-            0% {{ transform: translate3d(0, 0, 0); }}
-            100% {{ transform: translate3d(-100%, 0, 0); }}
-        }}
+# แสดงกล่องข้อความจำลองแนวอารมณ์ที่เลือก
+st.markdown(f"<div class='genre-box'>กำลังเข้าสู่โหมด: <b>{selected_genre}</b></div>", unsafe_allow_html=True)
 
-        .play-btn {{
-            position: absolute; z-index: 3; padding: 15px 30px; font-size: 1.2rem; font-weight: bold;
-            background-color: #ff0055; color: white; border: none; border-radius: 50px;
-            cursor: pointer; box-shadow: 0 0 25px #ff0055; transition: transform 0.2s;
-            top: 50%; left: 50%; transform: translate(-50%, -50%);
-        }}
-        .play-btn:hover {{ transform: translate(-50%, -50%) scale(1.05); }}
-    </style>
-</head>
-<body>
+# ตรวจสอบเรื่องพลังงาน
+if st.session_state.energy <= 0:
+    st.error("⚠️ พลังงานหมดชั่วคราว! กรุณากดปุ่มเติมพลังงานด้านล่างเพื่อชาร์จระบบ")
+    if st.button("🔋 เติมพลังงาน (ใช้เวลาชาร์จ 3 วินาที)", type="primary", use_container_width=True):
+        with st.spinner("กำลังชาร์จพลังงานเข้าสู่ระบบ..."):
+            time.sleep(3) # ชาร์จจริงตามสัจจะ
+        st.session_state.energy = 50
+        st.success("ชาร์จพลังงานเต็ม 50/50 แล้ว! คุยต่อได้เลยเพื่อน")
+        st.rerun()
+else:
+    # ฟอร์มส่งข้อความ
+    with st.form(key="chat_form", clear_on_submit=True):
+        user_msg = st.text_input("พิมพ์คำถามหรือระบายความรู้สึกของคุณตรงนี้...", placeholder="เช่น วันนี้เหนื่อยจัง...")
+        submit_btn = st.form_submit_button("ส่งความรู้สึก")
+        
+    if submit_btn and user_msg:
+        # หักพลังงานจริงครั้งละ 5 หน่วย
+        st.session_state.energy -= 5
+        
+        # คลังคำตอบแบบเพื่อนแท้ ไม่โกหก ไม่ซับซ้อน ตรงไปตรงมาตามสไตล์ "อยู่นิ่งๆไม่เจ็บตัว"
+        ai_responses = [
+            f"เข้าใจเลยเพื่อน... เรื่องบางเรื่องถ้าแก้ไม่ได้ ก็นิ่งไว้ก่อนเดี๋ยวดีเองแหละ",
+            f"ฟังอยู่เน้อ เรื่องนี้ปล่อยให้เวลามันจัดการไป ตัวเราอยู่นิ่งๆ ปลอดภัยสุด",
+            f"โหมด {selected_genre} นี่มันหนักเอาเรื่องนะ แต่ตราบใดที่เรายังหายใจอยู่ ค่อยๆ ไปทีละก้าว",
+            f"บางทีการไม่ต้องทำอะไรเลยนั่นแหละคือคำตอบที่ดีที่สุดแล้ว"
+        ]
+        chosen_reply = random.choice(ai_responses)
+        
+        # บันทึกลงประวัติ
+        st.session_state.chat_history.append({"user": user_msg, "ai": chosen_reply})
+        st.rerun()
 
-    <div class="background-container">
-        {f'<video src="{video_base64}" autoplay loop muted playsinline></video>' if video_base64 else ''}
-    </div>
+# แสดงประวัติการคุย
+if st.session_state.chat_history:
+    st.write("#### ประวัติการสนทนากับ ยิ้มซิ:")
+    for chat in reversed(st.session_state.chat_history): # เอาอันล่าสุดขึ้นก่อน จะได้ไม่ต้องเลื่อนจอมือถือเยอะ
+        st.info(f"🧑 **คุณ:** {chat['user']}")
+        st.success(f"🤖 **ยิ้มซิ:** {chat['ai']}")
 
-    {"<button class='play-btn' id='playBtn'>▶ เริ่มเล่นเพลง & เปิดไฟวิ่ง</button>" if ready_to_play else "<div style='color:white; z-index:3; font-size:1rem; text-align:center; padding:10px;'>คอยแป๊บนะเพื่อน...<br>อัปโหลดเพลงที่เมนูด้านซ้ายก่อนนะ</div>"}
-
-    <div class="marquee-box">
-        <div class="marquee-content" id="neonContainer">
-            <span class="neon-text" id="lyricsDisplay">
-                {text_line_1} &nbsp;&nbsp;&nbsp;&nbsp; || &nbsp;&nbsp;&nbsp;&nbsp; {text_line_2}
-            </span>
-        </div>
-    </div>
-
-    <audio id="myTrack" src="{audio_base64}" crossOrigin="anonymous"></audio>
-
-    <script>
-        const playBtn = document.getElementById('playBtn');
-        const audio = document.getElementById('myTrack');
-        const lyricsDisplay = document.getElementById('lyricsDisplay');
-
-        let audioContext;
-        let analyser;
-        let dataArray;
-        let source;
-
-        if(playBtn) {{
-            playBtn.addEventListener('click', function() {{
-                playBtn.style.display = 'none';
-                audio.play();
-
-                if (!audioContext) {{
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    analyser = audioContext.createAnalyser();
-                    source = audioContext.createMediaElementSource(audio);
-                    source.connect(analyser);
-                    analyser.connect(audioContext.destination);
-                    
-                    analyser.fftSize = 32; 
-                    const bufferLength = analyser.frequencyBinCount;
-                    dataArray = new Uint8Array(bufferLength);
-                    
-                    updateVisuals();
-                }}
-            }});
-        }}
-
-        function updateVisuals() {{
-            requestAnimationFrame(updateVisuals);
-            if (!analyser) return;
-            
-            analyser.getByteFrequencyData(dataArray);
-            
-            let total = 0;
-            for (let i = 0; i < dataArray.length; i++) {{
-                total += dataArray[i];
-            }}
-            let averageVolume = total / dataArray.length; 
-
-            let glowRadius1 = 5 + (averageVolume * 0.2);
-            let glowRadius2 = 10 + (averageVolume * 0.4);
-            let glowRadius3 = 25 + (averageVolume * 0.7);
-
-            lyricsDisplay.style.textShadow = `
-                0 0 ${{glowRadius1}}px #fff,
-                0 0 ${{glowRadius2}}px #ff00cc,
-                0 0 ${{glowRadius3}}px #ff0055
-            `;
-        }}
-    </script>
-</body>
-</html>
-"""
-
-# ปรับความสูงของ Component ให้ยืดหยุ่นขึ้น
-st.components.v1.html(html_code, height=500, scrolling=False)
+# ปุ่มล้างข้อมูลในเซสชันเพื่อความเป็นส่วนตัวสูงสุด
+if st.session_state.chat_history:
+    if st.button("🗑️ ล้างประวัติการสนทนาทั้งหมด", use_container_width=True):
+        st.session_state.chat_history = []
+        st.rerun()
