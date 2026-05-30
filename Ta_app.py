@@ -1,189 +1,184 @@
 import streamlit as st
-import base64
-import os
-import json
+import firebase_admin
+from firebase_admin import credentials, db
+import folium
+from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
+import time
 
-# 1. ตั้งค่าหน้าจอ Streamlit แบบกว้าง
-st.set_page_config(page_title="จับหยังกะพัง จับหยังกะฮ้าง - Custom", layout="wide")
+# 1. ⚡ ล้างหน้าจอให้คมชัimport 'package:flutter_webrtc/flutter_webrtc.dart';
+import 'package:geolocator/geolocator.dart';
 
-st.title("🎵 ระบบปรับแต่งเพลงและเนื้อเพลงนีออนวิ่งตามจังหวะ")
-st.write("คุณสามารถอัปโหลดไฟล์วิดีโอ เพลง และแก้เนื้อเพลงพร้อมเวลาได้ที่แถบด้านซ้ายมือเลยเพื่อน!")
+class P2PHealingSystem {
+  # --- 1. SET UP & THEME SELECTOR ---
+st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
 
-# --- ส่วนของการจัดการข้อมูล (Sidebar Control Panel) ---
-st.sidebar.header("🛠️ แผงควบคุมและตั้งค่า")
+# ระบบเลือกสี (Color/Theme Selector)
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#00f2fe" 
 
-# 2. ฟังก์ชันช่วยแปลงไฟล์อัปโหลดเป็น Base64 (ดึงจากหน่วยความจำได้โดยตรง ไม่ต้องบันทึกลงเครื่อง)
-def get_base64_from_upload(uploaded_file, file_type):
-    if uploaded_file is not None:
-        bytes_data = uploaded_file.read()
-        encoded = base64.b64encode(bytes_data).decode()
-        return f"data:{file_type};base64,{encoded}"
-    return ""
+with st.sidebar:
+    st.markdown("### 🎨 ปรับแต่งสีระบบ")
+    picked_color = st.color_picker("เลือกสีนีออนของคุณ", st.session_state.theme_color)
+    st.session_state.theme_color = picked_color
+    st.write(f"สีปัจจุบัน: {picked_color}")
+    st.write("---")
+    st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
-# ช่องอัปโหลดไฟล์เพลงและวิดีโอ
-uploaded_video = st.sidebar.file_uploader("1. อัปโหลดวิดีโอพื้นหลัง (.mp4)", type=["mp4"])
-uploaded_song = st.sidebar.file_uploader("2. อัปโหลดไฟล์เพลง (.mp3)", type=["mp3"])
-
-# เนื้อเพลงเริ่มต้น (Default JSON)
-default_lyrics = [
-    {"time": 0, "text": "(Intro)<br>อยู่นิ่งๆ ก็บ่เจ็บตัว... แต่ทำไมรถไถมันพัง"},
-    {"time": 5000, "text": "(Verse 1)<br>ตื่นเช้ามาจับอะไรก็ฮ้าง จับอะไรก็พัง"},
-    {"time": 12000, "text": "คนอื่นขับไม่เป็นไร พอเราจับปุ๊บพังปั๊บ!"}
-]
-
-st.sidebar.subheader("3. แก้ไขเนื้อเพลงและเวลา (JSON format)")
-st.sidebar.caption("แก้เวลาหน่วยเป็นมิลลิวินาที (1000 = 1 วินาที) และข้อความได้ตามใจชอบ")
-
-# กล่องข้อความให้ผู้ใช้พิมพ์แก้ JSON เนื้อเพลงได้เองบนหน้าเว็บ
-lyrics_json_string = st.sidebar.text_area(
-    "โครงสร้างเนื้อเพลง:",
-    value=json.dumps(default_lyrics, ensure_ascii=False, indent=2),
-    height=300
-)
-
-# ตรวจสอบความถูกต้องของ JSON ที่ผู้ใช้กรอก
-try:
-    lyrics_data = json.loads(lyrics_json_string)
-    # แปลงเป็น string เพื่อโยนเข้าสคริปต์ JavaScript ได้อย่างปลอดภัย
-    lyrics_timeline_js = json.dumps(lyrics_data, ensure_ascii=False)
-except Exception as e:
-    st.sidebar.error(f"❌ รูปแบบ JSON ไม่ถูกต้อง กรุณาเช็คเครื่องหมายปีกกาหรือลูกน้ำ: {e}")
-    lyrics_timeline_js = json.dumps(default_lyrics, ensure_ascii=False)
-
-# --- ส่วนการแปลงไฟล์และตั้งค่าเริ่มต้นตามจริง ---
-video_base64 = get_base64_from_upload(uploaded_video, "video/mp4")
-song_base64 = get_base64_from_upload(uploaded_song, "audio/mp3")
-
-# แจ้งเตือนสถานะเพื่อให้ผู้ใช้รู้ว่าระบบพร้อมทำงานไหม (ตามจริง ไม่มีการหลอก)
-if not video_base64:
-    st.info("💡 ตอนนี้ใช้ 'วิดีโอตัวอย่างสีดำ' อยู่ กรุณาอัปโหลดไฟล์วิดีโอของคุณที่แถบซ้ายมือ")
-if not song_base64:
-    st.warning("⚠️ ยังไม่มีเพลงทำงาน กรุณาอัปโหลดไฟล์ .mp3 ที่แถบซ้ายมือเพื่อเริ่มเล่น")
-
-# --- โครงสร้าง HTML & JavaScript (ที่ดึงข้อมูลจาก Streamlit มาใช้แบบ Dynamic) ---
-html_code = f"""
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
+# ใช้ CSS ฉีดสีตามที่เลือก
+st.markdown(f"""
     <style>
-        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-        body, html {{
-            width: 100%; height: 100%; overflow: hidden;
-            font-family: 'Arial', sans-serif; background-color: #111;
-            display: flex; justify-content: center; align-items: center;
-        }}
-        .background-container {{
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
-        }}
-        .background-container video {{
-            width: 100%; height: 100%; object-fit: cover; opacity: 0.4;
-        }}
-        .lyrics-box {{
-            position: relative; z-index: 2; text-align: center; padding: 20px; max-width: 90%; pointer-events: none;
-        }}
-        .neon-text {{
-            font-size: 2.8rem; font-weight: bold; color: #fff;
-            text-shadow: 0 0 5px #fff, 0 0 10px #00fff2, 0 0 20px #00fff2;
-            transition: text-shadow 0.08s ease; line-height: 1.5;
-            text-align: center;
-        }}
-        .play-btn {{
-            position: absolute; z-index: 3; padding: 18px 36px; font-size: 1.3rem; font-weight: bold;
-            background-color: #00fff2; color: #000; border: none; border-radius: 50px;
-            cursor: pointer; box-shadow: 0 0 20px #00fff2; transition: transform 0.2s;
-        }}
-        .play-btn:hover {{ transform: scale(1.05); }}
+    .stApp {{ background: #000; color: {st.session_state.theme_color}; }}
+    .chat-box {{ 
+        border: 1px solid {st.session_state.theme_color}; 
+        padding: 10px; border-radius: 10px; margin-bottom: 5px;
+        background: rgba(255,255,255,0.05);
+    }}
+    .stButton>button {{ 
+        border: 1px solid {st.session_state.theme_color} !important; 
+        color: {# --- 1. SET UP & THEME SELECTOR ---
+st.set_page_config(page_title="SYNAPSE ROOMS", layout="wide")
+
+# ระบบเลือกสี (Color/Theme Selector)
+if 'theme_color' not in st.session_state:
+    st.session_state.theme_color = "#00f2fe" 
+
+with st.sidebar:
+    st.markdown("### 🎨 ปรับแต่งสีระบบ")
+    picked_color = st.color_picker("เลือกสีนีออนของคุณ", st.session_state.theme_color)
+    st.session_state.theme_color = picked_color
+    st.write(f"สีปัจจุบัน: {picked_color}")
+    st.write("---")
+    st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
+
+# ใช้ CSS ฉีดสีตามที่เลือก
+st.markdown(f"""
+    <style>
+    .stApp {{ background: #000; color: {st.session_state.theme_color}; }}
+    .chat-box {{ 
+        border: 1px solid {st.session_state.theme_color}; 
+        padding: 10px; border-radius: 10px; margin-bottom: 5px;
+        background: rgba(255,255,255,0.05);
+    }}
+    .stButton>button {{ 
+        border: 1px solid {st.session_state.theme_color} !important; 
+        color: {st.session_state.theme_color} !important; 
+        background-color: transparent !important;
+    }}
     </style>
-</head>
-<body>
+    """, unsafe_allow_html=True)} !important; 
+        background-color: transparent !important;
+    }}
+    </style>
+    """, unsafe_allow_html=True)? _peerConnection;
+  RTCDataChannel? _dataChannel; // ท่อสำหรับ แชต และ GPS
+  MediaStream? _localStream;    // ท่อสำหรับ เสียงคอล
 
-    <div class="background-container">
-        <video id="bgVideo" src="{video_base64}" loop muted playsinline></video>
-    </div>
+  // 1. เริ่มสร้าง "ท่อลับ" (Initialize Connection)
+  Future<void> initP2P() async {
+    Map<String, dynamic> configuration = {
+      "iceServers": [
+        {"url": "stun:stun.l.google.com:19302"}, // ใช้แค่หาทางออกเน็ต ไม่ได้เก็บข้อมูล
+      ]
+    };
 
-    <button class="play-btn" id="playBtn">▶ เริ่มเล่นเพลงและวิดีโอพื้นหลัง</button>
+    _peerConnection = await createPeerConnection(configuration);
 
-    <div class="lyrics-box">
-        <p class="neon-text" id="lyricsDisplay">ระบบพร้อมแล้ว<br>กรุณากดปุ่มเพื่อเริ่มเล่น</p>
-    </div>
+    // สร้างท่อส่งข้อมูล (แชต + GPS)
+    RTCDataChannelInit dataChannelDict = RTCDataChannelInit();
+    _dataChannel = await _peerConnection!.createDataChannel("chat_gps_pipe", dataChannelDict);
 
-    <audio id="myTrack" src="{song_base64}" crossOrigin="anonymous"></audio>
+    // ฟังข้อมูลที่ส่งกลับมา
+    _dataChannel!.onMessage = (RTCDataChannelMessage message) {
+      print("ได้รับข้อมูลลับ: ${message.text}");
+      // ตรงนี้คือจุดที่แอปจะแยกข้อมูลว่า เป็นข้อความแชต หรือ พิกัด GPS
+    };
+  }
 
-    <script>
-        const playBtn = document.getElementById('playBtn');
-        const audio = document.getElementById('myTrack');
-        const video = document.getElementById('bgVideo');
-        const lyricsDisplay = document.getElementById('lyricsDisplay');
+  // 2. ระบบส่งพิกัด GPS เรียลไทม์ (ส่งผ่านท่อ P2P ไม่ผ่านใคร)
+  void shareLiveLocation() {
+    Geolocator.getPositionStream().listen((Position position) {
+      String gpsData = "GPS:${position.latitude},${position.longitude}";
+      _dataChannel!.send(RTCDataChannelMessage(gpsData));
+      print("ส่งพิกัดเรียลไทม์แล้ว...");
+    });
+  }
 
-        // ดึงข้อมูล Timeline เนื้อเพลงที่ผู้ใช้พิมพ์แก้จากตัวแปรหน้าเว็บ Streamlit โดยตรง
-        const lyricsTimeline = {lyrics_timeline_js};
+  // 3. ระบบคอลเสียง (Voice Call)
+  Future<void> startVoiceCall() async {
+    final Map<String, dynamic> mediaConstraints = {
+      "audio": true, // เปิดไมค์
+      "video": false, // ปิดกล้อง (เพื่อความเป็นส่วนตัวตามสไตล์พี่)
+    };
 
-        let audioContext;
-        let analyser;
-        let dataArray;
-        let source;
+    _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    _localStream!.getTracks().forEach((track) {
+      _peerConnection!.addTrack(track, _localStream!);
+    });
+    print("เริ่มส่งสัญญาณเสียงผ่านท่อลับแล้ว...");
+  }
 
-        playBtn.addEventListener('click', function() {{
-            // สั่งเล่นทั้งเพลงและวิดีโอพร้อมกันเมื่อกดปุ่ม
-            playBtn.style.display = 'none';
-            audio.play().catch(e => console.log("Audio play error:", e));
-            video.play().catch(e => console.log("Video play error:", e));
+  // 4. ระบบแชต (Send Message)
+  void sendMessage(String text) {
+    _dataChannel!.send(RTCDataChannelMessage("TEXT:$text"));
+  }
+}
+ด
+st.set_page_config(page_title="SYNAPSE CLEAR", layout="wide")
 
-            if (!audioContext) {{
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioContext.createAnalyser();
-                source = audioContext.createMediaElementSource(audio);
-                source.connect(analyser);
-                analyser.connect(audioContext.destination);
-                
-                analyser.fftSize = 32; 
-                const bufferLength = analyser.frequencyBinCount;
-                dataArray = new Uint8Array(bufferLength);
-                
-                updateVisuals();
-            }}
-        }});
+# 2. 🛰️ เชื่อมต่อ FIREBASE
+if not firebase_admin._apps:
+    try:
+        fb_dict = dict(st.secrets["firebase"])
+        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+        creds = credentials.Certificate(fb_dict)
+        firebase_admin.initialize_app(creds, {'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'})
+    except: pass
 
-        function updateVisuals() {{
-            requestAnimationFrame(updateVisuals);
-            if (!analyser) return;
-            
-            analyser.getByteFrequencyData(dataArray);
-            
-            let total = 0;
-            for (let i = 0; i < dataArray.length; i++) {{
-                total += dataArray[i];
-            }}
-            let averageVolume = total / dataArray.length; 
+st.title("🛰️ SYNAPSE COMMAND CENTER")
 
-            // เอฟเฟกต์ไฟนีออนเต้นตามจังหวะเสียงเบส/ความดังจริง
-            let glowRadius1 = 5 + (averageVolume * 0.15);
-            let glowRadius2 = 10 + (averageVolume * 0.3);
-            let glowRadius3 = 25 + (averageVolume * 0.5);
+# 3. 🎵 บังคับเล่นเพลง (ยักษ์ในตัวฉัน)
+music_url = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
+st.audio(music_url, format="audio/mpeg", loop=True)
 
-            lyricsDisplay.style.textShadow = `
-                0 0 ${{glowRadius1}}px #fff,
-                0 0 ${{glowRadius2}}px #00fff2,
-                0 0 ${{glowRadius3}}px #00e1ff
-            `;
+# 4. 🚀 ระบบดึงพิกัดจริง (แก้จากอนุสาวรีย์ฯ เป็นตัวคุณ)
+loc = get_geolocation()
 
-            // ดึงเวลาปัจจุบันของเพลงมาตรวจสอบเทียบกับ Timeline
-            let currentTimeMs = audio.currentTime * 1000;
-            let currentText = "";
-            for (let i = 0; i < lyricsTimeline.length; i++) {{
-                if (currentTimeMs >= lyricsTimeline[i].time) {{
-                    currentText = lyricsTimeline[i].text;
-                }}
-            }}
-            if(currentText !== "") {{
-                lyricsDisplay.innerHTML = currentText;
-            }}
-        }}
-    </script>
-</body>
-</html>
-"""
+tabs = st.tabs(["🚀 CORE", "🛰️ RADAR"])
 
-# แสดงหน้าเว็บเครื่องเล่นเพลงซิงค์เนื้อเพลง
-st.components.v1.html(html_code, height=650, scrolling=False)
+with tabs[0]:
+    my_id = st.text_input("ระบุชื่อรหัสของคุณ:", value="Ta101")
+    if loc:
+        lat = loc['coords']['latitude']
+        lon = loc['coords']['longitude']
+        st.success(f"📍 ตรวจพบตำแหน่งจริง: {lat}, {lon}")
+        
+        if st.button("🛰️ บันทึกพิกัดจริง"):
+            db.reference(f'users/{my_id}').update({
+                'lat': lat, 'lon': lon, 'last_update': time.time()
+            })
+            st.balloons()
+    else:
+        st.warning("🚨 กรุณากด 'อนุญาต' (Allow) การเข้าถึงตำแหน่งบนเบราว์เซอร์")
+
+with tabs[1]:
+    all_users = db.reference('users').get()
+    
+    # 💡 หัวใจสำคัญ: ถ้ามีพิกัดเรา ให้เปิดแผนที่ตรงที่เราอยู่เลย!
+    view_lat, view_lon = 13.75, 100.5 # ค่าพื้นฐาน
+    if all_users and my_id in all_users:
+        view_lat = all_users[my_id].get('lat', 13.75)
+        view_lon = all_users[my_id].get('lon', 100.5)
+
+    m = folium.Map(location=[view_lat, view_lon], zoom_start=17, 
+                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+                   attr="Google Satellite")
+
+    if all_users:
+        for name, info in all_users.items():
+            if 'lat' in info and 'lon' in info:
+                # 🔵 ตัวคุณ | 🔴 คนอื่น
+                color = 'blue' if name == my_id else 'red'
+                folium.Marker([info['lat'], info['lon']], tooltip=name,
+                              icon=folium.Icon(color=color, icon='star')).add_to(m)
+        st_folium(m, width="100%", height=500)
