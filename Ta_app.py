@@ -4,13 +4,14 @@ import base64
 # 1. ตั้งค่าหน้าจอ
 st.set_page_config(page_title="จับหยังกะพัง จับหยังกะฮ้าง - Custom", layout="wide")
 
-# สไตล์ CSS ตกแต่ง Sidebar เล็กน้อย
+# สไตล์ CSS ตกแต่ง Sidebar เล็กน้อย (แก้ไข Parameter ให้ถูกต้องตามความจริงแล้ว)
 st.markdown("""
     <style>
     [data-testid="stSidebar"] { background-color: #111111; color: white; }
     h1, h2, h3 { color: #ff0055 !important; }
     </style>
-""", unsafe_allowed_index=True)
+""", unsafe_allow_html=True)
+
 
 # 2. ส่วนควบคุมใน Sidebar (อัปโหลดและแก้ไขข้อมูล)
 st.sidebar.title("🎵 ตั้งค่าโปรเจกต์")
