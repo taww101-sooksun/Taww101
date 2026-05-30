@@ -1,141 +1,170 @@
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, db
-import time
 import base64
+import os
 
-# ==========================================
-# 1. ตั้งค่าหน้าแอป และสไตล์เบื้องต้น
-# ==========================================
-st.set_page_config(page_title="Secure Chat App", page_icon="🔐", layout="centered")
+# ตั้งค่าหน้ากระดาน Streamlit ให้แสดงผลแบบเต็มหน้าจอ
+st.set_page_config(page_title="จับหยังกะพัง จับหยังกะฮ้าง", layout="wide")
 
-# ==========================================
-# 2. จำลองระบบ Log-in และสมาสิก (เพื่อไม่ให้โค้ดพัง)
-# ==========================================
-# สมมติชื่อคุณเองเป็น Agent_001
-if "user" not in st.session_state:
-    st.session_state.user = "Agent_001"
+# หาที่อยู่ของโฟลเดอร์ปัจจุบันที่ไฟล์ app.py นี้ทำงานอยู่ตามความเป็นจริง
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# ==========================================
-# 3. เชื่อมต่อ Firebase Admin SDK (ใช้ความจริงจากคอนฟิกคุณ)
-# ==========================================
-if not firebase_admin._apps:
-    try:
-        # ใช้คอนฟิกแบบอ้างอิง URL ฐานข้อมูลตามที่คุณให้มาในตอนแรก
-        # หมายเหตุ: ในความเป็นจริงถ้าเป็น Admin SDK ควรใช้คู่กับไฟล์ serviceAccountKey.json
-        # แต่เพื่อความรวดเร็วในการทดสอบ เราจะดึงสิทธิ์จากสิ่งที่ระบบเปิดไว้ครับ
-        firebase_url = st.secrets["firebase"]["firebase_url"]
-        
-        # เชื่อมต่อฐานข้อมูล
-        firebase_admin.initialize_app(options={
-            'databaseURL': firebase_url
-        })
-    except Exception as e:
-        st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ Firebase: {e}")
+# ฟังก์ชันแปลงไฟล์ในโฟลเดอร์โปรเจกต์ให้เป็น Base64 เพื่อส่งเข้าไปเล่นใน HTML ได้จริง
+def get_base64_encoded_file(file_name):
+    # เชื่อมชื่อไฟล์เข้ากับที่อยู่โฟลเดอร์ปัจจุบันแบบเป๊ะๆ
+    file_path = os.path.join(BASE_DIR, file_name)
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f:
+            data = f.read()
+        return f"data:audio/mp3;base64,{base64.b64encode(data).decode()}"
+    return ""
 
-# ==========================================
-# 4. ฟังก์ชันห้องแชตสายลับ (ปรับปรุงใหม่ตามหลักความจริง)
-# ==========================================
-def room_private():
-    st.subheader("🔐 แชตส่วนตัวสายลับ (Secure Media Chat)")
-    st.write(f"👤 คุณกำลังใช้งานในชื่อ: **{st.session_state.user}**")
-    
-    # ดึงรายชื่อผู้ใช้จาก Firebase มาแสดง (จำลองเพิ่มชื่อทดสอบเข้าไปด้วยเพื่อความชัวร์ว่าจะมีให้เลือก)
-    try:
-        users_ref = db.reference('users')
-        users = users_ref.get()
-        
-        # ถ้าใน Firebase ยังไม่มีข้อมูลยูสเซอร์เลย เราจะบังคับสร้าง ID ทดสอบให้เลือกใช้งานได้จริง
-        if not users:
-            users_ref.child("Agent_001").set({"status": "online"})
-            users_ref.child("Agent_002").set({"status": "online"})
-            users_ref.child("Target_X").set({"status": "online"})
-            users = users_ref.get()
+def get_base64_encoded_video(file_name):
+    file_path = os.path.join(BASE_DIR, file_name)
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f:
+            data = f.read()
+        return f"data:video/mp4;base64,{base64.b64encode(data).decode()}"
+    return ""
+
+# ดึงไฟล์จากหน้าหลักของโปรเจกต์ (ตรวจดูว่าพิมพ์ชื่อไฟล์ตัวเล็กตัวใหญ่ตรงกับที่อัปโหลดขึ้น GitHub นะครับ)
+song_base64 = get_base64_encoded_file("song.mp3")
+video_base64 = get_base64_encoded_video("background-video.mp4")
+
+# ตรวจสอบเบื้องต้นในระบบหลังบ้านว่าเจอไฟล์จริงไหม
+if not song_base64:
+    st.error("❌ หาไฟล์ 'song.mp3' ไม่เจอในหน้าหลักของโปรเจกต์ กรุณาตรวจสอบชื่อไฟล์บน GitHub ครับ")
+
+# ส่วนของโค้ดหน้าเว็บที่จะไปสร้างไฟนีออนวิ่งตามจังหวะเสียงเพลง
+html_code = f"""
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body, html {{
+            width: 100%; height: 100%; overflow: hidden;
+            font-family: 'Arial', sans-serif; background-color: #000;
+            display: flex; justify-content: center; align-items: center;
+        }}
+        .background-container {{
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+        }}
+        .background-container video {{
+            width: 100%; height: 100%; object-fit: cover; opacity: 0.35;
+        }}
+        .lyrics-box {{
+            position: relative; z-index: 2; text-align: center; padding: 20px; max-width: 90%; pointer-events: none;
+        }}
+        .neon-text {{
+            font-size: 2.8rem; font-weight: bold; color: #fff;
+            text-shadow: 0 0 5px #fff, 0 0 10px #ff0055, 0 0 20px #ff0055;
+            transition: text-shadow 0.08s ease; line-height: 1.5;
+            text-align: center;
+        }}
+        .play-btn {{
+            position: absolute; z-index: 3; padding: 18px 36px; font-size: 1.3rem; font-weight: bold;
+            background-color: #ff0055; color: white; border: none; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 0 20px #ff0055; transition: transform 0.2s;
+        }}
+        .play-btn:hover {{ transform: scale(1.05); }}
+    </style>
+</head>
+<body>
+
+    <div class="background-container">
+        <video src="{video_base64}" autoplay loop muted playsinline></video>
+    </div>
+
+    <button class="play-btn" id="playBtn">▶ เปิดเพลง: จับหยังกะพัง จับหยังกะฮ้าง</button>
+
+    <div class="lyrics-box">
+        <p class="neon-text" id="lyricsDisplay">อยู่นิ่งๆ ก็บ่เจ็บตัว...<br>กดปุ่มเพื่อเริ่มฟังเพลง</p>
+    </div>
+
+    <audio id="myTrack" src="{song_base64}" crossOrigin="anonymous"></audio>
+
+    <script>
+        const playBtn = document.getElementById('playBtn');
+        const audio = document.getElementById('myTrack');
+        const lyricsDisplay = document.getElementById('lyricsDisplay');
+
+        // รายการซิงค์เนื้อเพลงตามเวลา (หน่วยเป็น มิลลิวินาที: 1000 = 1 วินาที)
+        const lyricsTimeline = [
+            {{ time: 0, text: "(Intro)<br>โอ้ละน้อ... ชีวิตคนโซ บ่มียามโก้กับเขาเลิก<br>ตื่นเช้ามา หน้าบ่ล้าง ร่างกายยังสะลึมสะลือ<br>มีแต่ใจเพียวๆ ที่ประคองมันไว้... เออ..." }},
+            {{ time: 10000, text: "(Verse 1)<br>ตื่นขึ้นแต่เช้า แปรงฟัน น้ำท่าบ่อาบ<br>กินข้าวเสร็จสรรพ ภารกิจขยับมารับทราบ" }},
+            {{ time: 18000, text: "เดินอ้อมรถไถ ตรวจตราดูความเรียบร้อย<br>หวังว่ามื้อนี้สิบ่มีเรื่องให้ข่อยต้องเศร้าสร้อย" }},
+            {{ time: 26000, text: "โดดขึ้นเบาะคนขับ จับพวงมาลัยให้มั่น<br>บิดกุญแจสตาร์ทเครื่อง เสียงดังสนั่นไปทั้งหมู่บ้าน" }},
+            {{ time: 34000, text: "ควันดำ ขะ โหมง มุ่งหน้าสู่ทุ่งนาที่กว้างใหญ่<br>วันนี้ต้องลุยงานเหล็ก สู้ตายไปกับหัวใจ" }},
+            {{ time: 42000, text: "(Pre-Chorus)<br>แต่แล้ว... สวรรค์ กลั่นแกล้ง กันบ่น้อ<br>ไถนาได้สองงาน... ใจมันกะเริ่มท้อ" }},
+            {{ time: 50000, text: "(Chorus)<br>ปั่ง!!! เสียงระเบิดดังลั่นทุ่งนา<br>ชิบหายแล้วมึงเอ๊ย น้ำตาไหลมา อาบ หน้า" }},
+            {{ time: 58000, text: "ลูกปืนมันแตก เพา ขาด หม้อน้ำกะไหม้<br>พัง พัง ฮ้าง ฮ้าง... สิตายคาทุ่งนา 'บ่'นี่<br>รถไถกะฮ้าง ใจคนขับกะพัง... โอ้โฮ..." }},
+            {{ time: 70000, text: "(Verse 2)<br>ขับกันตั้งสามคน แต่กูจับทีไรเป็นพังทุกที!<br>ดวงซวยอะไรขนาดนี้ แจ็กพอตแตกใส่กูตลอดปี" }},
+            {{ time: 80000, text: "ไอ้ตอนคนอื่นขับ ไม่เห็นมันเป็นอะไรเลยวะ<br>พอถึงคิวกูทีไร พังยับเยินจนต้องร้องจ้า" }},
+            {{ time: 90000, text: "แล้วกูก็โดนบ่น แล้วกูก็โดนด่าอยู่คนเดียว<br>รับ จบทุกปัญหา ทั้งที่ใจกูบางเฉียบประหนึ่งใบเรียว<br>รถไถพังทีไร กูโดนด่าเป็นประจำเลย... เฮ้อ..." }},
+            {{ time: 105000, text: "(Outro)<br>อยู่นิ่งๆ ก็บ่เจ็บตัว... แต่ต้องมาขับรถไถ<br>รับความซวยไปเต็มๆ โดนด่าจนอิ่มใจ<br>พังอีกแล้ว... ฮ้างอีกแล้ว... (เฮ้อ...)" }}
+        ];
+
+        let audioContext;
+        let analyser;
+        let dataArray;
+        let source;
+
+        playBtn.addEventListener('click', function() {{
+            playBtn.style.display = 'none';
+            audio.play();
+
+            if (!audioContext) {{
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                source = audioContext.createMediaElementSource(audio);
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+                
+                analyser.fftSize = 32; 
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                
+                updateVisuals();
+            }}
+        }});
+
+        function updateVisuals() {{
+            requestAnimationFrame(updateVisuals);
+            if (!analyser) return;
             
-        friends = [u for u in users.keys() if u != st.session_state.user] if users else []
-    except Exception as e:
-        st.error(f"ไม่สามารถดึงรายชื่อผู้ใช้ได้: {e}")
-        friends = ["Agent_002", "Target_X"] # ตัวเลือกสำรองกรณีฐานข้อมูลเชื่อมต่อติดขัด
-
-    # กล่องเลือกคู่สายแชต
-    target = st.selectbox("🎯 เลือกคู่สาย AGENT:", ["-- เลือกเป้าหมาย --"] + friends)
-    
-    if target != "-- เลือกเป้าหมาย --":
-        # สร้าง ID ห้องแชตแบบคู่ (เรียงตามตัวอักษร)
-        rid = "_".join(sorted([st.session_state.user, target]))
-        
-        # --- [ส่วนที่ 1: ส่วนส่งข้อความและลากไฟล์วาง] ---
-        with st.form("private_media_form", clear_on_submit=True):
-            msg = st.text_input(f"🔒 ส่งข้อความลับถึง {target}...")
-            uploaded_file = st.file_uploader("📸 ส่งรูป/คลิปส่วนตัว (จำกัดขนาดไม่เกิน 1MB)", type=['jpg', 'png', 'mp4', 'mov'])
+            analyser.getByteFrequencyData(dataArray);
             
-            if st.form_submit_button("🚀 LOCK & SEND"):
-                file_data = None
-                file_type = None
-                
-                if uploaded_file is not None:
-                    bytes_data = uploaded_file.getvalue()
-                    # ดักจับขนาดไฟล์จริง ไม่ให้เกินสิทธิ์ที่ Realtime Database รับไหว
-                    if len(bytes_data) > 1 * 1024 * 1024:
-                        st.error("⚠️ ไฟล์ใหญ่เกิน 1MB ฐานข้อมูลไม่รองรับข้อความยาวขนาดนี้")
-                    else:
-                        file_data = base64.b64encode(bytes_data).decode()
-                        file_type = uploaded_file.type
+            let total = 0;
+            for (let i = 0; i < dataArray.length; i++) {{
+                total += dataArray[i];
+            }}
+            let averageVolume = total / dataArray.length; 
 
-                # บันทึกข้อมูลลง Firebase
-                if msg or file_data:
-                    try:
-                        db.reference(f'private_rooms/{rid}').push({
-                            'u': st.session_state.user,
-                            'm': msg,
-                            'file': file_data,
-                            'ft': file_type,
-                            'ts': time.time()
-                        })
-                        st.success("ส่งข้อมูลเข้าชั้นความลับแล้ว!")
-                        time.sleep(0.5)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"ส่งไม่สำเร็จ: {e}")
+            let glowRadius1 = 5 + (averageVolume * 0.15);
+            let glowRadius2 = 10 + (averageVolume * 0.3);
+            let glowRadius3 = 25 + (averageVolume * 0.5);
 
-        # --- [ส่วนที่ 2: ส่วนแสดงผลข้อความในห้องลับ] ---
-        st.write("---")
-        try:
-            msgs_ref = db.reference(f'private_rooms/{rid}').order_by_key().limit_to_last(15).get()
-        except Exception:
-            msgs_ref = None
-        
-        if msgs_ref:
-            # วนลูปการแสดงผลแชตเรียงตามธรรมชาติ (เก่าไปใหม่)
-            for k, v in msgs_ref.items():
-                u_name = v.get('u', 'Unknown')
-                msg_text = v.get('m', '')
-                f_data = v.get('file')
-                f_type = v.get('ft')
-                
-                # แยกซ้ายขวาด้วยระบบ Chat Message ของ Streamlit เอง ไม่พึ่ง HTML ที่ทำให้จอดับ
-                role = "user" if u_name == st.session_state.user else "assistant"
-                avatar = "👤" if role == "user" else "🕵️"
-                
-                with st.chat_message(role, avatar=avatar):
-                    st.write(f"**{u_name}**")
-                    if msg_text:
-                        st.write(msg_text)
-                    
-                    # ถ้ามีไฟล์ภาพหรือวิดีโอ Base64 แนบมา ให้ถอดรหัสและแสดงผลในกล่องข้อความ
-                    if f_data:
-                        try:
-                            decoded = base64.b64decode(f_data)
-                            if "image" in f_type:
-                                st.image(decoded, caption="รูปภาพจากสายลับ")
-                            elif "video" in f_type:
-                                st.video(decoded)
-                        except Exception:
-                            st.caption("⚠️ ไม่สามารถถอดรหัสไฟล์สื่อนี้ได้")
-        else:
-            st.caption("🌑 ยังไม่มีการสนทนาในห้องลับนี้")
+            lyricsDisplay.style.textShadow = `
+                0 0 ${{glowRadius1}}px #fff,
+                0 0 ${{glowRadius2}}px #ff00cc,
+                0 0 ${{glowRadius3}}px #ff0055
+            `;
 
-# ==========================================
-# 5. รันฟังก์ชันหลักบนหน้าเว็บ
-# ==========================================
-room_private()
+            let currentTimeMs = audio.currentTime * 1000;
+            let currentText = "";
+            for (let i = 0; i < lyricsTimeline.length; i++) {{
+                if (currentTimeMs >= lyricsTimeline[i].time) {{
+                    currentText = lyricsTimeline[i].text;
+                }}
+            }}
+            if(currentText !== "") {{
+                lyricsDisplay.innerHTML = currentText;
+            }}
+        }}
+    </script>
+</body>
+</html>
+"""
+
+st.components.v1.html(html_code, height=750, scrolling=False)
