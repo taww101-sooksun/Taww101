@@ -1,174 +1,196 @@
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, db
-import folium
-from streamlit_folium import st_folium
-import time
-import os
+import base64
 
-# บังคับระบบไม่ให้วิ่งไปหา Google Metadata Server (แก้บั๊ก Connection timed out)
-os.environ["g_metadata_server"] = "none"
-os.environ["GOOGLE_CLOUD_DISABLE_GRPC"] = "true"
+# 1. ตั้งค่าหน้าจอ
+st.set_page_config(page_title="จับหยังกะพัง จับหยังกะฮ้าง - Custom", layout="wide")
 
-# 1. ตั้งค่าหน้าจอและระบบสีพื้นหลัง (Theme Selector)
-st.set_page_config(page_title="SYNAPSE CLEAR", layout="wide")
-
-if 'theme_color' not in st.session_state:
-    st.session_state.theme_color = "#00f2fe" 
-
-with st.sidebar:
-    st.markdown("### 🎨 ปรับแต่งสีระบบ")
-    picked_color = st.color_picker("เลือกสีนีออนของคุณ", st.session_state.theme_color)
-    st.session_state.theme_color = picked_color
-    st.write(f"สีปัจจุบัน: {picked_color}")
-    st.write("---")
-    st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
-
-st.markdown(f"""
+# สไตล์ CSS ตกแต่ง Sidebar เล็กน้อย
+st.markdown("""
     <style>
-    .stApp {{ 
-        background: #000 !important; 
-        color: {st.session_state.theme_color} !important; 
-    }}
-    .stButton>button {{ 
-        border: 1px solid {st.session_state.theme_color} !important; 
-        color: {st.session_state.theme_color} !important; 
-        background-color: transparent !important;
-        width: 100%;
-    }}
+    [data-testid="stSidebar"] { background-color: #111111; color: white; }
+    h1, h2, h3 { color: #ff0055 !important; }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allowed_index=True)
 
-# 2. เชื่อมต่อ FIREBASE (แบบกำหนดตัวเลือกปิดดักจับ Metadata)
-if not firebase_admin._apps:
-    try:
-        fb_dict = dict(st.secrets["firebase"])
-        fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
-        creds = credentials.Certificate(fb_dict)
+# 2. ส่วนควบคุมใน Sidebar (อัปโหลดและแก้ไขข้อมูล)
+st.sidebar.title("🎵 ตั้งค่าโปรเจกต์")
+st.sidebar.subheader("อยู่นิ่งๆ ไม่เจ็บตัว แต่ถ้าอยากทำกะจัดมา!")
+
+# อัปโหลดวิดีโอพื้นหลัง
+bg_video = st.sidebar.file_uploader("1. อัปโหลดวิดีโอพื้นหลัง (MP4)", type=["mp4"])
+# อัปโหลดเพลง
+bg_audio = st.sidebar.file_uploader("2. อัปโหลดไฟล์เพลง (MP3)", type=["mp3"])
+
+# ส่วนแก้ไขเนื้อเพลง
+st.sidebar.subheader("📝 แก้ไขข้อความ/เนื้อเพลง")
+text_line_1 = st.sidebar.text_input("ข้อความบรรทัดที่ 1", "จับหยังกะพัง จับหยังกะฮ้างงงงงงงง")
+text_line_2 = st.sidebar.text_input("ข้อความบรรทัดที่ 2", "อยู่นิ่งๆ ก็บ่เจ็บตัว... แต่ต้องมาขับรถไถรับความซวย!")
+
+# ปรับความเร็วตัวอักษรวิ่ง
+marquee_speed = st.sidebar.slider("🏃 ความเร็วตัวอักษรวิ่ง (วินาทีต่อรอบ ยิ่งน้อยยิ่งวิ่งไว)", min_value=5, max_value=30, value=15)
+
+# 3. ฟังก์ชันแปลงไฟล์ที่อัปโหลดเป็น Base64
+def convert_to_base64(uploaded_file, file_type):
+    if uploaded_file is not None:
+        bytes_data = uploaded_file.read()
+        base64_data = base64.b64encode(bytes_data).decode()
+        return f"data:{file_type};base64,{base64_data}"
+    return ""
+
+video_base64 = convert_to_base64(bg_video, "video/mp4")
+audio_base64 = convert_to_base64(bg_audio, "audio/mp3")
+
+# 4. ส่วนแสดงผลหลัก
+st.title("🎬 ระบบแสดงผลเอฟเฟกต์ไฟนีออนวิ่ง")
+
+# ตัวแปรช่วยเช็คสถานะ
+ready_to_play = True
+
+if not video_base64:
+    st.info("💡 คำแนะนำ: อัปโหลดวิดีโอ MP4 ที่ Sidebar ด้านซ้ายเพื่อแสดงพื้นหลัง (ตอนนี้ใช้พื้นหลังดำไปก่อน)")
+if not audio_base64:
+    st.warning("⚠️ กรุณาอัปโหลดไฟล์เพลง MP3 ที่ Sidebar ด้านซ้ายเพื่อเปิดระบบเสียงและไฟวิ่งตามจังหวะ")
+    ready_to_play = False
+
+# โครงสร้าง HTML + CSS + JS (ทำงานบน Browser ของผู้ใช้จริง)
+html_code = f"""
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+        body, html {{
+            width: 100%; height: 100%; overflow: hidden;
+            font-family: 'Arial', sans-serif; background-color: #000;
+            display: flex; justify-content: center; align-items: center;
+            position: relative;
+        }}
         
-        # เชื่อมต่อฐานข้อมูลโดยตรง
-        firebase_admin.initialize_app(creds, {
-            'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
-        })
-    except Exception as e:
-        st.error(f"ไม่สามารถเชื่อมต่อ Firebase ได้: {e}")
+        /* วิดีโอพื้นหลัง */
+        .background-container {{
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1;
+        }}
+        .background-container video {{
+            width: 100%; height: 100%; object-fit: cover; opacity: 0.4;
+        }}
 
-st.title("🛰️ SYNAPSE COMMAND CENTER")
+        /* โซนตัวอักษรวิ่ง (Marquee Container) */
+        .marquee-box {{
+            position: relative; z-index: 2; width: 100%; overflow: hidden;
+            white-space: nowrap; pointer-events: none;
+        }}
 
-# 3. บังคับเล่นเพลง
-music_url = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
-st.audio(music_url, format="audio/mpeg", loop=True)
+        /* เอฟเฟกต์อักษรวิ่งข้ามจอ */
+        .marquee-content {{
+            display: inline-block;
+            padding-left: 100%;
+            animation: marqueeAnimation {marquee_speed}s linear infinite;
+        }}
 
-tabs = st.tabs(["🚀 CORE", "🛰️ RADAR"])
+        .neon-text {{
+            font-size: 3.5rem; font-weight: bold; color: #fff;
+            text-shadow: 0 0 5px #fff, 0 0 10px #ff0055, 0 0 20px #ff0055;
+            transition: text-shadow 0.05s ease;
+        }}
 
-with tabs[0]:
-    my_id = st.text_input("ระบุชื่อรหัสของคุณ:", value="Ta101")
-    
-    st.markdown("### 📍 ระบบดึงพิกัดดาวเทียม (Real-Time)")
-    st.write("กดปุ่มด้านล่างเพื่อสั่งให้มือถือค้นหาตำแหน่งพิกัดที่แท้จริงของคุณ")
+        @keyframes marqueeAnimation {{
+            0% {{ transform: translate3d(0, 0, 0); }}
+            100% {{ transform: translate3d(-100%, 0, 0); }}
+        }}
 
-    js_gps_html = """
-    <div style="text-align: center;">
-        <button onclick="getLocation()" style="
-            background-color: transparent; 
-            color: NEON_COLOR; 
-            border: 2px solid NEON_COLOR; 
-            padding: 15px 32px; 
-            font-size: 16px; 
-            cursor: pointer; 
-            border-radius: 8px;
-            font-weight: bold;
-            width: 100%;
-            box-shadow: 0 0 10px NEON_COLOR;
-        ">📡 กดปุ่มนี้เพื่อแชร์พิกัดปัจจุบันจริง</button>
-        <p id="status" style="margin-top: 10px; color: #fff; font-size: 14px;">สถานะ: รอการกดปุ่ม...</p>
+        /* ปุ่มกด */
+        .play-btn {{
+            position: absolute; z-index: 3; padding: 20px 40px; font-size: 1.5rem; font-weight: bold;
+            background-color: #ff0055; color: white; border: none; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 0 25px #ff0055; transition: transform 0.2s;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+        }}
+        .play-btn:hover {{ transform: translate(-50%, -50%) scale(1.05); }}
+    </style>
+</head>
+<body>
+
+    <!-- เล่นวิดีโออัตโนมัติถ้ามีการอัปโหลดมา -->
+    <div class="background-container">
+        {f'<video src="{video_base64}" autoplay loop muted playsinline></video>' if video_base64 else ''}
     </div>
 
+    <!-- ปุ่มเริ่มทำงาน -->
+    {"<button class='play-btn' id='playBtn'>▶ เริ่มเล่นเพลง & เปิดไฟวิ่ง</button>" if ready_to_play else "<div style='color:white; z-index:3; font-size:1.2rem;'>คอยแป๊บนะ... อัปโหลดเพลงก่อนถึงจะกดเล่นได้</div>"}
+
+    <!-- ตัวอักษรวิ่งหนีไปด้านซ้าย -->
+    <div class="marquee-box">
+        <div class="marquee-content" id="neonContainer">
+            <span class="neon-text" id="lyricsDisplay">
+                {text_line_1} &nbsp;&nbsp;&nbsp;&nbsp; || &nbsp;&nbsp;&nbsp;&nbsp; {text_line_2}
+            </span>
+        </div>
+    </div>
+
+    <!-- ไฟล์เสียง -->
+    <audio id="myTrack" src="{audio_base64}" crossOrigin="anonymous"></audio>
+
     <script>
-    function getLocation() {
-        const status = document.getElementById('status');
-        if (!navigator.geolocation) {
-            status.innerHTML = '❌ เบราว์เซอร์ของคุณไม่รองรับระบบ GPS';
-            return;
-        }
-        
-        status.innerHTML = '⚡ กำลังค้นหาสัญญาณดาวเทียม...';
-        
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                const lat = position.coords.latitude;
-                const lon = position.coords.longitude;
-                status.innerHTML = '✅ เจอพิกัดแล้ว! กำลังส่งเข้าดาวเทียมหลัก...';
-                
-                const currentUrl = new URL(window.parent.location.href);
-                currentUrl.searchParams.set('lat', lat);
-                currentUrl.searchParams.set('lon', lon);
-                window.parent.location.href = currentUrl.toString();
-            },
-            (error) => {
-                if(error.code == 1) {
-                    status.innerHTML = '❌ กรุณากด "อนุญาต" สิทธิ์ GPS บนมือถือของคุณด้วยครับ';
-                } else {
-                    status.innerHTML = '❌ สัญญาณดาวเทียมขัดข้อง ลองเปิด GPS ในเครื่องดูครับ';
-                }
-            },
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-    }
-    </script>
-    """.replace("NEON_COLOR", st.session_state.theme_color)
+        const playBtn = document.getElementById('playBtn');
+        const audio = document.getElementById('myTrack');
+        const lyricsDisplay = document.getElementById('lyricsDisplay');
 
-    st.components.v1.html(js_gps_html, height=120)
+        let audioContext;
+        let analyser;
+        let dataArray;
+        let source;
 
-    query_params = st.query_params
-    
-    if "lat" in query_params and "lon" in query_params:
-        lat = float(query_params["lat"])
-        lon = float(query_params["lon"])
-        
-        st.success(f"🎯 สัญญาณดาวเทียมล็อกเป้าสำเร็จ: {lat}, {lon}")
-        
-        try:
-            db.reference(f'users/{my_id}').update({
-                'lat': lat, 'lon': lon, 'last_update': time.time()
-            })
-            st.toast("🛰️ อัปเดตพิกัดลงฐานข้อมูลสำเร็จ!", icon="🚀")
-        except Exception as e:
-            st.error(f"ส่งพิกัดเข้าเซิร์ฟเวอร์ไม่สำเร็จ: {e}")
+        if(playBtn) {{
+            playBtn.addEventListener('click', function() {{
+                playBtn.style.display = 'none';
+                audio.play();
+
+                // สร้าง Web Audio API เพื่อดึงความถี่เสียงมาทำไฟกระพริบจริง
+                if (!audioContext) {{
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioContext.createAnalyser();
+                    source = audioContext.createMediaElementSource(audio);
+                    source.connect(analyser);
+                    analyser.connect(audioContext.destination);
+                    
+                    analyser.fftSize = 32; 
+                    const bufferLength = analyser.frequencyBinCount;
+                    dataArray = new Uint8Array(bufferLength);
+                    
+                    updateVisuals();
+                }}
+            }});
+        }}
+
+        // ฟังก์ชันคำนวณความดังเสียงแบบ Real-time เพื่อสั่งให้แสงนีออนวาบตามเบส
+        function updateVisuals() {{
+            requestAnimationFrame(updateVisuals);
+            if (!analyser) return;
             
-        if st.button("🔄 ล้างค่าพิกัดเก่าเพื่อจับสัญญาณใหม่"):
-            st.query_params.clear()
-            st.rerun()
+            analyser.getByteFrequencyData(dataArray);
+            
+            let total = 0;
+            for (let i = 0; i < dataArray.length; i++) {{
+                total += dataArray[i];
+            }}
+            let averageVolume = total / dataArray.length; 
 
-with tabs[1]:
-    all_users = None
-    try:
-        all_users = db.reference('users').get()
-    except Exception as e:
-        pass # ถ้าบั๊กดึงไม่ได้ ให้ปล่อยข้ามไปเงียบๆ ไม่ให้ตัวหนังสือสีแดงกวนใจ
-    
-    view_lat, view_lon = 13.75, 100.5 
-    
-    if all_users and my_id in all_users:
-        if isinstance(all_users[my_id], dict):
-            view_lat = all_users[my_id].get('lat', 13.75)
-            view_lon = all_users[my_id].get('lon', 100.5)
+            // ปรับแต่งรัศมีนีออนตามความดังของเพลงขนะนั้นๆ
+            let glowRadius1 = 5 + (averageVolume * 0.2);
+            let glowRadius2 = 10 + (averageVolume * 0.4);
+            let glowRadius3 = 25 + (averageVolume * 0.7);
 
-    m = folium.Map(
-        location=[view_lat, view_lon], 
-        zoom_start=15, 
-        tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
-        attr="Google Satellite"
-    )
+            lyricsDisplay.style.textShadow = `
+                0 0 ${{glowRadius1}}px #fff,
+                0 0 ${{glowRadius2}}px #ff00cc,
+                0 0 ${{glowRadius3}}px #ff0055
+            `;
+        }}
+    </script>
+</body>
+</html>
+"""
 
-    if all_users:
-        for name, info in all_users.items():
-            if isinstance(info, dict) and 'lat' in info and 'lon' in info:
-                color = 'blue' if name == my_id else 'red'
-                folium.Marker(
-                    location=[info['lat'], info['lon']], 
-                    tooltip=name,
-                    icon=folium.Icon(color=color, icon='star')
-                ).add_to(m)
-                
-    st_folium(m, width="100%", height=500)
+# แสดงผลกระดาน HTML
+st.components.v1.html(html_code, height=600, scrolling=False)
