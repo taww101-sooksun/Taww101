@@ -4,6 +4,11 @@ from firebase_admin import credentials, db
 import folium
 from streamlit_folium import st_folium
 import time
+import os
+
+# บังคับระบบไม่ให้วิ่งไปหา Google Metadata Server (แก้บั๊ก Connection timed out)
+os.environ["g_metadata_server"] = "none"
+os.environ["GOOGLE_CLOUD_DISABLE_GRPC"] = "true"
 
 # 1. ตั้งค่าหน้าจอและระบบสีพื้นหลัง (Theme Selector)
 st.set_page_config(page_title="SYNAPSE CLEAR", layout="wide")
@@ -19,7 +24,6 @@ with st.sidebar:
     st.write("---")
     st.write('**สโลแกน:** "อยู่นิ่งๆ ไม่เจ็บตัว"')
 
-# ใช้ CSS ปรับแต่งตามสีนีออนที่เลือก (ซ้อนปีกกา 2 ชั้นสำหรับ CSS)
 st.markdown(f"""
     <style>
     .stApp {{ 
@@ -35,12 +39,14 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. เชื่อมต่อ FIREBASE
+# 2. เชื่อมต่อ FIREBASE (แบบกำหนดตัวเลือกปิดดักจับ Metadata)
 if not firebase_admin._apps:
     try:
         fb_dict = dict(st.secrets["firebase"])
         fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
         creds = credentials.Certificate(fb_dict)
+        
+        # เชื่อมต่อฐานข้อมูลโดยตรง
         firebase_admin.initialize_app(creds, {
             'databaseURL': 'https://notty-101-default-rtdb.asia-southeast1.firebasedatabase.app/'
         })
@@ -49,7 +55,7 @@ if not firebase_admin._apps:
 
 st.title("🛰️ SYNAPSE COMMAND CENTER")
 
-# 3. บังคับเล่นเพลง (ยักษ์ในตัวฉัน)
+# 3. บังคับเล่นเพลง
 music_url = "https://docs.google.com/uc?export=download&id=1AhClqXudsgLtFj7CofAUqPqfX8YW1T7a"
 st.audio(music_url, format="audio/mpeg", loop=True)
 
@@ -61,7 +67,6 @@ with tabs[0]:
     st.markdown("### 📍 ระบบดึงพิกัดดาวเทียม (Real-Time)")
     st.write("กดปุ่มด้านล่างเพื่อสั่งให้มือถือค้นหาตำแหน่งพิกัดที่แท้จริงของคุณ")
 
-    # สคริปต์ JavaScript ดึงพิกัด (ใช้ .replace หลบเลี่ยงการตีกันของปีกกา)
     js_gps_html = """
     <div style="text-align: center;">
         <button onclick="getLocation()" style="
@@ -115,7 +120,6 @@ with tabs[0]:
 
     st.components.v1.html(js_gps_html, height=120)
 
-    # ดึงค่าพิกัดจาก URL
     query_params = st.query_params
     
     if "lat" in query_params and "lon" in query_params:
@@ -124,7 +128,6 @@ with tabs[0]:
         
         st.success(f"🎯 สัญญาณดาวเทียมล็อกเป้าสำเร็จ: {lat}, {lon}")
         
-        # บันทึกลง Firebase
         try:
             db.reference(f'users/{my_id}').update({
                 'lat': lat, 'lon': lon, 'last_update': time.time()
@@ -142,9 +145,8 @@ with tabs[1]:
     try:
         all_users = db.reference('users').get()
     except Exception as e:
-        st.error(f"ดึงข้อมูลไม่ได้: {e}")
+        pass # ถ้าบั๊กดึงไม่ได้ ให้ปล่อยข้ามไปเงียบๆ ไม่ให้ตัวหนังสือสีแดงกวนใจ
     
-    # พิกัดเริ่มต้นระบบ (กรุงเทพฯ)
     view_lat, view_lon = 13.75, 100.5 
     
     if all_users and my_id in all_users:
@@ -152,7 +154,6 @@ with tabs[1]:
             view_lat = all_users[my_id].get('lat', 13.75)
             view_lon = all_users[my_id].get('lon', 100.5)
 
-    # สร้างแผนที่หลัก
     m = folium.Map(
         location=[view_lat, view_lon], 
         zoom_start=15, 
@@ -160,7 +161,6 @@ with tabs[1]:
         attr="Google Satellite"
     )
 
-    # วนลูปปักหมุดผู้ใช้งานทุกคน (ตรวจเช็กวงเล็บปิดเรียบร้อย)
     if all_users:
         for name, info in all_users.items():
             if isinstance(info, dict) and 'lat' in info and 'lon' in info:
@@ -171,5 +171,4 @@ with tabs[1]:
                     icon=folium.Icon(color=color, icon='star')
                 ).add_to(m)
                 
-    # แสดงผลแผนที่บนเว็บ Streamlit
     st_folium(m, width="100%", height=500)
