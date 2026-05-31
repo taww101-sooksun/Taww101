@@ -77,8 +77,8 @@ else:
         st.markdown("<p style='color: #34d399 !important;'>🚜 <b>มีชื่อหมู่บ้านและเส้นถนนบอกชัดเจน:</b> สามารถใช้นิ้วซูมเข้า-ออก หาจุดอ้างอิง เช่น วัด โรงเรียน หรือทางหลวง แล้วลากเส้นวัดพื้นที่ได้แม่นยำ ไม่หลงแน่นอนครับ!</p>", unsafe_allow_html=True)
         
         # ปรับพิกัดเริ่มต้นให้ตรงใจ (พิกัดเริ่มต้น)
-        default_lat = 16.1234
-        default_lng = 103.5678
+        default_lat = 15.9513057
+        default_lng = 103.5796196
         
         map_html_code = f"""
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
