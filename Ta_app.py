@@ -142,13 +142,95 @@ else:
                     document.getElementById('area-text').innerHTML = 
                         "🚜 ขนาดที่นาผืนนี้: <span style='color:#f59e0b;'>" + rai + " ไร่ </span> " + 
                         "<span style='color:#10b981;'>" + ngan + " งาน </span> " + 
+    # ==========================================
+    # 1. หน้าจอระบบ GPS ดาวเทียมไฮเทค (มีชื่อหมู่บ้าน + เส้นถนนบอกชัดเจน)
+    # ==========================================
+    with tab_gps:
+        st.subheader("🛰️ แผนที่ดาวเทียมไฮบริด & วัดที่นา")
+        st.markdown("<p style='color: #34d399 !important;'>🚜 <b>มีชื่อหมู่บ้านและเส้นถนนบอกชัดเจน:</b> สามารถใช้นิ้วซูมเข้า-ออก หาจุดอ้างอิง เช่น วัด โรงเรียน หรือทางหลวง แล้วลากเส้นวัดพื้นที่ได้แม่นยำ ไม่หลงแน่นอนครับ!</p>", unsafe_allow_html=True)
+        
+        # ปรับพิกัดเริ่มต้นให้ตรงใจ (พิกัดเริ่มต้น)
+        default_lat = 16.1234
+        default_lng = 103.5678
+        
+        map_html_code = f"""
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+        
+        <div id="map" style="width: 100%; height: 380px; border-radius: 12px; border: 2px solid #10b981;"></div>
+        <div id="result-box" style="margin-top:15px; background:#1f2937; padding:15px; border-radius:8px; color:white; font-family:sans-serif;">
+            <b style="color:#34d399; font-size:16px;">📊 ผลการคำนวณพื้นที่สัจจะ:</b>
+            <p id="area-text" style="font-size:20px; margin:5px 0; font-weight:bold; color:#60a5fa;">ยังไม่มีการลากพื้นที่ (ใช้นิ้วจิ้มไอคอนรูปห้าเหลี่ยมหรือสี่เหลี่ยมทางซ้ายเพื่อลากเส้น)</p>
+        </div>
+
+        <script>
+            var map = L.map('map').setView([{default_lat}, {default_lng}], 15);
+
+            // 1. ดึงภาพถ่ายดาวเทียมความละเอียดสูง (เห็นหลังคาบ้านและคันนา)
+            var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+                maxZoom: 19
+            }}).addTo(map);
+
+            // 2. ดึงเลเยอร์ "ชื่อสถานที่ ถนน และเส้นแบ่งเขต" มาซ้อนทับด้านบน (ทำให้มีภาษาไทยและเส้นทางบอกชัดเจน)
+            var labelsLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+                maxZoom: 19
+            }}).addTo(map);
+            
+            var bordersLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+                maxZoom: 19
+            }}).addTo(map);
+
+            // ปักหมุดจุดปัจจุบัน
+            L.marker([{default_lat}, {default_lng}]).addTo(map)
+                .bindPopup('📍 พิกัดหมุดรถไถปัจจุบัน')
+                .openPopup();
+
+            // ระบบลากพื้นที่วัดขนาด
+            var drawnItems = new L.FeatureGroup();
+            map.addLayer(drawnItems);
+
+            var drawControl = new L.Control.Draw({{
+                draw: {{
+                    polygon: true,
+                    polyline: false,
+                    rectangle: true,
+                    circle: false,
+                    marker: false,
+                    circlemarker: false
+                }},
+                edit: {{
+                    featureGroup: drawnItems
+                }}
+            }});
+            map.addControl(drawControl);
+
+            map.on(L.Draw.Event.CREATED, function (event) {{
+                var layer = event.layer;
+                drawnItems.clearLayers();
+                drawnItems.addLayer(layer);
+
+                if (layer instanceof L.Polygon) {{
+                    var latlngs = layer.getLatLngs()[0];
+                    var areaSqMeters = L.GeometryUtil.geodesicArea(latlngs);
+                    
+                    var totalWa = areaSqMeters / 4;
+                    var rai = Math.floor(totalWa / 400);
+                    var remainingWa = totalWa % 400;
+                    var ngan = Math.floor(remainingWa / 100);
+                    var wa = Math.round(remainingWa % 100);
+
+                    document.getElementById('area-text').innerHTML = 
+                        "🚜 ขนาดที่นาผืนนี้: <span style='color:#f59e0b;'>" + rai + " ไร่ </span> " + 
+                        "<span style='color:#10b981;'>" + ngan + " งาน </span> " + 
                         "<span style='color:#ec4899;'>" + wa + " ตารางวา</span><br>" +
                         "<span style='font-size:13px; color:#9ca3af;'>รวมทั้งสิ้น " + Math.round(areaSqMeters).toLocaleString() + " ตารางเมตร</span>";
                 }}
             }});
         </script>
         """
-        st.components.v1.html(map_html_code, height=520, scrolling=False)
+        st.components.v1.html(map_html_code, height=550, scrolling=False)
 
     # -----------------------------------------------------
     # แท็บที่ 2: ระบบแชตสัจจะ (รวม / ส่วนตัว / โทร)
