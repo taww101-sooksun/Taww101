@@ -36,8 +36,20 @@ init_system()
 # 2. FIREBASE REALTIME DATABASE FUNCTIONS (LOGIC จริง)
 # ==========================================
 def get_firebase_data(path):
-...
+    try:
+        response = requests.get(f"{FB_URL}/{path}.json", timeout=5)
+        if response.status_code == 200 and response.json():
+            return response.json()
+    except Exception:
+        pass
+    return {}
 
+def push_firebase_data(path, data):
+    try:
+        requests.post(f"{FB_URL}/{path}.json", json=data, timeout=5)
+        return True
+    except Exception:
+        return False
 
 def update_firebase_data(path, data):
     try:
