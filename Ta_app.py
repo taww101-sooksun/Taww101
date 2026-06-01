@@ -21,6 +21,7 @@ except Exception:
 
 @st.cache_resource
 def init_system():
+    # สร้างตัวแปรทุกตัวให้ครบถ้วนในจุดนี้จุดเดียวพอ
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14" # เขียวเรืองแสง
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"     # ดำสนิท
     if 'logged_in' not in st.session_state: st.session_state.logged_in = False
@@ -28,27 +29,15 @@ def init_system():
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
     return True
 
-# เรียกใช้งานระบบเพื่อเตรียมตัวแปรใน session_state ให้เสร็จก่อนเปิด UI
+# เรียกใช้งานทันทีเพื่อให้มีค่าเซ็ตติ้งอยู่ในระบบก่อนรัน UI
 init_system()
 
 # ==========================================
 # 2. FIREBASE REALTIME DATABASE FUNCTIONS (LOGIC จริง)
 # ==========================================
 def get_firebase_data(path):
-    try:
-        response = requests.get(f"{FB_URL}/{path}.json", timeout=5)
-        if response.status_code == 200 and response.json():
-            return response.json()
-    except Exception:
-        pass
-    return {}
+...
 
-def push_firebase_data(path, data):
-    try:
-        requests.post(f"{FB_URL}/{path}.json", json=data, timeout=5)
-        return True
-    except Exception:
-        return False
 
 def update_firebase_data(path, data):
     try:
