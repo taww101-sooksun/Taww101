@@ -1,9 +1,7 @@
 import streamlit as st
 import os
-import random
-import time
 
-# ตั้งค่าหน้าจอแอปให้ดุดัน โทนมืด เหมาะกับการเปิดบนรถไถตอนแดดร้อนๆ
+# ตั้งค่าหน้าจอแอป
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", page_icon="🛸", layout="centered")
 
 st.markdown("""
@@ -15,205 +13,130 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# =========================================================
-# ระบบจำลองสถานะการล็อกอิน (Session State)
-# =========================================================
-if 'logged_in' not in st.session_state:
-    st.session_state.logged_in = False
-if 'user_phone' not in st.session_state:
-    st.session_state.user_phone = ""
+# จำลองฐานข้อมูลแชตให้อยู่ในระบบจำลอง (ในใช้งานจริงจะผูกกับ Firebase)
+if 'global_chats' not in st.session_state:
+    st.session_state.global_chats = [
+        {"user": "ระบบ", "msg": "ยินดีต้อนรับสู่ห้องแชตสัจจะ"},
+        {"user": "+66970801941", "msg": "กำลังไปไถนารับจ้างครับ"}
+    ]
+if 'private_chats' not in st.session_state:
+    st.session_state.private_chats = {}
 
-# =========================================================
-# หน้าจอที่ 1: หน้าล็อกอินสัจจะ (เช็กเบอร์ตรงๆ ตามฐานข้อมูล Firebase)
-# =========================================================
-if not st.session_state.logged_in:
-    st.title("📱 ระบบล็อกอินยิ้มซิ (Sooksun1)")
-    st.markdown("<p style='color: #f87171 !important; font-style: italic;'>\"อยู่นิ่งๆ ไม่เจ็บตัว ปลอดภัยร้อยเปอร์เซ็นต์\"</p>", unsafe_allow_html=True)
+# สมมุติตัวตนผู้ใช้ล็อกอิน (สืบทอดจากระบบเดิมของนาย)
+user_phone = "+66970801941"
+
+st.title("🛸 SYNAPSE COMMAND CENTER")
+st.write("---")
+
+tab_gps, tab_chat, tab_music = st.tabs(["📍 GPS ตำแหน่งจริง", "💬 ระบบแชตสัจจะ", "🎵 คลังเพลงในเครื่อง"])
+
+# -----------------------------------------------------
+# แท็บที่ 1: GPS ดึงพิกัดจริงจากมือถือคนใช้งาน
+# -----------------------------------------------------
+with tab_gps:
+    st.subheader("🛰️ แผนที่ดาวเทียมจาก GPS จริงของนาย")
+    st.caption("ระบบจะขอสิทธิ์เข้าถึงตำแหน่งจากมือถือ กรุณากด 'อนุญาต' เพื่อให้แผนที่เลื่อนไปจุดที่นายอยู่จริง")
     
-    with st.container():
-        st.subheader("เข้าสู่ระบบด้วยเบอร์โทรศัพท์")
+    # JavaScript ดึงพิกัดจริงจากเบราว์เซอร์มือถือ
+    gps_html = """
+    <div id="status" style="color:#10b981; font-weight:bold; margin-bottom:10px;">กำลังค้นหาพิกัดดาวเทียม...</div>
+    <div id="map" style="width: 100%; height: 350px; border-radius: 12px; border: 2px solid #10b981; background:#1f2937;"></div>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        var map = L.map('map').setView([15.9513, 103.5796], 6); // พิกัดสำรองระหว่างรอโหลด
         
-        phone_input = st.text_input("เบอร์โทรศัพท์ (ใส่รูปแบบสากล เช่น +66970801941):", value="+66970801941")
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19
+        }).addTo(map);
         
-        if st.button("📲 ขอรหัส OTP", use_container_width=True):
-            if phone_input in ["+66970801941", "+66800924262"]:
-                st.toast("⏳ ระบบจับคู่เบอร์ทดสอบใน Firebase สำเร็จ!")
-                st.success("✅ ดำเนินการสำเร็จ! กรุณากรอกรหัส 6 หลักเพื่อข้ามผ่านระบบความปลอดภัย")
-            else:
-                st.error("❌ ไม่พบเบอร์โทรศัพท์นี้ในระบบทดสอบ")
+        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}').addTo(map);
 
-        st.write("---")
-        
-        otp_input = st.text_input("กรอกรหัส OTP 6 หลักที่ตั้งไว้ หรือได้รับจาก SMS:", value="753275", type="password")
-        
-        if st.button("✅ ยืนยันรหัสผ่าน", type="primary", use_container_width=True):
-            # รองรับทั้ง 2 เบอร์หลักของต๊ะตามข้อมูลใน Firebase จริงๆ
-            if (phone_input == "+66970801941" and otp_input == "753275") or \
-               (phone_input == "+66800924262" and otp_input == "753275"):
-                st.session_state.logged_in = True
-                st.session_state.user_phone = phone_input
-                st.success("🔓 รหัสผ่านถูกต้องสัจจะ!")
+        // คำสั่งขอพิกัดจริงจากอุปกรณ์มือถือ
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                var lat = position.coords.latitude;
+                var lng = position.coords.longitude;
+                
+                document.getElementById('status').innerHTML = "📍 เชื่อมต่อ GPS สำเร็จ! พิกัดปัจจุบันของคุณ: " + lat.toFixed(5) + ", " + lng.toFixed(5);
+                
+                map.setView([lat, lng], 16);
+                L.marker([lat, lng]).addTo(map).bindPopup('🚜 ตำแหน่งรถไถของนาย').openPopup();
+            }, function(error) {
+                document.getElementById('status').innerHTML = "❌ ดึงพิกัดล้มเหลว: โปรดเปิด GPS ที่มือถือและอนุญาตสิทธิ์เว็บ";
+            }, {enableHighAccuracy: true});
+        } else {
+            document.getElementById('status').innerHTML = "❌ เครื่องนี้ไม่รองรับระบบ GPS ผ่านเว็บ";
+        }
+    </script>
+    """
+    st.components.v1.html(gps_html, height=420)
+
+# -----------------------------------------------------
+# แท็บที่ 2: ระบบแชตที่โต้ตอบขึ้นหน้าจอได้จริง
+# -----------------------------------------------------
+with tab_chat:
+    st.subheader("💬 ศูนย์สื่อสารแชตยิ้มซิ")
+    chat_mode = st.radio("เลือกห้องคุย:", ["🗣️ แชตรวม (Global)", "🔒 แชตส่วนตัว (Private)"], horizontal=True)
+    
+    if chat_mode == "🗣️ แชตรวม (Global)":
+        st.write("**กระดานข้อความล่าสุด:**")
+        # แสดงโพสต์/แชตเรียงลงมาให้เห็นจริง
+        for chat in st.session_state.global_chats:
+            st.markdown(f"**🟢 {chat['user']}:** {chat['msg']}")
+            
+        with st.form("global_form", clear_on_submit=True):
+            user_msg = st.text_input("พิมพ์ข้อความส่งเข้าห้องรวม:")
+            if st.form_submit_button("ส่งข้อความเข้าแชตรวม") and user_msg:
+                st.session_state.global_chats.append({"user": user_phone, "msg": user_msg})
                 st.rerun()
+                
+    elif chat_mode == "🔒 แชตส่วนตัว (Private)":
+        friend_name = st.text_input("ใส่ชื่อเพื่อนหรือเบอร์โทรที่ต้องการคุยด้วย:", value="+66800924262")
+        
+        if friend_name:
+            st.write(f"**🔒 ห้องคุยส่วนตัวกับ {friend_name}:**")
+            # ดึงประวัติแชตเฉพาะของเพื่อนคนนี้
+            room_id = tuple(sorted([user_phone, friend_name]))
+            if room_id in st.session_state.private_chats:
+                for chat in st.session_state.private_chats[room_id]:
+                    st.markdown(f"**👤 {chat['user']}:** {chat['msg']}")
             else:
-                st.error("❌ รหัสไม่ถูกต้องตามที่บันทึกไว้ใน Firebase")
-
-# =========================================================
-# หน้าจอที่ 2: หน้าแอปหลักหลังจากล็อกอินสำเร็จ
-# =========================================================
-else:
-    st.title("🛸 SYNAPSE COMMAND CENTER")
-    st.success(f"🔓 ยินดีต้อนรับเพื่อนต๊ะเข้าสู่ระบบ! (เบอร์: {st.session_state.user_phone})")
-    st.markdown("<p style='color: #eab308 !important; font-style: italic;'>สโลแกน: \"อยู่นิ่งๆ ไม่เจ็บตัว\" กำลังเปิดสัญญาณ...</p>", unsafe_allow_html=True)
-    st.write("---")
-
-    # แยกการทำงานเป็น 3 แท็บหลัก ไม่ดึงหน้าจอ ไม่ค้างชัวร์
-    tab_gps, tab_chat, tab_music = st.tabs(["📍 GPS ดาวเทียมวัดที่นา", "💬 ระบบแชตสัจจะ", "🎵 เครื่องเล่นเพลงอัตโนมัติ"])
-
-    # -----------------------------------------------------
-    # แท็บที่ 1: GPS ดาวเทียมไฮเทค (มีชื่อหมู่บ้าน + เส้นถนนบอกชัดเจน) - แก้ไขเอาอิโมจิเจ้าปัญหาออกแล้ว
-    # -----------------------------------------------------
-    with tab_gps:
-        st.subheader("🛰️ แผนที่ดาวเทียมไฮบริด & วัดที่นา")
-        st.markdown("<p style='color: #34d399 !important;'>🚜 <b>มีชื่อหมู่บ้านและเส้นถนนบอกชัดเจน:</b> สามารถใช้นิ้วซูมเข้า-ออก หาจุดอ้างอิง เช่น วัด โรงเรียน หรือทางหลวง แล้วลากเส้นวัดพื้นที่ได้แม่นยำ ไม่หลงแน่นอนครับ!</p>", unsafe_allow_html=True)
-        
-        # ปรับพิกัดเริ่มต้นให้ตรงใจ (พิกัดเริ่มต้น)
-        default_lat = 15.9513057
-        default_lng = 103.5796196
-        
-        map_html_code = f"""
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-        
-        <div id="map" style="width: 100%; height: 380px; border-radius: 12px; border: 2px solid #10b981;"></div>
-        <div id="result-box" style="margin-top:15px; background:#1f2937; padding:15px; border-radius:8px; color:white; font-family:sans-serif;">
-            <b style="color:#34d399; font-size:16px;"> ผลการคำนวณพื้นที่สัจจะ:</b>
-            <p id="area-text" style="font-size:20px; margin:5px 0; font-weight:bold; color:#60a5fa;">ยังไม่มีการลากพื้นที่ (ใช้นิ้วจิ้มไอคอนรูปห้าเหลี่ยมหรือสี่เหลี่ยมทางซ้ายเพื่อลากเส้น)</p>
-        </div>
-
-        <script>
-            var map = L.map('map').setView([{default_lat}, {default_lng}], 15);
-
-            // 1. ดึงภาพถ่ายดาวเทียมความละเอียดสูง (เห็นหลังคาบ้านและคันนา)
-            var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-                maxZoom: 19
-            }}).addTo(map);
-
-            // 2. ดึงเลเยอร์ "ชื่อสถานที่ ถนน และเส้นแบ่งเขต" มาซ้อนทับด้านบน (ทำให้มีภาษาไทยและเส้นทางบอกชัดเจน)
-            var labelsLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-                maxZoom: 19
-            }}).addTo(map);
-            
-            var bordersLayer = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-                maxZoom: 19
-            }}).addTo(map);
-
-            // ปักหมุดจุดปัจจุบัน
-            L.marker([{default_lat}, {default_lng}]).addTo(map)
-                .bindPopup('📍 พิกัดหมุดรถไถปัจจุบัน')
-                .openPopup();
-
-            // ระบบลากพื้นที่วัดขนาด
-            var drawnItems = new L.FeatureGroup();
-            map.addLayer(drawnItems);
-
-            var drawControl = new L.Control.Draw({{
-                draw: {{
-                    polygon: true,
-                    polyline: false,
-                    rectangle: true,
-                    circle: false,
-                    marker: false,
-                    circlemarker: false
-                }},
-                edit: {{
-                    featureGroup: drawnItems
-                }}
-            }});
-            map.addControl(drawControl);
-
-            map.on(L.Draw.Event.CREATED, function (event) {{
-                var layer = event.layer;
-                drawnItems.clearLayers();
-                drawnItems.addLayer(layer);
-
-                if (layer instanceof L.Polygon) {{
-                    var latlngs = layer.getLatLngs()[0];
-                    var areaSqMeters = L.GeometryUtil.geodesicArea(latlngs);
-                    
-                    var totalWa = areaSqMeters / 4;
-                    var rai = Math.floor(totalWa / 400);
-                    var remainingWa = totalWa % 400;
-                    var ngan = Math.floor(remainingWa / 100);
-                    var wa = Math.round(remainingWa % 100);
-
-                    document.getElementById('area-text').innerHTML = 
-                        "🚜 ขนาดที่นาผืนนี้: <span style='color:#f59e0b;'>" + rai + " ไร่ </span> " + 
-                        "<span style='color:#10b981;'>" + ngan + " งาน </span> " + 
-                        "<span style='color:#ec4899;'>" + wa + " ตารางวา</span><br>" +
-                        "<span style='font-size:13px; color:#9ca3af;'>รวมทั้งสิ้น " + Math.round(areaSqMeters).toLocaleString() + " ตารางเมตร</span>";
-                }}
-            }});
-        </script>
-        """
-        st.components.v1.html(map_html_code, height=550, scrolling=False)
-
-    # -----------------------------------------------------
-    # แท็บที่ 2: ระบบแชตสัจจะ (รวม / ส่วนตัว / โทร)
-    # -----------------------------------------------------
-    with tab_chat:
-        st.subheader("💬 ศูนย์สื่อสารแชตยิ้มซิ")
-        
-        chat_mode = st.radio("ช่องทางติดต่อ:", ["🗣️ แชตรวม (Global)", "🔒 แชตส่วนตัว (Private)", "📞 ระบบโทรเสียง (VoIP)"], horizontal=True)
-        
-        if chat_mode == "🗣️ แชตรวม (Global)":
-            st.text_area("ข้อความแชตรวม:", value="ต๊ะ: กำลังไปไถนารับจ้างครับ\nระบบ: เชื่อมต่อสัญญาณแชตรวมเสถียร...", height=150, disabled=True)
-            user_msg = st.text_input("พิมพ์ข้อความส่งเข้าห้องรวม:", key="send_global")
-            if st.button("ส่งข้อความ", use_container_width=True):
-                st.toast("ส่งข้อมูลเข้าแชตรวมสำเร็จ!")
+                st.caption("ยังไม่มีข้อความคุยกันในห้องนี้ เริ่มพิมพ์ด้านล่างได้เลย")
                 
-        elif chat_mode == "🔒 แชตส่วนตัว (Private)":
-            st.text_input("กรอกเบอร์โทรผู้รับสายตรง:")
-            st.text_area("กล่องข้อความลับเฉพาะ:", value="ระบบเข้ารหัสส่วนบุคคลปลอดภัยสูงสุด", height=100, disabled=True)
-            st.text_input("พิมพ์ข้อความลับ:", key="send_private")
-            st.button("ส่งข้อความลับ", type="primary", use_container_width=True)
-            
-        elif chat_mode == "📞 ระบบโทรเสียง (VoIP)":
-            st.info("📞 ช่องสัญญาณโทรศัพท์ผ่านเครือข่ายอินเทอร์เน็ต")
-            st.write("เป้าหมายสายตรงปลายทาง: +66970801941")
-            st.button("📞 กดเพื่อโทรออกด้วยระบบเสียง", use_container_width=True)
+            with st.form("private_form", clear_on_submit=True):
+                priv_msg = st.text_input("พิมพ์ข้อความลับ:")
+                if st.form_submit_button("ส่งข้อความส่วนตัว") and priv_msg:
+                    if room_id not in st.session_state.private_chats:
+                        st.session_state.private_chats[room_id] = []
+                    st.session_state.private_chats[room_id].append({"user": user_phone, "msg": priv_msg})
+                    st.rerun()
 
-    # -----------------------------------------------------
-    # แท็บที่ 3: เครื่องเล่นเพลงดึงไฟล์อัตโนมัติ (หยิบเอง ไม่ต้องแก้ชื่อไฟล์)
-    # -----------------------------------------------------
-    with tab_music:
-        st.subheader("🎵 เครื่องเล่นเสียงคลังเพลงเยียวยา")
+# -----------------------------------------------------
+# แท็บที่ 3: เครื่องเล่นเพลง ดึงไฟล์ทั้งหมดในเครื่อง
+# -----------------------------------------------------
+with tab_music:
+    st.subheader("🎵 เครื่องเล่นเสียงคลังเพลง")
+    
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    try:
+        # สแกนหาไฟล์ .mp3 ทั้งหมดที่อยู่ในโฟลเดอร์เดียวกันกับตัวโค้ด .py
+        mp3_files = [f for f in os.listdir(current_dir) if f.lower().endswith('.mp3')]
+    except Exception:
+        mp3_files = []
         
-        current_dir = os.path.dirname(os.path.abspath(__file__))
+    if mp3_files:
+        st.success(f"📂 ตรวจพบเพลงในโฟลเดอร์ทั้งหมด {len(mp3_files)} เพลง")
+        # แสดงรายการเพลงทั้งหมดให้คนขับรถไถเลือกกดฟังเองได้เลย
+        selected_song = st.selectbox("เลือกเพลงที่ต้องการฟัง:", mp3_files)
         
-        try:
-            all_files = os.listdir(current_dir)
-            mp3_files = [f for f in all_files if f.lower().endswith('.mp3')]
-        except Exception:
-            mp3_files = []
+        music_path = os.path.join(current_dir, selected_song)
+        with open(music_path, "rb") as audio_file:
+            audio_bytes = audio_file.read()
             
-        if mp3_files:
-            selected_song = mp3_files[0]
-            music_path = os.path.join(current_dir, selected_song)
-            
-            st.success(f"🎵 ตรวจพบไฟล์เสียงและดึงข้อมูลอัตโนมัติ: `{selected_song}`")
-            
-            with open(music_path, "rb") as audio_file:
-                audio_bytes = audio_file.read()
-                
-            st.audio(audio_bytes, format="audio/mp3")
-            st.caption("🎧 สามารถกดเล่นเพลง ฟังแก้เครียดตอนขับรถไถนาได้เลยครับเพื่อน")
-        else:
-            st.error("❌ ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์แอป")
-            st.info("💡 วิธีใช้ง่ายๆ: ต๊ะแค่เอาไฟล์เพลง .mp3 ไปอัปโหลดวางคู่กับไฟล์นี้ใน GitHub ชื่ออะไรก็ได้ ระบบจะหยิบมาเล่นให้เองอัตโนมัติครับ")
-
-    st.write("---")
-    if st.button("🚪 ออกจากระบบปลอดภัย (Logout)", use_container_width=True):
-        st.session_state.logged_in = False
-        st.rerun()
+        st.audio(audio_bytes, format="audio/mp3")
+        st.caption(f"กำลังเล่น: {selected_song} (หมายเหตุ: การเล่นเพลงถัดไปอัตโนมัติบนหน้าเว็บมือถือจะติดระบบบล็อกเสียงของ Google Chrome/Safari แนะนำให้ใช้นิ้วกดเลือกเปลี่ยนเพลงตามใจชอบตรงเมนูด้านบนได้เลยเพื่อน)")
+    else:
+        st.error("❌ ไม่พบไฟล์เพลง .mp3 ในโฟลเดอร์แอป")
