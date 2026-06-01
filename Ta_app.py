@@ -7,6 +7,56 @@ from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials
 import streamlit.components.v1 as components
+# ==========================================
+# 1. INITIAL SETUP & FIREBASE CONFIG
+# ==========================================
+try:
+    FB_API_KEY = st.secrets["firebase"]["api_key"]
+    FB_URL = st.secrets["firebase"]["firebase_url"]
+    PROJECT_ID = st.secrets["firebase"]["project_id"]
+except Exception:
+    FB_API_KEY = "MOCK_API_KEY"
+    FB_URL = "https://mock-synapse-default-rtdb.firebaseio.com"
+    PROJECT_ID = "SYNAPSE-LOCAL-MODE"
+
+@st.cache_resource
+def init_system():
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14" # เขียวเรืองแสง
+    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"     # ดำสนิท
+    if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+    if 'user_phone' not in st.session_state: st.session_state.user_phone = ""
+    if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    return True
+
+# 🌟 ย้ายคำสั่งรันฟังก์ชันมาไว้ตรงนี้เลย! เพื่อสร้างตัวแปรใน session_state ให้เสร็จก่อน
+init_system()
+
+
+# ==========================================
+# 2. FIREBASE REALTIME DATABASE FUNCTIONS
+# ==========================================
+# ... (ฟังก์ชัน get_firebase_data, push_firebase_data คงเดิม) ...
+
+
+# ==========================================
+# 3. UI STYLING (พอย้ายมาตรงนี้จะเรียกใช้ค่าสีได้จริง ไม่เออร์เรอร์แล้ว)
+# ==========================================
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", page_icon="🛸", layout="wide")
+
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    .stApp {{ background-color: {st.session_state.bg_color} !important; color: #FFFFFF !important; font-family: 'Orbitron', sans-serif; }}
+    .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; border-radius: 10px; }}
+    .stButton>button:hover {{ background: {st.session_state.theme_color} !important; color: black !important; }}
+    .neon-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px {st.session_state.theme_color}; background-color: #0a0a0a; }}
+    .stTabs [data-baseweb="tab"] {{ color: #9ca3af !important; font-weight: bold; font-family: 'Orbitron', sans-serif; }}
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {{ color: {st.session_state.theme_color} !important; border-bottom-color: {st.session_state.theme_color} !important; }}
+    h1, h2, h3, p, label, span {{ font-family: 'Orbitron', sans-serif; }}
+    </style>
+    """, unsafe_allow_html=True)
+
+# ❌ ลบคำสั่ง init_system() เดิมที่เคยอยู่ใต้ st.markdown ตรงนี้ออกด้วยนะครับ
 
 # ==========================================
 # 1. INITIAL SETUP & FIREBASE CONFIG
