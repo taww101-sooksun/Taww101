@@ -4,12 +4,12 @@ import base64
 import time
 import requests
 from datetime import datetime, timedelta
-import firebase_admin
-from firebase_admin import credentials
 import streamlit.components.v1 as components
+
 # ==========================================
 # 1. INITIAL SETUP & FIREBASE CONFIG
 # ==========================================
+# ดึงค่าคอนฟิก Firebase จริงจาก secrets.toml
 try:
     FB_API_KEY = st.secrets["firebase"]["api_key"]
     FB_URL = st.secrets["firebase"]["firebase_url"]
@@ -28,59 +28,7 @@ def init_system():
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
     return True
 
-# 🌟 ย้ายคำสั่งรันฟังก์ชันมาไว้ตรงนี้เลย! เพื่อสร้างตัวแปรใน session_state ให้เสร็จก่อน
-init_system()
-
-
-# ==========================================
-# 2. FIREBASE REALTIME DATABASE FUNCTIONS
-# ==========================================
-# ... (ฟังก์ชัน get_firebase_data, push_firebase_data คงเดิม) ...
-
-
-# ==========================================
-# 3. UI STYLING (พอย้ายมาตรงนี้จะเรียกใช้ค่าสีได้จริง ไม่เออร์เรอร์แล้ว)
-# ==========================================
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", page_icon="🛸", layout="wide")
-
-st.markdown(f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    .stApp {{ background-color: {st.session_state.bg_color} !important; color: #FFFFFF !important; font-family: 'Orbitron', sans-serif; }}
-    .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; border-radius: 10px; }}
-    .stButton>button:hover {{ background: {st.session_state.theme_color} !important; color: black !important; }}
-    .neon-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px {st.session_state.theme_color}; background-color: #0a0a0a; }}
-    .stTabs [data-baseweb="tab"] {{ color: #9ca3af !important; font-weight: bold; font-family: 'Orbitron', sans-serif; }}
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {{ color: {st.session_state.theme_color} !important; border-bottom-color: {st.session_state.theme_color} !important; }}
-    h1, h2, h3, p, label, span {{ font-family: 'Orbitron', sans-serif; }}
-    </style>
-    """, unsafe_allow_html=True)
-
-# ❌ ลบคำสั่ง init_system() เดิมที่เคยอยู่ใต้ st.markdown ตรงนี้ออกด้วยนะครับ
-
-# ==========================================
-# 1. INITIAL SETUP & FIREBASE CONFIG
-# ==========================================
-# ดึงค่าคอนฟิก Firebase จริงจาก secrets.toml ของนาย
-# (หากรันในคอมหรือ Local แล้วไม่มี secrets จะแจ้งเตือน แต่ถ้ามีใน Streamlit Cloud จะเชื่อมต่ออัตโนมัติ)
-try:
-    FB_API_KEY = st.secrets["firebase"]["api_key"]
-    FB_URL = st.secrets["firebase"]["firebase_url"]
-    PROJECT_ID = st.secrets["firebase"]["project_id"]
-except Exception:
-    FB_API_KEY = "MOCK_API_KEY"
-    FB_URL = "https://mock-synapse-default-rtdb.firebaseio.com"
-    PROJECT_ID = "SYNAPSE-LOCAL-MODE"
-
-@st.cache_resource
-def init_system():
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14" # เขียวเรืองแสง
-    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"     # ดำสนิท
-    if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-    if 'user_phone' not in st.session_state: st.session_state.user_phone = ""
-    if 'song_index' not in st.session_state: st.session_state.song_index = 0
-    return True
-
+# เรียกใช้งานระบบเพื่อเตรียมตัวแปรใน session_state ให้เสร็จก่อนเปิด UI
 init_system()
 
 # ==========================================
@@ -150,11 +98,9 @@ def room_radar():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>🛰️ SATELLITE RADAR & GPS แปลงนา</h2>", unsafe_allow_html=True)
     st.markdown("<p style='color: #34d399;'>🚜 คำนวณพื้นที่จริงด้วยดาวเทียมไฮบริด ลากเส้นรอบคันนาเพื่อวัดขนาด ไร่-งาน ป้องกันพวกหัวหมอโกงค่าไถ!</p>", unsafe_allow_html=True)
     
-    # พิกัดเริ่มต้น (ถ้าดึงจากเบอร์มือถือไม่ได้ให้ใช้จุดนี้พุ่งไปก่อน)
     default_lat = 15.9513057
     default_lng = 103.5796196
     
-    # รวมระบบดึงพิกัด และระบบวาดพืนที่แปลงนาเข้าด้วยกันผ่าน Leaflet.js ผสม Esri Satellite และส่งค่าขึ้น Firebase ได้
     map_html_code = f"""
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
@@ -181,7 +127,6 @@ def room_radar():
 
         var map = L.map('map').setView([current_lat, current_lng], 15);
 
-        // ดึงแผนที่ดาวเทียมความละเอียดสูง
         var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
             maxZoom: 19
         }}).addTo(map);
@@ -189,7 +134,6 @@ def room_radar():
         L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
         L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
 
-        // ดักจับพิกัดผู้ใช้จริงจาก GPS มือถือ
         if (navigator.geolocation) {{
             navigator.geolocation.getCurrentPosition(function(position) {{
                 current_lat = position.coords.latitude;
@@ -199,7 +143,6 @@ def room_radar():
             }}, function(err) {{ console.log("รอสัญญาณพิกัด..."); }}, {{enableHighAccuracy: true}});
         }}
 
-        // ระบบวาดแปลงนา (Leaflet Draw)
         var drawnItems = new L.FeatureGroup();
         map.addLayer(drawnItems);
 
@@ -239,7 +182,6 @@ def room_radar():
             }}
         }});
 
-        // ปุ่มยิงพิกัดปัจจุบันขึ้น Firebase ผ่านช่องทางที่ทำได้บน iframe บราวเซอร์
         document.getElementById('broadBtn').onclick = function() {{
             const user_id = "{st.session_state.user_phone.replace('+', '')}";
             const timestamp = new Date().getTime() / 1000;
@@ -264,7 +206,6 @@ def room_comms():
         st.write("**📥 กระดานข้อมูลสดส่งตรงจากเซิร์ฟเวอร์ Cloud:**")
         chats = get_firebase_data("global_chat")
         
-        # กล่องแสดงข้อความย้อนหลัง 15 ข้อความตามเวลาจริง
         chat_box = ""
         if chats:
             for key in sorted(chats.keys())[-15:]:
@@ -273,7 +214,7 @@ def room_comms():
                 chat_box += f"🟢 **{sender}**: {msg_text}\n\n"
             st.markdown(chat_box)
         else:
-            st.caption("สัญญาณว่างเปล่า ส่งข้อความแรกเพื่อเริ่มคุยเลย")
+            st.caption("信号ว่างเปล่า ส่งข้อความแรกเพื่อเริ่มคุยเลย")
 
         with st.form("chat_form", clear_on_submit=True):
             msg = st.text_input("กรอกสัญญาณข้อความของนาย:")
@@ -285,7 +226,6 @@ def room_comms():
     with t2:
         friend_phone = st.text_input("ใส่เบอร์โทรศัพท์เพื่อนสายตรงเพื่อคุกลับ:", value="+66800924262")
         if friend_phone:
-            # สร้างห้องสนทนาคู่แบบไม่ซ้ำโดยการเรียงชื่อเบอร์โทรศัพท์
             room_id = "_".join(sorted([st.session_state.user_phone.replace("+",""), friend_phone.replace("+","")]))
             st.write(f"🔒 **ช่องสัญญาณคุกลับเฉพาะคู่สาย [{friend_phone}]**")
             
@@ -306,7 +246,6 @@ def room_comms():
 def room_music():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>🎧 SYNAPSE HOLOGRAPHIC STATION</h2>", unsafe_allow_html=True)
     
-    # สแกนหาไฟล์ .mp3 ที่อยู่รอบตัวไฟล์แอปจริงอัตโนมัติ
     current_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else '.'
     try:
         songs = sorted([f for f in os.listdir(current_dir) if f.lower().endswith(".mp3")])
@@ -322,7 +261,7 @@ def room_music():
     song_b64 = ""
     song_name = "WAITING FOR SIGNAL..."
     
-    if s_a != "-- STANDBY--":
+    if s_a != "-- STANDBY --":
         try:
             with open(os.path.join(current_dir, s_a), "rb") as f:
                 song_b64 = base64.b64encode(f.read()).decode()
@@ -331,7 +270,6 @@ def room_music():
         except Exception:
             pass
 
-    # ระบบเล่นเพลงพร้อมมอนิเตอร์คลื่นความถี่เคลื่อนไหว (Audio Visualizer) ผ่าน Web Audio API จริงบนหน้าจอมือถือ
     visualizer_html = f"""
     <div style="background: #000; border: 3px solid {st.session_state.theme_color}; border-radius: 20px; padding: 15px; box-shadow: 0 0 30px {st.session_state.theme_color}55;">
         <div style="overflow: hidden; white-space: nowrap; background: #050505; border: 1px solid {st.session_state.theme_color}55; border-radius: 8px; margin-bottom: 10px; padding: 8px;">
@@ -389,7 +327,6 @@ def room_sensor():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
     st.info("💡 เคล็ดลับความจริง: วางมือถือนิ่งๆ เพื่อดูแรงโน้มถ่วงโลก (1.000G) หรือลองผิวปากเป่าลมใส่ไมค์มือถือเพื่อมอนิเตอร์ระดับคลื่นความถี่สดรอบตัวนาย")
     
-    # ตัวแปลงระบบเซนเซอร์จริงจากตัวเครื่องมือถือผ่านเบราว์เซอร์
     all_sensors_js = f"""
     <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 20px; padding: 20px; font-family: 'Orbitron', monospace; color: white;">
         
@@ -428,7 +365,6 @@ def room_sensor():
         btn.onclick = async () => {{
             btn.style.display = 'none';
             
-            // --- เสียงไมโครโฟน ---
             try {{
                 const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
                 const aCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -455,7 +391,6 @@ def room_sensor():
                 updateAudio();
             }} catch(e) {{ console.log("Audio Input Not Found"); }}
 
-            // --- แรงสั่นสะเทือน/แรงดึงดูด ---
             if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {{
                 try {{ await DeviceMotionEvent.requestPermission(); }} catch(e) {{}}
             }}
@@ -478,7 +413,6 @@ def room_sensor():
 # 5. MAIN CONTROL FLOW (ระบบตรวจสอบสิทธิ์ก่อนเข้าแอป)
 # ==========================================
 def main():
-    # --- กรณีที่ยังไม่ผ่านการล็อกอิน (โชว์หน้าล็อกอินสัจจะก่อน) ---
     if not st.session_state.logged_in:
         st.title("🛡️ SYNAPSE AUTHENTICATION SYSTEM")
         st.markdown("<p style='color: #f87171 !important; font-style: italic;'>\"อยู่นิ่งๆ ไม่เจ็บตัว โปรดกรอกข้อมูลตามสัจจะเพื่อเปิดสัญญาณควบคุมหลัก\"</p>", unsafe_allow_html=True)
@@ -491,7 +425,6 @@ def main():
             otp_input = st.text_input("กรอกรหัสสัจจะความปลอดภัย 6 หลัก:", value="753275", type="password")
             
             if st.button("🔓 เปิดช่องสัญญาณสั่งการแอปของจริง", type="primary", use_container_width=True):
-                # ตรวจสอบความถูกต้องตามความเป็นจริง
                 if phone_input in ["+66970801941", "+66800924262"] and otp_input == "753275":
                     st.session_state.logged_in = True
                     st.session_state.user_phone = phone_input
@@ -500,15 +433,12 @@ def main():
                 else:
                     st.error("❌ ข้อมูลไม่ตรงกับสัจจะระบบ กรุณาตรวจสอบเบอร์หรือรหัสผ่าน")
 
-    # --- กรณีผ่านการล็อกอินเรียบร้อย (เปิดแผงหน้าจอควบคุมยานแม่) ---
     else:
-        # แถบควบคุมข้างทาง (Sidebar)
         with st.sidebar:
             st.title("⚙️ SYSTEM CONTROL")
             st.write(f"PROJECT: `{PROJECT_ID}`")
             st.write(f"CONNECTED: **{st.session_state.user_phone}**")
             
-            # ปรับแต่งสีสันของหน้าจอได้แบบสดๆ
             st.session_state.theme_color = st.color_picker("NEON THEME COLOR", st.session_state.theme_color)
             st.session_state.bg_color = st.color_picker("BACKGROUND COLOR", st.session_state.bg_color)
             
@@ -520,7 +450,6 @@ def main():
             st.markdown("---")
             st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-        # ตัวเลือกแท็บห้องควบคุมสไตล์ SYNAPSE X
         tabs = st.tabs(["🚀 CORE", "🛰️ RADAR / GPS", "💬 COMMS", "🎧 MUSIC", "📟 SENSOR"])
         
         with tabs[0]: room_core()
