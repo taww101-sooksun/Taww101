@@ -5,14 +5,7 @@ import time
 import requests
 from datetime import datetime, timedelta
 import streamlit.components.v1 as components
-def room_login():
-    # แสดงโลโก้ logo1.jpg ที่กลางหน้าจอ
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        try:
-            st.image("logo1.jpg", use_container_width=True)
-        except:
-            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE</h1>", unsafe_allow_html=True)
+
 # ==========================================
 # 1. INITIAL SETUP & FIREBASE CONFIG
 # ==========================================
@@ -28,7 +21,7 @@ except Exception:
 
 @st.cache_resource
 def init_system():
-    # สร้างตัวแปรทุกตัวให้ครบถ้วนในจุดนี้จุดเดียวพอ
+    # 🌟 ตัวแปรต้องสร้างให้เสร็จตรงนี้ก่อน UI จะเรียกใช้!
     if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14" # เขียวเรืองแสง
     if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"     # ดำสนิท
     if 'logged_in' not in st.session_state: st.session_state.logged_in = False
@@ -66,11 +59,10 @@ def update_firebase_data(path, data):
         return False
 
 # ==========================================
-# 3. UI STYLING (สไตล์ยานอวกาศดุดันเรืองแสง - ฉบับปลอดภัยไม่กลัวเออร์เรอร์)
+# 3. UI STYLING (สไตล์ยานอวกาศดุดันเรืองแสง)
 # ==========================================
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", page_icon="🛸", layout="wide")
 
-# ดึงค่าแบบปลอดภัยตามหลักความเป็นจริง ถ้าหาไม่เจอให้ใช้ค่า Default ทันที
 current_bg = st.session_state.get('bg_color', '#000000')
 current_theme = st.session_state.get('theme_color', '#39FF14')
 
@@ -88,8 +80,17 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. MODULES (ระบบแต่ละห้องควบคุม)
+# 4. MODULES & LOGIN ROOM (ระบบแต่ละห้องควบคุม)
 # ==========================================
+
+def room_login():
+    # ย้ายมาอยู่ตรงนี้หลังจากตัวแปรในระบบพร้อมทำงานแล้ว 100%
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        try:
+            st.image("logo1.jpg", use_container_width=True)
+        except Exception:
+            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color}; text-shadow: 0 0 15px {st.session_state.theme_color};'>SYNAPSE</h1>", unsafe_allow_html=True)
 
 def room_core():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>🚀 CORE COMMAND</h2>", unsafe_allow_html=True)
@@ -426,8 +427,10 @@ def room_sensor():
 # ==========================================
 def main():
     if not st.session_state.logged_in:
-        st.title("🛡️ SYNAPSE AUTHENTICATION SYSTEM")
-        st.markdown("<p style='color: #f87171 !important; font-style: italic;'>\"อยู่นิ่งๆ ไม่เจ็บตัว โปรดกรอกข้อมูลตามสัจจะเพื่อเปิดสัญญาณควบคุมหลัก\"</p>", unsafe_allow_html=True)
+        # เรียกห้องล็อกอินเพื่อแสดงผลโลโก้ logo1.jpg ก่อนเข้าสู่ฟอร์มแบบปลอดภัย
+        room_login()
+        
+        st.markdown("<p style='color: #f87171 !important; font-style: italic; text-align:center;'>\"อยู่นิ่งๆ ไม่เจ็บตัว โปรดกรอกข้อมูลตามสัจจะเพื่อเปิดสัญญาณควบคุมหลัก\"</p>", unsafe_allow_html=True)
         
         with st.container():
             st.subheader("เข้าสู่ระบบด้วยเบอร์โทรศัพท์ผ่าน Real Firebase")
