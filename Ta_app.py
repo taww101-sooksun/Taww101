@@ -5,7 +5,14 @@ import time
 import requests
 from datetime import datetime, timedelta
 import streamlit.components.v1 as components
-
+def room_login():
+    # แสดงโลโก้ logo1.jpg ที่กลางหน้าจอ
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        try:
+            st.image("logo1.jpg", use_container_width=True)
+        except:
+            st.markdown(f"<h1 style='text-align:center; color:{st.session_state.theme_color};'>SYNAPSE</h1>", unsafe_allow_html=True)
 # ==========================================
 # 1. INITIAL SETUP & FIREBASE CONFIG
 # ==========================================
@@ -59,19 +66,23 @@ def update_firebase_data(path, data):
         return False
 
 # ==========================================
-# 3. UI STYLING (สไตล์ยานอวกาศดุดันเรืองแสง)
+# 3. UI STYLING (สไตล์ยานอวกาศดุดันเรืองแสง - ฉบับปลอดภัยไม่กลัวเออร์เรอร์)
 # ==========================================
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", page_icon="🛸", layout="wide")
+
+# ดึงค่าแบบปลอดภัยตามหลักความเป็นจริง ถ้าหาไม่เจอให้ใช้ค่า Default ทันที
+current_bg = st.session_state.get('bg_color', '#000000')
+current_theme = st.session_state.get('theme_color', '#39FF14')
 
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
-    .stApp {{ background-color: {st.session_state.bg_color} !important; color: #FFFFFF !important; font-family: 'Orbitron', sans-serif; }}
-    .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; border-radius: 10px; }}
-    .stButton>button:hover {{ background: {st.session_state.theme_color} !important; color: black !important; }}
-    .neon-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px {st.session_state.theme_color}; background-color: #0a0a0a; }}
+    .stApp {{ background-color: {current_bg} !important; color: #FFFFFF !important; font-family: 'Orbitron', sans-serif; }}
+    .stButton>button {{ border: 2px solid {current_theme} !important; color: {current_theme} !important; background: transparent !important; border-radius: 10px; }}
+    .stButton>button:hover {{ background: {current_theme} !important; color: black !important; }}
+    .neon-box {{ border: 1px solid {current_theme}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px {current_theme}; background-color: #0a0a0a; }}
     .stTabs [data-baseweb="tab"] {{ color: #9ca3af !important; font-weight: bold; font-family: 'Orbitron', sans-serif; }}
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {{ color: {st.session_state.theme_color} !important; border-bottom-color: {st.session_state.theme_color} !important; }}
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {{ color: {current_theme} !important; border-bottom-color: {current_theme} !important; }}
     h1, h2, h3, p, label, span {{ font-family: 'Orbitron', sans-serif; }}
     </style>
     """, unsafe_allow_html=True)
