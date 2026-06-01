@@ -11,7 +11,7 @@ FB_API_KEY = st.secrets["firebase"]["api_key"]
 FB_URL = st.secrets["firebase"]["firebase_url"]
 
 # ตั้งค่าหน้าจอแอปโทนดุดัน เหมาะกับคนสู้ชีวิตบนรถไถ
-st.set_page_config(page_title="SYNAPSE อยู่นิ้งๆไม่เจ็บตัว", page_icon="🛸", layout="centered")
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", page_icon="🛸", layout="centered")
 
 st.markdown("""
     <style>
@@ -122,7 +122,7 @@ else:
                     var lat = position.coords.latitude;
                     var lng = position.coords.longitude;
                     map.setView([lat, lng], 17);
-                    L.marker([lat, lng]).addTo(map).bindPopup('🚜 ตำแหน่งปัจอยู่นิ้งๆไม่เจ็บตัว').openPopup();
+                    L.marker([lat, lng]).addTo(map).bindPopup('🚜 ตำแหน่งปัจจุบันของนาย').openPopup();
                 }}, function(err) {{ console.log("กำลังดึงพิกัด..."); }}, {{enableHighAccuracy: true}});
             }}
 
@@ -166,7 +166,7 @@ else:
             }});
         </script>
         """
-        st.components.v1.html(map_html_code, height=600, scrolling=False)
+        st.components.v1.html(map_html_code, height=520, scrolling=False)
         st.caption("📍 ข้อมูลแผนที่ดึงความละเอียดสูงจาก Esri ดาวเทียมสากล ตรงตามคันนาจริงแน่นอน")
 
     # -----------------------------------------------------
