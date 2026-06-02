@@ -94,7 +94,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-def show_neon_logo(key_suffix=""):
+def show_neon_logo():
     current_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else '.'
     logo_path = os.path.join(current_dir, "logo1.png")
     
@@ -151,8 +151,9 @@ def room_radar():
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
     </script>
     """
-    # 🌟 แก้ไข: เพิ่ม key เพื่อป้องกันโครงสร้างเว็บซ้อนทับกัน
-    components.html(map_html_code, height=380, key="radar_map_unique")
+    # 🌟 เอา key ออกเพื่อแก้อาการหน้าจอแดงรันไม่ได้ และล้อมตู้คอนเทนเนอร์คุมโครงสร้างหน้าเว็บแทน
+    with st.container():
+        components.html(map_html_code, height=380)
 
 def room_comms():
     st.markdown(f"<h2 style='color:{current_theme};'>💬 COMM CENTER</h2>", unsafe_allow_html=True)
@@ -257,8 +258,9 @@ def room_music():
         }}
     </script>
     """
-    # 🌟 แก้ไข: เพิ่มคีย์เฉพาะตัวให้เครื่องเล่นเพลงเพื่อขจัดบั๊กสลับหน้าเว็บ HTML ค้าง
-    components.html(player_html, height=320, key="holographic_music_player_unique")
+    # 🌟 เอา key ออกเพื่อแก้อาการหน้าจอแดงรันไม่ได้
+    with st.container():
+        components.html(player_html, height=320)
 
 def room_sensor():
     st.markdown(f"<h2 style='color:{current_theme}; text-align:center;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
@@ -269,7 +271,7 @@ def room_sensor():
 # ==========================================
 def main():
     if not st.session_state.logged_in:
-        show_neon_logo(key_suffix="login")
+        show_neon_logo()
         st.markdown(f"<h1 style='text-align:center; color:{current_theme}; margin-top:0;'>SYNAPSE AUTH</h1>", unsafe_allow_html=True)
         
         with st.container():
@@ -286,7 +288,7 @@ def main():
 
     else:
         with st.sidebar:
-            show_neon_logo(key_suffix="sidebar")
+            show_neon_logo()
             st.markdown(f"<h3 style='text-align:center; color:{current_success}; margin-top:0;'>🛸 ONLINE</h3>", unsafe_allow_html=True)
             st.write(f"AGENT: `{st.session_state.user_phone}`")
             
@@ -304,7 +306,6 @@ def main():
                 st.rerun()
             st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-        # 🌟 แก้ไข: ใช้ระบุแท็บระบบด้วยชุดคีย์ควบคุมแบบกล่องเดี่ยว ไม่เปิดโอกาสให้ JavaScript ฝั่งหน้าบ้านชนกันเอง
         tabs = st.tabs(["🚀 CORE COMMAND", "🛰️ RADAR / GPS", "💬 COMMS FEED", "🎧 NON-STOP MUSIC", "📟 SENSOR HUB"])
         with tabs[0]: room_core()
         with tabs[1]: room_radar()
