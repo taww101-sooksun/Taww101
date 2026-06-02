@@ -39,4 +39,4 @@ aiohttp
 fastapi
 uvicorn
 pydantic
-
+torch --index-url https://download.pytorch.org/whl/cpu
