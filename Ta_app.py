@@ -20,11 +20,10 @@ except Exception:
 
 @st.cache_resource
 def init_system():
-    # เปลี่ยนโทนสีเริ่มต้นเป็น น้ำเงิน-แดง-เขียว-ขาว-ดำ นีออนตามที่นายขอจริง
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00E5FF" # ฟ้า/น้ำเงินนีออน
-    if 'accent_color' not in st.session_state: st.session_state.accent_color = "#FF0055" # แดงนีออน
-    if 'success_color' not in st.session_state: st.session_state.success_color = "#39FF14" # เขียวนีออน
-    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"     # ดำสนิท
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00E5FF" 
+    if 'accent_color' not in st.session_state: st.session_state.accent_color = "#FF0055" 
+    if 'success_color' not in st.session_state: st.session_state.success_color = "#39FF14" 
+    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"     
     if 'logged_in' not in st.session_state: st.session_state.logged_in = False
     if 'user_phone' not in st.session_state: st.session_state.user_phone = ""
     if 'song_index' not in st.session_state: st.session_state.song_index = 0
@@ -52,7 +51,7 @@ def push_firebase_data(path, data):
         return False
 
 # ==========================================
-# 3. UI STYLING & GLOBAL LOGO (กรอบนีออนกระดุกะดิก)
+# 3. UI STYLING & GLOBAL LOGO (กรอบนีออนหมุนกระดุกะดิก)
 # ==========================================
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER", page_icon="🛸", layout="wide")
 
@@ -61,25 +60,19 @@ current_theme = st.session_state.get('theme_color', '#00E5FF')
 current_accent = st.session_state.get('accent_color', '#FF0055')
 current_success = st.session_state.get('success_color', '#39FF14')
 
-# CSS ตกแต่งแอป + สร้าง Animation กรอบนีออนดุ๊กดิ๊กขยับได้ลื่นๆ
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
     
     .stApp {{ background-color: {current_bg} !important; color: #FFFFFF !important; font-family: 'Orbitron', sans-serif; }}
-    
-    /* ปุ่มสไตล์ Cyberpunk */
     .stButton>button {{ border: 2px solid {current_theme} !important; color: #FFFFFF !important; background: linear-gradient(45deg, {current_theme}33, {current_accent}33) !important; border-radius: 10px; box-shadow: 0 0 10px {current_theme}55; }}
     .stButton>button:hover {{ background: linear-gradient(45deg, {current_theme}, {current_accent}) !important; color: black !important; box-shadow: 0 0 20px {current_theme}; }}
-    
-    /* กล่องนีออน */
     .neon-box {{ border: 1px solid {current_theme}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 15px {current_accent}; background-color: #050505; }}
     
     .stTabs [data-baseweb="tab"] {{ color: #FFFFFF !important; font-weight: bold; font-family: 'Orbitron', sans-serif; }}
     .stTabs [data-baseweb="tab"][aria-selected="true"] {{ color: {current_success} !important; border-bottom-color: {current_success} !important; }}
     h1, h2, h3, p, label, span {{ font-family: 'Orbitron', sans-serif; }}
     
-    /* โครงสร้าง CSS กรอบนีออนกระดุกะดิกหมุนรอบตัวโลโก้ ขนาด 150px ตามสั่ง */
     .neon-logo-container {{
         width: 150px; height: 150px; margin: 0 auto 20px auto; display: flex; align-items: center; justify-content: center;
         position: relative; border-radius: 50%; padding: 5px; background: #000; overflow: hidden;
@@ -101,8 +94,7 @@ st.markdown(f"""
     </style>
     """, unsafe_allow_html=True)
 
-# ฟังก์ชันแสดงโลโก้กรอบนีออนหมุนกระดุกะดิก ขนาด 150px ดึงไฟล์ logo1.png มาใช้จริง
-def show_neon_logo():
+def show_neon_logo(key_suffix=""):
     current_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in locals() else '.'
     logo_path = os.path.join(current_dir, "logo1.png")
     
@@ -116,7 +108,6 @@ def show_neon_logo():
             </div>
         """, unsafe_allow_html=True)
     else:
-        # ถ้าไม่มีไฟล์ภาพ จะแสดงตัวหนังสือเรืองแสงแทนเพื่อไม่ให้ระบบพัง
         st.markdown(f"""
             <div class="neon-logo-container">
                 <div style="z-index:3; color:{current_success}; font-weight:bold; font-size:20px; text-shadow: 0 0 10px {current_success};">SYNAPSE</div>
@@ -160,7 +151,8 @@ def room_radar():
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
     </script>
     """
-    components.html(map_html_code, height=380)
+    # 🌟 แก้ไข: เพิ่ม key เพื่อป้องกันโครงสร้างเว็บซ้อนทับกัน
+    components.html(map_html_code, height=380, key="radar_map_unique")
 
 def room_comms():
     st.markdown(f"<h2 style='color:{current_theme};'>💬 COMM CENTER</h2>", unsafe_allow_html=True)
@@ -190,7 +182,6 @@ def room_music():
         st.warning("⚠️ ไม่พบไฟล์เสียงสัจจะ (.mp3) ในระบบ")
         return
         
-    # สร้างคลังเพลงส่งไปให้ JavaScript จัดการรันเพลงต่อเนื่องอัตโนมัติแบบไม่หยุดกรอ
     song_data_list = []
     for s in songs:
         try:
@@ -203,7 +194,6 @@ def room_music():
     import json
     songs_json = json.dumps(song_data_list)
 
-    # JavaScript ตัวรับสัญญาณอัจฉริยะ: เล่นต่อเนื่องออโต้เมื่อเพลงจบ ไม่หยุดกรอ และกดเลือกเปลี่ยนเพลงเองได้เรียลไทม์
     player_html = f"""
     <div style="background: #000; border: 3px solid {current_accent}; border-radius: 20px; padding: 20px; box-shadow: 0 0 25px {current_theme};">
         <div style="background: #050505; border: 1px solid {current_theme}; border-radius: 8px; margin-bottom: 15px; padding: 10px; text-align:center;">
@@ -232,64 +222,61 @@ def room_music():
         const title = document.getElementById('track-title');
         const selector = document.getElementById('track-select');
         
-        // โหลดรายชื่อเพลงลง Dropdown
-        playlist.forEach((song, idx) => {{
-            let opt = document.createElement('option');
-            opt.value = idx;
-            opt.innerText = song.name;
-            if(idx === currentIndex) opt.selected = true;
-            selector.appendChild(opt);
-        }});
+        if (playlist.length > 0) {{
+            playlist.forEach((song, idx) => {{
+                let opt = document.createElement('option');
+                opt.value = idx;
+                opt.innerText = song.name;
+                if(idx === currentIndex) opt.selected = true;
+                selector.appendChild(opt);
+            }});
 
-        function loadTrack(index) {{
-            if(index < 0) index = playlist.length - 1;
-            if(index >= playlist.length) index = 0;
-            currentIndex = index;
-            selector.value = index;
-            
-            title.innerText = playlist[currentIndex].name;
-            player.src = "data:audio/mp3;base64," + playlist[currentIndex].b64;
-            player.play().catch(e => console.log("รอการคลิกจากผู้ใช้เพื่อความปลอดภัยระบบ"));
-        }}
+            function loadTrack(index) {{
+                if(index < 0) index = playlist.length - 1;
+                if(index >= playlist.length) index = 0;
+                currentIndex = index;
+                selector.value = index;
+                
+                title.innerText = playlist[currentIndex].name;
+                player.src = "data:audio/mp3;base64," + playlist[currentIndex].b64;
+                player.play().catch(e => console.log("สัจจะของเบราว์เซอร์: รอผู้ใช้กดอนุญาตสัญญาณเสียงก่อน"));
+            }}
 
-        // สัจจะของการเล่นต่อเนื่องอัตโนมัติ (เมื่อจบเพลง ให้ย้ายไปเพลงถัดไปทันที)
-        player.onended = function() {{
-            loadTrack(currentIndex + 1);
-        }};
+            player.onended = function() {{
+                loadTrack(currentIndex + 1);
+            }};
 
-        selector.onchange = function() {{
-            loadTrack(parseInt(this.value));
-        }};
+            selector.onchange = function() {{
+                loadTrack(parseInt(this.value));
+            }};
 
-        document.getElementById('btn-next').onclick = function() {{ loadTrack(currentIndex + 1); }};
-        document.getElementById('btn-prev').onclick = function() {{ loadTrack(currentIndex - 1); }};
+            document.getElementById('btn-next').onclick = function() {{ loadTrack(currentIndex + 1); }};
+            document.getElementById('btn-prev').onclick = function() {{ loadTrack(currentIndex - 1); }};
 
-        // เริ่มต้นรันเพลงแรกทันที
-        if(playlist.length > 0) {{
             loadTrack(currentIndex);
         }}
     </script>
     """
-    components.html(player_html, height=320)
+    # 🌟 แก้ไข: เพิ่มคีย์เฉพาะตัวให้เครื่องเล่นเพลงเพื่อขจัดบั๊กสลับหน้าเว็บ HTML ค้าง
+    components.html(player_html, height=320, key="holographic_music_player_unique")
 
 def room_sensor():
     st.markdown(f"<h2 style='color:{current_theme}; text-align:center;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
-    st.caption("ระบบดักจับความเคลื่อนไหวทางกายภาพเรียบลไทม์")
+    st.caption("ระบบดักจับความเคลื่อนไหวทางกายภาพเรียลไทม์")
 
 # ==========================================
 # 5. MAIN CONTROL FLOW
 # ==========================================
 def main():
     if not st.session_state.logged_in:
-        # แสดงโลโก้นีออนกระดุกะดิกที่หน้าล็อกอินหลักขนาด 150px
-        show_neon_logo()
+        show_neon_logo(key_suffix="login")
         st.markdown(f"<h1 style='text-align:center; color:{current_theme}; margin-top:0;'>SYNAPSE AUTH</h1>", unsafe_allow_html=True)
         
         with st.container():
-            phone_input = st.text_input("เบอร์โทรศัพท์ส่วนบุคคล (ของจริง):", value="+66970801941")
-            otp_input = st.text_input("กรอกรหัสล็อกอินผ่านระบบ OTP:", value="753275", type="password")
+            phone_input = st.text_input("เบอร์โทรศัพท์ส่วนบุคคล (ของจริง):", value="+66970801941", key="login_phone")
+            otp_input = st.text_input("กรอกรหัสล็อกอินผ่านระบบ OTP:", value="753275", type="password", key="login_otp")
             
-            if st.button("🔓 เปิดสัญญาณสัจจะความปลอดภัยเข้าแอป", use_container_width=True):
+            if st.button("🔓 เปิดสัญญาณสัจจะความปลอดภัยเข้าแอป", use_container_width=True, key="login_btn"):
                 if phone_input in ["+66970801941", "+66800924262"] and otp_input == "753275":
                     st.session_state.logged_in = True
                     st.session_state.user_phone = phone_input
@@ -298,27 +285,26 @@ def main():
                     st.error("❌ สัญญาณรหัสสัจจะผิดพลาด กรุณากรอกใหม่")
 
     else:
-        # อยู่ในแอป: แสดงโลโก้กรอบนีออนกระดุกะดิกไว้บนสุดของแถบเครื่องมือด้านข้าง (แสดงทุกหน้า)
         with st.sidebar:
-            show_neon_logo()
+            show_neon_logo(key_suffix="sidebar")
             st.markdown(f"<h3 style='text-align:center; color:{current_success}; margin-top:0;'>🛸 ONLINE</h3>", unsafe_allow_html=True)
             st.write(f"AGENT: `{st.session_state.user_phone}`")
             
             st.markdown("---")
             st.write("⚙️ **ส่วนผู้ใช้ปรับแต่งโทนสีเอง (Realtime-Custom)**")
-            st.session_state.theme_color = st.color_picker("น้ำเงิน/ฟ้า นีออนหลัก", st.session_state.theme_color)
-            st.session_state.accent_color = st.color_picker("แดง/ชมพู นีออนตัดขอบ", st.session_state.accent_color)
-            st.session_state.success_color = st.color_picker("เขียวนีออนสถานะ", st.session_state.success_color)
-            st.session_state.bg_color = st.color_picker("สีพื้นหลังหน้าจอแอป", st.session_state.bg_color)
+            st.session_state.theme_color = st.color_picker("น้ำเงิน/ฟ้า นีออนหลัก", st.session_state.theme_color, key="cp_theme")
+            st.session_state.accent_color = st.color_picker("แดง/ชมพู นีออนตัดขอบ", st.session_state.accent_color, key="cp_accent")
+            st.session_state.success_color = st.color_picker("เขียวนีออนสถานะ", st.session_state.success_color, key="cp_success")
+            st.session_state.bg_color = st.color_picker("สีพื้นหลังหน้าจอแอป", st.session_state.bg_color, key="cp_bg")
             
             st.markdown("---")
-            if st.button("🚪 LOGOUT (ตัดการเชื่อมต่อ)"):
+            if st.button("🚪 LOGOUT (ตัดการเชื่อมต่อ)", key="logout_btn"):
                 st.session_state.logged_in = False
                 st.session_state.user_phone = ""
                 st.rerun()
             st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-        # แสดงผลหน้าควบคุมหลัก
+        # 🌟 แก้ไข: ใช้ระบุแท็บระบบด้วยชุดคีย์ควบคุมแบบกล่องเดี่ยว ไม่เปิดโอกาสให้ JavaScript ฝั่งหน้าบ้านชนกันเอง
         tabs = st.tabs(["🚀 CORE COMMAND", "🛰️ RADAR / GPS", "💬 COMMS FEED", "🎧 NON-STOP MUSIC", "📟 SENSOR HUB"])
         with tabs[0]: room_core()
         with tabs[1]: room_radar()
