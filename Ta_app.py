@@ -7,7 +7,8 @@ from firebase_admin import credentials, db
 import math
 import time
 import base64
-
+import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Sarabun:wght@300;500&display=swap');
+            
 # --- 1. ตั้งค่าพื้นฐาน ---
 st.set_page_config(page_title="SYNAPSE COMMAND", layout="wide")
 
@@ -38,7 +39,6 @@ st.set_page_config(page_title="SYNAPSE COMMAND CENTER", layout="wide")
 def inject_cyberpunk_ui():
     st.markdown("""
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Sarabun:wght@300;500&display=swap');
             
             .stApp { 
                 background: radial-gradient(circle at 50% 50%, #080f14 0%, #030508 100%) !important;
