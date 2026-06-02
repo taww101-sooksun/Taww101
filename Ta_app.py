@@ -4,7 +4,6 @@ from scipy.io import wavfile  # ซ่อมจุดสะกดผิดเร
 import librosa
 import time
 import io
-import tensorflow as tf
 import os
 import base64
 
