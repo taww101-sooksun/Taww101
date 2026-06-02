@@ -7,8 +7,10 @@ from datetime import datetime, timedelta
 import streamlit.components.v1 as components
 
 # ==========================================
-# 1. INITIAL SETUP & FIREBASE CONFIG
+# 1. INITIAL SETUP & CONFIG (ต้องเอาตั้งค่าเพจขึ้นก่อนเสมอ!)
 # ==========================================
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER", page_icon="🛸", layout="wide")
+
 try:
     FB_API_KEY = st.secrets["firebase"]["api_key"]
     FB_URL = st.secrets["firebase"]["firebase_url"]
@@ -20,16 +22,19 @@ except Exception:
 
 @st.cache_resource
 def init_system():
-    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00E5FF" 
-    if 'accent_color' not in st.session_state: st.session_state.accent_color = "#FF0055" 
-    if 'success_color' not in st.session_state: st.session_state.success_color = "#39FF14" 
-    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"     
-    if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-    if 'user_phone' not in st.session_state: st.session_state.user_phone = ""
-    if 'song_index' not in st.session_state: st.session_state.song_index = 0
+    # ฟังก์ชันนี้เอาไว้แคชทรัพยากรระบบหลัก
     return True
 
 init_system()
+
+# ทำการตรวจสอบและสร้างค่ากำหนดใน Session State ให้ปลอดภัยแบบ 100%
+if 'theme_color' not in st.session_state: st.session_state.theme_color = "#00E5FF" 
+if 'accent_color' not in st.session_state: st.session_state.accent_color = "#FF0055" 
+if 'success_color' not in st.session_state: st.session_state.success_color = "#39FF14" 
+if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"     
+if 'logged_in' not in st.session_state: st.session_state.logged_in = False
+if 'user_phone' not in st.session_state: st.session_state.user_phone = ""
+if 'song_index' not in st.session_state: st.session_state.song_index = 0
 
 # ==========================================
 # 2. FIREBASE REALTIME DATABASE FUNCTIONS
@@ -53,8 +58,6 @@ def push_firebase_data(path, data):
 # ==========================================
 # 3. UI STYLING & GLOBAL LOGO (กรอบนีออนหมุนกระดุกะดิก)
 # ==========================================
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER", page_icon="🛸", layout="wide")
-
 current_bg = st.session_state.get('bg_color', '#000000')
 current_theme = st.session_state.get('theme_color', '#00E5FF')
 current_accent = st.session_state.get('accent_color', '#FF0055')
@@ -121,10 +124,11 @@ def show_neon_logo():
 def room_core():
     st.markdown(f"<h2 style='color:{current_theme}; text-align:center;'>🚀 CORE COMMAND</h2>", unsafe_allow_html=True)
     now = datetime.utcnow() + timedelta(hours=7)
+    user_phone_display = st.session_state.get('user_phone', 'Unknown')
     st.markdown(f"""
         <div class="neon-box" style="border-color:{current_accent};">
             <h1 style="margin:0; color:{current_success}; text-shadow: 0 0 15px {current_success};">{now.strftime('%H:%M:%S')}</h1>
-            <p style="margin:5px 0 0 0; font-size:16px; color:#FFFFFF;">AGENT: {st.session_state.user_phone}</p>
+            <p style="margin:5px 0 0 0; font-size:16px; color:#FFFFFF;">AGENT: {user_phone_display}</p>
             <p style="margin:5px 0 0 0; color:{current_theme}; font-style:italic;">'อยู่นิ่งๆ ไม่เจ็บตัว'</p>
         </div>
     """, unsafe_allow_html=True)
@@ -151,7 +155,6 @@ def room_radar():
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
     </script>
     """
-    # 🌟 เอา key ออกเพื่อแก้อาการหน้าจอแดงรันไม่ได้ และล้อมตู้คอนเทนเนอร์คุมโครงสร้างหน้าเว็บแทน
     with st.container():
         components.html(map_html_code, height=380)
 
@@ -167,7 +170,8 @@ def room_comms():
     with st.form("chat_form", clear_on_submit=True):
         msg = st.text_input("กรอกสัญญาณข้อความ:")
         if st.form_submit_button("SEND SIGNAL") and msg:
-            push_firebase_data("global_chat", {'user': st.session_state.user_phone, 'msg': msg, 'ts': time.time()})
+            user_phone_current = st.session_state.get('user_phone', 'Unknown')
+            push_firebase_data("global_chat", {'user': user_phone_current, 'msg': msg, 'ts': time.time()})
             st.rerun()
 
 def room_music():
@@ -194,6 +198,7 @@ def room_music():
 
     import json
     songs_json = json.dumps(song_data_list)
+    current_song_idx = st.session_state.get('song_index', 0)
 
     player_html = f"""
     <div style="background: #000; border: 3px solid {current_accent}; border-radius: 20px; padding: 20px; box-shadow: 0 0 25px {current_theme};">
@@ -217,7 +222,7 @@ def room_music():
 
     <script>
         const playlist = {songs_json};
-        let currentIndex = {st.session_state.song_index};
+        let currentIndex = {current_song_idx};
         
         const player = document.getElementById('main-player');
         const title = document.getElementById('track-title');
@@ -258,7 +263,6 @@ def room_music():
         }}
     </script>
     """
-    # 🌟 เอา key ออกเพื่อแก้อาการหน้าจอแดงรันไม่ได้
     with st.container():
         components.html(player_html, height=320)
 
@@ -270,7 +274,10 @@ def room_sensor():
 # 5. MAIN CONTROL FLOW
 # ==========================================
 def main():
-    if not st.session_state.logged_in:
+    # 🌟 แก้ไขจุดตาย: ใช้การดึงข้อมูลแบบปลอดภัย .get() ป้องกันการระเบิดของเซสชันเมื่อรันหน้าเซิร์ฟเวอร์คลาวด์
+    is_logged_in = st.session_state.get('logged_in', False)
+    
+    if not is_logged_in:
         show_neon_logo()
         st.markdown(f"<h1 style='text-align:center; color:{current_theme}; margin-top:0;'>SYNAPSE AUTH</h1>", unsafe_allow_html=True)
         
@@ -289,15 +296,16 @@ def main():
     else:
         with st.sidebar:
             show_neon_logo()
+            user_phone_current = st.session_state.get('user_phone', 'Unknown')
             st.markdown(f"<h3 style='text-align:center; color:{current_success}; margin-top:0;'>🛸 ONLINE</h3>", unsafe_allow_html=True)
-            st.write(f"AGENT: `{st.session_state.user_phone}`")
+            st.write(f"AGENT: `{user_phone_current}`")
             
             st.markdown("---")
             st.write("⚙️ **ส่วนผู้ใช้ปรับแต่งโทนสีเอง (Realtime-Custom)**")
-            st.session_state.theme_color = st.color_picker("น้ำเงิน/ฟ้า นีออนหลัก", st.session_state.theme_color, key="cp_theme")
-            st.session_state.accent_color = st.color_picker("แดง/ชมพู นีออนตัดขอบ", st.session_state.accent_color, key="cp_accent")
-            st.session_state.success_color = st.color_picker("เขียวนีออนสถานะ", st.session_state.success_color, key="cp_success")
-            st.session_state.bg_color = st.color_picker("สีพื้นหลังหน้าจอแอป", st.session_state.bg_color, key="cp_bg")
+            st.session_state.theme_color = st.color_picker("น้ำเงิน/ฟ้า นีออนหลัก", st.session_state.get('theme_color', '#00E5FF'), key="cp_theme")
+            st.session_state.accent_color = st.color_picker("แดง/ชมพู นีออนตัดขอบ", st.session_state.get('accent_color', '#FF0055'), key="cp_accent")
+            st.session_state.success_color = st.color_picker("เขียวนีออนสถานะ", st.session_state.get('success_color', '#39FF14'), key="cp_success")
+            st.session_state.bg_color = st.color_picker("สีพื้นหลังหน้าจอแอป", st.session_state.get('bg_color', '#000000'), key="cp_bg")
             
             st.markdown("---")
             if st.button("🚪 LOGOUT (ตัดการเชื่อมต่อ)", key="logout_btn"):
