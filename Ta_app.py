@@ -3,6 +3,59 @@ import streamlit as st
 import google.generativeai as genai
 import json
 import time
+def synthesize_sound_pro(self, v):
+    """
+    สังเคราะห์คลื่นเสียง 6D แบบมีมิติสมจริง 
+    ด้วยการผสมฮาร์มอนิก (Overtones) และแยกมิติซ้าย-ขวา (Stereo Binaural)
+    """
+    sample_rate = 22050  # ขนาดกำลังดีสำหรับรันบนมือถือ
+    duration = 6.0       # ปรับเป็น 6 วินาทีตามชื่อคอนเซปต์ 6D
+    t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
+    
+    # 1. คำนวณความถี่หลัก (Fundamental Frequency) อิงจากพลังงานอารมณ์
+    base_freq = 432.0 + (v * 10.0) 
+    
+    # 2. สร้างมิติเสียงสมจริงด้วยการเพิ่มเลเยอร์ฮาร์มอนิก (เสียงจะไม่แบน)
+    # Layer 1: คลื่นหลักให้น้ำหนักและมวลเสียง (Sine Wave)
+    f1 = 0.5 * np.sin(2 * np.pi * base_freq * t)
+    
+    # Layer 2: เสียงโอเวอร์โทนคู่แปด เพิ่มความสว่างนุ่มนวล (Sine Wave Octave)
+    f2 = 0.25 * np.sin(2 * np.pi * (base_freq * 2.0) * t)
+    
+    # Layer 3: คลื่นทรงสามเหลี่ยม (Triangle Wave) เพิ่มความหนาและอบอุ่นสไตล์แอนะล็อก
+    f3 = 0.15 * (2.0 * np.abs(2.0 * (t * base_freq - np.floor(t * base_freq + 0.5))) - 1.0)
+    
+    # รวมทุกเลเยอร์เข้าด้วยกัน
+    mono_signal = f1 + f2 + f3
+    
+    # 3. สร้างมิติ 6D (Binaural Effect) แยกหูซ้าย-หูขวา ให้เสียงหมุนวนในหัว
+    # ขยับความถี่หูขวาไปเล็กน้อย (+4Hz) เพื่อกระตุ้นคลื่นสมอง Theta Wave
+    right_signal = 0.5 * np.sin(2 * np.pi * (base_freq + 4.0) * t) + f2
+    left_signal = mono_signal
+    
+    # 4. ทำ LFO (Low-Frequency Oscillator) ให้เสียงมีความวูบวาบ มีมิติเคลื่อนไหวไม่นิ่งสนิท
+    lfo = 0.6 + 0.4 * np.sin(2 * np.pi * 0.5 * t)  # วูบวาบช้าๆ ทุกๆ 2 วินาที
+    left_signal *= lfo
+    right_signal *= lfo
+    
+    # 5. ใส่ Envelope (Fade In 1 วินาที / Fade Out 1.5 วินาที) ป้องกันเสียงคลิกบาดหู
+    envelope = np.ones_like(t)
+    fade_in = int(sample_rate * 1.0)
+    fade_out = int(sample_rate * 1.5)
+    envelope[:fade_in] = np.linspace(0, 1, fade_in)
+    envelope[-fade_out:] = np.linspace(1, 0, fade_out)
+    
+    left_final = left_signal * envelope
+    right_final = right_signal * envelope
+    
+    # 6. รวมสัญญาณเป็น 2 ช่อง (Stereo CH1=ซ้าย, CH2=ขวา)
+    stereo_signal = np.vstack((left_final, right_final)).T
+    
+    # ปรับระดับสัญญาณไม่ให้พีค (Limit & Master)
+    mastered_audio = np.clip(stereo_signal, -0.9, 0.9)
+    audio_bytes = (mastered_audio * 32767).astype(np.int16).tobytes()
+    
+    return audio_bytes, sample_rate
 
 # --- 1. ตั้งค่าดีไซน์ตามโลโก้ (ม่วง-ดำ-เขียวมินต์) หรูหราคมชัด ---
 st.set_page_config(page_title="SYNAPSE 6D Pro", page_icon="💎", layout="centered")
