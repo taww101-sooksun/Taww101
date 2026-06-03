@@ -2,74 +2,100 @@ import streamlit as st
 import streamlit.components.v1 as components
 import requests
 import json
-from datetime import datetime
 
-# ตั้งค่าหน้าจอแอป SYNAPSE ให้พอดีกับหน้าจอมือถือ
-st.set_page_config(page_title="SYNAPSE CHAT & THERAPY", page_icon="🔮", layout="centered")
+FIREBASE_DB_URL = "https://sooksun1-default-rtdb.firebaseio.com"
 
-# --- 1. แสดงผลโลโก้ตัวจริง Logo1.png จาก GitHub ของนาย ---
-logo_url = "https://raw.githubusercontent.com/taww101-sooksun/Taww101/main/Logo1.png"
+# สมมติชื่อผู้ใช้เพื่อแยกข้อมูล
+my_name = st.selectbox("เลือกบัญชีของคุณเพื่ออัปเดต GPS:", ["นายกานต์", "นายบาส"])
+friend_name = "นายบาส" if my_name == "นายกานต์" else "นายกานต์"
+
+st.subheader("🛰️ ระบบติดตามพิกัด GPS ความแม่นยำสูง")
+
+# 1. ดึงพิกัดล่าสุดของเพื่อนจาก Firebase มาโชว์บนหน้าจอเรา
 try:
-    st.image(logo_url, use_container_width=True)
+    friend_gps = requests.get(f"{FIREBASE_DB_URL}/users/{friend_name}/gps.json").json()
 except:
-    st.title("🔮 SYNAPSE SYSTEM")
+    friend_gps = None
+
+if friend_gps:
+    st.info(f"📍 พิกัดล่าสุดของ **{friend_name}**: Lat: {friend_gps.get('lat')}, Lon: {friend_gps.get('lon')} (อัปเดตเมื่อ: {friend_gps.get('time')})")
+    # นายนสามารถเอาค่า Lat, Lon นี้ไปเปิดใน Google Maps ดูตำแหน่งเพื่อนได้เลย
+else:
+    st.write(f"⚪ ยังไม่มีข้อมูลพิกัดของ {friend_name}")
 
 st.markdown("---")
 
-# คอนฟิกฐานข้อมูล Firebase ของนาย และลิงก์เสียงเรดาร์ดิบจาก GitHub
-FIREBASE_DB_URL = "https://sooksun1-default-rtdb.firebaseio.com"
-synapse_radar_tone = "https://raw.githubusercontent.com/taww101-sooksun/Taww101/b41c648c082e24be27fed1407735e895ee6a4e43/SYNAPSE%20RADAR.mp3"
+# 2. ปุ่มกดของตัวเราเองเพื่อส่งพิกัดขึ้น Firebase
+st.write("กดปุ่มด้านล่างเพื่อส่งพิกัดปัจจุบันของคุณให้เพื่อนเห็น:")
 
-# ระบบเลือกชื่อเพื่อแยกบัญชีคนคุย ไม่ให้ข้อมูลมั่วกัน
-my_name = st.selectbox("👤 โปรดระบุชื่อของคุณ :", ["นายกานต์", "นายบาส"])
-friend_name = "นายบาส" if my_name == "นายกานต์" else "นายกานต์"
+# ตัวรับค่าที่ส่งมาจาก JavaScript (Hidden input เพื่อส่งค่ากลับเข้า Python)
+lat_input = st.hidden_input(label="lat", key="my_lat")
+lon_input = st.hidden_input(label="lon", key="my_lon")
 
-# จัดหน้าจอเป็น 2 ฝั่ง ซ้ายเป็นแชต ขวาเป็นเครื่องเล่นเพลง ไม่ต้องพับหน้าจอ
-col_left, col_right = st.columns([1, 1])
+# ส่วนประกอบ HTML/JavaScript ที่คุยกับฮาร์ดแวร์ GPS ของมือถือโดยตรง
+components.html(f"""
+    <div style="text-align: center;">
+        <button onclick="getLocation()" style="padding: 12px; background-color: #4CAF50; color: white; border: none; border-radius: 8px; width: 100%; font-size: 16px; font-weight: bold; cursor: pointer;">
+            📍 อัปเดตและแชร์พิกัด GPS ของฉัน
+        </button>
+        <p id="status" style="color: #888; font-size: 13px; margin-top: 8px;"></p>
+    </div>
 
-# ==========================================
-# 💬 ฝั่งซ้าย: ระบบห้องแชตสดและส่งพิกัด GPS
-# ==========================================
-with col_left:
-    st.subheader("💬 ห้องแชตคู่สนทนา")
-    
-    # ดึงข้อมูลแชตล่าสุดจาก Firebase มาแสดงผล
-    chat_room_id = f"chat_{min(my_name, friend_name)}_{max(my_name, friend_name)}"
-    try:
-        chat_response = requests.get(f"{FIREBASE_DB_URL}/chats/{chat_room_id}.json").json()
-    except:
-        chat_response = None
+    <script>
+    function getLocation() {{
+        var statusText = document.getElementById("status");
+        if (navigator.geolocation) {{
+            statusText.innerHTML = "กำลังค้นหาสัญญาณดาวเทียม...";
+            // enableHighAccuracy: true สั่งให้เปิดใช้ GPS จริงจากเครื่อง ไม่ใช้พิกัดสุ่มจากอินเทอร์เน็ต
+            navigator.geolocation.getCurrentPosition(sendPosition, showError, {{
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }});
+        }} else {{ 
+            statusText.innerHTML = "เบราว์เซอร์นี้ไม่รองรับระบบ GPS";
+        }}
+    }}
 
-    # แสดงกล่องข้อความที่คุยกัน
-    chat_placeholder = st.empty()
-    chat_text = ""
-    
-    if chat_response:
-        for msg_id, msg_data in chat_response.items():
-            chat_text += f"**{msg_data['sender']}** ({msg_data['time']}): {msg_data['text']}\n\n"
-    else:
-        chat_text = "*ยังไม่มีข้อความแชต เริ่มพิมพ์คุยกันได้เลย*"
+    function sendPosition(position) {{
+        var lat = position.coords.latitude;
+        var lon = position.coords.longitude;
+        var timeNow = new Date().toLocaleTimeString();
         
-    chat_placeholder.markdown(chat_text)
+        document.getElementById("status").innerHTML = "จับพิกัดสำเร็จ! กำลังบันทึกข้อมูล...";
+        
+        // ยิงข้อมูลพิกัดตรงเข้า Firebase Realtime Database ของผู้ใช้คนนี้ทันที
+        var data = {{
+            lat: lat,
+            lon: lon,
+            time: timeNow
+        }};
+        
+        fetch('{FIREBASE_DB_URL}/users/{my_name}/gps.json', {{
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }}).then(response => {{
+            document.getElementById("status").innerHTML = "แชร์พิกัดเรียบร้อยแล้ว (Lat: " + lat + ")";
+        }}).catch(error => {{
+            document.getElementById("status").innerHTML = "บันทึกข้อมูลล้มเหลว";
+        }});
+    }}
 
-    # ช่องพิมพ์ส่งข้อความแชต
-    user_msg = st.text_input("พิมพ์ข้อความที่นี่...", key="chat_input")
-    if st.button("✈️ ส่งข้อความ"):
-        if user_msg:
-            now = datetime.now().strftime("%H:%M:%S")
-            new_msg = {
-                "sender": my_name,
-                "text": user_msg,
-                "time": now
-            }
-            # ส่งบันทึกลง Firebase
-            requests.post(f"{FIREBASE_DB_URL}/chats/{chat_room_id}.json", data=json.dumps(new_msg))
-            
-            # ยิงสัญญาณแจ้งเตือนไปที่ฝั่งเพื่อนทันที
-            alert_data = {"new_message": True, "sender": my_name}
-            requests.put(f"{FIREBASE_DB_URL}/users/{friend_name}/chat_alert.json", data=json.dumps(alert_data))
-            st.rerun()
-
-    st.markdown("---")
-    st.subheader("🛰️ พิกัด GPS ล่าสุด")
-    # ปุ่ม
+    function showError(error) {{
+        var statusText = document.getElementById("status");
+        switch(error.code) {{
+            case error.PERMISSION_DENIED:
+                statusText.innerHTML = "คุณต้องกด 'อนุญาต' ให้แอปเข้าถึง GPS ก่อนนะครับ";
+                break;
+            case error.POSITION_UNAVAILABLE:
+                statusText.innerHTML = "ไม่สามารถระบุตำแหน่งได้ (สัญญาณขาดหาย)";
+                break;
+            case error.TIMEOUT:
+                statusText.innerHTML = "หมดเวลารอสัญญาณ GPS";
+                break;
+            default:
+                statusText.innerHTML = "เกิดข้อผิดพลาดลึกลับเกี่ยวกับระบบพิกัด";
+        }}
+    }}
+    </script>
+""", height=100)
