@@ -3,97 +3,129 @@ import streamlit.components.v1 as components
 import requests
 import json
 
-# ตั้งค่าหน้าจอแอป SYNAPSE
-st.set_page_config(page_title="SYNAPSE CALL", page_icon="🔮", layout="centered")
+# ตั้งค่าหน้าจอแอป SYNAPSE ให้กว้างพอดีกับหน้าจอมือถือ
+st.set_page_config(page_title="SYNAPSE ALL-IN-ONE", page_icon="🔮", layout="centered")
 
-# --- 1. ดึงรูปโลโก้ Logo1.png จาก GitHub ของนาย ---
+# --- 1. ส่วนหัวแอปพลิเคชัน และ โลโก้ตัวจริง ---
 logo_url = "https://raw.githubusercontent.com/taww101-sooksun/Taww101/main/Logo1.png"
 try:
     st.image(logo_url, use_container_width=True)
 except:
-    st.title("🔮 SYNAPSE CALL")
+    st.title("🔮 SYNAPSE SYSTEM")
 
 st.markdown("---")
 
-# --- 2. ตั้งค่าการเชื่อมต่อ Firebase (อิงจากฐานข้อมูลของนาย) ---
-# ใช้ URL ฐานข้อมูลที่นายให้มาในตอนแรก
+# คอนฟิกฐานข้อมูล Firebase ของนาย
 FIREBASE_DB_URL = "https://sooksun1-default-rtdb.firebaseio.com"
-
-# สมมติระบบล็อกอิน (นายกานต์ และ นายบาส) เพื่อให้เห็นภาพการแยกแยะ 100 คนไม่ให้มั่วกัน
-st.subheader("👤 ข้อมูลผู้ใช้งานปัจจุบัน")
-my_name = st.selectbox("คุณคือใครในระบบ :", ["นายกานต์", "นายบาส"])
-friend_name = "นายบาส" if my_name == "นายกานต์" else "นายกานต์"
-
-st.info(f"ตอนนี้คุณล็อกอินเป็น: **{my_name}** | เพื่อนของคุณคือ: **{friend_name}**")
-
-st.markdown("---")
-
-# --- 3. ฝั่งคนโทร (กดโทรหาเพื่อน) ---
-st.subheader("🤙 โทรหาเพื่อน")
-if st.button(f"📞 กดโทรหา {friend_name}"):
-    st.warning(f"กำลังส่งสัญญาณเรียกเข้าไปยังเครื่องของ {friend_name}...")
-    
-    # ยิงข้อมูลไปที่ Firebase เพื่อเปลี่ยนสถานะเครื่องของเพื่อนว่ามีสายเข้า
-    call_data = {
-        "incoming_call": True,
-        "caller": my_name
-    }
-    # ส่งข้อมูลไปบันทึกในกล่องของเพื่อน
-    response = requests.put(
-        f"{FIREBASE_DB_URL}/users/{friend_name}/call_status.json", 
-        data=json.dumps(call_data)
-    )
-    if response.status_code == 200:
-        st.success("ส่งสัญญาณแจ้งเตือนสำเร็จแล้ว! (รอเพื่อนกดรับสาย)")
-
-if st.button("❌ วางสาย / ยกเลิกการโทร"):
-    # ล้างสถานะใน Firebase ให้กลับเป็นปกติ
-    clear_data = {"incoming_call": False, "caller": ""}
-    requests.put(f"{FIREBASE_DB_URL}/users/{friend_name}/call_status.json", data=json.dumps(clear_data))
-    st.info("ยกเลิกสายแล้ว")
-
-
-st.markdown("---")
-
-# --- 4. ฝั่งคนรับ (โค้ดตรวจจับสัญญาณและเปิดเสียงแจ้งเตือน) ---
-st.subheader("🔔 สถานะการรับสายของคุณ")
-
-# โค้ดส่วนนี้จะวิ่งไปเช็คที่ Firebase ของตัวเองตลอดเวลาว่ามีคนโทรมาไหม
-try:
-    check_response = requests.get(f"{FIREBASE_DB_URL}/users/{my_name}/call_status.json")
-    status = check_response.json()
-except:
-    status = None
-
-# ลิงก์เสียงเรดาร์ดิบจาก GitHub ของนาย (ไม่มีการสั่นตามที่แจ้งไว้)
 synapse_radar_tone = "https://raw.githubusercontent.com/taww101-sooksun/Taww101/b41c648c082e24be27fed1407735e895ee6a4e43/SYNAPSE%20RADAR.mp3"
 
-if status and status.get("incoming_call") == True:
-    caller_name = status.get("caller", "ไม่ทราบชื่อ")
-    st.error(f"🚨 มีสายเรียกเข้าจาก: **{caller_name}**")
-    
-    # ปุ่มควบคุมสำหรับฝั่งคนรับสาย
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🟢 กดรับสาย"):
-            st.success("เชื่อมต่อสัญญาณเสียงสำเร็จ (ระบบ WebRTC เริ่มทำงาน)")
-            # ในอนาคตจะใส่โค้ดเปิดไมค์คุยกันตรงนี้
-            
-    with col2:
-        if st.button("🔴 ปฏิเสธสาย"):
-            clear_data = {"incoming_call": False, "caller": ""}
-            requests.put(f"{FIREBASE_DB_URL}/users/{my_name}/call_status.json", data=json.dumps(clear_data))
-            st.experimental_rerun()
+# จำลองระบบชื่อผู้ใช้เพื่อไม่ให้ข้อมูลมั่วกัน 100 คน
+my_name = st.selectbox("👤 บัญชีผู้ใช้งานปัจจุบัน :", ["นายกานต์", "นายบาส"])
+friend_name = "นายบาส" if my_name == "นายกานต์" else "นายกานต์"
 
-    # สั่งให้บราวเซอร์เปิดเสียงเรดาร์ทันทีเมื่อตรวจเจอ incoming_call: True
+st.markdown("---")
+
+#สร้างแถบเมนูหน้าเดียวแยกฝั่งซ้ายขวาเพื่อความสะอาดตา ไม่ต้องพับหน้าจอ
+col_left, col_right = st.columns([1, 1])
+
+# ==========================================
+# 🛰️ ฝั่งซ้าย: ระบบ GPS แชต และ การส่งสัญญาณโทร
+# ==========================================
+with col_left:
+    st.subheader("🛰️ ระบบ GPS ประจำตัว")
+    st.write("กดปุ่มเพื่ออัปเดตพิกัดความแม่นยำสูงเข้าสู่ระบบ")
+    
+    # ใช้ JavaScript ดึงค่าพิกัดความแม่นยำสูงจากเครื่องมือถือตรงๆ
+    gps_component = components.html("""
+        <button onclick="getLocation()" style="padding: 10px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; width: 100%;">📍 ดึงพิกัด GPS สด</button>
+        <p id="geo_data" style="color: gray; font-size: 12px; margin-top: 5px;"></p>
+        <script>
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError, {enableHighAccuracy: true});
+            } else { 
+                document.getElementById("geo_data").innerHTML = "เบราว์เซอร์ไม่รองรับ GPS";
+            }
+        }
+        function showPosition(position) {
+            document.getElementById("geo_data").innerHTML = "ละติจูด: " + position.coords.latitude + "<br>ลองจิจูด: " + position.coords.longitude;
+            // ส่งค่ากลับไปบันทึกได้ในระบบจริง
+        }
+        function showError(error) { document.getElementById("geo_data").innerHTML = "เข้าถึง GPS ไม่ได้"; }
+        </script>
+    """, height=90)
+
+    st.markdown("---")
+    
+    st.subheader("🤙 ควบคุมสายโทรออก")
+    if st.button(f"📞 กดโทรหา {friend_name}"):
+        requests.put(f"{FIREBASE_DB_URL}/users/{friend_name}/call_status.json", data=json.dumps({"incoming_call": True, "caller": my_name}))
+        st.success("กำลังส่งสัญญาณโทร...")
+        
+    if st.button("❌ วางสายทั้งหมด"):
+        requests.put(f"{FIREBASE_DB_URL}/users/{friend_name}/call_status.json", data=json.dumps({"incoming_call": False, "caller": ""}))
+        st.info("วางสายแล้ว")
+
+# ==========================================
+# 🎵 ฝั่งขวา: เครื่องเล่นเพลงบำบัด 70 เพลงจาก GitHub
+# ==========================================
+with col_right:
+    st.subheader("🎵 คลังเพลงบำบัด 70 เพลง")
+    st.write("ดึงข้อมูลสดจากคลังเสียง GitHub ของคุณ")
+    
+    # โค้ดนี้จะไปอ่านรายชื่อไฟล์ในคลัง GitHub ของนายอัตโนมัติ
+    # (นายต้องเปลี่ยนชื่อ User และชื่อ Repo ให้ตรงกับของจริงนะครับ)
+    github_api_url = "https://api.github.com/repos/taww101-sooksun/Taww101/contents/"
+    
+    playlist = []
+    try:
+        response = requests.get(github_api_url)
+        if response.status_code == 200:
+            files = response.json()
+            # คัดเลือกเฉพาะไฟล์ที่เป็น .mp3 ออกมาโชว์
+            playlist = [f['name'] for f in files if f['name'].endswith('.mp3')]
+    except:
+        playlist = ["SYNAPSE RADAR.mp3", "test_morning.mp3", "test_evening.mp3"] # ตัวอย่างเผื่อเน็ตหลุด
+
+    if playlist:
+        selected_song = st.selectbox("เลือกเพลงที่ต้องการฟัง:", playlist)
+        # แปลงเป็น Raw Link เพื่อส่งให้เครื่องเล่นเพลงทำงาน
+        raw_song_url = f"https://raw.githubusercontent.com/taww101-sooksun/Taww101/main/{selected_song}"
+        st.audio(raw_song_url, format="audio/mp3")
+    else:
+        st.warning("ไม่พบไฟล์เพลงในโฟลเดอร์ GitHub")
+
+st.markdown("---")
+
+# ==========================================
+# 🚨 ส่วนล่างสุด: กระดานเช็คสัญญาณเรียกเข้า (กล่องข้อความโชว์ สั่น และเตือนเสียงเรดาร์)
+# ==========================================
+st.subheader("📥 กล่องรับสัญญาณและข้อความเตือน")
+
+try:
+    check_db = requests.get(f"{FIREBASE_DB_URL}/users/{my_name}/call_status.json").json()
+except:
+    check_db = None
+
+if check_db and check_db.get("incoming_call") == True:
+    caller = check_db.get("caller", "สายปริศนา")
+    st.error(f"🚨 มีสายเรียกเข้าจาก: {caller} !!")
+    
+    if st.button("🟢 ตอบรับสาย"):
+        st.success("เข้าสู่โหมดสนทนาเสียงสำเร็จ")
+        
+    # สั่งงาน JavaScript ระเบิดเสียงเรดาร์ทันทีเมื่อกล่องนี้ทำงาน และสั่งสั่นตัวเครื่องไปพร้อมกัน
     components.html(f"""
         <script>
+            // สั่งสั่นสะเทือนตัวเครื่องมือถือ (สั่นจังหวะหนัก 3 ครั้ง)
+            if (navigator.vibrate) {{
+                navigator.vibrate([500, 200, 500, 200, 500]);
+            }}
+            // เล่นเสียง SYNAPSE RADAR วนลูป
             var audio = new Audio('{synapse_radar_tone}');
-            audio.loop = true; // เล่นวนลูปไปเรื่อยๆ จนกว่าจะกดรับหรือตัดสาย
-            audio.play().catch(function(error) {{
-                console.log("ตามกฎความปลอดภัยของมือถือ ต้องเคยแตะหน้าจอแอปอย่างน้อย 1 ครั้ง เสียงถึงจะดังอัตโนมัติได้");
-            }});
+            audio.loop = true;
+            audio.play().catch(function(e) {{ console.log("รอการแตะหน้าจอเพื่อเปิดเสียงสมัครสมาน"); }});
         </script>
     """, height=0)
 else:
-    st.write("🟢 ไม่มีสายเรียกเข้าในขณะนี้ (สแตนด์บายปกติ)")
+    st.write("🟢 สถานะตัวเครื่องปกติ: รอรับสายการเชื่อมต่อ...")
