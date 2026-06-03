@@ -1,5 +1,15 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import streamlit as st
+
+# 1. วางโลโก้ SYNAPSE ไว้บนสุดของหน้าจอ (ดึงจากลิงก์ที่นายให้มาได้เลย)
+logo_url = "https://i.ibb.co/L95x82t/SYNAPSE-Transparent.png"
+st.image(logo_url, width=150) # ปรับขนาดความกว้างตามใจชอบ
+
+st.title("SOOKSUN CALL")
+st.write("ยินดีต้อนรับเข้าสู่ระบบจัดการสายเรียกเข้า")
+
+# ... ตามด้วยโค้ดระบบล็อกอิน Firebase และปุ่มโทรเสียงเรดาร์ที่เราทำไว้ด้านบน ...
 
 st.title("SOOKSUN CALL - ระบบทดสอบเสียงเรียกเข้า")
 st.write("ดึงไฟล์เสียง SYNAPSE RADAR โดยตรงจาก GitHub ของนายมาใช้งาน")
