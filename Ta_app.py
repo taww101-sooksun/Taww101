@@ -188,4 +188,70 @@ def room_music():
     # ดึงไฟล์เพลง .mp3 ในเครื่อง
     songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
     if not songs:
-        st.warning("⚠️ ไม่พบสัญญาณเสียง
+        st.warning("⚠️ ไม่พบสัญญาณเสียงในหน่วยความจำ")
+        return
+        
+    s_a = st.selectbox("🎯 SELECT SIGNAL SOURCE", ["-- STANDBY --"] + songs, index=min(st.session_state.song_index + 1, len(songs)))
+    song_b64 = ""
+    song_name = "WAITING FOR SIGNAL..."
+    
+    if s_a != "-- STANDBY --":
+        with open(s_a, "rb") as f:
+            song_b64 = base64.b64encode(f.read()).decode()
+        st.session_state.song_index = songs.index(s_a)
+        song_name = s_a
+
+    visualizer_html = f"""
+    <div style="background: #000; border: 3px solid {st.session_state.theme_color}; border-radius: 20px; padding: 15px; box-shadow: 0 0 30px {st.session_state.theme_color}55;">
+        <div style="overflow: hidden; white-space: nowrap; background: #050505; border: 1px solid {st.session_state.theme_color}55; border-radius: 8px; margin-bottom: 10px; padding: 8px;">
+            <p id="mText" style="display: inline-block; padding-left: 100%; font-family: Orbitron, monospace; font-size: 16px; color: white; animation: marquee 12s linear infinite;">
+                <span style="animation: rainbowText 4s linear infinite;">>>></span> {song_name} <span style="animation: rainbowText 4s linear infinite;"><<< ANALYZING... SECURE LINE... >>></span>
+            </p>
+        </div>
+        <canvas id="canvas" style="width: 100%; height: 220px; background: #000; border-radius: 10px;"></canvas>
+        <button id="pBtn" style="width: 100%; margin-top:10px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; font-weight:bold; cursor: pointer;">[ CLICK TO SYNC ]</button>
+        <audio id="audio" src="data:audio/mp3;base64,{song_b64}"></audio>
+    </div>
+    <style>
+        @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
+        @keyframes rainbowText {{
+            0%, 100% {{ color: #ff0000; }} 16% {{ color: #ff7f00; }} 33% {{ color: #ffff00; }}
+            50% {{ color: #00ff00; }} 66% {{ color: #0000ff; }} 83% {{ color: #4b0082; }}
+        }}
+    </style>
+    <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const audio = document.getElementById('audio');
+    const btn = document.getElementById('pBtn');
+    const mText = document.getElementById('mText');
+    let aCtx, ans, src, data;
+    mText.style.animationPlayState = 'paused';
+
+    btn.onclick = function() {{
+        if (!aCtx) {{
+            aCtx = new (window.AudioContext || window.webkitAudioContext)();
+            ans = aCtx.createAnalyser();
+            src = aCtx.createMediaElementSource(audio);
+            src.connect(ans); ans.connect(aCtx.destination);
+            ans.fftSize = 128; data = new Uint8Array(ans.frequencyBinCount);
+            draw();
+        }}
+        if (audio.paused) {{ audio.play(); btn.innerText = "[ SIGNAL ACTIVE ]"; mText.style.animationPlayState = 'running'; }}
+        else {{ audio.pause(); btn.innerText = "[ SIGNAL PAUSED ]"; mText.style.animationPlayState = 'paused'; }}
+    }};
+    function draw() {{
+        requestAnimationFrame(draw);
+        ans.getByteFrequencyData(data);
+        ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        let x = 0; const bW = (canvas.width / data.length) * 2;
+        for(let i=0; i<data.length; i++) {{
+            let bH = data[i]*0.9; let h = (i/data.length)*360;
+            ctx.fillStyle = `hsl(${{h}}, 100%, 50%)`;
+            ctx.shadowBlur = 10; ctx.shadowColor = `hsl(${{h}}, 100%, 50%)`;
+            ctx.fillRect(x, canvas.height-bH, bW-2, bH); x += bW;
+        }}
+    }}
+    </script>
+    """
+    components.html(visualizer_html, height=420)
