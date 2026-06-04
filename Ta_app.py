@@ -3,10 +3,9 @@ import streamlit.components.v1 as components
 import requests
 import json
 
-# 1. ตั้งค่าหน้าจอแอป
+# 1. ตั้งค่าหน้าจอแอปและลบติ่ง Streamlit ออกให้หมดตามบรีฟเดิม
 st.set_page_config(page_title="SYNAPSE SECURE", page_icon="🔮", layout="centered")
 
-# --- 2. ลบติ่ง Streamlit และทำพื้นหลังนีออนดำ ---
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -24,25 +23,29 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# คอนฟิกฐานข้อมูลของนาย
-FIREBASE_DB_URL = "https://sooksun1-default-rtdb.firebaseio.com"
-# **ความจริงสำคัญ**: นายต้องเอา Web API Key ของ Firebase Project นายมาใส่ตรงนี้เพื่อใช้ล็อกอินจริง
-FIREBASE_AUTH_KEY = "AIzaSyA... (เอา API Key จากตั้งค่า Firebase ของนายมาใส่ตรงนี้)" 
+# --- 2. การเรียกใช้ความลับอย่างปลอดภัยผ่าน st.secrets ---
+# โค้ดส่วนนี้จะไปดึงข้อมูลจากหน้าต่าง Secrets บนเว็บ Streamlit Cloud เองโดยอัตโนมัติ ทำให้นายไม่ต้องแปะคีย์ในนี้
+try:
+    FIREBASE_AUTH_KEY = st.secrets["firebase"]["api_key"]
+    FIREBASE_DB_URL = st.secrets["firebase"]["firebase_url"]
+except Exception as e:
+    st.error("🚨 ระบบยังไม่ได้ตั้งค่ากุญแจความลับ (Secrets) บน Streamlit Cloud ครับนาย")
+    st.stop()
 
 synapse_radar_tone = "https://raw.githubusercontent.com/taww101-sooksun/Taww101/b41c648c082e24be27fed1407735e895ee6a4e43/SYNAPSE%20RADAR.mp3"
-logo_url = "https://raw.githubusercontent.com/taww101-sooksun/Taww101/main/Logo1.png"
 
-# แสดงโลโก้หลัก
+# ดึงโลโก้ดั้งเดิมโดยใช้ชื่อไฟล์ตัวเล็กลงท้ายตามคำสั่ง: logo1.png
+logo_url = "https://raw.githubusercontent.com/taww101-sooksun/Taww101/main/logo1.png"
+
+# แสดงโลโก้หลักตัวเล็ก
 try:
     st.image(logo_url, use_container_width=True)
 except:
-    st.write("🔮 [SYNAPSE SYSTEM]")
+    st.write("🔮 [SYNAPSE CALL CENTER]")
 
-# --- 3. ระบบล็อกอินจริง (Firebase Auth หลังบ้าน) ---
+# --- 3. ตรวจสอบสถานะการล็อกอิน ---
 if 'user_email' not in st.session_state:
     st.session_state.user_email = None
-if 'user_local_id' not in st.session_state:
-    st.session_state.user_local_id = None
 
 if st.session_state.user_email is None:
     st.markdown('<div class="neon-box-white">', unsafe_allow_html=True)
@@ -55,7 +58,6 @@ if st.session_state.user_email is None:
     
     with col_login:
         if st.button("🔒 ล็อกอิน"):
-            # ยิงตรวจสอบบัญชีกับเซิร์ฟเวอร์ Firebase ตัวจริง
             url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={FIREBASE_AUTH_KEY}"
             payload = {"email": email, "password": password, "returnSecureToken": True}
             res = requests.post(url, json=payload)
@@ -63,11 +65,10 @@ if st.session_state.user_email is None:
             if res.status_code == 200:
                 data = res.json()
                 st.session_state.user_email = data['email']
-                st.session_state.user_local_id = data['localId']
-                st.success("ลงชื่อเข้าใช้สำเร็จ!")
+                st.success("ยินดีต้อนรับเข้าสู่ระบบพิกัด!")
                 st.rerun()
             else:
-                st.error("❌ อีเมลหรือรหัสผ่านไม่ถูกต้องตามฐานข้อมูลจริง")
+                st.error("❌ อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือนายยังไม่ได้สมัครสมาชิก")
                 
     with col_reg:
         if st.button("📝 สมัครสมาชิกใหม่"):
@@ -75,37 +76,31 @@ if st.session_state.user_email is None:
             payload = {"email": email, "password": password, "returnSecureToken": True}
             res = requests.post(url, json=payload)
             if res.status_code == 200:
-                st.success("สร้างบัญชีสำเร็จ! กดปุ่มล็อกอินได้เลยนาย")
+                st.success("สร้างบัญชีเสร็จสิ้น! นายกดปุ่มล็อกอินซ้ายมือได้เลยครับ")
             else:
-                st.error("❌ สมัครไม่สำเร็จ (รหัสต้อง 6 ตัวขึ้นไป หรืออีเมลนี้มีคนใช้แล้ว)")
+                st.error("❌ สมัครไม่สำเร็จ (รหัสผ่านต้องมี 6 ตัวขึ้นไป หรือเปิดสิทธิ์ใน Firebase หรือยัง?)")
                 
     st.markdown('</div>', unsafe_allow_html=True)
-    st.stop() # หยุดทำงานตรงนี้จนกว่าจะล็อกอินผ่าน
+    st.stop()
 
-# --- 4. หน้าตาแอปหลังจากล็อกอินสำเร็จแล้ว ---
-# แปลงชื่ออีเมลมาทำเป็น ID สื่อสาร (ตัดเครื่องหมายพิเศษออกเพื่อป้องกันฐานข้อมูลพัง)
+# --- 4. หน้าตาแอปหลักหลังล็อกอินผ่านฉลุย ---
 my_name = st.session_state.user_email.replace(".", "_").replace("@", "_")
 
-st.write(f"🟢 บัญชีใช้งานจริง: **{st.session_state.user_email}**")
+st.write(f"🟢 รหัสเข้าใช้งานสำเร็จ: **{st.session_state.user_email}**")
 if st.button("🚪 ออกจากระบบ"):
     st.session_state.user_email = None
-    st.session_state.user_local_id = None
     st.rerun()
 
 st.markdown("---")
-
-# เลือกเพื่อนที่เราจะแชตหรือเช็คตำแหน่งด้วย (อิงจากข้อมูลที่มีอยู่ในระบบ)
-friend_name = st.text_input("🎯 พิมพ์ ID อีเมลของเพื่อนที่ต้องการเชื่อมต่อ (เช่น bas_gmail_com) :")
+friend_name = st.text_input("🎯 พิมพ์ ID ของเพื่อนที่ต้องการเชื่อมต่อ (เช่น bas_gmail_com) :")
 
 if friend_name:
     col_left, col_right = st.columns([1, 1])
 
-    # ==========================================
-    # 💬 ฝั่งซ้าย: ห้องแชตล็อกอินจริง (กรอบนีออนน้ำเงิน)
-    # ==========================================
+    # ห้องแชตนีออนน้ำเงิน
     with col_left:
         st.markdown('<div class="neon-box-blue">', unsafe_allow_html=True)
-        st.subheader("💬 โครงข่ายแชตล็อกอินจริง")
+        st.subheader("💬 ห้องแชตเครือข่าย")
         
         chat_room_id = f"chat_{min(my_name, friend_name)}_{max(my_name, friend_name)}"
         try:
@@ -118,52 +113,46 @@ if friend_name:
             for msg_id, msg_data in chat_res.items():
                 chat_text += f"**{msg_data['sender']}**: {msg_data['text']}\n\n"
         else:
-            chat_text = "*ระบบพร้อมเชื่อมต่อ ไร้ข้อความค้างคา*"
+            chat_text = "*ห้องแชตว่างเปล่า ไม่มีข้อมูลตกค้าง*"
             
         st.markdown(chat_text)
         
-        user_msg = st.text_input("พิมพ์ข้อความแชต...", key="input_secure_chat")
+        user_msg = st.text_input("พิมพ์ข้อความเพื่อส่ง...", key="secure_chat_box")
         if st.button("✈️ ส่งข้อความ"):
             if user_msg:
                 new_msg = {"sender": st.session_state.user_email, "text": user_msg}
                 requests.post(f"{FIREBASE_DB_URL}/chats/{chat_room_id}.json", data=json.dumps(new_msg))
-                # ส่งสัญญาณเตือนเพื่อน
                 requests.put(f"{FIREBASE_DB_URL}/users/{friend_name}/chat_alert.json", data=json.dumps({"new_message": True, "sender": st.session_state.user_email}))
                 st.rerun()
-                
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # ==========================================
-    # 🛰️ ฝั่งขวา: คลังเพลง และ GPS (กรอบนีออนเขียว)
-    # ==========================================
+    # GPS นีออนเขียว
     with col_right:
         st.markdown('<div class="neon-box-green">', unsafe_allow_html=True)
-        st.subheader("🛰️ ระบบพิกัดเฉพาะบุคคล")
+        st.subheader("🛰️ อัปเดตตำแหน่งระบุตัวตน")
         
         components.html(f"""
-            <button onclick="getLocation()" style="padding: 10px; background-color: #00ff66; color: black; border: none; border-radius: 5px; width: 100%; font-weight: bold; cursor: pointer;">📍 อัปเดตพิกัดจริงเข้าชื่อฉัน</button>
+            <button onclick="getLocation()" style="padding: 10px; background-color: #00ff66; color: black; border: none; border-radius: 5px; width: 100%; font-weight: bold; cursor: pointer;">📍 กดแชร์พิกัด GPS จริง</button>
             <p id="geo_status" style="color: #fff; font-size: 13px; margin-top: 8px; text-align: center;"></p>
             <script>
             function getLocation() {{
                 if (navigator.geolocation) {{
                     navigator.geolocation.getCurrentPosition(function(pos) {{
                         var lat = pos.coords.latitude; var lon = pos.coords.longitude;
-                        document.getElementById("geo_status").innerHTML = "ละติจูด: " + lat + "<br>ลองจิจูด: " + lon;
+                        document.getElementById("geo_status").innerHTML = "Lat: " + lat + "<br>Lon: " + lon;
                         
                         fetch('{FIREBASE_DB_URL}/users/{my_name}/gps.json', {{
                             method: 'PUT',
                             body: JSON.stringify({{lat: lat, lon: lon, user: '{st.session_state.user_email}'}})
                         }});
-                    }}, function(err) {{ document.getElementById("geo_status").innerHTML = "สัญญาณ GPS ขัดข้อง"; }}, {{enableHighAccuracy: true}});
+                    }}, function(err) {{ document.getElementById("geo_status").innerHTML = "ระบุสัญญาณล้มเหลว"; }}, {{enableHighAccuracy: true}});
                 }}
             }}
             </script>
         """, height=90)
         st.markdown('</div>', unsafe_allow_html=True)
 
-# ==========================================
-# 🚨 ระบบเตือนเสียงเรดาร์ (กรอบนีออนแดง)
-# ==========================================
+# --- 5. ระบบตรวจข้อความเข้าแผดเสียงเรดาร์อนิเมชั่นสีแดง ---
 try:
     alert_status = requests.get(f"{FIREBASE_DB_URL}/users/{my_name}/chat_alert.json").json()
 except:
@@ -171,10 +160,10 @@ except:
 
 if alert_status and alert_status.get("new_message") == True:
     st.markdown('<div class="neon-box-red">', unsafe_allow_html=True)
-    st.subheader("🚨 สัญญาณข้อความเข้า!")
-    st.write(f"ส่งมาจาก: **{alert_status.get('sender')}**")
+    st.subheader("🚨 สายตรวจจับสัญญาณแชตเข้า!")
+    st.write(f"ผู้ส่งข้อความ: **{alert_status.get('sender')}**")
     
-    if st.button("🔴 รับทราบและหยุดเสียงเรดาร์"):
+    if st.button("🔴 ปิดสัญญาณเรดาร์"):
         requests.put(f"{FIREBASE_DB_URL}/users/{my_name}/chat_alert.json", data=json.dumps({"new_message": False, "sender": ""}))
         st.rerun()
         
@@ -183,7 +172,7 @@ if alert_status and alert_status.get("new_message") == True:
             if (navigator.vibrate) {{ navigator.vibrate([400, 100, 400]); }}
             var audio = new Audio('{synapse_radar_tone}');
             audio.loop = true;
-            audio.play().catch(function(e) {{ console.log("รอสัมผัสหน้าจอ"); }});
+            audio.play().catch(function(e) {{ console.log("รอสัมผัส"); }});
         </script>
     """, height=0)
     st.markdown('</div>', unsafe_allow_html=True)
