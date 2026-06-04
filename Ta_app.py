@@ -3,6 +3,7 @@ import os
 import base64
 import random
 import time
+import json
 from datetime import datetime, timedelta
 import firebase_admin
 from firebase_admin import credentials, db
@@ -12,7 +13,7 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 
 # ==========================================
-# 1. INITIAL SETUP (ระบบดึงข้อมูลกุญแจตรงจากคลาวด์ Secrets)
+# 1. INITIAL SETUP (ฉบับ Base64 ป้องกันการตัดบรรทัดพัง 100%)
 # ==========================================
 @st.cache_resource
 def init_system():
@@ -23,13 +24,15 @@ def init_system():
 
     if not firebase_admin._apps:
         try:
-            # ดักจับเพื่อแจ้งเตือนถ้านายลืมกรอกข้อมูลในกล่อง Secrets บนหน้าเว็บ Streamlit
-            if "firebase_credentials" not in st.secrets or "firebase_db_url" not in st.secrets:
-                st.error("🚨 ตรวจพบสัญญาณขัดข้อง: นายยังไม่ได้นำข้อมูลกุญแจและ URL ไปวางในช่อง Secrets บนหน้าเว็บ Streamlit Cloud ครับ")
+            # ตรวจสอบตัวแปรความลับบนคลาวด์
+            if "firebase_b64" not in st.secrets or "firebase_db_url" not in st.secrets:
+                st.error("🚨 ระบบขัดข้อง: นายยังไม่ได้นำรหัสกุญแจแบบบรรทัดเดียวไปกรอกในช่อง Secrets บนหน้าเว็บครับ")
                 st.stop()
                 
-            # ดึงค่า Dict ตรง ๆ ส่งให้ Google ป้องกันอาการตัดคำพังระดับ Byte
-            fb_creds = dict(st.secrets["firebase_credentials"])
+            # ถอดรหัสฐานข้อมูลจากข้อความยาวบรรทัดเดียวกลับเป็น JSON จริง
+            b64_data = st.secrets["firebase_b64"]
+            decoded_json = base64.b64decode(b64_data).decode('utf-8')
+            fb_creds = json.loads(decoded_json)
             
             cred = credentials.Certificate(fb_creds)
             firebase_admin.initialize_app(cred, {
@@ -53,16 +56,12 @@ st.markdown(f"""
     .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; border-radius: 10px; font-weight: bold; }}
     .stButton>button:hover {{ background: {st.session_state.theme_color} !important; color: black !important; }}
     .neon-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px {st.session_state.theme_color}; }}
-    
-    /* ซ่อนแถบเครื่องมือดั้งเดิมเพื่อให้ดูเหมือนหน้าต่าง Command Center */
-    #MainMenu {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    header {{visibility: hidden;}}
+    #MainMenu {{visibility: hidden;}} footer {{visibility: hidden;}} header {{visibility: hidden;}}
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. MODULES (ระบบห้องคำสั่งแยกส่วน)
+# 3. MODULES (ระบบแยกห้องทำงาน)
 # ==========================================
 
 def room_core():
@@ -81,20 +80,15 @@ def room_core():
 
 def room_radar():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>🛰️ SATELLITE RADAR</h2>", unsafe_allow_html=True)
-    
     loc = get_geolocation()
-    lat, lon = 13.7367, 100.5231  # พิกัดสำรองระบบ
-    
+    lat, lon = 13.7367, 100.5231
     if loc and 'coords' in loc:
         try:
             lat = loc['coords']['latitude']
             lon = loc['coords']['longitude']
-        except Exception:
-            pass
+        except Exception: pass
             
     all_users = db.reference('users').get()
-    
-    # ดึงแผนที่ดาวเทียมไฮบริดความคมชัดสูงภารกิจจริง
     m = folium.Map(location=[lat, lon], zoom_start=16, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
     folium.Marker([lat, lon], tooltip="YOU", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
     
@@ -104,46 +98,29 @@ def room_radar():
                 folium.Marker([data['lat'], data['lon']], tooltip=uid, icon=folium.Icon(color='green')).add_to(m)
                 
     st_folium(m, width="100%", height=450, key="radar")
-    
     if st.button("📡 BROADCAST POSITION", use_container_width=True):
-        db.reference(f'users/{st.session_state.user}').update({
-            'lat': lat, 
-            'lon': lon, 
-            'ts': time.time()
-        })
+        db.reference(f'users/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
         st.toast("Intelligence Data Transmitted!")
 
 def room_comms():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>💬 COMM CENTER</h2>", unsafe_allow_html=True)
     t1, t2 = st.tabs(["🌐 PUBLIC FEED", "📞 SECURE CALL"])
-    
     with t1:
         with st.form("chat_form", clear_on_submit=True):
             col1, col2 = st.columns([4, 1])
             msg = col1.text_input("Enter Signal...")
             up_file = col2.file_uploader("📁", type=['jpg', 'png', 'mp4'], label_visibility="collapsed")
-            submit_signal = st.form_submit_button("SEND")
-            
-            if submit_signal:
+            if st.form_submit_button("SEND"):
                 f_b64, f_type = None, None
                 if up_file:
                     f_b64 = base64.b64encode(up_file.getvalue()).decode()
                     f_type = up_file.type
                 if msg or f_b64:
-                    db.reference('public_chat').push({
-                        'u': st.session_state.user, 
-                        'm': msg, 
-                        'f': f_b64, 
-                        'ft': f_type, 
-                        'ts': time.time()
-                    })
+                    db.reference('public_chat').push({'u': st.session_state.user, 'm': msg, 'f': f_b64, 'ft': f_type, 'ts': time.time()})
                     st.rerun()
                     
-        try:
-            msgs = db.reference('public_chat').order_by_key().limit_to_last(15).get()
-        except Exception:
-            msgs = None
-            
+        try: msgs = db.reference('public_chat').order_by_key().limit_to_last(15).get()
+        except Exception: msgs = None
         if msgs and isinstance(msgs, dict):
             for v in reversed(list(msgs.values())):
                 if isinstance(v, dict):
@@ -155,10 +132,7 @@ def room_comms():
                         
     with t2:
         all_u = db.reference('users').get()
-        friends = []
-        if all_u and isinstance(all_u, dict):
-            friends = [uid for uid in all_u.keys() if uid != st.session_state.user]
-            
+        friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u and isinstance(all_u, dict) else []
         target = st.selectbox("🎯 Target Agent:", [""] + friends)
         if target:
             call_js = """
@@ -179,19 +153,15 @@ def room_comms():
 
 def room_music():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>🎧 SYNAPSE HOLOGRAPHIC STATION</h2>", unsafe_allow_html=True)
-    
     songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
     if not songs:
         st.warning("⚠️ ไม่พบสัญญาณเสียงในหน่วยความจำ")
         return
         
     s_a = st.selectbox("🎯 SELECT SIGNAL SOURCE", ["-- STANDBY --"] + songs, index=min(st.session_state.song_index + 1, len(songs)))
-    song_b64 = ""
-    song_name = "WAITING FOR SIGNAL..."
-    
+    song_b64, song_name = "", "WAITING FOR SIGNAL..."
     if s_a != "-- STANDBY --":
-        with open(s_a, "rb") as f:
-            song_b64 = base64.b64encode(f.read()).decode()
+        with open(s_a, "rb") as f: song_b64 = base64.b64encode(f.read()).decode()
         st.session_state.song_index = songs.index(s_a)
         song_name = s_a
 
@@ -208,41 +178,28 @@ def room_music():
     </div>
     <style>
         @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
-        @keyframes rainbowText {{
-            0%, 100% {{ color: #ff0000; }} 16% {{ color: #ff7f00; }} 33% {{ color: #ffff00; }}
-            50% {{ color: #00ff00; }} 66% {{ color: #0000ff; }} 83% {{ color: #4b0082; }}
-        }}
+        @keyframes rainbowText {{ 0%, 100% {{ color: #ff0000; }} 50% {{ color: #00ff00; }} }}
     </style>
     <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const audio = document.getElementById('audio');
-    const btn = document.getElementById('pBtn');
-    const mText = document.getElementById('mText');
-    let aCtx, ans, src, data;
-    mText.style.animationPlayState = 'paused';
-
+    const canvas = document.getElementById('canvas'); const ctx = canvas.getContext('2d');
+    const audio = document.getElementById('audio'); const btn = document.getElementById('pBtn'); const mText = document.getElementById('mText');
+    let aCtx, ans, src, data; mText.style.animationPlayState = 'paused';
     btn.onclick = function() {{
         if (!aCtx) {{
-            aCtx = new (window.AudioContext || window.webkitAudioContext)();
-            ans = aCtx.createAnalyser();
-            src = aCtx.createMediaElementSource(audio);
-            src.connect(ans); ans.connect(aCtx.destination);
-            ans.fftSize = 128; data = new Uint8Array(ans.frequencyBinCount);
-            draw();
+            aCtx = new (window.AudioContext || window.webkitAudioContext)(); ans = aCtx.createAnalyser();
+            src = aCtx.createMediaElementSource(audio); src.connect(ans); ans.connect(aCtx.destination);
+            ans.fftSize = 128; data = new Uint8Array(ans.frequencyBinCount); draw();
         }}
         if (audio.paused) {{ audio.play(); btn.innerText = "[ SIGNAL ACTIVE ]"; mText.style.animationPlayState = 'running'; }}
         else {{ audio.pause(); btn.innerText = "[ SIGNAL PAUSED ]"; mText.style.animationPlayState = 'paused'; }}
     }};
     function draw() {{
-        requestAnimationFrame(draw);
-        ans.getByteFrequencyData(data);
+        requestAnimationFrame(draw); ans.getByteFrequencyData(data);
         ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0,0,canvas.width,canvas.height);
         let x = 0; const bW = (canvas.width / data.length) * 2;
         for(let i=0; i<data.length; i++) {{
             let bH = data[i]*0.9; let h = (i/data.length)*360;
-            ctx.fillStyle = `hsl(${{h}}, 100%, 50%)`;
-            ctx.shadowBlur = 10; ctx.shadowColor = `hsl(${{h}}, 100%, 50%)`;
+            ctx.fillStyle = `hsl(${{h}}, 100%, 50%)`; ctx.shadowBlur = 10; ctx.shadowColor = ctx.fillStyle;
             ctx.fillRect(x, canvas.height-bH, bW-2, bH); x += bW;
         }}
     }}
@@ -252,15 +209,11 @@ def room_music():
 
 def room_sensor():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
-    
     all_sensors_js = f"""
     <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 20px; padding: 20px; font-family: 'Orbitron', monospace; color: white;">
         <div style="overflow: hidden; white-space: nowrap; background: #0a0a0a; border: 1px solid {st.session_state.theme_color}55; border-radius: 5px; margin-bottom: 15px; padding: 5px;">
-            <p style="display: inline-block; padding-left: 100%; font-size: 14px; color: {st.session_state.theme_color}; animation: marquee 15s linear infinite;">
-                SYSTEM ONLINE >>> MONITORING REAL-TIME DATA >>> SONIC & MOTION SCANNER ACTIVE...
-            </p>
+            <p style="display: inline-block; padding-left: 100%; font-size: 14px; color: {st.session_state.theme_color}; animation: marquee 15s linear infinite;">SYSTEM ONLINE >>> MONITORING REAL-TIME DATA...</p>
         </div>
-
         <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
             <small style="color: {st.session_state.theme_color};">🔊 SONIC ANALYZER</small>
             <canvas id="visualizer" style="width: 100%; height: 80px; background: #050505; border-radius: 5px; margin: 10px 0;"></canvas>
@@ -269,87 +222,47 @@ def room_sensor():
                 <div><small>PITCH (Hz)</small><h2 id="freq_val" style="color: #00ffff; margin:0;">0</h2></div>
             </div>
         </div>
-
         <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px;">
             <small style="color: {st.session_state.theme_color};">📳 MOTION DETECTOR</small>
             <div style="text-align: center; margin-top: 10px;">
-                <small>MAGNITUDE (G)</small>
-                <h1 id="mag_val" style="font-size: 45px; color: #f0f; margin:0;">1.000</h1>
-            </div>
-            <div style="display: flex; justify-content: space-around; font-size: 12px; margin-top: 10px; color: #888;">
-                <span>X: <b id="x_v">0</b></span>
-                <span>Y: <b id="y_v">0</b></span>
-                <span>Z: <b id="z_v">0</b></span>
+                <small>MAGNITUDE (G)</small><h1 id="mag_val" style="font-size: 45px; color: #f0f; margin:0;">1.000</h1>
             </div>
         </div>
-
-        <button id="startBtn" style="width: 100%; margin-top: 15px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; cursor: pointer; font-weight: bold;">
-            [ INITIALIZE SENSOR ARRAY ]
-        </button>
+        <button id="startBtn" style="width: 100%; margin-top: 15px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; cursor: pointer; font-weight: bold;">[ INITIALIZE SENSOR ARRAY ]</button>
     </div>
-
-    <style>
-        @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
-        h2, h1 {{ text-shadow: 0 0 10px currentColor; }}
-    </style>
-
     <script>
-        const btn = document.getElementById('startBtn');
-        const v_canvas = document.getElementById('visualizer');
-        const v_ctx = v_canvas.getContext('2d');
-        
+        const btn = document.getElementById('startBtn'); const v_canvas = document.getElementById('visualizer'); const v_ctx = v_canvas.getContext('2d');
         btn.onclick = async () => {{
             btn.style.display = 'none';
             try {{
                 const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
-                const aCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const analyser = aCtx.createAnalyser();
-                const source = aCtx.createMediaStreamSource(stream);
-                analyser.fftSize = 128;
-                source.connect(analyser);
+                const aCtx = new (window.AudioContext || window.webkitAudioContext)(); const analyser = aCtx.createAnalyser();
+                const source = aCtx.createMediaStreamSource(stream); analyser.fftSize = 128; source.connect(analyser);
                 const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
                 function updateAudio() {{
-                    requestAnimationFrame(updateAudio);
-                    analyser.getByteFrequencyData(dataArray);
-                    v_ctx.clearRect(0, 0, v_canvas.width, v_canvas.height);
-                    let sum = 0, maxV = 0, maxI = 0;
+                    requestAnimationFrame(updateAudio); analyser.getByteFrequencyData(dataArray);
+                    v_ctx.clearRect(0, 0, v_canvas.width, v_canvas.height); let sum = 0, maxV = 0, maxI = 0;
                     for (let i = 0; i < dataArray.length; i++) {{
-                        let v = dataArray[i]; sum += v;
-                        if(v > maxV) {{ maxV = v; maxI = i; }}
-                        v_ctx.fillStyle = '{st.session_state.theme_color}';
-                        v_ctx.fillRect(i * (v_canvas.width / dataArray.length), v_canvas.height - v/2, 2, v/2);
+                        let v = dataArray[i]; sum += v; if(v > maxV) {{ maxV = v; maxI = i; }}
+                        v_ctx.fillStyle = '{st.session_state.theme_color}'; v_ctx.fillRect(i * (v_canvas.width / dataArray.length), v_canvas.height - v/2, 2, v/2);
                     }}
                     document.getElementById('vol_val').innerText = Math.round(sum/dataArray.length);
                     document.getElementById('freq_val').innerText = (sum/dataArray.length > 5) ? Math.round(maxI * aCtx.sampleRate / analyser.fftSize) : 0;
-                }}
-                updateAudio();
-            }} catch(e) {{ alert("Audio Sensor Fault: " + e); }}
-
+                }} updateAudio();
+            }} catch(e) {{ alert("Audio Fault: " + e); }}
             try {{
-                if (typeof DeviceMotionEvent.requestPermission === 'function') {{
-                    await DeviceMotionEvent.requestPermission();
-                }}
+                if (typeof DeviceMotionEvent.requestPermission === 'function') {{ await DeviceMotionEvent.requestPermission(); }}
                 window.addEventListener('devicemotion', (e) => {{
-                    const acc = e.accelerationIncludingGravity;
-                    if (!acc) return;
-                    let x = acc.x || 0, y = acc.y || 0, z = acc.z || 0;
-                    let mag = Math.sqrt(x*x + y*y + z*z) / 9.80665;
-                    document.getElementById('x_v').innerText = x.toFixed(2);
-                    document.getElementById('y_v').innerText = y.toFixed(2);
-                    document.getElementById('z_v').innerText = z.toFixed(2);
-                    document.getElementById('mag_val').innerText = mag.toFixed(3);
+                    const acc = e.accelerationIncludingGravity; if (!acc) return;
+                    let x = acc.x||0, y = acc.y||0, z = acc.z||0;
+                    document.getElementById('mag_val').innerText = (Math.sqrt(x*x + y*y + z*z) / 9.80665).toFixed(3);
                 }});
-            }} catch(err) {{ console.log("Motion restricted"); }}
+            }} catch(err) {{}}
         }};
     </script>
     """
     components.html(all_sensors_js, height=550)
-    st.markdown("---")
 
-# ==========================================
-# 4. MAIN LAYOUT
-# ==========================================
 def main():
     with st.sidebar:
         st.title("⚙️ SYSTEM")
@@ -358,7 +271,6 @@ def main():
         st.session_state.bg_color = st.color_picker("BACKGROUND", st.session_state.bg_color)
         st.markdown("---")
         st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
-
     tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "🎧 MUSIC", "📟 SENSOR"])
     rooms = [room_core, room_radar, room_comms, room_music, room_sensor]
     for i, tab in enumerate(tabs):
