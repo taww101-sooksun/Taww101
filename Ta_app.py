@@ -13,7 +13,7 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 
 # ==========================================
-# 1. INITIAL SETUP (ฝังคีย์ตรง ป้องกันระบบคลาวด์บิดเบือนรหัส)
+# 1. INITIAL SETUP (ฝังคีย์ตรงเสถียรที่สุด)
 # ==========================================
 @st.cache_resource
 def init_system():
@@ -24,12 +24,10 @@ def init_system():
 
     if not firebase_admin._apps:
         try:
-            # ดึง URL ฐานข้อมูลจาก Secrets เหมือนเดิมเพื่อความปลอดภัย
             if "firebase_db_url" not in st.secrets:
                 st.error("🚨 ระบบขัดข้อง: ไม่พบข้อมูล firebase_db_url ในช่อง Secrets ครับ")
                 st.stop()
                 
-            # โครงสร้างกุญแจจริงจาก Google ถอดประกอบแบบดิบ ป้องกันตัวอักษรเคลื่อน
             pk = (
                 "-----BEGIN PRIVATE KEY-----\n"
                 "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDV5dVoW3hzqShK\n"
@@ -246,4 +244,76 @@ def room_music():
     }}
     </script>
     """
-    components.html(visualizer_
+    components.html(visualizer_html, height=420)
+
+def room_sensor():
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
+    all_sensors_js = f"""
+    <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 20px; padding: 20px; font-family: 'Orbitron', monospace; color: white;">
+        <div style="overflow: hidden; white-space: nowrap; background: #0a0a0a; border: 1px solid {st.session_state.theme_color}55; border-radius: 5px; margin-bottom: 15px; padding: 5px;">
+            <p style="display: inline-block; padding-left: 100%; font-size: 14px; color: {st.session_state.theme_color}; animation: marquee 15s linear infinite;">SYSTEM ONLINE >>> MONITORING REAL-TIME DATA...</p>
+        </div>
+        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <small style="color: {st.session_state.theme_color};">🔊 SONIC ANALYZER</small>
+            <canvas id="visualizer" style="width: 100%; height: 80px; background: #050505; border-radius: 5px; margin: 10px 0;"></canvas>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+                <div><small>VOLUME</small><h2 id="vol_val" style="color: #0f0; margin:0;">0</h2></div>
+                <div><small>PITCH (Hz)</small><h2 id="freq_val" style="color: #00ffff; margin:0;">0</h2></div>
+            </div>
+        </div>
+        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px;">
+            <small style="color: {st.session_state.theme_color};">📳 MOTION DETECTOR</small>
+            <div style="text-align: center; margin-top: 10px;">
+                <small>MAGNITUDE (G)</small><h1 id="mag_val" style="font-size: 45px; color: #f0f; margin:0;">1.000</h1>
+            </div>
+        </div>
+        <button id="startBtn" style="width: 100%; margin-top: 15px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; cursor: pointer; font-weight: bold;">[ INITIALIZE SENSOR ARRAY ]</button>
+    </div>
+    <script>
+        const btn = document.getElementById('startBtn'); const v_canvas = document.getElementById('visualizer'); const v_ctx = v_canvas.getContext('2d');
+        btn.onclick = async () => {{
+            btn.style.display = 'none';
+            try {{
+                const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
+                const aCtx = new (window.AudioContext || window.webkitAudioContext)(); const analyser = aCtx.createAnalyser();
+                const source = aCtx.createMediaStreamSource(stream); analyser.fftSize = 128; source.connect(analyser);
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                function updateAudio() {{
+                    requestAnimationFrame(updateAudio); analyser.getByteFrequencyData(dataArray);
+                    v_ctx.clearRect(0, 0, v_canvas.width, v_canvas.height); let sum = 0, maxV = 0, maxI = 0;
+                    for (let i = 0; i < dataArray.length; i++) {{
+                        let v = dataArray[i]; sum += v; if(v > maxV) {{ maxV = v; maxI = i; }}
+                        v_ctx.fillStyle = '{st.session_state.theme_color}'; v_ctx.fillRect(i * (v_canvas.width / dataArray.length), v_canvas.height - v/2, 2, v/2);
+                    }}
+                    document.getElementById('vol_val').innerText = Math.round(sum/dataArray.length);
+                    document.getElementById('freq_val').innerText = (sum/dataArray.length > 5) ? Math.round(maxI * aCtx.sampleRate / analyser.fftSize) : 0;
+                }} updateAudio();
+            }} catch(e) {{ alert("Audio Fault: " + e); }}
+            try {{
+                if (typeof DeviceMotionEvent.requestPermission === 'function') {{ await DeviceMotionEvent.requestPermission(); }}
+                window.addEventListener('devicemotion', (e) => {{
+                    const acc = e.accelerationIncludingGravity; if (!acc) return;
+                    let x = acc.x||0, y = acc.y||0, z = acc.z||0;
+                    document.getElementById('mag_val').innerText = (Math.sqrt(x*x + y*y + z*z) / 9.80665).toFixed(3);
+                }});
+            }} catch(err) {{}}
+        }};
+    </script>
+    """
+    components.html(all_sensors_js, height=550)
+
+def main():
+    with st.sidebar:
+        st.title("⚙️ SYSTEM")
+        st.session_state.user = st.text_input("AGENT ID", st.session_state.user)
+        st.session_state.theme_color = st.color_picker("THEME", st.session_state.theme_color)
+        st.session_state.bg_color = st.color_picker("BACKGROUND", st.session_state.bg_color)
+        st.markdown("---")
+        st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
+    tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "🎧 MUSIC", "📟 SENSOR"])
+    rooms = [room_core, room_radar, room_comms, room_music, room_sensor]
+    for i, tab in enumerate(tabs):
+        with tab: rooms[i]()
+
+if __name__ == "__main__":
+    main()
