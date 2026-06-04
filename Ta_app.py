@@ -13,7 +13,7 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 
 # ==========================================
-# 1. INITIAL SETUP (ฝังคีย์ตรงแบบบรรทัดเดียว ป้องกันเออร์เรอร์ PEM)
+# 1. INITIAL SETUP (ดึงค่าใบรับรองจากระบบ Secrets รูปแบบ TOML โดยตรง)
 # ==========================================
 @st.cache_resource
 def init_system():
@@ -24,28 +24,17 @@ def init_system():
 
     if not firebase_admin._apps:
         try:
-            if "firebase_db_url" not in st.secrets:
-                st.error("🚨 ระบบขัดข้อง: ไม่พบข้อมูล firebase_db_url ในช่อง Secrets ครับ")
+            if "firebase_db_url" not in st.secrets or "firebase_creds" not in st.secrets:
+                st.error("🚨 ระบบขัดข้อง: ไม่พบข้อมูลตัวแปรในช่อง Secrets กรุณาตรวจสอบการกรอกข้อมูล TOML ครับ")
                 st.stop()
                 
-            # แก้ไขจุดนี้: มัดรวมเป็นรหัสเส้นเดียวตรง ๆ ตัดปัญหาการแปลความหมายอักขระพลาด
-            pk = "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDV5dVoW3hzqShK\ndV9ff8WXAYjYAyvCd+CL1M+2G0X59waOZ8Q+v1uBssg4KjM9ErWiNT4sayy2DDYF\nkDHFOxMyyjXHxKGe3Mh0Bum9Qt05zJW2kC7QUDe+2sm58f+hTbyXPydnwxlNoxSE\nVCjkybEeVUGYMwCJ3feF5Cwa7YRl9Ysf8php2rLIInyXVR6W/eSpRG5wTcyvujm6\nVYOURHqEJnh0G/BQBGpC0fhCj5eyVwS101EvGkBt4GQRGno/lDVnGc56qgI+aH8D\npiOyXaHESSSOR6EqrhJxBZQNDR0XHQ6+LikQ4b0MTeQlA7EFfq987z1X7WayRGVp\nTczT9qIvAgMBAAECgf9DyxeosC0AMYXcGcNKTnpQIt25W4WdSfuVzmm89jgmmlFr\nxM4QKsSQjPMEUmgTHPIU7fx4CCyv9W+Y2GydrxPdZk85ZektMXZ13a62C1rU5fHa\nq9UIo1Sxa0oxN6WqVs924sl6HkGz7CjjNAcVTir1WxZhRzsURee6F3DscWex66DQ\n4DjCfCfEngKfcv4cMiDYWgGelOgsFy+/BMkTmTbpAE3EQUc76pMiamqDZJO2ELQM\nrnydZTqqFwmIIIZuqrOlhTnpm0UTOlKN7RG+20jzrkOYP1v23jRNeJL/P3UmUtD4\nsw1ZQ1UAwkXiKo10/mA6lMDhAILy/ualdboTsKUCgYEA7ccOvKsVcDaw99ol0fPA\npjhPn3yNIMQsWLq/3Vm9a9tzgTPjH+kkKrMfpDfdoSjobHomwuMIB82NcQUyCoqx\nbw9GCAIYnbBpaqpKGJC6VEGYHOD7d6ROEYX/HznEpwMsZwGqzFHjdFOORiKu4Dr7\n7DBPNAlhXdWI25KX+eHBP20CgYEA5kpHu79ak+925Mg91hPKgkx4U+F07Erv8Un5\nqEjwibftWCgqCZH/DZW7nX+ZceJtpeD5/PzctzYnTR1oayD6pG9XOiqspKRf5i9U\nwPVbtCRulfwU3X7Q07H8B7uv3fyurTEgSEa2pe1bZiffAWHd20l0KwSL8XKw35EI\nsZtEuosCgYBD2KSv2PFJD5H3ZtubyL2TsEWn8FYkn1U4DDFq64xNFlUi7LdGB7Q2\nKt5AcWBf99g5+7DLsxQ7hb9yHFVnBKQUWHtXFaIIfKnXsbdqwwEnwX+x3dBjFxLf\nlShytH0UWqd0zNj7a/JG4wCZqpPTj4EKp84xvut1ZtSiMnYC6xPFEQKBgQDMB+Om\nI9NMXk0oRYEDumUhLD8vkgDVmU8cqD3ZK0ZxvdM619rmv8MJdi/TSsnYbJRY8wqJ\naj7i08feOr/Yqk9mgH73ufdbp4aPmj+s9bVZ1S1lFQIine8PoyzhQYalfNBBOwceo\nQX5xY+omiAy8XMkDEAEsW8rhEIxEh2r8cGRkIQKBgQCLt/F2c4y9YNEv6NOrzWmL\n+esSDjRo1jBDE4OkaDpTq8mSs+IjrhOYvGQ2qFnTVrrLKAHUkMurPl9ajmTkWsMs\nndrc4eogY6fFCBD1uxPfjsJdTHlLKVsSnQSLBck0/lAq8QwcFlpI5F9/PW/S8HueT\np9ZxD44K3CFPeUPenGQPEw==\n-----END PRIVATE KEY-----\n"
-
-            fb_creds = {
-                "type": "service_account",
-                "project_id": "sooksun-101",
-                "private_key_id": "bc48e69bc03ee880b2a94e17e09b88d13e66267d",
-                "private_key": pk,
-                "client_email": "firebase-adminsdk-fbsvc@sooksun-101.iam.gserviceaccount.com",
-                "client_id": "110249511757111431543",
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token",
-                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-                "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40sooksun-101.iam.gserviceaccount.com",
-                "universe_domain": "googleapis.com"
-            }
+            # แปลงข้อมูลจาก Secrets มาเป็น Python Dictionary
+            creds_dict = dict(st.secrets["firebase_creds"])
             
-            cred = credentials.Certificate(fb_creds)
+            # เคลียร์รอยต่อและจัดระเบียบโครงสร้างของ Private Key ให้เข้ารหัสแบบดั้งเดิมสากล
+            creds_dict["private_key"] = creds_dict["private_key"].strip()
+            
+            cred = credentials.Certificate(creds_dict)
             firebase_admin.initialize_app(cred, {
                 'databaseURL': st.secrets["firebase_db_url"]
             })
