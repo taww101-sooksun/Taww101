@@ -13,7 +13,7 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 
 # ==========================================
-# 1. INITIAL SETUP (ฝังคีย์ตรงเสถียรที่สุด)
+# 1. INITIAL SETUP (ฝังคีย์ตรงแบบบรรทัดเดียว ป้องกันเออร์เรอร์ PEM)
 # ==========================================
 @st.cache_resource
 def init_system():
@@ -28,36 +28,8 @@ def init_system():
                 st.error("🚨 ระบบขัดข้อง: ไม่พบข้อมูล firebase_db_url ในช่อง Secrets ครับ")
                 st.stop()
                 
-            pk = (
-                "-----BEGIN PRIVATE KEY-----\n"
-                "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDV5dVoW3hzqShK\n"
-                "dV9ff8WXAYjYAyvCd+CL1M+2G0X59waOZ8Q+v1uBssg4KjM9ErWiNT4sayy2DDYF\n"
-                "kDHFOxMyyjXHxKGe3Mh0Bum9Qt05zJW2kC7QUDe+2sm58f+hTbyXPydnwxlNoxSE\n"
-                "VCjkybEeVUGYMwCJ3feF5Cwa7YRl9Ysf8php2rLIInyXVR6W/eSpRG5wTcyvujm6\n"
-                "VYOURHqEJnh0G/BQBGpC0fhCj5eyVwS101EvGkBt4GQRGno/lDVnGc56qgI+aH8D\n"
-                "piOyXaHESSSOR6EqrhJxBZQNDR0XHQ6+LikQ4b0MTeQlA7EFfq987z1X7WayRGVp\n"
-                "TczT9qIvAgMBAAECgf9DyxeosC0AMYXcGcNKTnpQIt25W4WdSfuVzmm89jgmmlFr\n"
-                "xM4QKsSQjPMEUmgTHPIU7fx4CCyv9W+Y2GydrxPdZk85ZektMXZ13a62C1rU5fHa\n"
-                "q9UIo1Sxa0oxN6WqVs924sl6HkGz7CjjNAcVTir1WxZhRzsURee6F3DscWex66DQ\n"
-                "4DjCfCfEngKfcv4cMiDYWgGelOgsFy+/BMkTmTbpAE3EQUc76pMiamqDZJO2ELQM\n"
-                "rnydZTqqFwmIIIZuqrOlhTnpm0UTOlKN7RG+20jzrkOYP1v23jRNeJL/P3UmUtD4\n"
-                "sw1ZQ1UAwkXiKo10/mA6lMDhAILy/ualdboTsKUCgYEA7ccOvKsVcDaw99ol0fPA\n"
-                "pjhPn3yNIMQsWLq/3Vm9a9tzgTPjH+kkKrMfpDfdoSjobHomwuMIB82NcQUyCoqx\n"
-                "bw9GCAIYnbBpaqpKGJC6VEGYHOD7d6ROEYX/HznEpwMsZwGqzFHjdFOORiKu4Dr7\n"
-                "7DBPNAlhXdWI25KX+eHBP20CgYEA5kpHu79ak+925Mg91hPKgkx4U+F07Erv8Un5\n"
-                "qEjwibftWCgqCZH/DZW7nX+ZceJtpeD5/PzctzYnTR1oayD6pG9XOiqspKRf5i9U\n"
-                "wPVbtCRulfwU3X7Q07H8B7uv3fyurTEgSEa2pe1bZiffAWHd20l0KwSL8XKw35EI\n"
-                "sZtEuosCgYBD2KSv2PFJD5H3ZtubyL2TsEWn8FYkn1U4DDFq64xNFlUi7LdGB7Q2\n"
-                "Kt5AcWBf99g5+7DLsxQ7hb9yHFVnBKQUWHtXFaIIfKnXsbdqwwEnwX+x3dBjFxLf\n"
-                "lShytH0UWqd0zNj7a/JG4wCZqpPTj4EKp84xvut1ZtSiMnYC6xPFEQKBgQDMB+Om\n"
-                "I9NMXk0oRYEDumUhLD8vkgDVmU8cqD3ZK0ZxvdM619rmv8MJdi/TSsnYbJRY8wqJ\n"
-                "aj7i08feOr/Yqk9mgH73ufdbp4aPmj+s9bVZ1S1lFQIine8PoyzhQYalfNBBOwceo\n"
-                "QX5xY+omiAy8XMkDEAEsW8rhEIxEh2r8cGRkIQKBgQCLt/F2c4y9YNEv6NOrzWmL\n"
-                "+esSDjRo1jBDE4OkaDpTq8mSs+IjrhOYvGQ2qFnTVrrLKAHUkMurPl9ajmTkWsMs\n"
-                "ndrc4eogY6fFCBD1uxPfjsJdTHlLKVsSnQSLBck0/lAq8QwcFlpI5F9/PW/S8HueT\n"
-                "p9ZxD44K3CFPeUPenGQPEw==\n"
-                "-----END PRIVATE KEY-----\n"
-            )
+            # แก้ไขจุดนี้: มัดรวมเป็นรหัสเส้นเดียวตรง ๆ ตัดปัญหาการแปลความหมายอักขระพลาด
+            pk = "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDV5dVoW3hzqShK\ndV9ff8WXAYjYAyvCd+CL1M+2G0X59waOZ8Q+v1uBssg4KjM9ErWiNT4sayy2DDYF\nkDHFOxMyyjXHxKGe3Mh0Bum9Qt05zJW2kC7QUDe+2sm58f+hTbyXPydnwxlNoxSE\nVCjkybEeVUGYMwCJ3feF5Cwa7YRl9Ysf8php2rLIInyXVR6W/eSpRG5wTcyvujm6\nVYOURHqEJnh0G/BQBGpC0fhCj5eyVwS101EvGkBt4GQRGno/lDVnGc56qgI+aH8D\npiOyXaHESSSOR6EqrhJxBZQNDR0XHQ6+LikQ4b0MTeQlA7EFfq987z1X7WayRGVp\nTczT9qIvAgMBAAECgf9DyxeosC0AMYXcGcNKTnpQIt25W4WdSfuVzmm89jgmmlFr\nxM4QKsSQjPMEUmgTHPIU7fx4CCyv9W+Y2GydrxPdZk85ZektMXZ13a62C1rU5fHa\nq9UIo1Sxa0oxN6WqVs924sl6HkGz7CjjNAcVTir1WxZhRzsURee6F3DscWex66DQ\n4DjCfCfEngKfcv4cMiDYWgGelOgsFy+/BMkTmTbpAE3EQUc76pMiamqDZJO2ELQM\nrnydZTqqFwmIIIZuqrOlhTnpm0UTOlKN7RG+20jzrkOYP1v23jRNeJL/P3UmUtD4\nsw1ZQ1UAwkXiKo10/mA6lMDhAILy/ualdboTsKUCgYEA7ccOvKsVcDaw99ol0fPA\npjhPn3yNIMQsWLq/3Vm9a9tzgTPjH+kkKrMfpDfdoSjobHomwuMIB82NcQUyCoqx\nbw9GCAIYnbBpaqpKGJC6VEGYHOD7d6ROEYX/HznEpwMsZwGqzFHjdFOORiKu4Dr7\n7DBPNAlhXdWI25KX+eHBP20CgYEA5kpHu79ak+925Mg91hPKgkx4U+F07Erv8Un5\nqEjwibftWCgqCZH/DZW7nX+ZceJtpeD5/PzctzYnTR1oayD6pG9XOiqspKRf5i9U\nwPVbtCRulfwU3X7Q07H8B7uv3fyurTEgSEa2pe1bZiffAWHd20l0KwSL8XKw35EI\nsZtEuosCgYBD2KSv2PFJD5H3ZtubyL2TsEWn8FYkn1U4DDFq64xNFlUi7LdGB7Q2\nKt5AcWBf99g5+7DLsxQ7hb9yHFVnBKQUWHtXFaIIfKnXsbdqwwEnwX+x3dBjFxLf\nlShytH0UWqd0zNj7a/JG4wCZqpPTj4EKp84xvut1ZtSiMnYC6xPFEQKBgQDMB+Om\nI9NMXk0oRYEDumUhLD8vkgDVmU8cqD3ZK0ZxvdM619rmv8MJdi/TSsnYbJRY8wqJ\naj7i08feOr/Yqk9mgH73ufdbp4aPmj+s9bVZ1S1lFQIine8PoyzhQYalfNBBOwceo\nQX5xY+omiAy8XMkDEAEsW8rhEIxEh2r8cGRkIQKBgQCLt/F2c4y9YNEv6NOrzWmL\n+esSDjRo1jBDE4OkaDpTq8mSs+IjrhOYvGQ2qFnTVrrLKAHUkMurPl9ajmTkWsMs\nndrc4eogY6fFCBD1uxPfjsJdTHlLKVsSnQSLBck0/lAq8QwcFlpI5F9/PW/S8HueT\np9ZxD44K3CFPeUPenGQPEw==\n-----END PRIVATE KEY-----\n"
 
             fb_creds = {
                 "type": "service_account",
