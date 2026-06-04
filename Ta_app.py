@@ -13,7 +13,7 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 
 # ==========================================
-# 1. INITIAL SETUP (ฉบับ Base64 ป้องกันการตัดบรรทัดพัง 100%)
+# 1. INITIAL SETUP (ฝังคีย์ตรง ป้องกันระบบคลาวด์บิดเบือนรหัส)
 # ==========================================
 @st.cache_resource
 def init_system():
@@ -24,15 +24,56 @@ def init_system():
 
     if not firebase_admin._apps:
         try:
-            # ตรวจสอบตัวแปรความลับบนคลาวด์
-            if "firebase_b64" not in st.secrets or "firebase_db_url" not in st.secrets:
-                st.error("🚨 ระบบขัดข้อง: นายยังไม่ได้นำรหัสกุญแจแบบบรรทัดเดียวไปกรอกในช่อง Secrets บนหน้าเว็บครับ")
+            # ดึง URL ฐานข้อมูลจาก Secrets เหมือนเดิมเพื่อความปลอดภัย
+            if "firebase_db_url" not in st.secrets:
+                st.error("🚨 ระบบขัดข้อง: ไม่พบข้อมูล firebase_db_url ในช่อง Secrets ครับ")
                 st.stop()
                 
-            # ถอดรหัสฐานข้อมูลจากข้อความยาวบรรทัดเดียวกลับเป็น JSON จริง
-            b64_data = st.secrets["firebase_b64"]
-            decoded_json = base64.b64decode(b64_data).decode('utf-8')
-            fb_creds = json.loads(decoded_json)
+            # โครงสร้างกุญแจจริงจาก Google ถอดประกอบแบบดิบ ป้องกันตัวอักษรเคลื่อน
+            pk = (
+                "-----BEGIN PRIVATE KEY-----\n"
+                "MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDV5dVoW3hzqShK\n"
+                "dV9ff8WXAYjYAyvCd+CL1M+2G0X59waOZ8Q+v1uBssg4KjM9ErWiNT4sayy2DDYF\n"
+                "kDHFOxMyyjXHxKGe3Mh0Bum9Qt05zJW2kC7QUDe+2sm58f+hTbyXPydnwxlNoxSE\n"
+                "VCjkybEeVUGYMwCJ3feF5Cwa7YRl9Ysf8php2rLIInyXVR6W/eSpRG5wTcyvujm6\n"
+                "VYOURHqEJnh0G/BQBGpC0fhCj5eyVwS101EvGkBt4GQRGno/lDVnGc56qgI+aH8D\n"
+                "piOyXaHESSSOR6EqrhJxBZQNDR0XHQ6+LikQ4b0MTeQlA7EFfq987z1X7WayRGVp\n"
+                "TczT9qIvAgMBAAECgf9DyxeosC0AMYXcGcNKTnpQIt25W4WdSfuVzmm89jgmmlFr\n"
+                "xM4QKsSQjPMEUmgTHPIU7fx4CCyv9W+Y2GydrxPdZk85ZektMXZ13a62C1rU5fHa\n"
+                "q9UIo1Sxa0oxN6WqVs924sl6HkGz7CjjNAcVTir1WxZhRzsURee6F3DscWex66DQ\n"
+                "4DjCfCfEngKfcv4cMiDYWgGelOgsFy+/BMkTmTbpAE3EQUc76pMiamqDZJO2ELQM\n"
+                "rnydZTqqFwmIIIZuqrOlhTnpm0UTOlKN7RG+20jzrkOYP1v23jRNeJL/P3UmUtD4\n"
+                "sw1ZQ1UAwkXiKo10/mA6lMDhAILy/ualdboTsKUCgYEA7ccOvKsVcDaw99ol0fPA\n"
+                "pjhPn3yNIMQsWLq/3Vm9a9tzgTPjH+kkKrMfpDfdoSjobHomwuMIB82NcQUyCoqx\n"
+                "bw9GCAIYnbBpaqpKGJC6VEGYHOD7d6ROEYX/HznEpwMsZwGqzFHjdFOORiKu4Dr7\n"
+                "7DBPNAlhXdWI25KX+eHBP20CgYEA5kpHu79ak+925Mg91hPKgkx4U+F07Erv8Un5\n"
+                "qEjwibftWCgqCZH/DZW7nX+ZceJtpeD5/PzctzYnTR1oayD6pG9XOiqspKRf5i9U\n"
+                "wPVbtCRulfwU3X7Q07H8B7uv3fyurTEgSEa2pe1bZiffAWHd20l0KwSL8XKw35EI\n"
+                "sZtEuosCgYBD2KSv2PFJD5H3ZtubyL2TsEWn8FYkn1U4DDFq64xNFlUi7LdGB7Q2\n"
+                "Kt5AcWBf99g5+7DLsxQ7hb9yHFVnBKQUWHtXFaIIfKnXsbdqwwEnwX+x3dBjFxLf\n"
+                "lShytH0UWqd0zNj7a/JG4wCZqpPTj4EKp84xvut1ZtSiMnYC6xPFEQKBgQDMB+Om\n"
+                "I9NMXk0oRYEDumUhLD8vkgDVmU8cqD3ZK0ZxvdM619rmv8MJdi/TSsnYbJRY8wqJ\n"
+                "aj7i08feOr/Yqk9mgH73ufdbp4aPmj+s9bVZ1S1lFQIine8PoyzhQYalfNBBOwceo\n"
+                "QX5xY+omiAy8XMkDEAEsW8rhEIxEh2r8cGRkIQKBgQCLt/F2c4y9YNEv6NOrzWmL\n"
+                "+esSDjRo1jBDE4OkaDpTq8mSs+IjrhOYvGQ2qFnTVrrLKAHUkMurPl9ajmTkWsMs\n"
+                "ndrc4eogY6fFCBD1uxPfjsJdTHlLKVsSnQSLBck0/lAq8QwcFlpI5F9/PW/S8HueT\n"
+                "p9ZxD44K3CFPeUPenGQPEw==\n"
+                "-----END PRIVATE KEY-----\n"
+            )
+
+            fb_creds = {
+                "type": "service_account",
+                "project_id": "sooksun-101",
+                "private_key_id": "bc48e69bc03ee880b2a94e17e09b88d13e66267d",
+                "private_key": pk,
+                "client_email": "firebase-adminsdk-fbsvc@sooksun-101.iam.gserviceaccount.com",
+                "client_id": "110249511757111431543",
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40sooksun-101.iam.gserviceaccount.com",
+                "universe_domain": "googleapis.com"
+            }
             
             cred = credentials.Certificate(fb_creds)
             firebase_admin.initialize_app(cred, {
@@ -205,76 +246,4 @@ def room_music():
     }}
     </script>
     """
-    components.html(visualizer_html, height=420)
-
-def room_sensor():
-    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
-    all_sensors_js = f"""
-    <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 20px; padding: 20px; font-family: 'Orbitron', monospace; color: white;">
-        <div style="overflow: hidden; white-space: nowrap; background: #0a0a0a; border: 1px solid {st.session_state.theme_color}55; border-radius: 5px; margin-bottom: 15px; padding: 5px;">
-            <p style="display: inline-block; padding-left: 100%; font-size: 14px; color: {st.session_state.theme_color}; animation: marquee 15s linear infinite;">SYSTEM ONLINE >>> MONITORING REAL-TIME DATA...</p>
-        </div>
-        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
-            <small style="color: {st.session_state.theme_color};">🔊 SONIC ANALYZER</small>
-            <canvas id="visualizer" style="width: 100%; height: 80px; background: #050505; border-radius: 5px; margin: 10px 0;"></canvas>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
-                <div><small>VOLUME</small><h2 id="vol_val" style="color: #0f0; margin:0;">0</h2></div>
-                <div><small>PITCH (Hz)</small><h2 id="freq_val" style="color: #00ffff; margin:0;">0</h2></div>
-            </div>
-        </div>
-        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px;">
-            <small style="color: {st.session_state.theme_color};">📳 MOTION DETECTOR</small>
-            <div style="text-align: center; margin-top: 10px;">
-                <small>MAGNITUDE (G)</small><h1 id="mag_val" style="font-size: 45px; color: #f0f; margin:0;">1.000</h1>
-            </div>
-        </div>
-        <button id="startBtn" style="width: 100%; margin-top: 15px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; cursor: pointer; font-weight: bold;">[ INITIALIZE SENSOR ARRAY ]</button>
-    </div>
-    <script>
-        const btn = document.getElementById('startBtn'); const v_canvas = document.getElementById('visualizer'); const v_ctx = v_canvas.getContext('2d');
-        btn.onclick = async () => {{
-            btn.style.display = 'none';
-            try {{
-                const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
-                const aCtx = new (window.AudioContext || window.webkitAudioContext)(); const analyser = aCtx.createAnalyser();
-                const source = aCtx.createMediaStreamSource(stream); analyser.fftSize = 128; source.connect(analyser);
-                const dataArray = new Uint8Array(analyser.frequencyBinCount);
-                function updateAudio() {{
-                    requestAnimationFrame(updateAudio); analyser.getByteFrequencyData(dataArray);
-                    v_ctx.clearRect(0, 0, v_canvas.width, v_canvas.height); let sum = 0, maxV = 0, maxI = 0;
-                    for (let i = 0; i < dataArray.length; i++) {{
-                        let v = dataArray[i]; sum += v; if(v > maxV) {{ maxV = v; maxI = i; }}
-                        v_ctx.fillStyle = '{st.session_state.theme_color}'; v_ctx.fillRect(i * (v_canvas.width / dataArray.length), v_canvas.height - v/2, 2, v/2);
-                    }}
-                    document.getElementById('vol_val').innerText = Math.round(sum/dataArray.length);
-                    document.getElementById('freq_val').innerText = (sum/dataArray.length > 5) ? Math.round(maxI * aCtx.sampleRate / analyser.fftSize) : 0;
-                }} updateAudio();
-            }} catch(e) {{ alert("Audio Fault: " + e); }}
-            try {{
-                if (typeof DeviceMotionEvent.requestPermission === 'function') {{ await DeviceMotionEvent.requestPermission(); }}
-                window.addEventListener('devicemotion', (e) => {{
-                    const acc = e.accelerationIncludingGravity; if (!acc) return;
-                    let x = acc.x||0, y = acc.y||0, z = acc.z||0;
-                    document.getElementById('mag_val').innerText = (Math.sqrt(x*x + y*y + z*z) / 9.80665).toFixed(3);
-                }});
-            }} catch(err) {{}}
-        }};
-    </script>
-    """
-    components.html(all_sensors_js, height=550)
-
-def main():
-    with st.sidebar:
-        st.title("⚙️ SYSTEM")
-        st.session_state.user = st.text_input("AGENT ID", st.session_state.user)
-        st.session_state.theme_color = st.color_picker("THEME", st.session_state.theme_color)
-        st.session_state.bg_color = st.color_picker("BACKGROUND", st.session_state.bg_color)
-        st.markdown("---")
-        st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
-    tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "🎧 MUSIC", "📟 SENSOR"])
-    rooms = [room_core, room_radar, room_comms, room_music, room_sensor]
-    for i, tab in enumerate(tabs):
-        with tab: rooms[i]()
-
-if __name__ == "__main__":
-    main()
+    components.html(visualizer_
