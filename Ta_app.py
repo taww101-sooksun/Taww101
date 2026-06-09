@@ -1,111 +1,170 @@
 import streamlit as st
+import os
+from datetime import datetime
 
-# ตั้งค่าหน้าจอแอปให้ดุดัน โทนมืด สบายตาตอนเปิดกลางแดด
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO", page_icon="🚜", layout="centered")
+# ==========================================
+# 1. การตั้งค่าหน้าตาแอปและชุดสี (Theme Customization)
+# ==========================================
+st.set_page_config(
+    page_title="SYNAPSE QUANTUM NUMEROLOGY",
+    page_icon="🔮",
+    layout="centered"
+)
 
+# ใช้ CSS เพื่อลบปุ่ม/เมนู และ Footer ติ่งของ Streamlit ออกให้หมดตามที่บาสต้องการ
+# พร้อมปรับแต่งสีสันให้ดูพรีเมียม (พื้นหลังเข้ม ตัวหนังสือชัดเจน ขอบหนาตามสไตล์บาส)
 st.markdown("""
     <style>
-    .stApp { background-color: #111827; }
-    h1, h2, h3, p, label, span { color: white !important; }
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    .reportview-container {
+        background: #0B0F19;
+    }
+    h1, h2, h3 {
+        color: #00E5FF !important;
+        font-weight: bold;
+    }
+    .stButton>button {
+        background-color: #FF1744;
+        color: white;
+        border-radius: 8px;
+        border: 2px solid #00E5FF;
+        font-weight: bold;
+        width: 100%;
+    }
+    .quantum-box {
+        border: 4px solid #00E5FF;
+        padding: 20px;
+        border-radius: 12px;
+        background-color: #121824;
+        margin-bottom: 20px;
+    }
+    .matrix-title {
+        color: #FFD600;
+        font-size: 20px;
+        font-weight: bold;
+    }
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-st.title("🚜 ระบบวัดที่นาสัจจะ (เวอร์ชันแม่นยำสูงสุด)")
-st.markdown("<p style='color: #f87171 !important; font-style: italic;'>\"อยู่นิ่งๆ ไม่เจ็บตัว วัดตามความจริง ไม่มีใครโกหกใครได้\"</p>", unsafe_allow_html=True)
+# ==========================================
+# 2. ส่วนแสดงโลโก้ (ดึงไฟล์ logo1.png จากโฟลเดอร์เดียวกัน)
+# ==========================================
+st.title("🔮 SYNAPSE COMMAND CENTER")
+st.subheader("ระบบวิเคราะห์ถอดรหัสควอนตัมและแพทเทิร์นตัวเลขวันเกิด")
+
+logo_path = "logo1.png"
+if os.path.exists(logo_path):
+    st.image(logo_path, use_container_width=True)
+else:
+    st.info("💡 ระบบเตรียมพร้อมรับไฟล์ 'logo1.png' เพื่อแสดงผลที่หน้าแรก")
+
 st.write("---")
 
-st.subheader("🛰️ แผนที่ดาวเทียมสเกลจริงความละเอียดสูง")
-st.caption("คำแนะนำ: ใช้นิ้วจิ้มไอคอนรูป 'ห้าเหลี่ยม' หรือ 'สี่เหลี่ยม' ทางซ้ายมือ แล้วจิ้มลากไปตามขอบคันนาให้รอบ ระบบจะใช้สูตรคำนวณพื้นที่ผิวโลกจริง ไม่คลาดเคลื่อนแน่นอน")
+# ==========================================
+# 3. ส่วนรับข้อมูลจากผู้ใช้งาน
+# ==========================================
+st.markdown("### 📅 กรอกข้อมูลวันเดือนปีเกิดเพื่อถอดรหัส")
 
-# พิกัดเริ่มต้น (สามารถขยับตาม GPS จริงได้)
-default_lat = 15.9513057
-default_lng = 103.5796196
+# รับวันเกิดของตัวเอง
+col1, col2 = st.columns(2)
+with col1:
+    my_date = st.date_input("วันเดือนปีเกิดของคุณ", min_value=datetime(1950, 1, 1))
+with col2:
+    my_time = st.time_input("เวลาเกิดของคุณ (ถ้ามี)", value=None)
 
-# โค้ดแผนที่เวอร์ชันอัปเกรด: ใช้ Turf.js ช่วยคำนวณพื้นที่ระดับสากล + ดึงดาวเทียม Esri World Imagery ที่เห็นคันนาชัดที่สุด
-map_html_code = f"""
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+# รับวันเกิดของคู่สมพงษ์
+partner_check = st.checkbox("ต้องการคำนวณรหัสสมพงษ์ร่วมกับคู่รัก/บุคคลอื่น")
+partner_date = None
+if partner_check:
+    partner_date = st.date_input("วันเดือนปีเกิดของคู่สมพงษ์", min_value=datetime(1950, 1, 1))
 
-<div id="map" style="width: 100%; height: 400px; border-radius: 12px; border: 2px solid #10b981;"></div>
-<div id="result-box" style="margin-top:15px; background:#1f2937; padding:15px; border-radius:8px; color:white; font-family:sans-serif;">
-    <b style="color:#34d399; font-size:16px;"> 📐 หลักฐานขนาดพื้นที่นา (ตามจริง):</b>
-    <p id="area-text" style="font-size:22px; margin:5px 0; font-weight:bold; color:#f59e0b;">ยังไม่ได้ลากแปลงนา</p>
-</div>
+# ปุ่มกดคำนวณ
+btn_calculate = st.button("เริ่มต้นถอดรหัสควอนตัมแมทริกซ์")
 
-<script>
-    // ตั้งค่าแผนที่เริ่มต้น
-    var map = L.map('map').setView([{default_lat}, {default_lng}], 15);
+# ==========================================
+# 4. ฟังก์ชันและสูตรการคำนวณทางคณิตศาสตร์ (Logic)
+# ==========================================
+def sum_digits(number):
+    """ฟังก์ชันย่อยสำหรับการบวกเลขทีละหลักจนเหลือเลขหลักเดียว (1-9)"""
+    while number > 9:
+        number = sum(int(digit) for digit in str(number))
+    return number
 
-    // ใช้ภาพถ่ายดาวเทียมความละเอียดสูง ซูมเห็นดิน เห็นร่องคันนาชัดเจน
-    var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-        maxZoom: 19
-    }}).addTo(map);
+if btn_calculate:
+    # แยกส่วนตัวเลขจากวันเกิด (ปี ค.ศ.)
+    d = my_date.day
+    m = my_date.month
+    y = my_date.year
+    
+    # 🌟 สูตรที่ 1: รหัสอดีต (ฐานจิตใต้สำนึก)
+    # วิธีคิด: เอาเลขวันเกิด + เลขเดือนเกิด แล้วลดรูปให้เหลือหลักเดียว
+    past_code = sum_digits(d + m)
+    
+    # 🌟 สูตรที่ 2: รหัสอนาคต (เส้นทางพลังงานชีวิต)
+    # วิธีคิด: เอาเลขวัน + เดือน + ปี ค.ศ. มารวมกันทั้งหมด แล้วลดรูปให้เหลือหลักเดียว
+    future_code = sum_digits(d + m + y)
+    
+    # 🌟 สูตรที่ 3: รหัสควอนตัมคู่ขนาน (มิติจิตภาพและพลังที่ซ่อนอยู่)
+    # วิธีคิด: เอา (รหัสอดีต x รหัสอนาคต) คูณด้วยตัวเลขเวลาเกิด หรือค่าคงที่ความถี่ควอนตัม (เลข 7) แล้วลดรูป
+    parallel_code = sum_digits((past_code * future_code) + 7)
+    
+    # แสดงผลลัพธ์การคำนวณส่วนบุคคล
+    st.markdown("<div class='quantum-box'>", unsafe_allow_html=True)
+    st.markdown("## 🌌 ผลการถอดรหัสควอนตัมส่วนบุคคล", unsafe_allow_html=True)
+    
+    col_res1, col_res2, col_res3 = st.columns(3)
+    with col_res1:
+        st.metric(label="🧬 รหัสอดีต (Past)", value=past_code)
+    with col_res2:
+        st.metric(label="🚀 รหัสอนาคต (Future)", value=future_code)
+    with col_res3:
+        st.metric(label="🌀 รหัสคู่ขนาน (Parallel)", value=parallel_code)
+        
+    # --- บทบรรยายที่มาของสูตรและวิธีการคำนวณอย่างละเอียด ---
+    st.markdown("### 📖 คำบรรยายวิธีคำนวณและที่มาของตัวเลข")
+    
+    st.markdown(f"""
+    * **รหัสอดีต ({past_code}):** คำนวณมาจาก **(วันเกิด + เดือนเกิด)** $\rightarrow$ สรุปสูตรคือ: `({d} + {m}) = {d+m}` แล้วนำมาบวกทีละหลักจนเหลือเลขตัวเดียว ตัวเลขนี้แสดงถึงฐานพลังงานดั้งเดิม สิ่งที่ติดตัวมาแต่กำเนิด และกรรมเก่าในอดีตที่คอยส่งผลต่อจิตใต้สำนึกของคุณ
+    * **รหัสอนาคต ({future_code}):** คำนวณมาจาก **(วันเกิด + เดือนเกิด + ปีเกิด ค.ศ.)** $\rightarrow$ สรุปสูตรคือ: `({d} + {m} + {y}) = {d+m+y}` แล้วลดรูปเหลือหลักเดียว ตัวเลขนี้คือเส้นทางที่ชีวิตกำลังขับเคลื่อนไปข้างหน้า เป้าหมายที่แท้จริง และบทเรียนในอนาคตที่ใจคุณต้องเติบโตไปเผชิญ
+    * **รหัสควอนตัมคู่ขนาน ({parallel_code}):** คำนวณมาจากสูตรความถี่ปฏิสัมพันธ์ **[(รหัสอดีต $\\times$ รหัสอนาคต) + ค่าคงที่ความถี่สากล 7]** $\rightarrow$ สรุปสูตรคือ: `({past_code} \\times {future_code}) + 7 = {(past_code * future_code) + 7}` ตัวเลขนี้แสดงถึงแรงดึงดูดในมิติคู่ขนาน สิ่งที่เกิดขึ้นเมื่ออดีตและอนาคตมาบรรจบกัน เป็นพลังงานสมองหรือคลื่นความถี่จิตที่ช่วยเยียวยาและนำทางเมื่อคุณตกอยู่ในสภาวะนิ่ง
+    """)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-    // ซ้อนเส้นถนนและชื่อหมู่บ้านภาษาไทยเพื่อให้หาพิกัดง่าย ไม่หลงทิศ
-    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
-    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
+    # ==========================================
+    # 5. ส่วนคำนวณความสมพงษ์ (Compatibility Match)
+    # ==========================================
+    if partner_check and partner_date:
+        pd = partner_date.day
+        pm = partner_date.month
+        py = partner_date.year
+        
+        partner_future = sum_digits(pd + pm + py)
+        
+        # 🌟 สูตรสมพงษ์: เอาความถี่อนาคตของทั้งสองคนมารวมกัน
+        match_score = sum_digits(future_code + partner_future)
+        
+        st.markdown("<div class='quantum-box'>", unsafe_allow_html=True)
+        st.markdown("## 💑 ผลการวิเคราะห์รหัสสมพงษ์โครงข่ายคู่ขนาน", unsafe_allow_html=True)
+        st.write(f"รหัสอนาคตของคุณคือ **{future_code}** | รหัสอนาคตของคู่สมพงษ์คือ **{partner_future}**")
+        st.write(f"### ค่าพลังงานความสมพงษ์ร่วมกัน: **{match_score}**")
+        
+        # คำอธิบายสูตรสมพงษ์
+        st.markdown("📊 **วิธีคำนวณรหัสสมพงษ์:**")
+        st.write(f"นำรหัสอนาคตของคุณ ({future_code}) มารวมกับรหัสอนาคตของคู่ ({partner_future}) สรุปสูตรคือ `({future_code} + {partner_future}) = {future_code + partner_future}` จากนั้นลดรูปเป็นเลขหลักเดียวเพื่อหาค่าตัดผ่านของเส้นทางชีวิตว่าเข้ากันได้ดีเพียงใด")
+        
+        # คำทำนายตามตัวเลขผลลัพธ์
+        if match_score in [1, 3, 9]:
+            st.success("🔥 **ระดับความสมพงษ์: สูงมาก (พลังงานส่งเสริมกัน)** พลักดันให้อนาคตรุ่งเรือง เป็นคู่คิดที่พากันก้าวหน้า")
+        elif match_score in [2, 4, 6, 8]:
+            st.info("🤝 **ระดับความสมพงษ์: ปานกลาง (พลังงานเกื้อกูล)** เน้นความมั่นคง อยู่ด้วยกันแบบเรื่อยๆ พึ่งพาอาศัยกันได้ดี")
+        else:
+            st.warning("⚡ **ระดับความสมพงษ์: แรงสะท้อน (ต้องปรับตัว)** มีเส้นควอนตัมตัดกันบ่อย อาจมีความเห็นขัดแย้งกันบ่อยครั้ง ต้องใช้ความนิ่งเพื่อสยบความเคลื่อนไหว")
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+    st.balloons()
 
-    // ดึง GPS จริงของมือถือคนขับรถไถทันทีที่เปิดแอป
-    if (navigator.geolocation) {{
-        navigator.geolocation.getCurrentPosition(function(position) {{
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            map.setView([lat, lng], 17); // ซูมเข้าไปใกล้ๆ ที่นาที่อยู่ปัจจุบัน
-            L.marker([lat, lng]).addTo(map).bindPopup('🚜 คุณอยู่ตรงนี้').openPopup();
-        }}, function(err) {{
-            console.log("GPS โหลดช้า หรือไม่ได้เปิดสิทธิ์");
-        }}, {{enableHighAccuracy: true}});
-    }}
-
-    // ระบบวาดเส้นขอบแปลงนา
-    var drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    var drawControl = new L.Control.Draw({{
-        draw: {{
-            polygon: {{
-                allowIntersection: false, // ห้ามลากเส้นตัดกันเอง (กันการมั่วพิกัด)
-                shapeOptions: {{ color: '#10b981', weight: 3, fillOpacity: 0.3 }}
-            }},
-            rectangle: {{ shapeOptions: {{ color: '#10b981' }} }},
-            polyline: false, circle: false, marker: false, circlemarker: false
-        }},
-        edit: {{ featureGroup: drawnItems }}
-    }});
-    map.addControl(drawControl);
-
-    // เมื่อลากเส้นแปลงนาเสร็จสิ้น
-    map.on(L.Draw.Event.CREATED, function (event) {{
-        var layer = event.layer;
-        drawnItems.clearLayers(); // ล้างแปลงเก่าออก เพื่อไม่ให้พื้นที่ทับซ้อนกัน
-        drawnItems.addLayer(layer);
-
-        // ดึงพิกัดที่ลากไปคำนวณด้วย Turf.js (มาตรฐานสากล)
-        var geojson = layer.toGeoJSON();
-        var areaSqMeters = turf.area(geojson); // คำนวณตารางเมตรแบบอิงผิวโลกโค้งจริง
-
-        if (areaSqMeters > 0) {{
-            // แปลงค่าเป็นระบบหน่วยวัดไทย (ไร่ - งาน - ตารางวา)
-            var totalWa = areaSqMeters / 4;
-            var rai = Math.floor(totalWa / 400);
-            var remainingWa = totalWa % 400;
-            var ngan = Math.floor(remainingWa / 100);
-            var wa = Math.round(remainingWa % 100);
-
-            // แสดงผลลัพธ์แบบชัดๆ ลบข้อกังขา
-            document.getElementById('area-text').innerHTML = 
-                "🌾 พื้นที่นาจริง: <span style='color:#34d399;'>" + rai + " ไร่ </span> " + 
-                "<span style='color:#60a5fa;'>" + ngan + " งาน </span> " + 
-                "<span style='color:#f59e0b;'>" + wa + " ตารางวา</span><br>" +
-                "<span style='font-size:14px; color:#9ca3af; font-weight:normal;'>คำนวณสุทธิ: " + Math.round(areaSqMeters).toLocaleString() + " ตารางเมตร</span>";
-        }}
-    }});
-</script>
-"""
-
-st.components.v1.html(map_html_code, height=580, scrolling=False)
-
-st.info("💡 ข้อแนะนำเวลาไปคุยหน้างาน: พอนายลากพื้นที่เสร็จแล้ว ได้ตัวเลขไร่-งานที่เป๊ะแล้ว ให้เปิดหน้าจอนี้ให้เจ้าของนาดูตรงนั้นเลย พูดกันด้วยหลักฐานทางดาวเทียม ใครจะมาหัวหมอบอกนาตัวเองมีน้อยกว่าความจริงก็เถียงไม่ได้แน่นอนเพื่อน!")
+# แสดงสโลแกนท้ายแอปอย่างสวยงาม
+st.markdown("<center style='color:#7F8C8D; font-size:12px;'>SYNAPSE PROJECT CORE SYSTEM © 2026 | \"อยู่นิ่งๆ ไม่เจ็บตัว\"</center>", unsafe_allow_html=True)
