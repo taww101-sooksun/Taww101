@@ -105,7 +105,8 @@ with tab1:
         ty = target_date.year
         
         # 🌟 สูตรดวงจันทร์: คำนวณความแตกต่างของวันเพื่อหาเศษส่วนในรอบวงจรดวงจันทร์ 29.53 วัน
-        days_diff = abs((target_date - datetime(2026, 1, 1)).days)
+        days_diff = abs((target_date - datetime(2026, 1, 1).date()).days)
+
         lunar_position = round((days_diff % 29.53), 2)
         
         # คำนวณรหัสวันผสมฐานอดีตของบาส
