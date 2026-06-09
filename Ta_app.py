@@ -139,16 +139,24 @@ def get_base64(file_path):
 logo_base64 = get_base64("logo1.png")
 
 # =========================================================
-# 2. FIREBASE CONNECTION
+# 2. FIREBASE SYSTEM CONNECTION (เวอร์ชันต่อตรงคีย์จริง 100%)
 # =========================================================
 if not firebase_admin._apps:
     try:
+        # อ่านค่า dictionary จากระบความปลอดภัยของ Streamlit Secrets จริงที่บาสป้อนไว้
         fb_creds = dict(st.secrets["firebase_credentials"])
+        
+        # ถอดรหัสขึ้นบรรทัดใหม่ของ private_key ป้องกันตัวอักษรบิดเบี้ยว
         fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n")
+        
         cred = credentials.Certificate(fb_creds)
-        firebase_admin.initialize_app(cred, {'databaseURL': st.secrets["firebase_db_url"]})
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': st.secrets["firebase_db_url"]
+        })
     except Exception as e:
-        st.error(f"การเชื่อมต่อฐานข้อมูลผิดพลาด: {e}")
+        st.error(f"🚨 ตรวจพบปัญหาการเชื่อมต่อฐานข้อมูลคลาวด์จริง: {e}")
+        st.stop()
+
 
 # =========================================================
 # 3. SESSION STATE CONFIGURATION
