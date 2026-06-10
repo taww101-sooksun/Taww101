@@ -1,223 +1,111 @@
 import streamlit as st
-import os
-import base64
-import random
-import json
 
-# =========================================================
-# 1. CONFIG & SYSTEM THEME CONTROLLER (DYNAMIC NEON UI)
-# =========================================================
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER V.7", layout="centered")
+# ตั้งค่าหน้าจอแอปให้ดุดัน โทนมืด สบายตาตอนเปิดกลางแดด
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO", page_icon="🚜", layout="centered")
 
-def get_base64(file_path):
-    try:
-        if os.path.exists(file_path):
-            with open(file_path, "rb") as f:
-                return base64.b64encode(f.read()).decode()
-    except: return None
-    return None
+st.markdown("""
+    <style>
+    .stApp { background-color: #111827; }
+    h1, h2, h3, p, label, span { color: white !important; }
+    </style>
+""", unsafe_allow_html=True)
 
-logo_b64 = get_base64("logo1.png")
-
-# =========================================================
-# 2. GLOBAL STATE CONFIGURATION
-# =========================================================
-if 'global_song_idx' not in st.session_state:
-    st.session_state.global_song_idx = 0
-if 'is_playing' not in st.session_state:
-    st.session_state.is_playing = False
-
-room_info = [
-    {"name": "🔥 CORE ROOM", "color1": "#39FF14", "color2": "#00FFDD"},
-    {"name": "🎧 R&B LOUNGE", "color1": "#FF00DE", "color2": "#7000FF"},
-    {"name": "🎤 RAP ZONE", "color1": "#00F3FF", "color2": "#0051FF"},
-    {"name": "🌌 QUANTUM", "color1": "#FF8C00", "color2": "#FF0000"},
-    {"name": "🎸 ISAN INDIE", "color1": "#FFD700", "color2": "#FF5733"}
-]
-
-# Ensure we sort the music to have a deterministic order
-all_music = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
-
-# =========================================================
-# 3. NAVIGATION & UI RENDER (5 ROOMS & NEON GRAF)
-# =========================================================
-tabs = st.tabs([r["name"] for r in room_info])
-
-for index, tab in enumerate(tabs):
-    with tab:
-        info = room_info[index]
-        c1, c2 = info["color1"], info["color2"]
-        
-        st.markdown(f"""
-            <style>
-            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap');
-            header, footer, #MainMenu {{visibility: hidden;}}
-            .stApp {{ background-color: #000000 !important; }}
-            .logo-img-{index} {{
-                width: 70px; height: 70px; margin: 0 auto;
-                background-image: url("data:image/png;base64,{logo_b64}");
-                background-size: contain; background-repeat: no-repeat;
-                filter: drop-shadow(0 0 15px {c1});
-                animation: pulse 2s infinite alternate;
-            }}
-            @keyframes pulse {{ from {{ transform: scale(1); }} to {{ transform: scale(1.1); }} }}
-            .title-{index} {{
-                font-family: 'Orbitron', sans-serif; color: #fff; text-align: center;
-                text-shadow: 0 0 10px {c1}; font-size: 1.4rem; margin-top:10px;
-            }}
-            </style>
-            <div class="logo-img-{index}"></div>
-            <h1 class="title-{index}">{info["name"]}</h1>
-        """, unsafe_allow_html=True)
-
-        if all_music:
-            current_song_name = all_music[st.session_state.global_song_idx % len(all_music)]
-            song_b64 = get_base64(current_song_name)
-            
-            if song_b64:
-                # สร้าง HTML/JS สำหรับกราฟนีออนของห้องนั้นๆ
-                html_code = f"""
-                <div style="margin-top:5px;">
-                    <canvas id="canvas-{index}" width="300" height="110" style="width:100%; height:110px; background:#000; border:1px solid {c1}44; border-radius:15px;"></canvas>
-                    <button id="btn-{index}" style="width:100%; padding:15px; margin-top:10px; background:transparent; color:{c1}; border:2px solid {c1}; font-family:'Orbitron'; cursor:pointer; border-radius:10px; font-weight:bold; box-shadow: 0 0 15px {c1}33;">
-                        ACTIVATE {info["name"]} ⚡
-                    </button>
-                    <audio id="audio-{index}" src="data:audio/mp3;base64,{song_b64}"></audio>
-                    <p style="color:{c1}; font-family:'Orbitron'; font-size:12px; text-align:center; margin-top:8px;">
-                        NOW PLAYING: {current_song_name}
-                    </p>
-                </div>
-                <script>
-                    const audio = document.getElementById('audio-{index}');
-                    const btn = document.getElementById('btn-{index}');
-                    const canvas = document.getElementById('canvas-{index}');
-                    const ctx = canvas.getContext('2d');
-                    let audioCtx, analyser, source, dataArray;
-
-                    btn.onclick = function() {{
-                        // สั่งเชื่อมต่อระบบเสียงครั้งแรกเมื่อกด ACTIVATE
-                        if (!audioCtx) {{
-                            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                            analyser = audioCtx.createAnalyser();
-                            source = audioCtx.createMediaElementSource(audio);
-                            source.connect(analyser);
-                            analyser.connect(audioCtx.destination);
-                            analyser.fftSize = 256; 
-                            dataArray = new Uint8Array(analyser.frequencyBinCount);
-                            renderWave(); // สั่งให้กราฟนีออนเริ่มวาดทันที
-                        }}
-                        
-                        if (audio.paused) {{ 
-                            audio.play(); 
-                            btn.innerText = "SYSTEM ONLINE 🟢"; 
-                        }} else {{ 
-                            audio.pause(); 
-                            btn.innerText = "SYSTEM PAUSED 🔴"; 
-                        }}
-                    }};
-
-                    // ฟังก์ชันวาดกราฟนีออน
-                    function renderWave() {{
-                        requestAnimationFrame(renderWave);
-                        if (!analyser) return; // Prevent errors if analyser isn't set up yet
-                        analyser.getByteFrequencyData(dataArray);
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        
-                        const bWidth = (canvas.width / dataArray.length) * 2.5;
-                        let x = 0;
-                        
-                        for (let i = 0; i < dataArray.length; i++) {{
-                            let h = (dataArray[i] / 255) * canvas.height;
-                            let grad = ctx.createLinearGradient(0, canvas.height, 0, canvas.height - h);
-                            // ใส่สีเฉพาะตัวนีออนตามห้องนั้นๆ
-                            grad.addColorStop(0, "{c1}"); 
-                            grad.addColorStop(1, "{c2}");
-                            ctx.fillStyle = grad;
-                            
-                            ctx.shadowBlur = 10; 
-                            ctx.shadowColor = "{c1}";
-                            ctx.fillRect(x, canvas.height - h, bWidth - 1, h);
-                            x += bWidth;
-                        }}
-                    }}
-                    
-                    audio.onended = () => {{
-                        // สั่งเปลี่ยนเพลงและเปลี่ยนห้องอัตโนมัติโดยใช้ปุ่มลับ AUTO_NEXT
-                        window.parent.document.querySelector('button[title="AUTO_NEXT"]').click();
-                    }};
-                </script>
-                """
-                st.components.v1.html(html_code, height=260)
-
-# =========================================================
-# 4. ปุ่มลับสำหรับระบบอัตโนมัติ (AUTO_NEXT TRIGGER)
-# =========================================================
-# We need to make this button accessible even though it's "invisible"
-if st.button("AUTO_NEXT", key="AUTO_NEXT_BUTTON", help="Invisible Trigger", use_container_width=True):
-    st.session_state.global_song_idx = (st.session_state.global_song_idx + 1) % len(all_music)
-    st.rerun() 
-# We need to render the hidden trigger so JS can find it. The title "AUTO_NEXT" is used by querySelector.
-st.markdown('<button title="AUTO_NEXT" style="display:none;"></button>', unsafe_allow_html=True)
-
-# =========================================================
-# 5. GLOBAL PLAYLIST (จัดระเบียบคลังเพลง 52 เพลง)
-# =========================================================
+st.title("🚜 ระบบวัดที่นาสัจจะ (เวอร์ชันแม่นยำสูงสุด)")
+st.markdown("<p style='color: #f87171 !important; font-style: italic;'>\"อยู่นิ่งๆ ไม่เจ็บตัว วัดตามความจริง ไม่มีใครโกหกใครได้\"</p>", unsafe_allow_html=True)
 st.write("---")
-st.markdown("<h3 style='font-family:Orbitron; color:#39FF14; text-align:center;'>🎶 GLOBAL PLAYLIST (52 TRACKS)</h3>", unsafe_allow_html=True)
 
-# สร้างปุ่มควบคุมหลัก
-col_a, col_b = st.columns(2)
-with col_a:
-    if st.button("⏭️ SKIP TO NEXT", key="skip_all"):
-        st.session_state.global_song_idx += 1
-        st.rerun()
-with col_b:
-    if st.button("🎲 SHUFFLE ALL", key="shuffle_all"):
-        st.session_state.global_song_idx = random.randint(0, len(all_music)-1)
-        st.rerun()
+st.subheader("🛰️ แผนที่ดาวเทียมสเกลจริงความละเอียดสูง")
+st.caption("คำแนะนำ: ใช้นิ้วจิ้มไอคอนรูป 'ห้าเหลี่ยม' หรือ 'สี่เหลี่ยม' ทางซ้ายมือ แล้วจิ้มลากไปตามขอบคันนาให้รอบ ระบบจะใช้สูตรคำนวณพื้นที่ผิวโลกจริง ไม่คลาดเคลื่อนแน่นอน")
 
-# แสดงรายชื่อเพลงทั้งหมดให้อาจารย์จิ้มเลือกได้จริง (ไม่ฟ้อง Error)
-with st.container():
-    st.markdown("""
-        <style>
-        .song-list-container {
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #333;
-            padding: 10px;
-            border-radius: 10px;
-            background: rgba(10, 10, 10, 0.9);
-        }
-        .song-item {
-            font-family: sans-serif;
-            font-size: 14px;
-            padding: 8px 12px;
-            color: #ddd;
-            border-bottom: 1px solid #222;
-        }
-        .current-song {
-            color: #39FF14;
-            font-weight: bold;
-            background: rgba(57, 255, 20, 0.1);
-        }
-        </style>
-    """, unsafe_allow_html=True)
-    
-    with st.expander("📂 ดูรายชื่อเพลงทั้งหมดและเลือกเล่น", expanded=True):
-        st.markdown('<div class="song-list-container">', unsafe_allow_html=True)
-        for i, song in enumerate(all_music):
-            is_current = (i == st.session_state.global_song_idx % len(all_music))
-            
-            # เน้นสีเพลงที่กำลังเล่นอยู่
-            if is_current:
-                st.markdown(f'<div class="song-item current-song">▶️ {i+1}. {song}</div>', unsafe_allow_html=True)
-            else:
-                # ให้กดปุ่มที่รายชื่อเพื่อเลือกเพลงนั้นมาเล่น
-                if st.button(f"▪️ {i+1}. {song}", key=f"select_{i}", use_container_width=True):
-                    st.session_state.global_song_idx = i
-                    st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+# พิกัดเริ่มต้น (สามารถขยับตาม GPS จริงได้)
+default_lat = 15.9513057
+default_lng = 103.5796196
 
-# Final caption, with the music player label separated to avoid potential syntax issues with emojis and trailing text.
-st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | SYNAPSE OMNI-PLAY V.7")
-st.caption("🎵 MUSIC PLAYER")
+# โค้ดแผนที่เวอร์ชันอัปเกรด: ใช้ Turf.js ช่วยคำนวณพื้นที่ระดับสากล + ดึงดาวเทียม Esri World Imagery ที่เห็นคันนาชัดที่สุด
+map_html_code = f"""
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
+<div id="map" style="width: 100%; height: 400px; border-radius: 12px; border: 2px solid #10b981;"></div>
+<div id="result-box" style="margin-top:15px; background:#1f2937; padding:15px; border-radius:8px; color:white; font-family:sans-serif;">
+    <b style="color:#34d399; font-size:16px;"> 📐 หลักฐานขนาดพื้นที่นา (ตามจริง):</b>
+    <p id="area-text" style="font-size:22px; margin:5px 0; font-weight:bold; color:#f59e0b;">ยังไม่ได้ลากแปลงนา</p>
+</div>
+
+<script>
+    // ตั้งค่าแผนที่เริ่มต้น
+    var map = L.map('map').setView([{default_lat}, {default_lng}], 15);
+
+    // ใช้ภาพถ่ายดาวเทียมความละเอียดสูง ซูมเห็นดิน เห็นร่องคันนาชัดเจน
+    var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+        maxZoom: 19
+    }}).addTo(map);
+
+    // ซ้อนเส้นถนนและชื่อหมู่บ้านภาษาไทยเพื่อให้หาพิกัดง่าย ไม่หลงทิศ
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
+
+    // ดึง GPS จริงของมือถือคนขับรถไถทันทีที่เปิดแอป
+    if (navigator.geolocation) {{
+        navigator.geolocation.getCurrentPosition(function(position) {{
+            var lat = position.coords.latitude;
+            var lng = position.coords.longitude;
+            map.setView([lat, lng], 17); // ซูมเข้าไปใกล้ๆ ที่นาที่อยู่ปัจจุบัน
+            L.marker([lat, lng]).addTo(map).bindPopup('🚜 คุณอยู่ตรงนี้').openPopup();
+        }}, function(err) {{
+            console.log("GPS โหลดช้า หรือไม่ได้เปิดสิทธิ์");
+        }}, {{enableHighAccuracy: true}});
+    }}
+
+    // ระบบวาดเส้นขอบแปลงนา
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    var drawControl = new L.Control.Draw({{
+        draw: {{
+            polygon: {{
+                allowIntersection: false, // ห้ามลากเส้นตัดกันเอง (กันการมั่วพิกัด)
+                shapeOptions: {{ color: '#10b981', weight: 3, fillOpacity: 0.3 }}
+            }},
+            rectangle: {{ shapeOptions: {{ color: '#10b981' }} }},
+            polyline: false, circle: false, marker: false, circlemarker: false
+        }},
+        edit: {{ featureGroup: drawnItems }}
+    }});
+    map.addControl(drawControl);
+
+    // เมื่อลากเส้นแปลงนาเสร็จสิ้น
+    map.on(L.Draw.Event.CREATED, function (event) {{
+        var layer = event.layer;
+        drawnItems.clearLayers(); // ล้างแปลงเก่าออก เพื่อไม่ให้พื้นที่ทับซ้อนกัน
+        drawnItems.addLayer(layer);
+
+        // ดึงพิกัดที่ลากไปคำนวณด้วย Turf.js (มาตรฐานสากล)
+        var geojson = layer.toGeoJSON();
+        var areaSqMeters = turf.area(geojson); // คำนวณตารางเมตรแบบอิงผิวโลกโค้งจริง
+
+        if (areaSqMeters > 0) {{
+            // แปลงค่าเป็นระบบหน่วยวัดไทย (ไร่ - งาน - ตารางวา)
+            var totalWa = areaSqMeters / 4;
+            var rai = Math.floor(totalWa / 400);
+            var remainingWa = totalWa % 400;
+            var ngan = Math.floor(remainingWa / 100);
+            var wa = Math.round(remainingWa % 100);
+
+            // แสดงผลลัพธ์แบบชัดๆ ลบข้อกังขา
+            document.getElementById('area-text').innerHTML = 
+                "🌾 พื้นที่นาจริง: <span style='color:#34d399;'>" + rai + " ไร่ </span> " + 
+                "<span style='color:#60a5fa;'>" + ngan + " งาน </span> " + 
+                "<span style='color:#f59e0b;'>" + wa + " ตารางวา</span><br>" +
+                "<span style='font-size:14px; color:#9ca3af; font-weight:normal;'>คำนวณสุทธิ: " + Math.round(areaSqMeters).toLocaleString() + " ตารางเมตร</span>";
+        }}
+    }});
+</script>
+"""
+
+st.components.v1.html(map_html_code, height=580, scrolling=False)
+
+st.info("💡 ข้อแนะนำเวลาไปคุยหน้างาน: พอนายลากพื้นที่เสร็จแล้ว ได้ตัวเลขไร่-งานที่เป๊ะแล้ว ให้เปิดหน้าจอนี้ให้เจ้าของนาดูตรงนั้นเลย พูดกันด้วยหลักฐานทางดาวเทียม ใครจะมาหัวหมอบอกนาตัวเองมีน้อยกว่าความจริงก็เถียงไม่ได้แน่นอนเพื่อน!")
