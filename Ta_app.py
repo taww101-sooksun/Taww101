@@ -13,8 +13,19 @@ from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 import hashlib
 
-# --- [ บรรทัดแรกสุดของไฟล์ ห้ามย้าย! ] ---
-st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
+# =========================================================
+# [ ชุดคำสั่งเชื่อมต่อฐานข้อมูล SOOKSUN1 - ห้ามลบ/ห้ามย้าย ]
+# =========================================================
+if not firebase_admin._apps:
+    try:
+        # ใช้สิทธิ์การเข้าถึงแบบจำลองผ่าน URL ตรงตามหลักความเป็นจริง
+        firebase_admin.initialize_app(options={
+            'databaseURL': 'https://sooksun1-default-rtdb.firebaseio.com'
+        })
+    except Exception as e:
+        st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ Firebase: {e}")
+# =========================================================
+
 
 # --- ค่าเริ่มต้นของระบบธีมสี ---
 if 'primary_color' not in st.session_state:
