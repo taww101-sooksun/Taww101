@@ -1,9 +1,10 @@
-import streamlit as st
+import streamlit as st  
 import os
 import pandas as pd
 import math
 import time
 import base64
+import json  # ✅ แก้ไข: เพิ่ม import json เพื่อให้ json.loads() ทำงานได้จริง ไม่เกิด NameError
 import firebase_admin
 from firebase_admin import credentials, db
 from datetime import datetime, date, timedelta
@@ -13,21 +14,36 @@ from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 import hashlib
 
-# =========================================================
-# [ ชุดคำสั่งเชื่อมต่อฐานข้อมูล SOOKSUN1 - ห้ามลบ/ห้ามย้าย ]
-# =========================================================
-if not firebase_admin._apps:
-    try:
-        # ใช้สิทธิ์การเข้าถึงแบบจำลองผ่าน URL ตรงตามหลักความเป็นจริง
-        firebase_admin.initialize_app(options={
-            'databaseURL': 'https://sooksun1-default-rtdb.firebaseio.com'
-        })
-    except Exception as e:
-        st.error(f"เกิดข้อผิดพลาดในการเชื่อมต่อ Firebase: {e}")
-# =========================================================
+# --- [ บรรทัดตั้งค่าหน้าจอ ต้องอยู่บนสุดถัดจาก import ] ---
+st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
+# =========================================================
+# [ ชุดคำสั่งเชื่อมต่อฐานข้อมูล SOOKSUN-101 ผ่านระบบ Secrets หลังบ้าน ]
+# =========================================================
+if firebase_admin._apps:
+    for app_name in list(firebase_admin._apps.keys()):
+        try:
+            firebase_admin.delete_app(firebase_admin._apps[app_name])
+        except Exception:
+            pass
 
-# --- ค่าเริ่มต้นของระบบธีมสี ---
+try:
+    # ดึงข้อความ JSON ก้อนใหญ่จาก Secrets มาแปลงเป็นโครงสร้างข้อมูลคอมพิวเตอร์จริง
+    firebase_raw = st.secrets["firebase"]["text"]
+    firebase_cfg = json.loads(firebase_raw)
+
+    # เชื่อมต่อตรงไปยัง Firebase URL ของโปรเจกต์ sooksun-101
+    cred = credentials.Certificate(firebase_cfg)
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com' 
+    })
+    connection_status = True
+except Exception as e:
+    connection_status = False
+    connection_error = e
+
+# =========================================================
+# --- ธีมสี ---
 if 'primary_color' not in st.session_state:
     st.session_state.primary_color = "#00f3ff"
 if 'custom_theme' not in st.session_state:
@@ -61,30 +77,34 @@ def get_detailed_logic(dt):
 if not st.session_state.get('logged_in', False):
     st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>REGISTER AGENT</h2>", unsafe_allow_html=True)
     
+    if not connection_status:
+        st.error(f"⚠️ ระบบเชื่อมต่อหลังบ้านตรวจพบปัญหา: {connection_error}")
+        st.info("💡 อย่าลืมนำรหัส JSON (TOML) ไปใส่ในกล่อง Secrets ของเว็บ Streamlit ด้วยนะครับ")
+
     with st.container():
         new_user = st.text_input("ENTER AGENT NAME", placeholder="เช่น ต๊ะ101, บาส").strip()
         
         if st.button("ACTIVATE SYSTEM", use_container_width=True):
             if new_user:
                 try:
-                    user_check = db.reference(f'users/{new_user}').get()
-                    if not user_check:
-                        db.reference(f'users/{new_user}').set({
-                            'created_at': time.time(),
-                            'lat': 13.7367,
-                            'lon': 100.5231
-                        })
-                except Exception as e:
-                    st.warning(f"บันทึกพิกัดเริ่มต้นเข้าฐานข้อมูลไม่ได้ (รัน Local หรือยังไม่ได้ต่อ Firebase): {e}")
-                
-                st.session_state.user = new_user        
-                st.session_state.logged_in = True     
-                st.session_state.page = "HOME"         
+                    # ตรวจสอบการเชื่อมต่อและเขียนข้อมูลลง Firebase จริง
+                    db.reference(f'users/{new_user}').set({
+                        'created_at': time.time(),
+                        'lat': 13.7367,
+                        'lon': 100.5231
+                    })
+                    
+                    st.session_state.user = new_user        
+                    st.session_state.logged_in = True     
+                    st.session_state.page = "HOME"         
 
-                st.success(f"WELCOME AGENT: {new_user}")
-                st.balloons()
-                time.sleep(1.5) 
-                st.rerun()      
+                    st.success(f"WELCOME AGENT: {new_user}")
+                    st.balloons()
+                    time.sleep(1.5) 
+                    st.rerun()      
+                except Exception as e:
+                    st.error(f"ระบบไม่สามารถเข้าถึงฐานข้อมูลคลาวด์ได้: {e}")
+                    st.info("💡 คำแนะนำ: อย่าลืมเข้าไปเปลี่ยน Rules ในหน้าเว็บ Firebase Realtime Database ให้เป็น true ทั้งคู่นะครับ")
             else:
                 st.warning("กรุณาใส่ชื่อ AGENT ของคุณก่อน!")
     st.stop() 
@@ -149,6 +169,8 @@ if st.session_state.page == "HOME":
             st.markdown("<h1 class='neon-text'>SYNAPSE</h1>", unsafe_allow_html=True)
     
     st.markdown("<h3 style='text-align: center;'>ศูนย์ควบคุมระบบ: เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
+    if connection_status:
+        st.success(f"📡 บัญชี AGENT: {st.session_state.user} | เชื่อมต่อฐานข้อมูลคลาวด์ SOOKSUN1 เรียบร้อย")
     st.divider()
 
     c1, c2 = st.columns(2)
@@ -236,7 +258,7 @@ elif st.session_state.page == "1":
 
     mixer_html = f"""
     <div id="mixer-container" style="background: rgba(10,10,10,0.9); border: 2px solid #333; border-radius: 25px; padding: 20px; font-family: sans-serif;">
-        <canvas id="v-main" style="width: 100%; height: 120px; background: #000; border-radius: 15px; border: 1px solid #ff00deрам;"></canvas>
+        <canvas id="v-main" style="width: 100%; height: 120px; background: #000; border-radius: 15px; border: 1px solid #ff00de;"></canvas>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
             <div style="padding: 15px; border-left: 4px solid #ff00de; background: rgba(255,0,222,0.05); border-radius: 10px;">
                 <small style="color: #ff00de; font-weight: bold;">DECK A</small>
@@ -253,7 +275,7 @@ elif st.session_state.page == "1":
                 <div style="height: 4px; background: #222; margin-top: 10px; border-radius: 2px;"><div id="barB" style="height: 100%; width: 0%; background: #00f3ff;"></div></div>
             </div>
         </div>
-        <div style="display: grid; grid-cols: 2; gap: 10px; margin-top: 20px;">
+        <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 20px;">
             <button onclick="playAll()" style="width: 100%; padding: 12px; background: none; border: 2px solid #ff0055; color: #ff0055; font-weight: bold; border-radius: 15px; cursor: pointer;">⚡ START MIX</button>
             <button onclick="fade()" style="width: 100%; padding: 12px; background: none; border: 2px solid #00ffcc; color: #00ffcc; font-weight: bold; border-radius: 15px; cursor: pointer; margin-top: 10px;">🔄 CROSSFADE (5s)</button>
         </div>
@@ -310,7 +332,7 @@ elif st.session_state.page == "1":
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Studio v.1")
 
 # =========================================================
-# ห้องที่ 2: อัปเกรดใหม่ CHAT SYSTEM, PRIVATE CHAT & WALKIE-TALKIE + RADAR MAP
+# ห้องที่ 2: CHAT SYSTEM, PRIVATE CHAT & WALKIE-TALKIE + RADAR MAP
 # =========================================================
 elif st.session_state.page == "2":
     st_autorefresh(interval=6000, key="synapse_update")
@@ -350,34 +372,65 @@ elif st.session_state.page == "2":
 
     st.write("---")
 
-    # ส่วนแบ่งแท็บระบบแชตและวิทยุสื่อสารเสียง
     tab_global, tab_private, tab_voice = st.tabs(["👥 GLOBAL CHAT (แชตรวม)", "🔐 PRIVATE CHAT (แชตส่วนตัว)", "📻 WALKIE-TALKIE (ข้อความเสียง)"])
 
-    # 1. เช็คก่อนว่า Firebase เชื่อมต่อสำเร็จจริงไหม
-try:
-    from firebase_admin import db
-    # ลองทดสอบดึงข้อมูลจากรากฐานข้อมูล (Root) ดูสิว่ามีอะไรไหม
-    ref_test = db.reference('/')
-    data_test = ref_test.get()
-    
-    # ถ้าดึงได้ (ต่อให้เป็น None) แปลว่าต่อสำเร็จ แต่ฐานข้อมูลยังว่าง
-    if data_test is None:
-        st.info("🛰️ เชื่อมต่อฐานข้อมูล sooksun-101 สำเร็จ! แต่ตอนนี้ยังไม่มีข้อมูลแชต ลองส่งข้อความแรกดูครับ")
-except Exception as e:
-    st.error(f"❌ ดึงข้อมูลล้มเหลว กรุณาเช็คสิทธิ์: {e}")
+    # 1. แชตรวม
+    with tab_global:
+        with st.form("global_chat_form", clear_on_submit=True):
+            g_msg = st.text_input("ส่งสัญญาณเข้าช่องแชตรวม:", placeholder="Agent ทุกคนจะเห็นข้อความนี้...")
+            if st.form_submit_button("SEND TO ALL"):
+                if g_msg:
+                    try:
+                        db.reference('global_messages').push({
+                            'sender': st.session_state.user,
+                            'text': g_msg,
+                            'ts': time.time()
+                        })
+                        st.rerun()
+                    except: st.error("ฐานข้อมูลขัดข้อง")
 
-# 2. ฟังก์ชันส่งข้อมูลทดสอบ (สร้างกล่องแชตขึ้นมาใหม่ในระบบ)
-if st.button("🚀 ส่งข้อความทดสอบเข้าระบบใหม่"):
-    try:
-        chat_ref = db.reference('chats') # สร้างโฟลเดอร์ชื่อ chats ในฐานข้อมูลใหม่
-        chat_ref.push({
-            'username': 'System',
-            'message': 'เริ่มต้นระบบ SYNAPSE สำเร็จ!',
-            'timestamp': str(st.datetime.date.today())
-        })
-        st.success("ส่งข้อมูลสำเร็จแล้ว! ลองรีเฟรชหน้าจอเปิดดูอีกรอบครับ")
-    except Exception as e:
-        st.error(f"ส่งข้อมูลไม่สำเร็จ: {e}")
+        try:
+            g_messages = db.reference('global_messages').order_by_child('ts').limit_to_last(10).get()
+            if g_messages:
+                for mid in reversed(list(g_messages.keys())):
+                    m_data = g_messages[mid]
+                    is_me = m_data['sender'] == st.session_state.user
+                    align = "right" if is_me else "left"
+                    color = "#00f3ff" if is_me else "#50C878"
+                    bg = "rgba(0, 243, 255, 0.1)" if is_me else "rgba(80, 200, 120, 0.1)"
+                    st.markdown(f'<div style="text-align:{align}; margin-bottom:10px;"><div style="display:inline-block; background:{bg}; padding:8px 15px; border-radius:15px; border:1px solid {color};"><b>{m_data["sender"]}</b><br>{m_data["text"]}</div></div>', unsafe_allow_html=True)
+        except: pass
+
+    # 2. แชตส่วนตัว
+    with tab_private:
+        try:
+            all_users = db.reference('users').get()
+            if all_users:
+                friends = [u for u in all_users.keys() if u != st.session_state.user]
+                target_agent = st.selectbox("🎯 เลือก AGENT ลับเป้าหมาย:", friends)
+
+                if target_agent:
+                    room_id = "_".join(sorted([st.session_state.user, target_agent]))
+                    chat_ref = db.reference(f'private_messages/{room_id}')
+
+                    with st.form("private_chat_form", clear_on_submit=True):
+                        msg = st.text_input(f"TO: {target_agent}", placeholder="พิมพ์ข้อความลับที่นี่...")
+                        if st.form_submit_button("SEND SIGNAL"):
+                            if msg:
+                                chat_ref.push({'sender': st.session_state.user, 'text': msg, 'ts': time.time()})
+                                st.rerun()
+
+                    messages = chat_ref.order_by_child('ts').limit_to_last(10).get()
+                    if messages:
+                        for mid in reversed(list(messages.keys())):
+                            m_data = messages[mid]
+                            is_me = m_data['sender'] == st.session_state.user
+                            align = "right" if is_me else "left"
+                            color = "#00f3ff" if is_me else "#ff00de"
+                            bg = "rgba(0, 243, 255, 0.15)" if is_me else "rgba(255, 0, 222, 0.15)"
+                            st.markdown(f'<div style="text-align:{align}; margin-bottom:10px;"><div style="display:inline-block; background:{bg}; padding:8px 15px; border-radius:15px; border:1px solid {color};"><b>{m_data["sender"]}</b><br>{m_data["text"]}</div></div>', unsafe_allow_html=True)
+            else: st.caption("ยังไม่มีข้อมูล Agent คนอื่นในระบบ")
+        except: pass
 
     # 3. ข้อความเสียง Walkie-Talkie
     with tab_voice:
@@ -422,7 +475,7 @@ if st.button("🚀 ส่งข้อความทดสอบเข้าร�
         v_target = st.selectbox("🎯 เลือกผู้รับคลื่นเสียง:", ["ทุกคน (GLOBAL)"] + (friends if 'friends' in locals() else []))
         voice_b64 = st.text_area("📦 วางโค้ดรหัสคลื่นเสียงที่คัดลอกมาด้านบน:")
         
-        if st.button("📡 อัดสัญญาณเสียงขึ้นคลาวด์", use_container_width=True):
+        if st.button("📡 อัดสัญญาณเสียงขึ้นคลาณด์", use_container_width=True):
             if voice_b64:
                 try:
                     db.reference('voice_transmission').push({
