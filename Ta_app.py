@@ -353,63 +353,31 @@ elif st.session_state.page == "2":
     # ส่วนแบ่งแท็บระบบแชตและวิทยุสื่อสารเสียง
     tab_global, tab_private, tab_voice = st.tabs(["👥 GLOBAL CHAT (แชตรวม)", "🔐 PRIVATE CHAT (แชตส่วนตัว)", "📻 WALKIE-TALKIE (ข้อความเสียง)"])
 
-    # 1. แชตรวม
-    with tab_global:
-        with st.form("global_chat_form", clear_on_submit=True):
-            g_msg = st.text_input("ส่งสัญญาณเข้าช่องแชตรวม:", placeholder="Agent ทุกคนจะเห็นข้อความนี้...")
-            if st.form_submit_button("SEND TO ALL"):
-                if g_msg:
-                    try:
-                        db.reference('global_messages').push({
-                            'sender': st.session_state.user,
-                            'text': g_msg,
-                            'ts': time.time()
-                        })
-                        st.rerun()
-                    except: st.error("ฐานข้อมูลขัดข้อง")
+    # 1. เช็คก่อนว่า Firebase เชื่อมต่อสำเร็จจริงไหม
+try:
+    from firebase_admin import db
+    # ลองทดสอบดึงข้อมูลจากรากฐานข้อมูล (Root) ดูสิว่ามีอะไรไหม
+    ref_test = db.reference('/')
+    data_test = ref_test.get()
+    
+    # ถ้าดึงได้ (ต่อให้เป็น None) แปลว่าต่อสำเร็จ แต่ฐานข้อมูลยังว่าง
+    if data_test is None:
+        st.info("🛰️ เชื่อมต่อฐานข้อมูล sooksun-101 สำเร็จ! แต่ตอนนี้ยังไม่มีข้อมูลแชต ลองส่งข้อความแรกดูครับ")
+except Exception as e:
+    st.error(f"❌ ดึงข้อมูลล้มเหลว กรุณาเช็คสิทธิ์: {e}")
 
-        try:
-            g_messages = db.reference('global_messages').order_by_child('ts').limit_to_last(10).get()
-            if g_messages:
-                for mid in reversed(list(g_messages.keys())):
-                    m_data = g_messages[mid]
-                    is_me = m_data['sender'] == st.session_state.user
-                    align = "right" if is_me else "left"
-                    color = "#00f3ff" if is_me else "#50C878"
-                    bg = "rgba(0, 243, 255, 0.1)" if is_me else "rgba(80, 200, 120, 0.1)"
-                    st.markdown(f'<div style="text-align:{align}; margin-bottom:10px;"><div style="display:inline-block; background:{bg}; padding:8px 15px; border-radius:15px; border:1px solid {color};"><b>{m_data["sender"]}</b><br>{m_data["text"]}</div></div>', unsafe_allow_html=True)
-        except: pass
-
-    # 2. แชตส่วนตัว
-    with tab_private:
-        try:
-            all_users = db.reference('users').get()
-            if all_users:
-                friends = [u for u in all_users.keys() if u != st.session_state.user]
-                target_agent = st.selectbox("🎯 เลือก AGENT ลับเป้าหมาย:", friends)
-
-                if target_agent:
-                    room_id = "_".join(sorted([st.session_state.user, target_agent]))
-                    chat_ref = db.reference(f'private_messages/{room_id}')
-
-                    with st.form("private_chat_form", clear_on_submit=True):
-                        msg = st.text_input(f"TO: {target_agent}", placeholder="พิมพ์ข้อความลับที่นี่...")
-                        if st.form_submit_button("SEND SIGNAL"):
-                            if msg:
-                                chat_ref.push({'sender': st.session_state.user, 'text': msg, 'ts': time.time()})
-                                st.rerun()
-
-                    messages = chat_ref.order_by_child('ts').limit_to_last(10).get()
-                    if messages:
-                        for mid in reversed(list(messages.keys())):
-                            m_data = messages[mid]
-                            is_me = m_data['sender'] == st.session_state.user
-                            align = "right" if is_me else "left"
-                            color = "#00f3ff" if is_me else "#ff00de"
-                            bg = "rgba(0, 243, 255, 0.15)" if is_me else "rgba(255, 0, 222, 0.15)"
-                            st.markdown(f'<div style="text-align:{align}; margin-bottom:10px;"><div style="display:inline-block; background:{bg}; padding:8px 15px; border-radius:15px; border:1px solid {color};"><b>{m_data["sender"]}</b><br>{m_data["text"]}</div></div>', unsafe_allow_html=True)
-            else: st.caption("ยังไม่มีข้อมูล Agent คนอื่นในระบบ")
-        except: pass
+# 2. ฟังก์ชันส่งข้อมูลทดสอบ (สร้างกล่องแชตขึ้นมาใหม่ในระบบ)
+if st.button("🚀 ส่งข้อความทดสอบเข้าระบบใหม่"):
+    try:
+        chat_ref = db.reference('chats') # สร้างโฟลเดอร์ชื่อ chats ในฐานข้อมูลใหม่
+        chat_ref.push({
+            'username': 'System',
+            'message': 'เริ่มต้นระบบ SYNAPSE สำเร็จ!',
+            'timestamp': str(st.datetime.date.today())
+        })
+        st.success("ส่งข้อมูลสำเร็จแล้ว! ลองรีเฟรชหน้าจอเปิดดูอีกรอบครับ")
+    except Exception as e:
+        st.error(f"ส่งข้อมูลไม่สำเร็จ: {e}")
 
     # 3. ข้อความเสียง Walkie-Talkie
     with tab_voice:
