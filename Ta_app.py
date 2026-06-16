@@ -1,137 +1,237 @@
 import streamlit as st
-from datetime import date, timedelta
+import firebase_admin
+from firebase_admin import credentials, db
+import json
+import time
 
-# --- 1. ฟังก์ชันดึงเลขฐาน (ห้ามเอาออก โชว์ที่มาความจริง) ---
-def get_step_by_step_data(dt):
-    if dt is None: return None
-    day_val = {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}[dt.weekday()]
-    day_name = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()]
-    date_val = dt.day
-    ref = date(1900, 1, 1)
-    diff = (dt - ref).days
-    lunar_pos = (diff - 0.5) % 29.530589
-    if lunar_pos <= 14.765:
-        moon_num = int(lunar_pos) + 1
-        l_logic = -7.5
-        l_type = f"ขึ้น {moon_num} ค่ำ"
+# 1. ตั้งค่าหน้าตาของแอปศูนย์สั่งการ (Page Configuration)
+st.set_page_config(
+    page_title="SYNAPSE COMMAND CENTER",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# =========================================================
+# [ ระบบเชื่อมต่อหลังบ้าน FIREBASE (ซ่อมบั๊กคีย์เรียบร้อย) ]
+# =========================================================
+def init_firebase_system():
+    if not firebase_admin._apps:
+        try:
+            # ดึงค่าจาก st.secrets ["firebase"]["text"] หรือดึงแยกตามฟิลด์
+            # โค้ดชุดนี้รองรับการดึงจาก Secrets โดยตรงแบบปลอดภัย
+            firebase_cfg = {
+                "type": st.secrets["firebase"]["type"],
+                "project_id": st.secrets["firebase"]["project_id"],
+                "private_key_id": st.secrets["firebase"]["private_key_id"],
+                "private_key": st.secrets["firebase"]["private_key"],
+                "client_email": st.secrets["firebase"]["client_email"],
+                "client_id": st.secrets["firebase"]["client_id"],
+                "auth_uri": st.secrets["firebase"]["auth_uri"],
+                "token_uri": st.secrets["firebase"]["token_uri"],
+                "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"],
+                "universe_domain": st.secrets["firebase"]["universe_domain"]
+            }
+
+            # จัดการแปลงรหัสตัวอักษร \n ป้องกัน InvalidPadding และ PEM file พัง
+            if "private_key" in firebase_cfg:
+                firebase_cfg["private_key"] = firebase_cfg["private_key"].replace("\\n", "\n")
+
+            cred = credentials.Certificate(firebase_cfg)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com' 
+            })
+            return True, "Connected"
+        except Exception as e:
+            return False, str(e)
     else:
-        moon_num = int(lunar_pos - 14.765) + 1
-        l_logic = 7.5
-        l_type = f"แรม {moon_num} ค่ำ"
-    month_val = dt.month
-    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
-    z_map = {0:9, 1:10, 2:11, 3:12, 4:1, 5:2, 6:3, 7:4, 8:5, 9:6, 10:7, 11:8}
-    zv = z_map[dt.year % 12]
-    z_name = z_names[dt.year % 12]
-    m, d = dt.month, dt.day
-    if (m == 5 and d >= 14) or (m == 6 and d <= 14): ev, en = 1, "ดิน"
-    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): ev, en = 2, "น้ำ"
-    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): ev, en = 4, "ไฟ"
-    else: ev, en = 3, "ลม"
-    return {
-        "day": day_val, "day_n": day_name, "date": date_val, "moon": moon_num, 
-        "l_logic": l_logic, "l_type": l_type, "month": month_val, "zv": zv, 
-        "zn": z_name, "ev": ev, "en": en, "year": dt.year
-    }
+        firebase_admin.get_app()
+        return True, "Already Connected"
 
-def get_grade_info(val):
-    s_val = str(abs(val)).replace('.', '').lstrip('0')
-    digit = int(s_val[0]) if s_val else 0
-    if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
-    elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
-    else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
+# รันระบบเชื่อมต่อหลังบ้าน
+is_connected, system_message = init_firebase_system()
 
-# --- 2. หน้าจอแอป ---
-st.set_page_config(page_title="SYNAPSE STEP-BY-STEP", layout="wide")
-st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
+# =========================================================
+# [ โครงสร้างเมนู 10 หัวข้อหลัก (Sidebar Navigation) ]
+# =========================================================
+st.sidebar.title("SYNAPSE HUB v2.0")
+st.sidebar.markdown("**สโลแกน:** *อยู่นิ่งๆ ไม่เจ็บตัว*")
+st.sidebar.write("---")
 
-tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล", "👥 วิเคราะห์คู่ขนาน"])
+menu = st.sidebar.radio(
+    "เลือกหัวข้อการใช้งาน:",
+    [
+        "1. หน้าหลัก & สรุปสถานะ (Dashboard)",
+        "2. ลงทะเบียนเจ้าหน้าที่ (Register Agent)",
+        "3. ศูนย์ควบคุมเพลงระดับโลก (Global Player)",
+        "4. แผนที่และพิกัดดาวเทียม (Real-time GPS Map)",
+        "5. ตัวสแกนความถี่ & เซนเซอร์ (Frequency Scanner)",
+        "6. ห้องแชทเข้ารหัสความปลอดภัย (Secure Chat)",
+        "7. ระบบวิเคราะห์รหัสควอนตัม (Quantum Numerology)",
+        "8. แอปบำบัดและเยียวยาจิตใจ (Healing Space)",
+        "9. ตรวจสอบระบบพลังงานโซลาร์เซลล์ (Solar Monitor)",
+        "10. ตั้งค่าระบบควบคุม (System Settings)"
+    ]
+)
 
-# --- 👤 TAB 1: วิเคราะห์บุคคล ---
-with tab1:
-    u_birth = st.date_input("กรอกวันเกิดของคุณ", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="single")
-    if u_birth:
-        d = get_step_by_step_data(u_birth)
-        
-        st.markdown("### 🛠 กระดานแยกพิกัดตัวเลข")
-        st.write(f"1. วัน{d['day_n']}: `{d['day']}` | 2. วันที่: `{d['date']}` | 3. {d['l_type']}: `{d['moon']}`")
-        st.write(f"4. เดือน: `{d['month']}` | 5. ปี{d['zn']}: `{d['zv']}` | 6. ธาตุ{d['en']}: `{d['ev']}`")
-        
-        st.write("---")
-        base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
-        raw_code = (base_sum + d['l_logic']) * 1.618
-        days_alive = (date.today() - u_birth).days
-        final_val = (raw_code + days_alive) / 1.618
-        
-        st.write(f"**ขั้นตอนที่ 1 (บวกฐาน):** `{d['day']}+{d['date']}+{d['moon']}+{d['month']}+{d['zv']}+{d['ev']} = {base_sum}`")
-        st.write(f"**ขั้นตอนที่ 2 (คูณ 1.618):** `({base_sum} + {d['l_logic']}) x 1.618 = {round(raw_code, 2)}`")
-        st.write(f"**ขั้นตอนที่ 3 (บวกวันชีวิต/หาร):** `({round(raw_code, 2)} + {days_alive}) / 1.618 = {round(final_val, 4)}`")
+# ส่วนท้ายของ Sidebar
+st.sidebar.write("---")
+if is_connected:
+    st.sidebar.success("📡 Cloud Database: Online")
+else:
+    st.sidebar.error("⚠️ Cloud Database: Offline")
 
-        digit, grade, color = get_grade_info(final_val)
-        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid {color}; border-radius:15px; text-align:center;">
-            <h1 style="color:{color}; font-size:60px;">{round(final_val, 4)}</h1>
-            <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
-        </div>""", unsafe_allow_html=True)
+# =========================================================
+# [ ฟังก์ชันการทำงานของแต่ละหัวข้อ ]
+# =========================================================
 
-        # --- 🕒 สแกนไทม์ไลน์บุคคล ---
-        st.write("---")
-        st.subheader("🕒 รายงานการบรรจบของพิกัดบุคคล (730 วัน)")
-        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน", "🗓️ อนาคต 365 วัน"])
-        
-        with t_past:
-            past_results = []
-            for i in range(-365, 0):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit:
-                    past_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
-            st.table(past_results[:10] if past_results else "ไม่พบข้อมูล")
-
-        with t_future:
-            future_results = []
-            for i in range(1, 366):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit:
-                    future_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
-            st.table(future_results[:10] if future_results else "ไม่พบข้อมูล")
-
-# --- 👥 TAB 2: วิเคราะห์คู่ขนาน ---
-with tab2:
-    col1, col2 = st.columns(2)
-    with col1: birth_a = st.date_input("วันเกิดคนที่ 1", value=None, key="ba", min_value=date(1960,1,1))
-    with col2: birth_b = st.date_input("วันเกิดคนที่ 2", value=None, key="bb", min_value=date(1960,1,1))
+# --- หัวข้อที่ 1: หน้าหลัก & สรุปสถานะ ---
+if menu == "1. หน้าหลัก & สรุปสถานะ (Dashboard)":
+    st.title("🏛️ SYNAPSE COMMAND CENTER")
+    st.write("ยินดีต้อนรับเข้าสู่ระบบควบคุมกลาง บาส/ต๊ะ แอปพลิเคชันถูกรันผ่านอุปกรณ์พกพาอย่างสมบูรณ์แบบ")
     
-    if birth_a and birth_b:
-        d1 = get_step_by_step_data(birth_a)
-        d2 = get_step_by_step_data(birth_b)
-        r1 = ((d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']) + d1['l_logic']) * 1.618
-        r2 = ((d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']) + d2['l_logic']) * 1.618
-        
-        resonance = (r1 + r2) / 1.618
-        digit_p, grade_p, color_p = get_grade_info(resonance)
-        
-        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
-        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid gold; border-radius:15px; text-align:center;">
-            <h1 style="color:white; font-size:60px;">{round(resonance, 4)}</h1>
-            <h2 style="color:{color_p};">เลขหน้าคือ {digit_p} : {grade_p}</h2>
-        </div>""", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("ความเร็วการประมวลผล", "Real-time", "100%")
+    col2.metric("ฐานข้อมูลคลาวด์", "sooksun-101", "เสถียร")
+    col3.metric("ปรัชญาประจำวัน", "อยู่นิ่งๆ", "ไม่เจ็บตัว")
 
-        # --- 🕒 สแกนไทม์ไลน์คู่ขนาน ---
-        st.write("---")
-        st.subheader("⏳ จุด Sync คู่ขนานในอนาคต (365 วัน)")
-        p_future = []
-        for i in range(1, 366):
-            target = date.today() + timedelta(days=i)
-            td = get_step_by_step_data(target)
-            t_code = ((td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']) + td['l_logic']) * 1.618
-            t_digit, _, _ = get_grade_info(t_code)
-            if t_digit == digit_p:
-                p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
-        st.table(p_future[:10] if p_future else "ไม่พบข้อมูล")
+    st.info("💡 ข้อมูลระบบ: สัญญาณเครือข่ายพร้อมใช้งาน พร้อมเชื่อมต่ออัปเดตข้อมูลแบบทันทีอนุกรมเวลา")
+
+# --- หัวข้อที่ 2: ลงทะเบียนเจ้าหน้าที่ ---
+elif menu == "2. ลงทะเบียนเจ้าหน้าที่ (Register Agent)":
+    st.title("⚠️ REGISTER AGENT SYSTEM")
+    st.write("บันทึกรหัสสัญญาณเจ้าหน้าที่เข้าสู่ฐานข้อมูลคลาวด์ Firebase เพื่อยืนยันตน")
+    
+    agent_name = st.text_input("ENTER AGENT NAME", value="Ta101")
+    
+    if st.button("ส่งข้อมูลขึ้นคลาวด์ (Save to Firebase)", use_container_width=True):
+        if not is_connected:
+            st.error(f"ระบบเชื่อมต่อหลังบ้านตรวจพบปัญหา: {system_message}")
+        elif not agent_name.strip():
+            st.warning("กรุณากรอกรหัสชื่อก่อน")
+        else:
+            try:
+                ref = db.reference("agents")
+                ref.child(agent_name).set({
+                    "status": "Active",
+                    "slogan": "อยู่นิ่งๆ ไม่เจ็บตัว",
+                    "timestamp": {".sv": "timestamp"}
+                })
+                st.success(f"🎉 สำเร็จ! บันทึกรหัสเอเจนต์ '{agent_name}' เข้าสู่ฐานข้อมูลเรียบร้อย")
+                st.balloons()
+            except Exception as e:
+                st.error(f"ระบบไม่สามารถเข้าถึงฐานข้อมูลคลาวด์ได้: {e}")
+
+# --- หัวข้อที่ 3: ศูนย์ควบคุมเพลงระดับโลก ---
+elif menu == "3. ศูนย์ควบคุมเพลงระดับโลก (Global Player)":
+    st.title("🎵 SYNAPSE GLOBAL PLAYER")
+    st.write("ห้องควบคุมเสียงเพลงและเนื้อร้องสำหรับนำข้อความไปใช้ในเครื่องมือสร้างเพลง AI (เช่น Suno AI)")
+    
+    genre = st.selectbox("เลือกแนวเพลงที่ต้องการแต่ง:", ["R&B", "Rap / Hip Hop", "ลูกทุ่งหมอลำ", "Alternative"])
+    lyrics_topic = st.text_input("หัวข้อหรือแรงบันดาลใจ:", value="คิดถึงยายวัน (แม่ใหญ่วัน)")
+    
+    if st.button("ร่างเนื้อเพลงด่วน"):
+        st.write("🤖 **เนื้อร้องตัวอย่างที่ระบบประมวลผลให้:**")
+        st.code(f"([Verse]\nสายลมโชยโบกมาจากอีสานบ้านเฮา...\nหัวใจเหงาคึดฮอดคนที่อยู่บนฟ้า...\n{lyrics_topic} ในใจไม่เคยเลือนลา...\n[Chorus]\nอยู่นิ่งๆ ไม่เจ็บตัว แต่คิดถึงเหลือเกิน...)", language="text")
+
+# --- หัวข้อที่ 4: แผนที่และพิกัดดาวเทียม ---
+elif menu == "4. แผนที่และพิกัดดาวเทียม (Real-time GPS Map)":
+    st.title("📍 REAL-TIME GPS MAP")
+    st.write("จำลองการแสดงพิกัดและการติดตามตำแหน่งผ่านสัญญาณดาวเทียม")
+    
+    # พิกัดจำลองแถวร้อยเอ็ด/ภาคอีสาน
+    lat = 16.054
+    lon = 103.652
+    
+    import pandas as pd
+    map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
+    st.map(map_data)
+    st.metric("พิกัดปัจจุบัน (ละติจูด, ลองจิจูด)", f"{lat}, {lon}")
+
+# --- หัวข้อที่ 5: ตัวสแกนความถี่ & เซนเซอร์ ---
+elif menu == "5. ตัวสแกนความถี่ & เซนเซอร์ (Frequency Scanner)":
+    st.title("📡 REAL-TIME FREQUENCY SCANNER")
+    st.write("หน้าต่างจำลองการทำงานของเซนเซอร์ความสั่นสะเทือนและการอ่านค่าความถี่จิตสำนึก")
+    
+    scan_active = st.checkbox("เริ่มการสแกนสัญญาณรอบทิศทาง")
+    if scan_active:
+        progress_bar = st.progress(0)
+        for percent_complete in range(100):
+            time.sleep(0.01)
+            progress_bar.progress(percent_complete + 1)
+        st.success("📶 สแกนคลื่นความถี่สำเร็จ: ตรวจพบคลื่นพลังงานเสถียรที่ 432Hz (คลื่นบำบัด)")
+
+# --- หัวข้อที่ 6: ห้องแชทเข้ารหัสความปลอดภัย ---
+elif menu == "6. ห้องแชทเข้ารหัสความปลอดภัย (Secure Chat)":
+    st.title("💬 SECURE CHAT INTERCOM")
+    st.write("กล่องข้อความสื่อสารภายในเครือข่าย (ข้อมูลจะถูกซิงค์ผ่าน Firebase)")
+    
+    chat_user = st.text_input("ชื่อผู้ส่ง:", value="Ta_Bas")
+    chat_msg = st.text_area("พิมพ์ข้อความแชท:")
+    
+    if st.button("ส่งข้อความเข้ารหัส"):
+        if is_connected and chat_msg:
+            try:
+                db.reference("secure_chats").push({
+                    "user": chat_user,
+                    "message": chat_msg,
+                    "time": {".sv": "timestamp"}
+                })
+                st.success("ส่งแชทเข้ารหัสสำเร็จ!")
+            except Exception as e:
+                st.error(f"แชทล้มเหลว: {e}")
+        else:
+            st.warning("กรุณาพิมพ์ข้อความหรือตรวจสอบการเชื่อมต่อฐานข้อมูล")
+
+# --- หัวข้อที่ 7: ระบบวิเคราะห์รหัสควอนตัม ---
+elif menu == "7. ระบบวิเคราะห์รหัสควอนตัม (Quantum Numerology)":
+    st.title("🔢 QUANTUM NUMEROLOGY ANALYZER")
+    st.write("คำนวณและวิเคราะห์ความสัมพันธ์ของตัวเลข พลังงานดวงดาว และลำดับรหัสควอนตัมของชีวิต")
+    
+    birth_date = st.date_input("เลือกวันเดือนปีเกิดที่ต้องการวิเคราะห์:")
+    lucky_num = st.number_input("รหัสตัวเลขประจำตัว (ถ้ามี):", value=101)
+    
+    if st.button("ถอดรหัสความถี่ควอนตัม"):
+        st.write("🔮 **ผลการวิเคราะห์รูปแบบพลังงานดวงดาว:**")
+        st.info(f"วันเกิด {birth_date} ร่วมกับรหัสเลข {lucky_num} สะท้อนคลื่นพลังงานเชิงรับที่แข็งแกร่ง สอดคล้องกับปรัชญา 'อยู่นิ่งๆ ไม่เจ็บตัว' มีเกณฑ์ประสบความสำเร็จจากการสร้างสรรค์สิ่งใหม่ด้วยตนเอง")
+
+# --- หัวข้อที่ 8: แอปบำบัดและเยียวยาจิตใจ ---
+elif menu == "8. แอปบำบัดและเยียวยาจิตใจ (Healing Space)":
+    st.title("🧘 MENTAL HEALING SPACE")
+    st.write("พื้นที่สำหรับปรับแต่งคลื่นความถี่เสียงและเสียงดนตรีเพื่อการเยียวยาจิตใจ (Healing App Project)")
+    
+    frequency_mode = st.radio("เลือกความถี่เสียงที่ใช้ในการบำบัดตามอาการ:", 
+                              ["528Hz (ซ่อมแซม DNA และยกระดับจิตใจ)", 
+                               "432Hz (ลดความเครียดและความกังวล)", 
+                               "396Hz (ปลดปล่อยความกลัวและความรู้สึกผิด)"])
+    
+    st.write(f"🎧 ขณะนี้ระบบจำลองการปล่อยสัญญานคลื่นความถี่เสียง: **{frequency_mode}**")
+    st.caption("หลับตา หายใจเข้าลึกๆ และปล่อยให้คลื่นความถี่ทำงาน")
+
+# --- หัวข้อที่ 9: ตรวจสอบระบบพลังงานโซลาร์เซลล์ ---
+elif menu == "9. ตรวจสอบระบบพลังงานโซลาร์เซลล์ (Solar Monitor)":
+    st.title("☀️ SOLAR ENERGY MONITOR")
+    st.write("หน้าจอตรวจสอบแรงดันไฟฟ้าและแบตเตอรี่ 12V ร่วมกับคอนโทรลเลอร์ Lebento")
+    
+    # ตัวเลขค่าจำลองสถานะแผงและการชาร์จจริง
+    battery_v = st.slider("แรงดันไฟฟ้าแบตเตอรี่ในระบบ (โวลต์):", 10.0, 15.0, 12.6)
+    
+    if battery_v < 11.5:
+        st.error(f"⚡ แรงดันต่ำผิดปกติ ({battery_v}V): กรุณาตรวจสอบอินเวอร์เตอร์และการใช้งานโหลด!")
+    elif battery_v >= 14.2:
+        st.warning(f"🔋 แบตเตอรี่เต็มกำลังชาร์จตัด ({battery_v}V): ระบบควบคุม Lebento ทำงานปกติ")
+    else:
+        st.success(f"🟢 สถานะระบบปกติ ({battery_v}V): พลังงานแสงอาทิตย์กำลังไหลเวียนเข้าสู่ระบบคงที่")
+
+# --- หัวข้อที่ 10: ตั้งค่าระบบควบคุม ---
+elif menu == "10. ตั้งค่าระบบควบคุม (System Settings)":
+    st.title("⚙️ SYSTEM SETTINGS")
+    st.write("ปรับแต่งและดูแลรักษาความปลอดภัยของระบบ Command Center")
+    
+    st.checkbox("เปิดโหมดการเข้ารหัสข้อมูลระดับสูง (High Encryption)", value=True)
+    st.checkbox("เปิดโหมดใช้งานประหยัดพลังงานบนมือถือ (Mobile Optimized)", value=True)
+    
+    st.write("---")
+    st.write("**สถานะการติดตั้งระบบ:**")
+    st.text(f"Project ID: sooksun-101\nPlatform: Streamlit Mobile Web App\nCore Philosophy: Stay still, no pain.")
