@@ -16,6 +16,34 @@ import hashlib
 # --- [ บรรทัดแรกสุดของไฟล์ ห้ามย้าย! ] ---
 st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
+# =========================================================
+# 🔐 ระบบเชื่อมต่อ FIREBASE (ยึดตามโครงสร้างจริงจากโปรเจ็กต์ sooksun-104)
+# =========================================================
+if not firebase_admin._apps:
+    try:
+        # ดึงข้อมูลจากไฟล์ Private Key ที่นายส่งมาประกอบร่างในระบบความปลอดภัย
+        firebase_cfg = {
+            "type": "service_account",
+            "project_id": "sooksun-104",
+            "private_key_id": "996f18fd785283f5a61a8d89fad52e12b526a8e2",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC5IFTE7/WhCMow\ntr4cf1oIHDAaXKjkIbsBrvvBPJNMV633lMWi+WIZjJCqrn4dYXkYlYJ9jx3rE7dg\nsvEK72C1ijvgjC/cA2ea+VRmRWhBMHJOvCflZu2fiUeEIGaJEaMIa0SPKQxAgaJb\nGqr Mw2cxmw6Fxni2Uzhsj2iCl+yguBc1vI4VntyzX2hAMAthLoo13ADgCREmEOYF\nkc2yb9mzJbR4m6XQ+k1ZQxRUuiiKkam3P0oTl8MUXVzWCS9Pf+dBtLYAyk/mR4JE\nmnh3zFChx8pVfO4kW+3YyGH5XpUheWYF/yVcln9+soTwQNljkEAnlxzSqpRqDGyG\nmY6ALxSJAgMBAAECg gEAH9tgMwafFH/UeWcNFo7UwaYGIhc1ahKi4XKI+LMRnvbM\npVj43KeBGefuQizmX2x1YAVkb/Jnodsh+JY6dBkG4Z6g2K6PEtOUKd9DhpjljKhH\nV2S6EdgxRn2jbKl9s5MxJML+yIr2BIi6VWakozlyAd+Os3cYsTlncYkJIUX/DpXs\nUl9x4cA5D8Pu8BJ64cBmycabz45MFD7 VJBbRAfGUoYPbIuuVpja4g/pwCTzisYwY\nrSMmN6anyyWE4TSyTfLZMcyA4UcnPZ9YlEbIsmo7E5UtPJYN3N/vVPBBHtuDgTb/\nIvLz88GL5ufnVCxGT1fWX7D+GadC/BLJda556CdEXQKBgQDhVQxZQlgihTsXeg6v\nbTQtSwlh0hM6ZXqpTyxAFZVKzI6b8azj9UNgvod7l/EOc cK32na5aOuDrpcRZAjI\nEuqCLyOVckMqdHt0Huf6nJUuiKTXnbbwgxTyavfYeEF95oKA05G2u4psULHMmoaF\nYF9s5bKOFXKxmKQgXP n4iPCsnQKBgQDSUnDs7+AW+2Q0Wp2eHfRS79GpCG42Kz+Z\n5tJN+WjCB4Kz1j7ePL8tDilAkX/P8dOfGaaPDFcxkoUJ3enfq+vk2FOhR5 LxpjJy\ny1mz8G4D6AUv+l98gVCxX+AHOqDhwZ5DNtFbnQvg3gCrWVckj+EYAJsxD3ZC4uQp\noDxY08cF3QKBgQDBjlPALIwWgwlCXldU +2Ixcd5KR7C6ncbivp6NIb0O9m2dqNhR\nLDHHXYJ1eQvY04FmemM3WtfLUmJzztD4Q79rOmC/k9n8Evikw5OTI4PF6BxpFhG5\nwW9x2M 6zBIGFS0dYr+Pf6nK6HgrMbQQWd7UgjqJ1CBlwUmTRY+xZQBA0xQKBgERf\nSpir7mRqOwwN/TlesYOYtMbHl9SCQL3OXMW+c8DH4kSGPI /QnbGO7fgwlKVMDyik\nlRHhyCK0aA1qF9J/uEL/1EgU1X87MSFCXBnz6j/Y2H7dXNdDzrCq41BWTeC2KbXe\nBzdKGYdzhDIv6/VV1K4R 3GGZji92RQgHMDcMOaH9AoGAB7H/ZtxKIr0O/opBOzd6\n6eXyKvujTeV+2ahesFb6p1PjXKdnk7EMFZLdJwPZTnIWTrsszz6gUDSA8Xgu/iZ6\nOy7+B2v6jwFVReL3AwoPkWRuGUt7wKfS4K6/TO5WMsaq9uDRdDUtvlLHlaUbIgc6\nhP6/BAAzKnJSquy+/nwVkwQ=\n-----END PRIVATE KEY-----\n",
+            "client_email": "firebase-adminsdk-fbsvc@sooksun-104.iam.gserviceaccount.com",
+            "client_id": "101794686310728865878",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40sooksun-104.iam.gserviceaccount.com",
+            "universe_domain": "googleapis.com"
+        }
+        
+        # เชื่อมตรงเข้าสู่ Realtime Database URL หลักของโปรเจ็กต์นาย
+        cred = credentials.Certificate(firebase_cfg)
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': 'https://sooksun-104-default-rtdb.firebaseio.com'
+        })
+    except Exception as e:
+        st.error(f"ระบบขัดข้องในการเปิดใช้งาน Firebase: {e}")
+
 # --- ค่าเริ่มต้นของระบบธีมสี ---
 if 'primary_color' not in st.session_state:
     st.session_state.primary_color = "#00f3ff"
