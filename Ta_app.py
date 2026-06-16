@@ -4,7 +4,7 @@ from firebase_admin import credentials, db
 import json
 import time
 
-# 1. ตั้งค่าหน้าตาของแอปศูนย์สั่งการ (Page Configuration)
+# ตั้งค่าการแสดงผลหน้าเว็บแอปพลิเคชัน
 st.set_page_config(
     page_title="SYNAPSE COMMAND CENTER",
     page_icon="⚡",
@@ -13,15 +13,15 @@ st.set_page_config(
 )
 
 # =========================================================
-# [ ระบบเชื่อมต่อหลังบ้าน FIREBASE - รวมศูนย์ป้องกันเอเรอร์ ]
+# [ ระบบเชื่อมต่อหลังบ้าน FIREBASE - โครงสร้างรองรับความเสถียร ]
 # =========================================================
 def init_firebase_system():
-    # ตรวจสอบว่าระบบเคยเชื่อมต่อไว้หรือยัง เพื่อป้องกันการ Initialize ซ้ำซ้อน
+    # ตรวจสอบเพื่อป้องกันการเปิดการเชื่อมต่อซ้ำซ้อนที่ทำให้ระบบพัง
     if not firebase_admin._apps:
         try:
-            # ดึงค่าจาก st.secrets แฟ้ม [firebase] รูปแบบ TOML
+            # ดึงค่าตรงๆ จาก st.secrets แฟ้ม [firebase] รูปแบบ TOML
             cred_dict = {
-                "type": st.secrets["firebase"]["type"],
+                "type": "service_account",
                 "project_id": st.secrets["firebase"]["project_id"],
                 "private_key_id": st.secrets["firebase"]["private_key_id"],
                 "private_key": st.secrets["firebase"]["private_key"],
@@ -34,14 +34,14 @@ def init_firebase_system():
                 "universe_domain": st.secrets["firebase"]["universe_domain"]
             }
             
-            # 🔥 แปลงข้อความตัวอักษร \\n ให้เป็นรหัสขึ้นบรรทัดใหม่ของคีย์ความปลอดภัยที่ถูกต้อง
+            # บังคับจัดการรหัสตัวอักษรเฉพาะ \\n ให้กลายเป็นการขึ้นบรรทัดใหม่ของคีย์ PEM จริง
             if "private_key" in cred_dict:
                 cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
             
-            # ส่งใบรับรองเพื่อเปิดสิทธิ์การเข้าถึงฐานข้อมูลคลาวด์
+            # โหลดสิทธิ์ใบรับรองเข้าสู่ระบบฐานข้อมูลคลาวด์
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred, {
-                'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com'
+                'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com' 
             })
             return True, "Connected"
         except Exception as e:
@@ -49,7 +49,7 @@ def init_firebase_system():
     else:
         return True, "Already Connected"
 
-# เรียกใช้งานระบบเชื่อมต่อและเช็คสถานะออนไลน์
+# เรียกใช้งานการเชื่อมต่อระบบ
 is_connected, system_message = init_firebase_system()
 
 # =========================================================
