@@ -4,50 +4,52 @@ from firebase_admin import credentials, db
 import json
 import time
 
-# ตรวจสอบว่าเคยดึงข้อมูลแอปไปหรือยัง เพื่อไม่ให้เกิดข้อผิดพลาดรันซ้ำ
-if not firebase_admin._apps:
-    # ดึงค่าจาก st.secrets ที่เราตั้งไว้ในขั้นตอนที่ 1
-    cred_dict = dict(st.secrets["firebase"])
-    
-    # จัดการแปลงตัวขึ้นบรรทัดใหม่ใน private_key ให้ระบบอ่านค่า PEM ได้จริง
-    cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
-    
-    # เริ่มต้นเชื่อมต่อฐานข้อมูล
-    cred = credentials.Certificate(cred_dict)
-    firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com'
-    })
-
+# 1. ตั้งค่าหน้าตาของแอปศูนย์สั่งการ (Page Configuration)
+st.set_page_config(
+    page_title="SYNAPSE COMMAND CENTER",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # =========================================================
-# [ ระบบเชื่อมต่อหลังบ้าน FIREBASE - โครงสร้างรองรับความเสถียร ]
+# [ ระบบเชื่อมต่อหลังบ้าน FIREBASE - รวมศูนย์ป้องกันเอเรอร์ ]
 # =========================================================
 def init_firebase_system():
+    # ตรวจสอบว่าระบบเคยเชื่อมต่อไว้หรือยัง เพื่อป้องกันการ Initialize ซ้ำซ้อน
     if not firebase_admin._apps:
         try:
-            # ดึงข้อมูล JSON ก้อนใหญ่จาก Secrets แฟ้ม [firebase] ตัวแปร text
-            secret_text = st.secrets["firebase"]["text"]
+            # ดึงค่าจาก st.secrets แฟ้ม [firebase] รูปแบบ TOML
+            cred_dict = {
+                "type": st.secrets["firebase"]["type"],
+                "project_id": st.secrets["firebase"]["project_id"],
+                "private_key_id": st.secrets["firebase"]["private_key_id"],
+                "private_key": st.secrets["firebase"]["private_key"],
+                "client_email": st.secrets["firebase"]["client_email"],
+                "client_id": st.secrets["firebase"]["client_id"],
+                "auth_uri": st.secrets["firebase"]["auth_uri"],
+                "token_uri": st.secrets["firebase"]["token_uri"],
+                "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
+                "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"],
+                "universe_domain": st.secrets["firebase"]["universe_domain"]
+            }
             
-            # แปลงข้อความให้เป็น Dictionary
-            cred_dict = json.loads(secret_text)
-            
-            # 🔥 [แก้ปัญหาหลัก] บังคับแปลงรหัสตัวอักษร \\n ให้กลายเป็นการขึ้นบรรทัดใหม่ของคีย์ PEM จริงๆ
+            # 🔥 แปลงข้อความตัวอักษร \\n ให้เป็นรหัสขึ้นบรรทัดใหม่ของคีย์ความปลอดภัยที่ถูกต้อง
             if "private_key" in cred_dict:
                 cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
             
-            # โหลดใบรับรองสิทธิ์เข้าใช้งาน
+            # ส่งใบรับรองเพื่อเปิดสิทธิ์การเข้าถึงฐานข้อมูลคลาวด์
             cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred, {
-                'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com' 
+                'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com'
             })
             return True, "Connected"
         except Exception as e:
             return False, str(e)
     else:
-        firebase_admin.get_app()
         return True, "Already Connected"
 
-# เรียกใช้งานการเชื่อมต่อระบบ
+# เรียกใช้งานระบบเชื่อมต่อและเช็คสถานะออนไลน์
 is_connected, system_message = init_firebase_system()
 
 # =========================================================
