@@ -17,32 +17,17 @@ import hashlib
 st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
 # =========================================================
-# 🔐 ระบบเชื่อมต่อ FIREBASE (ยึดตามโครงสร้างจริงจากโปรเจ็กต์ sooksun-104)
+# 🔐 ระบบเชื่อมต่อ FIREBASE (อ่านตรงจากไฟล์เพื่อความชัวร์สูงสุด)
 # =========================================================
 if not firebase_admin._apps:
     try:
-        # ดึงข้อมูลจากไฟล์ Private Key ที่นายส่งมาประกอบร่างในระบบความปลอดภัย
-        firebase_cfg = {
-            "type": "service_account",
-            "project_id": "sooksun-104",
-            "private_key_id": "996f18fd785283f5a61a8d89fad52e12b526a8e2",
-            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC5IFTE7/WhCMow\ntr4cf1oIHDAaXKjkIbsBrvvBPJNMV633lMWi+WIZjJCqrn4dYXkYlYJ9jx3rE7dg\nsvEK72C1ijvgjC/cA2ea+VRmRWhBMHJOvCflZu2fiUeEIGaJEaMIa0SPKQxAgaJb\nGqr Mw2cxmw6Fxni2Uzhsj2iCl+yguBc1vI4VntyzX2hAMAthLoo13ADgCREmEOYF\nkc2yb9mzJbR4m6XQ+k1ZQxRUuiiKkam3P0oTl8MUXVzWCS9Pf+dBtLYAyk/mR4JE\nmnh3zFChx8pVfO4kW+3YyGH5XpUheWYF/yVcln9+soTwQNljkEAnlxzSqpRqDGyG\nmY6ALxSJAgMBAAECg gEAH9tgMwafFH/UeWcNFo7UwaYGIhc1ahKi4XKI+LMRnvbM\npVj43KeBGefuQizmX2x1YAVkb/Jnodsh+JY6dBkG4Z6g2K6PEtOUKd9DhpjljKhH\nV2S6EdgxRn2jbKl9s5MxJML+yIr2BIi6VWakozlyAd+Os3cYsTlncYkJIUX/DpXs\nUl9x4cA5D8Pu8BJ64cBmycabz45MFD7 VJBbRAfGUoYPbIuuVpja4g/pwCTzisYwY\nrSMmN6anyyWE4TSyTfLZMcyA4UcnPZ9YlEbIsmo7E5UtPJYN3N/vVPBBHtuDgTb/\nIvLz88GL5ufnVCxGT1fWX7D+GadC/BLJda556CdEXQKBgQDhVQxZQlgihTsXeg6v\nbTQtSwlh0hM6ZXqpTyxAFZVKzI6b8azj9UNgvod7l/EOc cK32na5aOuDrpcRZAjI\nEuqCLyOVckMqdHt0Huf6nJUuiKTXnbbwgxTyavfYeEF95oKA05G2u4psULHMmoaF\nYF9s5bKOFXKxmKQgXP n4iPCsnQKBgQDSUnDs7+AW+2Q0Wp2eHfRS79GpCG42Kz+Z\n5tJN+WjCB4Kz1j7ePL8tDilAkX/P8dOfGaaPDFcxkoUJ3enfq+vk2FOhR5 LxpjJy\ny1mz8G4D6AUv+l98gVCxX+AHOqDhwZ5DNtFbnQvg3gCrWVckj+EYAJsxD3ZC4uQp\noDxY08cF3QKBgQDBjlPALIwWgwlCXldU +2Ixcd5KR7C6ncbivp6NIb0O9m2dqNhR\nLDHHXYJ1eQvY04FmemM3WtfLUmJzztD4Q79rOmC/k9n8Evikw5OTI4PF6BxpFhG5\nwW9x2M 6zBIGFS0dYr+Pf6nK6HgrMbQQWd7UgjqJ1CBlwUmTRY+xZQBA0xQKBgERf\nSpir7mRqOwwN/TlesYOYtMbHl9SCQL3OXMW+c8DH4kSGPI /QnbGO7fgwlKVMDyik\nlRHhyCK0aA1qF9J/uEL/1EgU1X87MSFCXBnz6j/Y2H7dXNdDzrCq41BWTeC2KbXe\nBzdKGYdzhDIv6/VV1K4R 3GGZji92RQgHMDcMOaH9AoGAB7H/ZtxKIr0O/opBOzd6\n6eXyKvujTeV+2ahesFb6p1PjXKdnk7EMFZLdJwPZTnIWTrsszz6gUDSA8Xgu/iZ6\nOy7+B2v6jwFVReL3AwoPkWRuGUt7wKfS4K6/TO5WMsaq9uDRdDUtvlLHlaUbIgc6\nhP6/BAAzKnJSquy+/nwVkwQ=\n-----END PRIVATE KEY-----\n",
-            "client_email": "firebase-adminsdk-fbsvc@sooksun-104.iam.gserviceaccount.com",
-            "client_id": "101794686310728865878",
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40sooksun-104.iam.gserviceaccount.com",
-            "universe_domain": "googleapis.com"
-        }
-        
-        # เชื่อมตรงเข้าสู่ Realtime Database URL หลักของโปรเจ็กต์นาย
-        cred = credentials.Certificate(firebase_cfg)
+        # เรียกอ่านตรงจากไฟล์แท้ในระบบ ตัดปัญหาเรื่องตัวอักษรตกหล่น
+        cred = credentials.Certificate('key.json') 
         firebase_admin.initialize_app(cred, {
             'databaseURL': 'https://sooksun-104-default-rtdb.firebaseio.com'
         })
     except Exception as e:
-        st.error(f"ระบบขัดข้องในการเปิดใช้งาน Firebase: {e}")
+        st.error(f"ระบบขัดข้องในการเปิดใช้งาน Firebase (ตรวจสอบไฟล์ key.json): {e}")
 
 # --- ค่าเริ่มต้นของระบบธีมสี ---
 if 'primary_color' not in st.session_state:
@@ -92,7 +77,7 @@ if not st.session_state.get('logged_in', False):
                             'lon': 100.5231
                         })
                 except Exception as e:
-                    st.warning(f"บันทึกพิกัดเริ่มต้นเข้าฐานข้อมูลไม่ได้ (รัน Local หรือยังไม่ได้ต่อ Firebase): {e}")
+                    st.warning(f"บันทึกพิกัดเริ่มต้นเข้าฐานข้อมูลไม่ได้: {e}")
                 
                 st.session_state.user = new_user        
                 st.session_state.logged_in = True     
@@ -176,11 +161,11 @@ if st.session_state.page == "HOME":
         st.caption("ความสามารถ: เล่นไฟล์เสียง และระบบควบคุมเสียงดีเจผ่านหน้าเว็บ")
 
         if st.button("🖼️ 2. IMAGE SEARCH\nค้นหาภาพจากดาวเทียม", use_container_width=True):
-            st.session_state.page = "3"; st.rerun() # ส่งไปหน้า 3 (ในโค้ดเดิมใช้หน้า 3 ทำระบบค้นหาภาพ)
+            st.session_state.page = "3"; st.rerun()
         st.caption("ความสามารถ: ดึงรูปภาพจากคลัง Unsplash ตามคำค้นหาที่ต้องการ")
 
         if st.button("✨ 3. NEON GENERATOR\nสร้างตัวอักษรเรืองแสง", use_container_width=True):
-            st.session_state.page = "3_neon"; st.rerun() # แยกหน้านีออนออกไปไม่ให้ทับกับถอดรหัส
+            st.session_state.page = "3_neon"; st.rerun()
         st.caption("ความสามารถ: แปลงข้อความธรรมดาให้เป็นศิลปะนีออนวิ้งๆ")
 
         if st.button("💖 4. DESTINY CHECK\nตรวจดวงชะตาคู่ขนาน", use_container_width=True):
@@ -202,7 +187,7 @@ if st.session_state.page == "HOME":
 
         if st.button("🌍 8. WORLD CLOCK\nเวลาโลกแบบเรียลไทม์", use_container_width=True):
             st.session_state.page = "6_clock"; st.rerun()
-        st.caption("ความสามารถ: ตรวจสอบเวลาปัจจุบันในโซนต่างๆ ทั่วโลก")
+        st.caption("ความสามารถ: ตรวจสอบเวลาปัจจุบันและค่าสัญญาณจากเซนเซอร์จริง")
 
         if st.button("🔢 9. DAILY CODE\nรหัสลับประจำวัน", use_container_width=True):
             st.session_state.page = "8"; st.rerun()
@@ -253,7 +238,7 @@ elif st.session_state.page == "1":
 
     mixer_html = f"""
     <div id="mixer-container" style="background: rgba(10,10,10,0.9); border: 2px solid #333; border-radius: 25px; padding: 20px; font-family: sans-serif;">
-        <canvas id="v-main" style="width: 100%; height: 120px; background: #000; border-radius: 15px; border: 1px solid #ff00de;"></canvas>
+        <canvas id="v-main" style="width: 100%; height: 120px; background: #000; border-radius: 15px; border: 1px solid #ff00de Haus;"></canvas>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
             <div style="padding: 15px; border-left: 4px solid #ff00de; background: rgba(255,0,222,0.05); border-radius: 10px;">
                 <small style="color: #ff00de; font-weight: bold;">DECK A</small>
@@ -413,7 +398,7 @@ elif st.session_state.page == "2":
         st.error(f"ระบบขัดข้อง: {e}")
 
 # =========================================================
-# ห้องที่ 3: IMAGE SEARCH (จากปุ่มหน้าแรก)
+# ห้องที่ 3: IMAGE SEARCH
 # =========================================================
 elif st.session_state.page == "3":
     st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>🖼️ SATELLITE & IMAGE SEARCH</h2>", unsafe_allow_html=True)
@@ -445,7 +430,7 @@ elif st.session_state.page == "4_video":
         st.video(v_url)
 
 # =========================================================
-# ห้องที่ 6: WORLD CLOCK & VIBRATION SENSOR (แยกหน้าย่อยให้)
+# ห้องที่ 6: WORLD CLOCK & VIBRATION SENSOR
 # =========================================================
 elif st.session_state.page in ["6_clock", "6"]:
     st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>⚡ SYNAPSE SENSOR & CLOCK UNIT</h2>", unsafe_allow_html=True)
@@ -540,42 +525,59 @@ elif st.session_state.page in ["6_clock", "6"]:
         st.write(f"เวลาเครื่องเซิร์ฟเวอร์: {datetime.now().strftime('%H:%M:%S')}")
 
 # =========================================================
-# ห้องที่ 4 เดิม (แปลงเป็น 5 และหน้าวิเคราะห์ดวงมิติควอนตัม)
+# ห้องที่ 7: DESTINY CHECK & LUNAR DECODER
 # =========================================================
 elif st.session_state.page == "7":
-    st.markdown("<h2 style='text-align:center; color:#ff00de; font-family:Orbitron;'>💖 DESTINY CHECK (DIMENSION 4)</h2>", unsafe_allow_html=True)
-    st.write("วิเคราะห์ความสัมพันธ์ผ่านระบบผลรวมรหัสตัวอักษร (Unicode Hash)")
+    st.markdown("<h2 style='text-align:center; color:#ff00de; font-family:Orbitron;'>💖 DESTINY CHECK & LUNAR DECODER</h2>", unsafe_allow_html=True)
+    
+    tab_name, tab_lunar = st.tabs(["🔤 UNICODE HASH ANALYSIS", "🌙 LUNAR GEOMETRY"])
+    
+    with tab_name:
+        st.write("วิเคราะห์ความสัมพันธ์ผ่านระบบผลรวมรหัสตัวอักษร (Unicode Hash)")
+        col1, col2 = st.columns(2)
+        with col1:
+            name1 = st.text_input("ชื่อ AGENT 1:", placeholder="ระบุชื่อคนที่ 1")
+        with col2:
+            name2 = st.text_input("ชื่อ AGENT 2:", placeholder="ระบุชื่อคนที่ 2")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        name1 = st.text_input("ชื่อ AGENT 1:", placeholder="ระบุชื่อคนที่ 1")
-    with col2:
-        name2 = st.text_input("ชื่อ AGENT 2:", placeholder="ระบุชื่อคนที่ 2")
+        if st.button("⚡ เดินเครื่องสแกนความถี่ชื่อ", use_container_width=True):
+            if name1 and name2:
+                score1 = sum(ord(char) for char in name1)
+                score2 = sum(ord(char) for char in name2)
+                gap = abs(score1 - score2)
+                match_percent = 100 - (gap % 100)
+                
+                st.divider()
+                st.metric("ระดับความสอดคล้องของคลื่นความถี่ (Synchronization)", f"{match_percent} %")
+                
+                st.markdown(f"""
+                <div style="background: rgba(255, 0, 222, 0.1); border-left: 4px solid #ff00de; padding: 10px; border-radius: 5px;">
+                    <h4 style="color:#ff00de;">📝 ที่มาของตัวเลข (The Truth)</h4>
+                    <ul>
+                        <li><b>พลังงานชื่อที่ 1:</b> {score1} (ผลรวม Unicode)</li>
+                        <li><b>พลังงานชื่อที่ 2:</b> {score2} (ผลรวม Unicode)</li>
+                        <li><b>ส่วนต่าง (Gap):</b> {gap}</li>
+                        <li><b>สูตรคณิตศาสตร์:</b> <code>100 - ({gap} % 100)</code> = {match_percent}%</li>
+                    </ul>
+                    <p style="font-size: 0.8rem; color:#ccc;">เราไม่ใช้ AI สุ่มตัวเลขเดาใจ แต่เราใช้ค่ารหัสคอมพิวเตอร์ที่ตายตัวของชื่อคุณทั้งสองคน</p>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.warning("กรุณาระบุชื่อเป้าหมายทั้งสองให้ครบถ้วน")
 
-    if st.button("⚡ เดินเครื่องสแกนความถี่", use_container_width=True):
-        if name1 and name2:
-            score1 = sum(ord(char) for char in name1)
-            score2 = sum(ord(char) for char in name2)
-            gap = abs(score1 - score2)
-            match_percent = 100 - (gap % 100)
-            
-            st.divider()
-            st.metric("ระดับความสอดคล้องของคลื่นความถี่ (Synchronization)", f"{match_percent} %")
-            
-            st.markdown(f"""
-            <div style="background: rgba(255, 0, 222, 0.1); border-left: 4px solid #ff00de; padding: 10px; border-radius: 5px;">
-                <h4 style="color:#ff00de;">📝 ที่มาของตัวเลข (The Truth)</h4>
-                <ul>
-                    <li><b>พลังงานชื่อที่ 1:</b> {score1} (ผลรวม Unicode)</li>
-                    <li><b>พลังงานชื่อที่ 2:</b> {score2} (ผลรวม Unicode)</li>
-                    <li><b>ส่วนต่าง (Gap):</b> {gap}</li>
-                    <li><b>สูตรคณิตศาสตร์:</b> <code>100 - ({gap} % 100)</code> = {match_percent}%</li>
-                </ul>
-                <p style="font-size: 0.8rem; color:#ccc;">เราไม่ใช้ AI สุ่มตัวเลขเดาใจ แต่เราใช้ค่ารหัสคอมพิวเตอร์ที่ตายตัวของชื่อคุณทั้งสองคน</p>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.warning("กรุณาระบุชื่อเป้าหมายทั้งสองให้ครบถ้วน")
+    with tab_lunar:
+        st.write("🌌 ระบบคำนวณถอดรหัส Lunar (ข้างขึ้นข้างแรม) อิงจากเวลาประวัติศาสตร์")
+        target_date = st.date_input("เลือกพิกัดวันที่ต้องการถอดรหัสดวงดาว:", date.today())
+        
+        if st.button("🌀 ประมวลผลรหัสควอนตัมดวงดาว", use_container_width=True):
+            res_data = get_detailed_logic(target_date)
+            if res_data:
+                st.success(f"ถอดรหัสสำเร็จ: วัน{res_data['day_name']} ({res_data['phase']})")
+                col_res1, col_res2 = st.columns(2)
+                col_res1.metric("ค่าพลังงานที่ได้ (Result)", res_data['res'])
+                col_res2.metric("ประเภทมิติ (Logic Type)", res_data['type'])
+                
+                st.code(f"สูตรที่ใช้คำนวณจริง: {res_data['formula']}")
 
 # =========================================================
 # ห้องที่ 8: DAILY CODE
@@ -669,7 +671,7 @@ elif st.session_state.page == "10":
 
     st.markdown(f"""
         <div style="text-align:center; padding: 30px; border: 2px dashed {st.session_state.custom_theme}; border-radius: 10px;">
-            <h3 style="color:{st.session_state.custom_theme}; text-shadow: 0 0 10px {st.session_state.custom_theme};">
+            <h3 style="color:{st.session_state.custom_theme}; text-shadow: 0 0 10px {st.session_theme if hasattr(st, 'session_theme') else st.session_state.custom_theme};">
                 ตัวอย่างสีที่กำลังใช้งาน
             </h3>
         </div>
