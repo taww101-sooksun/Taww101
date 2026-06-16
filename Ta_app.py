@@ -93,17 +93,17 @@ if "area_result" not in st.session_state:
 st.subheader("🛰️ แผนที่ดาวเทียม (ใช้นิ้วจิ้มมุมคันนาเพื่อปักหมุดจริงได้เลย)")
 st.caption("💡 วิธีใช้งาน: ใช้นิ้วเลื่อนและถ่างซูมแผนที่หาแปลงนา จากนั้น 'จิ้มลงไปบนหน้าจอแผนที่ตรงมุมคันนาโดยตรง' เพื่อเริ่มปักหมุดสีแดง")
 
-# พิกัดนาโพธิ์ ร้อยเอ็ด
+# พิกัดเริ่มต้น
 start_lat = 15.9513057
 start_lng = 103.5796196
 
-# แก้ไขจุดที่พัง: เปลี่ยนมาใช้ดาวเทียมสากลที่เปิดแบบ Public และไม่ติดปัญหาด้าน SSL Security
+# ตัดปัญหาเรื่อง .addTo() พัง ด้วยการยัดลิงก์ดาวเทียมตรงเข้าที่ตัวแผนที่หลักตัวเดียวจบเลยครับ
 m = folium.Map(
     location=[start_lat, start_lng], 
     zoom_start=16, 
     max_zoom=19,
-    tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', # ใช้โครงสร้าง Google Satellite Direct คมชัดระดับเมตรต่อเมตร และไม่พังชัวร์
-    attr='Google Satellite'
+    tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+    attr='Google'
 )
 
 # วาดหมุดสีแดงตามพิกัดที่คนจิ้มไว้
@@ -143,7 +143,7 @@ with col_btn2:
         if len(st.session_state.points) < 3:
             st.error("⚠️ ต้องใช้นิ้วจิ้มปักหมุดบนแผนที่ให้ได้อย่างน้อย 3 มุมก่อนครับเพื่อนแปลงนาถึงจะสมบูรณ์!")
         else:
-            # สูตรคำนวณแบบ Shoelace บนระนาบเมตร
+            # สูตรคำนวณพื้นที่
             import math
             def get_area(pts):
                 R = 6378137
@@ -169,7 +169,7 @@ with col_btn2:
             ngan = int(remaining_wa // 100)
             wa = round(remaining_wa % 100)
             
-            st.session_state.area_result = f"{rai} ไร่ {ngan} งาน {wa} ตารางวา (สุทธิ {round(area_sqm, 1):?} ตร.ม.)"
+            st.session_state.area_result = f"{rai} ไร่ {ngan} งาน {wa} ตารางวา (สุทธิ {round(area_sqm, 1):,} ตร.ม.)"
             st.rerun()
 
 # แสดงแผนที่และรอรับฟังการกดจิ้มจอพิกัดสด
