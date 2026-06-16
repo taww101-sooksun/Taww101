@@ -39,4 +39,6 @@ aiohttp
 fastapi
 uvicorn
 pydantic
+streamlit-folium
+folium
 
