@@ -18,23 +18,18 @@ st.set_page_config(
 def init_firebase_system():
     if not firebase_admin._apps:
         try:
-            # ดึงค่าติดตั้งจาก st.secrets ดึงตรงตามโครงสร้าง TOML ปรับบรรทัดเรียบร้อยแล้ว
-            firebase_cfg = {
-                "type": st.secrets["firebase"]["type"],
-                "project_id": st.secrets["firebase"]["project_id"],
-                "private_key_id": st.secrets["firebase"]["private_key_id"],
-                "private_key": st.secrets["firebase"]["private_key"],
-                "client_email": st.secrets["firebase"]["client_email"],
-                "client_id": st.secrets["firebase"]["client_id"],
-                "auth_uri": st.secrets["firebase"]["auth_uri"],
-                "token_uri": st.secrets["firebase"]["token_uri"],
-                "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
-                "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"],
-                "universe_domain": st.secrets["firebase"]["universe_domain"]
-            }
-
+            # ดึงข้อมูล JSON ก้อนใหญ่จาก Secrets แฟ้ม [firebase] ตัวแปร text
+            secret_text = st.secrets["firebase"]["text"]
+            
+            # แปลงข้อความให้เป็น Dictionary
+            cred_dict = json.loads(secret_text)
+            
+            # 🔥 [แก้ปัญหาหลัก] บังคับแปลงรหัสตัวอักษร \\n ให้กลายเป็นการขึ้นบรรทัดใหม่ของคีย์ PEM จริงๆ
+            if "private_key" in cred_dict:
+                cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
+            
             # โหลดใบรับรองสิทธิ์เข้าใช้งาน
-            cred = credentials.Certificate(firebase_cfg)
+            cred = credentials.Certificate(cred_dict)
             firebase_admin.initialize_app(cred, {
                 'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com' 
             })
