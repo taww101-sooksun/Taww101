@@ -1,38 +1,21 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, db
-import json
-import time
 
-# 1. ตั้งค่าหน้าตาของแอปศูนย์สั่งการ (Page Configuration)
-st.set_page_config(
-    page_title="SYNAPSE COMMAND CENTER",
-    page_icon="⚡",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# ตรวจสอบว่าเคยดึงข้อมูลแอปไปหรือยัง เพื่อไม่ให้เกิดข้อผิดพลาดรันซ้ำ
+if not firebase_admin._apps:
+    # ดึงค่าจาก st.secrets ที่เราตั้งไว้ในขั้นตอนที่ 1
+    cred_dict = dict(st.secrets["firebase"])
+    
+    # จัดการแปลงตัวขึ้นบรรทัดใหม่ใน private_key ให้ระบบอ่านค่า PEM ได้จริง
+    cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
+    
+    # เริ่มต้นเชื่อมต่อฐานข้อมูล
+    cred = credentials.Certificate(cred_dict)
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com'
+    })
 
-# =========================================================
-# [ ระบบเชื่อมต่อหลังบ้าน FIREBASE - โครงสร้างรองรับความเสถียร ]
-# =========================================================
-def init_firebase_system():
-    if not firebase_admin._apps:
-        try:
-            # ดึงข้อมูล JSON ก้อนใหญ่จาก Secrets แฟ้ม [firebase] ตัวแปร text
-            secret_text = st.secrets["firebase"]["text"]
-            
-            # แปลงข้อความให้เป็น Dictionary
-            cred_dict = json.loads(secret_text)
-            
-            # 🔥 [แก้ปัญหาหลัก] บังคับแปลงรหัสตัวอักษร \\n ให้กลายเป็นการขึ้นบรรทัดใหม่ของคีย์ PEM จริงๆ
-            if "private_key" in cred_dict:
-                cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
-            
-            # โหลดใบรับรองสิทธิ์เข้าใช้งาน
-            cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com' 
-            })
             return True, "Connected"
         except Exception as e:
             return False, str(e)
