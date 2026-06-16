@@ -5,23 +5,20 @@ import random
 # 1. ตั้งค่าหน้าจอแอปให้กว้างพิเศษ (Wide) 
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO v2", page_icon="🚜", layout="wide")
 
-# 2. ปรับแต่งสไตล์และโทนสีแอป (น้ำเงิน แดง ม่วง ขาว เขียวนีออน)
+# 2. ปรับแต่งสไตล์และโทนสีแอป
 st.markdown("""
     <style>
-    /* พื้นหลังหลักและฟอนต์ */
     .stApp { 
         background: linear-gradient(135deg, #090d16 0%, #111424 50%, #1a0b2e 100%); 
     }
     h1, h2, h3, p, label, span { color: #ffffff !important; font-family: 'Sans-serif'; }
     
-    /* หัวข้อใหญ่สีเขียวนีออน */
     .neon-title {
         color: #00ffcc !important;
         text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
         font-weight: bold;
     }
     
-    /* กล่องเครื่องเล่นเพลง */
     .music-box {
         background: rgba(26, 11, 46, 0.8);
         border: 2px solid #9d4edd;
@@ -29,15 +26,6 @@ st.markdown("""
         border-radius: 12px;
         margin-bottom: 20px;
         box-shadow: 0 0 10px rgba(157, 78, 221, 0.5);
-    }
-
-    /* กล่องบันทึกประวัติข้อมูลนา */
-    .history-box {
-        background: rgba(17, 20, 36, 0.9);
-        border: 1px solid #9d4edd;
-        padding: 20px;
-        border-radius: 12px;
-        margin-top: 25px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -85,9 +73,9 @@ else:
 st.markdown("</div>", unsafe_allow_html=True)
 
 
-# 5. 🛰️ แผนที่ดาวเทียมขยายขนาดใหญ่พิเศษ (MEGA SCALE 820px) พร้อมสไตล์พิเศษเพิ่มความเท่
-st.subheader("🛰️ แผนที่ดาวเทียมสเกลใหญ่พิเศษ (เวอร์ชันอัปเกรดพิเศษความคมชัดสูง)")
-st.caption("💡 วิธีใช้งาน: เปิดเป้าเล็งสีแดงเพื่อความแม่นยำ แพนหน้าจอให้มุมคันนาอยู่ตรงเป้า แล้วกดปุ่มปักหมุดสีม่วงได้ทันที")
+# 5. 🛰️ แผนที่ดาวเทียมขยายขนาดใหญ่พิเศษ (MEGA SCALE) + ระบบบันทึกประวัติที่ทำงานได้จริงในหน้าจอเดียว
+st.subheader("🛰️ แผนที่ดาวเทียมสเกลใหญ่ (ระบบคำนวณและบันทึกประวัติจริงหน้างาน)")
+st.caption("💡 วิธีใช้งาน: เล็งเป้าแดงให้ตรงมุมแปลงนา กดปุ่มปักหมุดจนครบแปลง พิมพ์ชื่อเจ้าของแล้วกดบันทึก ข้อมูลจะแสดงในตารางประวัติด้านล่างทันที")
 
 default_lat = 15.9513057
 default_lng = 103.5796196
@@ -104,16 +92,14 @@ map_html_code = f"""
         position: relative;
         width: 100%;
     }}
-    /* เพิ่มสเกลความสูงแผนที่ความพิเศษเป็น 820px คมชัดเต็มจอ */
     #map {{
         width: 100%;
-        height: 820px; 
+        height: 700px; 
         border-radius: 16px;
         border: 3px solid #00ffcc;
         z-index: 1;
         box-shadow: 0 0 25px rgba(0, 255, 204, 0.6);
     }}
-    /* เป้าเล็งกึ่งกลางสีแดงนีออนสะท้อนแสง ออกแบบให้ล้ำขึ้น */
     .crosshair {{
         position: absolute;
         top: 50%;
@@ -143,7 +129,6 @@ map_html_code = f"""
         gap: 12px;
     }}
 
-    /* ปุ่มกดสไตล์นีออนอัปเกรดพิเศษ */
     .map-btn {{
         background-color: #00ffcc;
         color: #000000 !important;
@@ -156,24 +141,15 @@ map_html_code = f"""
         box-shadow: 0 0 10px #00ffcc;
         transition: all 0.3s ease;
         flex: 1;
-        min-width: 160px;
+        min-width: 150px;
         text-align: center;
     }}
     .map-btn:hover {{ background-color: #00cc99; box-shadow: 0 0 20px #00cc99; transform: translateY(-2px); }}
-    
-    .map-btn-danger {{ 
-        background-color: #ff3333; border-color: #ff3333; color: white !important;
-        box-shadow: 0 0 10px #ff3333;
-    }}
+    .map-btn-danger {{ background-color: #ff3333; border-color: #ff3333; color: white !important; box-shadow: 0 0 10px #ff3333;}}
     .map-btn-danger:hover {{ background-color: #cc0000; box-shadow: 0 0 20px #cc0000; }}
-    
-    .map-btn-success {{ 
-        background-color: #9d4edd; border-color: #9d4edd; color: white !important;
-        box-shadow: 0 0 10px #9d4edd;
-    }}
+    .map-btn-success {{ background-color: #9d4edd; border-color: #9d4edd; color: white !important; box-shadow: 0 0 10px #9d4edd;}}
     .map-btn-success:hover {{ background-color: #7b2cbf; box-shadow: 0 0 20px #7b2cbf; }}
 
-    /* ความพิเศษ: กล่องแสดงผลลัพธ์แบบเรืองแสงสลับสีล้ำยุค */
     .neon-result-box {{
         background: #090d16;
         padding: 20px;
@@ -182,11 +158,47 @@ map_html_code = f"""
         font-family: sans-serif;
         border: 2px solid #9d4edd;
         box-shadow: 0 0 15px rgba(157, 78, 221, 0.4);
-        animation: neonPulse 3s infinite alternate;
+        margin-bottom: 20px;
     }}
-    @keyframes neonPulse {{
-        0% {{ border-color: #9d4edd; box-shadow: 0 0 12px rgba(157, 78, 221, 0.4); }}
-        100% {{ border-color: #00ffcc; box-shadow: 0 0 20px rgba(0, 255, 204, 0.5); }}
+
+    /* สไตล์ส่วนกล่องบันทึกข้อมูลของจริง */
+    .save-panel {{
+        background: rgba(26, 11, 46, 0.6);
+        border: 1px solid #9d4edd;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }}
+    .save-input {{
+        background: #111424;
+        border: 1px solid #00ffcc;
+        color: white;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 16px;
+        flex: 2;
+    }}
+    .history-table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        background: #111424;
+        color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        font-family: sans-serif;
+    }}
+    .history-table th, .history-table td {{
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #1a0b2e;
+    }}
+    .history-table th {{
+        background-color: #9d4edd;
+        color: white;
     }}
 </style>
 
@@ -198,19 +210,42 @@ map_html_code = f"""
 <div class="control-panel">
     <button type="button" class="map-btn" onclick="toggleCrosshair()">🎯 เปิด/ปิด เป้าเล็ง</button>
     <button type="button" class="map-btn map-btn-success" onclick="addPointFromCenter()">📌 ปักหมุดพิกัด</button>
-    <button type="button" class="map-btn map-btn-success" style="background:#00ffcc; border-color:#00ffcc; color:black !important; box-shadow: 0 0 10px #00ffcc;" onclick="calculateFromPoints()">📐 คำนวณพื้นที่นาสัจจะ</button>
+    <button type="button" class="map-btn map-btn-success" style="background:#00ffcc; border-color:#00ffcc; color:black !important; box-shadow: 0 0 10px #00ffcc;" onclick="calculateFromPoints()">📐 คำนวณพื้นที่นาแปลงนี้</button>
     <button type="button" class="map-btn map-btn-danger" onclick="clearAllDrawings()">🗑️ ล้างค่าเริ่มใหม่</button>
 </div>
 
 <div class="neon-result-box">
-    <b style="color:#00ffcc; font-size:16px; text-shadow: 0 0 5px #00ffcc;">🛰️ พิกัดแปลงและขนาดพื้นที่จริง (ตรวจสอบแล้ว):</b>
-    <p id="area-text" style="font-size:26px; margin:10px 0; font-weight:bold; color:#ff3333; text-shadow: 0 0 5px rgba(255,51,51,0.5);">ยังไม่ได้ลากแปลงนา</p>
+    <b style="color:#00ffcc; font-size:16px; text-shadow: 0 0 5px #00ffcc;">🛰️ ขนาดพื้นที่นาปัจจุบัน (วัดตามจริง):</b>
+    <p id="area-text" style="font-size:26px; margin:10px 0; font-weight:bold; color:#ff3333;">ยังไม่ได้ลากแปลงนา</p>
+</div>
+
+<div class="save-panel">
+    <input type="text" id="farmer-name" class="save-input" placeholder="พิมพ์ชื่อเจ้าของที่นาเพื่อบันทึกประวัติ...">
+    <button type="button" class="map-btn map-btn-success" style="margin:0; flex:1;" onclick="saveToHistoryTable()">💾 บันทึกประวัติแปลงนี้</button>
+</div>
+
+<div style="background: rgba(17, 20, 36, 0.9); padding:15px; border-radius:12px; border: 1px solid #9d4edd;">
+    <b style="color:#00ffcc; font-size:16px;">📊 ตารางประวัติการวัดที่นาสัจจะ (บันทึกแล้วกดดูได้ทันที):</b>
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>ลำดับ</th>
+                <th>ชื่อเจ้าของที่นา</th>
+                <th>ขนาดพื้นที่นาที่วัดได้จริง</th>
+                <th>ขนาดพื้นที่ (ตร.ม.)</th>
+            </tr>
+        </thead>
+        <tbody id="history-rows">
+            <tr>
+                <td colspan="4" style="text-align:center; color:#9ca3af;">ยังไม่มีประวัติการบันทึกในรอบนี้</td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 <script>
     var map = L.map('map').setView([{default_lat}, {default_lng}], 16);
 
-    // ใช้แผนที่ระดับอัปเกรดความชัดสูงตัดขอบคันนา
     var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
         maxZoom: 19
     }}).addTo(map);
@@ -225,7 +260,7 @@ map_html_code = f"""
             map.setView([lat, lng], 18);
             L.marker([lat, lng]).addTo(map).bindPopup('🚜 หมุดปัจจุบันของคุณ').openPopup();
         }}, function(err) {{
-            console.log("GPS กำลังค้นหาข้อมูลตำแหน่งพิกัดสัญญาณพายธอน");
+            console.log("GPS กำลังค้นหา");
         }}, {{enableHighAccuracy: true}});
     }}
 
@@ -235,6 +270,11 @@ map_html_code = f"""
     var customPoints = [];
     var customPolygon = null;
     var crosshairMode = false;
+    
+    // ตัวแปรเก็บค่าผลลัพธ์ล่าสุดเพื่อเอาไปบันทึกลงตารางจริง
+    var currentCalculatedText = "";
+    var currentCalculatedSqM = 0;
+    var historyData = [];
 
     function toggleCrosshair() {{
         var ch = document.getElementById('crosshair-target');
@@ -256,7 +296,7 @@ map_html_code = f"""
 
     function calculateFromPoints() {{
         if (customPoints.length < 3) {{
-            alert("⚠️ ต้องปักหมุดที่นาให้ได้อย่างน้อย 3 มุมแปลงขึ้นไปครับครับเพื่อน!");
+            alert("⚠️ ต้องปักหมุดที่นาให้ได้อย่างน้อย 3 มุมแปลงขึ้นไปก่อนครับ!");
             return;
         }}
         
@@ -276,6 +316,8 @@ map_html_code = f"""
         drawnItems.clearLayers();
         customPoints = [];
         customPolygon = null;
+        currentCalculatedText = "";
+        currentCalculatedSqM = 0;
         document.getElementById('area-text').innerHTML = "ยังไม่ได้ลากแปลงนา";
     }}
 
@@ -287,12 +329,56 @@ map_html_code = f"""
             var ngan = Math.floor(remainingWa / 100);
             var wa = Math.round(remainingWa % 100);
 
+            currentCalculatedSqM = Math.round(areaSqMeters);
+            currentCalculatedText = rai + " ไร่ " + ngan + " งาน " + wa + " ตารางวา";
+
             document.getElementById('area-text').innerHTML = 
                 "🌾 วัดได้จริง: <span style='color:#00ffcc; text-shadow: 0 0 5px #00ffcc;'>" + rai + " ไร่ </span> " + 
                 "<span style='color:#9d4edd; text-shadow: 0 0 5px #9d4edd;'>" + ngan + " งาน </span> " + 
                 "<span style='color:#ff3333; text-shadow: 0 0 5px #ff3333;'>" + wa + " ตารางวา</span><br>" +
-                "<span style='font-size:14px; color:#9ca3af; font-weight:normal; display:block; margin-top:5px;'>สุทธิประมวลผลดาวเทียม: " + Math.round(areaSqMeters).toLocaleString() + " ตร.ม.</span>";
+                "<span style='font-size:14px; color:#9ca3af; font-weight:normal; display:block; margin-top:5px;'>สุทธิประมวลผลดาวเทียม: " + currentCalculatedSqM.toLocaleString() + " ตร.ม.</span>";
         }}
+    }}
+
+    // ฟังก์ชันบันทึกข้อมูลและอัปเดตลงตารางประวัติให้เห็นทันที ไม่มีการหลอกตา
+    function saveToHistoryTable() {{
+        var nameInput = document.getElementById('farmer-name');
+        var name = nameInput.value.trim();
+        
+        if (name === "") {{
+            alert("⚠️ กรุณาพิมพ์ชื่อเจ้าของที่นาก่อนกดบันทึกครับเพื่อน!");
+            return;
+        }}
+        if (currentCalculatedSqM === 0 || currentCalculatedText === "") {{
+            alert("⚠️ แปลงนายังไม่มีการคำนวณพื้นที่เลย ปักหมุดแล้วกด 'คำนวณพื้นที่นาแปลงนี้' ก่อนบันทึกครับ!");
+            return;
+        }}
+
+        // บันทึกเข้า Array ของระบบหน้าบ้านจริง
+        historyData.push({{
+            name: name,
+            areaText: currentCalculatedText,
+            sqm: currentCalculatedSqM
+        }});
+
+        // ล้างช่องกรอกชื่อหลังจากบันทึกแล้ว
+        nameInput.value = "";
+
+        // วาดตารางใหม่ทันทีให้เห็นตรงหน้า
+        var tbody = document.getElementById('history-rows');
+        tbody.innerHTML = "";
+
+        historyData.forEach(function(item, index) {{
+            var row = document.createElement('tr');
+            row.innerHTML = 
+                "<td>" + (index + 1) + "</td>" +
+                "<td style='color:#00ffcc; font-weight:bold;'>" + item.name + "</td>" +
+                "<td style='color:#ffffff;'>" + item.areaText + "</td>" +
+                "<td style='color:#9ca3af;'>" + item.sqm.toLocaleString() + " ตร.ม.</td>";
+            tbody.appendChild(row);
+        }});
+        
+        alert("💾 บันทึกประวัติที่ดินของคุณ " + name + " ลงตารางเรียบร้อยแล้ว ดูข้อมูลด้านล่างได้ทันทีครับ!");
     }}
 
     var drawControl = new L.Control.Draw({{
@@ -316,34 +402,5 @@ map_html_code = f"""
 </script>
 """
 
-# ตั้งความสูงพื้นที่รวมเป็น 1050px เพื่อให้ไม่เบียดและเก็บความกว้างของเป้าเล็งและกล่องนีออนได้เนียนสนิท
-st.components.v1.html(map_html_code, height=1050, scrolling=False)
-
-# 6. 📂 ส่วนความพิเศษเพิ่มเติม: ระบบบันทึกรายชื่อเจ้าของแปลงนาฝั่ง Python (ปลอดภัย ไร้ JSON)
-if "history_list" not in st.session_state:
-    st.session_state.history_list = []
-
-st.markdown("<div class='history-box'>", unsafe_allow_html=True)
-st.subheader("📂 สมุดลงทะเบียนบันทึกแปลงนาเก่า")
-
-col_name, col_btn = st.columns([3, 1])
-with col_name:
-    farmer_name = st.text_input("✍️ ระบุชื่อเจ้าของที่นาสัจจะแปลงนี้:", placeholder="เช่น ตาดี ยายมี นายมั่น...")
-
-with col_btn:
-    st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
-    if st.button("💾 บันทึกเก็บข้อมูล", use_container_width=True):
-        if farmer_name.strip() == "":
-            st.warning("⚠️ เพื่อนลืมใส่ชื่อชาวนาเจ้าของแปลงครับ ระบุก่อนกดบันทึกนะ")
-        else:
-            st.session_state.history_list.append(farmer_name)
-            st.success(f"บันทึกข้อมูลของคุณ '{farmer_name}' ลงระบบเซสชันฝั่ง Python เรียบร้อยแล้ว!")
-
-if st.session_state.history_list:
-    st.write("---")
-    st.write("📊 **รายชื่อที่ดินที่ผ่านการลงทะเบียนรอบนี้:**")
-    for i, name in enumerate(st.session_state.history_list):
-        st.write(f"👤 ลำดับที่ {i+1}: คุณ {name} 🌾")
-st.markdown("</div>", unsafe_allow_html=True)
-
-st.success("⚡ ตัวท็อปเวอร์ชันพิเศษอัปเกรดสำเร็จ! สเกลใหญ่ คมชัด เรืองแสงนีออนเรียบร้อย เอาไปเปิดลุยใช้งานจริงได้เลยครับเพื่อน!")
+# ใช้ความสูง 1250px เพื่อให้มีพื้นที่เหลือเฟือสำหรับแสดงตารางประวัติด้านล่างแบบเห็นชัดๆ ไม่ต้องซ้อนกันครับ
+st.components.v1.html(map_html_code, height=1250, scrolling=False)
