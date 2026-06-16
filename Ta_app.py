@@ -13,13 +13,12 @@ st.set_page_config(
 )
 
 # =========================================================
-# [ ระบบเชื่อมต่อหลังบ้าน FIREBASE (ซ่อมบั๊กคีย์เรียบร้อย) ]
+# [ ระบบเชื่อมต่อหลังบ้าน FIREBASE - โครงสร้างรองรับความเสถียร ]
 # =========================================================
 def init_firebase_system():
     if not firebase_admin._apps:
         try:
-            # ดึงค่าจาก st.secrets ["firebase"]["text"] หรือดึงแยกตามฟิลด์
-            # โค้ดชุดนี้รองรับการดึงจาก Secrets โดยตรงแบบปลอดภัย
+            # ดึงค่าติดตั้งจาก st.secrets ดึงตรงตามโครงสร้าง TOML ปรับบรรทัดเรียบร้อยแล้ว
             firebase_cfg = {
                 "type": st.secrets["firebase"]["type"],
                 "project_id": st.secrets["firebase"]["project_id"],
@@ -34,10 +33,7 @@ def init_firebase_system():
                 "universe_domain": st.secrets["firebase"]["universe_domain"]
             }
 
-            # จัดการแปลงรหัสตัวอักษร \n ป้องกัน InvalidPadding และ PEM file พัง
-            if "private_key" in firebase_cfg:
-                firebase_cfg["private_key"] = firebase_cfg["private_key"].replace("\\n", "\n")
-
+            # โหลดใบรับรองสิทธิ์เข้าใช้งาน
             cred = credentials.Certificate(firebase_cfg)
             firebase_admin.initialize_app(cred, {
                 'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com' 
@@ -49,7 +45,7 @@ def init_firebase_system():
         firebase_admin.get_app()
         return True, "Already Connected"
 
-# รันระบบเชื่อมต่อหลังบ้าน
+# เรียกใช้งานการเชื่อมต่อระบบ
 is_connected, system_message = init_firebase_system()
 
 # =========================================================
@@ -75,7 +71,6 @@ menu = st.sidebar.radio(
     ]
 )
 
-# ส่วนท้ายของ Sidebar
 st.sidebar.write("---")
 if is_connected:
     st.sidebar.success("📡 Cloud Database: Online")
@@ -93,10 +88,13 @@ if menu == "1. หน้าหลัก & สรุปสถานะ (Dashboard
     
     col1, col2, col3 = st.columns(3)
     col1.metric("ความเร็วการประมวลผล", "Real-time", "100%")
-    col2.metric("ฐานข้อมูลคลาวด์", "sooksun-101", "เสถียร")
+    col2.metric("ฐานข้อมูลคลาวด์", "sooksun-101", "เสถียร" if is_connected else "ปิดการเชื่อมต่อ")
     col3.metric("ปรัชญาประจำวัน", "อยู่นิ่งๆ", "ไม่เจ็บตัว")
 
-    st.info("💡 ข้อมูลระบบ: สัญญาณเครือข่ายพร้อมใช้งาน พร้อมเชื่อมต่ออัปเดตข้อมูลแบบทันทีอนุกรมเวลา")
+    if is_connected:
+        st.info("💡 ข้อมูลระบบ: สัญญาณเครือข่ายพร้อมใช้งาน พร้อมเชื่อมต่ออัปเดตข้อมูลแบบทันทีอนุกรมเวลา")
+    else:
+        st.error(f"เกิดปัญหาเชื่อมต่อระบบฐานข้อมูล: {system_message}")
 
 # --- หัวข้อที่ 2: ลงทะเบียนเจ้าหน้าที่ ---
 elif menu == "2. ลงทะเบียนเจ้าหน้าที่ (Register Agent)":
@@ -140,7 +138,6 @@ elif menu == "4. แผนที่และพิกัดดาวเทีย
     st.title("📍 REAL-TIME GPS MAP")
     st.write("จำลองการแสดงพิกัดและการติดตามตำแหน่งผ่านสัญญาณดาวเทียม")
     
-    # พิกัดจำลองแถวร้อยเอ็ด/ภาคอีสาน
     lat = 16.054
     lon = 103.652
     
@@ -214,7 +211,6 @@ elif menu == "9. ตรวจสอบระบบพลังงานโซล
     st.title("☀️ SOLAR ENERGY MONITOR")
     st.write("หน้าจอตรวจสอบแรงดันไฟฟ้าและแบตเตอรี่ 12V ร่วมกับคอนโทรลเลอร์ Lebento")
     
-    # ตัวเลขค่าจำลองสถานะแผงและการชาร์จจริง
     battery_v = st.slider("แรงดันไฟฟ้าแบตเตอรี่ในระบบ (โวลต์):", 10.0, 15.0, 12.6)
     
     if battery_v < 11.5:
