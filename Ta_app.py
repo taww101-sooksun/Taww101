@@ -1,9 +1,10 @@
 import streamlit as st
 import os
 import random
+import json
 
-# 1. ตั้งค่าหน้าจอแอปให้กว้างพิเศษ (Wide) 
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO v4", page_icon="🚜", layout="wide")
+# 1. ตั้งค่าหน้าจอแอปให้กว้างพิเศษ (Wide)
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO v5", page_icon="🚜", layout="wide")
 
 # 2. ปรับแต่งสไตล์และโทนสีแอป
 st.markdown("""
@@ -27,13 +28,6 @@ st.markdown("""
         margin-bottom: 20px;
         box-shadow: 0 0 10px rgba(157, 78, 221, 0.5);
     }
-    
-    .map-btn-danger { 
-        background-color: #ff3333; border: 2px solid #ff3333; color: white !important;
-        padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 8px;
-        cursor: pointer; box-shadow: 0 0 8px #ff3333;
-    }
-    .map-btn-danger:hover { background-color: #cc0000; box-shadow: 0 0 15px #cc0000; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -46,7 +40,7 @@ with col_logo:
         st.write("🛰️ [SYNAPSE]")
 
 with col_title:
-    st.markdown("<h1 class='neon-title'>🚜 ระบบวัดที่นาสัจจะ - AREA PRO v4 (ปากกาลากอิสระ)</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='neon-title'>🚜 ระบบวัดที่นาสัจจะ - AREA PRO v5 (ระบบเป้าเล็ง + บันทึกประวัติ)</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color: #ff3333 !important; font-style: italic; font-weight: bold; text-shadow: 0 0 5px #ff3333;'>\"อยู่นิ่งๆ ไม่เจ็บตัว วัดตามความจริง ไม่มีใครโกหกใครได้\"</p>", unsafe_allow_html=True)
 
 st.write("---")
@@ -80,14 +74,14 @@ else:
 st.markdown("</div>", unsafe_allow_html=True)
 
 
-# 5. 🛰️ แผนที่ดาวเทียมระบบลากนิ้ว/ลากปากกาอิสระ
-st.subheader("🛰️ แผนที่ดาวเทียม (ใช้นิ้วหรือปากกาลากตามคันแทนาได้เลย)")
-st.caption("💡 วิธีใช้: กดปุ่มเครื่องมือรูปห้าเหลี่ยมด้านซ้ายบน จากนั้นใช้นิ้วลากวาดตามแนวคันแทนาให้รอบแปลง เมื่อวาดมาบรรจบจุดเริ่มต้นระบบจะคำนวณพื้นที่ให้ทันที")
+# 5. ระบบแผนที่เป้าเล็งกากบาทแดง + ซูมพิเศษลึกระดับ 19 + ระบบบันทึกข้อมูลเจ้าของนา
+st.subheader("🛰️ แผนที่ดาวเทียมระบบเป้าเล็งกึ่งกลาง (ซูมลึกพิเศษร่องคันนาชัดเจน)")
+st.caption("💡 วิธีใช้งาน: แพนหน้าจอให้มุมแปลงนาอยู่ตรงกลางเป้าแดงพอดีเป๊ะ แล้วกดปุ่มปักหมุดสีม่วง เมื่อคำนวณแล้วสามารถพิมพ์ชื่อบันทึกข้อมูลเก็บไว้ดูย้อนหลังได้")
 
 default_lat = 15.9513057
 default_lng = 103.5796196
 
-# อัปเกรดสคริปต์เพิ่มการทำงานแบบ Freehand ตรวจจับการลากเส้นต่อเนื่อง
+# ใส่สคริปต์สำหรับการจัดการ บันทึก/โหลด ข้อมูลประวัติแปลงนาลงใน LocalStorage ของเครื่อง
 map_html_code = f"""
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
@@ -96,58 +90,137 @@ map_html_code = f"""
 <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
 <style>
+    #map-container {{
+        position: relative;
+        width: 100%;
+    }}
+    /* ขยายความสูง 750px ตามเดิม */
     #map {{
         width: 100%;
-        height: 720px; 
+        height: 750px; 
         border-radius: 14px;
         border: 2px solid #00ffcc;
+        z-index: 1;
         box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
+    }}
+    /* เป้าเล็งกึ่งกลางสีแดงนีออนสะท้อนแสงตามโค้ดเดิม */
+    .crosshair {{
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 30px;
+        height: 30px;
+        margin-top: -15px;
+        margin-left: -15px;
+        z-index: 9999;
+        pointer-events: none;
+    }}
+    .crosshair::before, .crosshair::after {{
+        content: '';
+        position: absolute;
+        background: #ff3333;
+        box-shadow: 0 0 8px #ff3333;
+    }}
+    .crosshair::before {{ top: 14px; left: 0; width: 30px; height: 2px; }}
+    .crosshair::after {{ top: 0; left: 14px; width: 2px; height: 30px; }}
+    
+    .map-btn {{
+        background-color: #00ffcc; color: #000000; border: 2px solid #00ffcc;
+        padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 8px;
+        cursor: pointer; margin-right: 10px; margin-bottom: 10px; box-shadow: 0 0 8px #00ffcc;
+    }}
+    .map-btn-danger {{ background-color: #ff3333; border-color: #ff3333; color: white; box-shadow: 0 0 8px #ff3333; }}
+    .map-btn-success {{ background-color: #9d4edd; border-color: #9d4edd; color: white; box-shadow: 0 0 8px #9d4edd; }}
+    
+    .history-box {{
+        background: #1a0b2e; border: 1px solid #9d4edd; padding: 15px; 
+        border-radius: 10px; margin-top: 15px; color: white;
+    }}
+    .history-item {{
+        background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;
+        margin-bottom: 8px; border-left: 4px solid #00ffcc; display: flex; justify-content: space-between; align-items: center;
     }}
 </style>
 
-<div id="map"></div>
+<div id="map-container">
+    <div id="map"></div>
+    <div id="crosshair-target" class="crosshair"></div>
+</div>
 
-<div style="margin-top: 15px; margin-bottom: 15px;">
-    <button type="button" class="map-btn-danger" onclick="clearAllDrawings()">🗑️ ล้างเส้นที่วาด/เริ่มใหม่</button>
+<div style="margin-top: 15px;">
+    <button type="button" class="map-btn map-btn-success" onclick="addPointFromCenter()">📌 ปักหมุดตรงเป้าแดง</button>
+    <button type="button" class="map-btn map-btn-success" style="background:#2a9d8f; border-color:#2a9d8f;" onclick="calculateFromPoints()">💾 คำนวณพื้นที่จริง</button>
+    <button type="button" class="map-btn map-btn-danger" onclick="clearAllDrawings()">🗑️ ล้างค่าเริ่มใหม่</button>
 </div>
 
 <div id="result-box" style="background:#111424; padding:15px; border-radius:10px; color:white; font-family:sans-serif; border: 1px solid #9d4edd;">
-    <b style="color:#00ffcc; font-size:16px; text-shadow: 0 0 5px #00ffcc;"> 📐 ผลการวัดพื้นที่จากเส้นวาดมือ:</b>
+    <b style="color:#00ffcc; font-size:16px;"> 📐 หลักฐานขนาดพื้นที่นา (ตามจริง):</b>
     <p id="area-text" style="font-size:24px; margin:5px 0; font-weight:bold; color:#ff3333;">ยังไม่ได้ลากแปลงนา</p>
+    
+    <div style="margin-top:10px;" id="save-panel">
+        <input type="text" id="owner-name" placeholder="ระบุชื่อเจ้าของนา เช่น ตาสี ยายมี" style="padding: 8px; border-radius: 5px; border: 1px solid #9d4edd; width: 250px; background: #090d16; color: white;">
+        <button type="button" class="map-btn" style="padding: 8px 15px; font-size:14px; margin-left:10px;" onclick="saveCurrentData()">💾 บันทึกข้อมูลแปลงนา</button>
+    </div>
+</div>
+
+<div class="history-box">
+    <h3 style="color:#00ffcc; margin-top:0;">📂 บันทึกประวัติที่นาเก่า (กดเปิดดูซ้ำให้เจ้าของดูได้ตลอด)</h3>
+    <div id="history-list">ไม่มีประวัติการบันทึก</div>
 </div>
 
 <script>
-    var map = L.map('map').setView([{default_lat}, {default_lng}], 17);
+    // สั่งเพิ่ม Zoom ตอนเริ่มต้นเป็น 19 (ซูมลึกพิเศษเห็นร่องคันนาชัดขึ้นชัวร์!)
+    var map = L.map('map').setView([{default_lat}, {default_lng}], 19);
 
     var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-        maxZoom: 20,
+        maxZoom: 21,
         maxNativeZoom: 19
     }}).addTo(map);
 
     var drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
 
-    // ปรับโครงสร้างระบบลากเส้น (Draw Config) ให้เหมาะกับการลากเส้นโค้งตามคันนา
-    var drawControl = new L.Control.Draw({{
-        draw: {{
-            polygon: {{
-                allowIntersection: false,
-                showArea: true,
-                guidelineDistance: 10, // เพิ่มความถี่จุดให้ถี่ขึ้นเพื่อรองรับการลากตามโค้งคันแทนา
-                shapeOptions: {{
-                    color: '#00ffcc',
-                    weight: 4,
-                    fillColor: '#00ffcc',
-                    fillOpacity: 0.3
-                }}
-            }},
-            rectangle: false, polyline: false, circle: false, marker: false, circlemarker: false
-        }},
-        edit: {{ featureGroup: drawnItems }}
-    }});
-    map.addControl(drawControl);
+    var customPoints = [];
+    var customPolygon = null;
+    var lastCalculatedText = "";
+    var lastAreaSqMeters = 0;
 
-    // ฟังก์ชันคำนวณพื้นที่และแปลงหน่วย
+    // โหลดประวัติเก่าขึ้นมาแสดงตอนเปิดเว็บทันที
+    window.onload = function() {{
+        loadHistoryList();
+    }};
+
+    function addPointFromCenter() {{
+        var center = map.getCenter();
+        customPoints.push([center.lat, center.lng]);
+
+        L.circleMarker(center, {{radius: 6, color: '#ff3333', fillColor: '#ff3333', fillOpacity: 1}}).addTo(drawnItems);
+
+        if (customPoints.length > 1) {{
+            if (customPolygon) {{ map.removeLayer(customPolygon); }}
+            customPolygon = L.polygon(customPoints, {{color: '#00ffcc', weight: 3, fillOpacity: 0.4}}).addTo(drawnItems);
+        }}
+    }}
+
+    function calculateFromPoints() {{
+        if (customPoints.length < 3) {{
+            alert("ต้องปักหมุดอย่างน้อย 3 มุมขึ้นไปครับแปลงนาถึงจะสมบูรณ์!");
+            return;
+        }}
+        
+        var turfCoords = [];
+        customPoints.forEach(function(pt) {{
+            turfCoords.push([pt[1], pt[0]]);
+        }});
+        turfCoords.push([customPoints[0][1], customPoints[0][0]]);
+
+        var polygonGeoJSON = turf.polygon([turfCoords]);
+        var areaSqMeters = turf.area(polygonGeoJSON);
+        lastAreaSqMeters = areaSqMeters;
+        
+        showAreaResult(areaSqMeters);
+    }}
+
     function showAreaResult(areaSqMeters) {{
         if (areaSqMeters > 0) {{
             var totalWa = areaSqMeters / 4;
@@ -156,33 +229,109 @@ map_html_code = f"""
             var ngan = Math.floor(remainingWa / 100);
             var wa = Math.round(remainingWa % 100);
 
+            lastCalculatedText = rai + " ไร่ " + ngan + " งาน " + wa + " ตารางวา (" + Math.round(areaSqMeters).toLocaleString() + " ตร.ม.)";
+
             document.getElementById('area-text').innerHTML = 
-                "🌾 พื้นที่นาจริง: <span style='color:#00ffcc; text-shadow: 0 0 5px #00ffcc;'>" + rai + " ไร่ </span> " + 
-                "<span style='color:#9d4edd; text-shadow: 0 0 5px #9d4edd;'>" + ngan + " งาน </span> " + 
-                "<span style='color:#ff3333; text-shadow: 0 0 5px #ff3333;'>" + wa + " ตารางวา</span><br>" +
+                "🌾 พื้นที่นาจริง: <span style='color:#00ffcc;'>" + rai + " ไร่ </span> " + 
+                "<span style='color:#9d4edd;'>" + ngan + " งาน </span> " + 
+                "<span style='color:#ff3333;'>" + wa + " ตารางวา</span><br>" +
                 "<span style='font-size:14px; color:#9ca3af; font-weight:normal;'>คำนวณสุทธิ: " + Math.round(areaSqMeters).toLocaleString() + " ตารางเมตร</span>";
         }}
     }}
 
-    // เมื่อวาดเส้นเสร็จสมบูรณ์
-    map.on(L.Draw.Event.CREATED, function (event) {{
-        var layer = event.layer;
-        drawnItems.clearLayers(); // ล้างแปลงเก่าออกก่อนถ้ามีการวาดใหม่
-        drawnItems.addLayer(layer);
+    // ระบบบันทึกข้อมูลลงเครื่อง
+    function saveCurrentData() {{
+        var name = document.getElementById('owner-name').value.trim();
+        if (!name) {{
+            alert("กรุณาพิมพ์ชื่อเจ้าของนาก่อนกดบันทึกครับ!");
+            return;
+        }}
+        if (customPoints.length === 0 || lastAreaSqMeters === 0) {{
+            alert("กรุณาปักหมุดและกดคำนวณพื้นที่ก่อนบันทึกครับ!");
+            return;
+        }}
+
+        var historyData = localStorage.getItem('synapse_farm_history');
+        var historyArr = historyData ? JSON.parse(historyData) : [];
+
+        var newRecord = {{
+            id: Date.now(),
+            owner: name,
+            areaText: lastCalculatedText,
+            points: customPoints
+        }};
+
+        historyArr.push(newRecord);
+        localStorage.setItem('synapse_farm_history', JSON.stringify(historyArr));
         
-        var geojson = layer.toGeoJSON();
-        var areaSqMeters = turf.area(geojson);
-        showAreaResult(areaSqMeters);
-    }});
+        document.getElementById('owner-name').value = "";
+        alert("💾 บันทึกประวัติที่นาของ " + name + " เรียบร้อยแล้ว!");
+        loadHistoryList();
+    }}
+
+    // ระบบโหลดรายชื่อประวัติที่เคยวัดไว้กลับมาแสดงผล
+    function loadHistoryList() {{
+        var historyData = localStorage.getItem('synapse_farm_history');
+        var container = document.getElementById('history-list');
+        
+        if (!historyData || JSON.parse(historyData).length === 0) {{
+            container.innerHTML = "ไม่มีประวัติการบันทึก";
+            return;
+        }}
+
+        var historyArr = JSON.parse(historyData);
+        var html = "";
+        
+        historyArr.forEach(function(item) {{
+            html += "<div class='history-item'>" +
+                    "<div>👤 <b>" + item.owner + "</b> - " + item.areaText + "</div>" +
+                    "<div>" +
+                        "<button type='button' class='map-btn' style='padding:5px 10px; font-size:12px; margin:0 5px 0 0;' onclick='viewOldRecord(" + JSON.stringify(item.points) + ", \"" + item.areaText + "\")'>👁️ เปิดดูแปลง</button>" +
+                        "<button type='button' class='map-btn map-btn-danger' style='padding:5px 10px; font-size:12px; margin:0;' onclick='deleteRecord(" + item.id + ")'>🗑️ ลบ</button>" +
+                    "</div>" +
+                   "</div>";
+        }});
+        container.innerHTML = html;
+    }}
+
+    // เมื่อกด "เปิดดูแปลง" จะดึงพิกัดเก่ามาวาดซ้ำ และสั่งให้แผนที่กระโดดไปโฟกัสตรงนั้นทันที
+    function viewOldRecord(points, areaText) {{
+        clearAllDrawings();
+        customPoints = points;
+        
+        customPoints.forEach(function(pt) {{
+            L.circleMarker([pt[0], pt[1]], {{radius: 6, color: '#ff3333', fillColor: '#ff3333', fillOpacity: 1}}).addTo(drawnItems);
+        }});
+
+        customPolygon = L.polygon(customPoints, {{color: '#00ffcc', weight: 3, fillOpacity: 0.4}}).addTo(drawnItems);
+        
+        // ขยับแผนที่ไปหาแปลงนานั้นโดยอัตโนมัติ
+        map.panTo(new L.LatLng(customPoints[0][0], customPoints[0][1]));
+        
+        document.getElementById('area-text').innerHTML = "📂 กำลังแสดงข้อมูลเก่าของ: " + areaText;
+    }}
+
+    function deleteRecord(id) {{
+        if(confirm("ยืนยันที่จะลบประวัตินี้ใช่ไหมเพื่อน?")) {{
+            var historyData = localStorage.getItem('synapse_farm_history');
+            var historyArr = JSON.parse(historyData);
+            var filtered = historyArr.filter(function(item) {{ return item.id !== id; }});
+            localStorage.setItem('synapse_farm_history', JSON.stringify(filtered));
+            loadHistoryList();
+        }}
+    }}
 
     function clearAllDrawings() {{
         drawnItems.clearLayers();
+        customPoints = [];
+        customPolygon = null;
+        lastAreaSqMeters = 0;
         document.getElementById('area-text').innerHTML = "ยังไม่ได้ลากแปลงนา";
     }}
 </script>
 """
 
-# แสดงคอมโพเนนต์แผนที่ลากมืออิสระ ความสูง 920px กำลังพอดีมือถือ
-st.components.v1.html(map_html_code, height=920, scrolling=False)
+# แสดงคอมโพเนนต์แผนที่ระบบใหม่ที่มีหน่วยความจำตัวเซฟ สูงรวมประวัติแล้วตั้งค่าความสูงเป็น 1100px ให้มองเห็นง่าย
+st.components.v1.html(map_html_code, height=1100, scrolling=False)
 
-st.success("⚡ อัปเกรดระบบ 'ปากกาลากคันนาอิสระ' เรียบร้อย! จิ้มปุ่มห้าเหลี่ยมซ้ายบนแล้วใช้นิ้วหรือปากกาสไตลัสลากตามคันแทนาได้เลยเพื่อน!")
+st.success("⚡ คืนค่าระบบเป้าเล็งกากบาทแดงเดิม + เร่งซูมสุดสเกลระดับ 19 + ติดตั้งฐานข้อมูลเซฟบันทึกเก็บประวัติให้เรียบร้อยแล้วครับเพื่อน!")
