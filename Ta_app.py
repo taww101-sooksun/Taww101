@@ -1,121 +1,44 @@
-# This file is dual licensed under the terms of the Apache License, Version
-# 2.0, and the BSD License. See the LICENSE file in the root of this repository
-# for complete details.
+import streamlit as st
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import db
 
-import binascii
-import itertools
-import os
+st.title("🔥ระบบทดสอบเชื่อมต่อ Firebase")
+st.write("อยู่นิ่งๆ ไม่เจ็บตัว - ศูนย์บัญชาการจำลอง")
 
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
+# 1. ตรวจสอบและตั้งค่า Firebase (ดึงค่าจาก Secrets ตรงๆ)
+if not firebase_admin._apps:
+    try:
+        # แปลงค่า [textkey] จากสตรีมลิตให้อยู่ในรูป dictionary ทันที ไม่ต้องสั่ง loads ซ้ำ
+        cred_dict = dict(st.secrets["textkey"])
+        
+        # แก้ปัญหารหัสอักขระ \n บิดเบี้ยวให้กลับมาขึ้นบรรทัดใหม่จริงตามฟอร์แมตใบรับรอง
+        if "private_key" in cred_dict:
+            cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
+            
+        database_url = st.secrets["databaseURL"]
+        
+        cred = credentials.Certificate(cred_dict)
+        firebase_admin.initialize_app(cred, {
+            'databaseURL': database_url
+        })
+        st.success("✅ เชื่อมต่อ Firebase สำเร็จแล้วเพื่อน!")
+    except Exception as e:
+        st.error(f"❌ ระบบเชื่อมต่อฐานข้อมูลขัดข้อง: {e}")
 
+# 2. ฟังก์ชันทดสอบการรับ-ส่งข้อมูลจริง
+st.subheader("📝 ลองส่งข้อมูลลงฐานข้อมูล")
+user_message = st.text_input("พิมพ์ข้อความที่ต้องการทดสอบ:", "สวัสดี Firebase")
 
-
-def build_vectors(mgf1alg, hashalg, filename):
-    vectors = load_vectors_from_file(filename, load_pkcs1_vectors)
-
-    output = []
-    for vector in vectors:
-        # RSA keys for this must be long enough to accommodate the length of
-        # the underlying hash function. This means we can't use the keys from
-        # the sha1 test vectors for sha512 tests because 1024-bit keys are too
-        # small. Instead we parse the vectors for the test cases, then
-        # generate our own 2048-bit keys for each.
-        private, _ = vector
-        skey = rsa.generate_private_key(65537, 2048)
-        pn = skey.private_numbers()
-        examples = private["examples"]
-        output.append("# =============================================")
-        output.append("# Example")
-        output.append("# Public key")
-        output.append("# Modulus:")
-        output.append(format(pn.public_numbers.n, "x"))
-        output.append("# Exponent:")
-        output.append(format(pn.public_numbers.e, "x"))
-        output.append("# Private key")
-        output.append("# Modulus:")
-        output.append(format(pn.public_numbers.n, "x"))
-        output.append("# Public exponent:")
-        output.append(format(pn.public_numbers.e, "x"))
-        output.append("# Exponent:")
-        output.append(format(pn.d, "x"))
-        output.append("# Prime 1:")
-        output.append(format(pn.p, "x"))
-        output.append("# Prime 2:")
-        output.append(format(pn.q, "x"))
-        output.append("# Prime exponent 1:")
-        output.append(format(pn.dmp1, "x"))
-        output.append("# Prime exponent 2:")
-        output.append(format(pn.dmq1, "x"))
-        output.append("# Coefficient:")
-        output.append(format(pn.iqmp, "x"))
-        pkey = skey.public_key()
-        vectorkey = rsa.RSAPrivateNumbers(
-            p=private["p"],
-            q=private["q"],
-            d=private["private_exponent"],
-            dmp1=private["dmp1"],
-            dmq1=private["dmq1"],
-            iqmp=private["iqmp"],
-            public_numbers=rsa.RSAPublicNumbers(
-                e=private["public_exponent"], n=private["modulus"]
-            ),
-        ).private_key()
-        count = 1
-
-        for example in examples:
-            message = vectorkey.decrypt(
-                binascii.unhexlify(example["encryption"]),
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA1()),
-                    algorithm=hashes.SHA1(),
-                    label=None,
-                ),
-            )
-            assert message == binascii.unhexlify(example["message"])
-            ct = pkey.encrypt(
-                message,
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=mgf1alg),
-                    algorithm=hashalg,
-                    label=None,
-                ),
-            )
-            output.append(
-                f"# OAEP Example {count} alg={hashalg.name} "
-                f"mgf1={mgf1alg.name}"
-            )
-            count += 1
-            output.append("# Message:")
-            output.append(example["message"].decode("utf-8"))
-            output.append("# Encryption:")
-            output.append(binascii.hexlify(ct).decode("utf-8"))
-
-    return "\n".join(output)
-
-
-def write_file(data, filename):
-    with open(filename, "w") as f:
-        f.write(data)
-
-
-oaep_path = os.path.join(
-    "asymmetric", "RSA", "pkcs-1v2-1d2-vec", "oaep-vect.txt"
-)
-hashalgs = [
-    hashes.SHA1(),
-    hashes.SHA224(),
-    hashes.SHA256(),
-    hashes.SHA384(),
-    hashes.SHA512(),
-]
-for hashtuple in itertools.product(hashalgs, hashalgs):
-    if isinstance(hashtuple[0], hashes.SHA1) and isinstance(
-        hashtuple[1], hashes.SHA1
-    ):
-        continue
-
-    write_file(
-        build_vectors(hashtuple[0], hashtuple[1], oaep_path),
-        f"oaep-{hashtuple[0].name}-{hashtuple[1].name}.txt",
-        )
+if st.button("กดส่งข้อมูล"):
+    try:
+        # อ้างอิงพิกัดไปที่โฟลเดอร์ทดสอบในฐานข้อมูล
+        ref = db.reference('test_connect')
+        ref.set({
+            'message': user_message,
+            'status': 'Online',
+            'slogan': 'อยู่นิ่งๆ ไม่เจ็บตัว'
+        })
+        st.success("🚀 ส่งข้อมูลเข้าฐานข้อมูลสำเร็จจริง! ลองเปิดดูในหน้าเว็บ Firebase ได้เลย")
+    except Exception as e:
+        st.error(f"❌ ไม่สามารถส่งข้อมูลได้: {e}")
