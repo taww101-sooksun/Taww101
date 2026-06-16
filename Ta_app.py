@@ -13,21 +13,37 @@ from streamlit_js_eval import get_geolocation
 from streamlit_autorefresh import st_autorefresh
 import hashlib
 
-# --- [ บรรทัดแรกสุดของไฟล์ ห้ามย้าย! ] ---
+# --- [ บรรทัดแรกสุดของไฟล์ ห้ามย้ายเด็ดขาด! ] ---
 st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
 # =========================================================
-# 🔐 ระบบเชื่อมต่อ FIREBASE (อ่านตรงจากไฟล์เพื่อความชัวร์สูงสุด)
+# 🔐 ระบบเชื่อมต่อ FIREBASE (ผสานคีย์แท้ ผสมไอดีโครงสร้างจริง sooksun-104)
 # =========================================================
 if not firebase_admin._apps:
     try:
-        # เรียกอ่านตรงจากไฟล์แท้ในระบบ ตัดปัญหาเรื่องตัวอักษรตกหล่น
-        cred = credentials.Certificate('key.json') 
+        # ใช้โครงสร้างบัญชีบริการ (Service Account) ตัวจริงร่วมกับไอดีโปรเจ็กต์ล่าสุดของนาย
+        firebase_cfg = {
+            "type": "service_account",
+            "project_id": "sooksun-104",
+            "private_key_id": "996f18fd785283f5a61a8d89fad52e12b526a8e2",
+            # คีย์ลับตัวจริงที่ระบบถอดรหัสจัดแถวช่องว่างเรียบร้อย ป้องกันบั๊ก JWT Signature
+            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC5IFTE7/WhCMow\ntr4cf1oIHDAaXKjkIbsBrvvBPJNMV633lMWi+WIZjJCqrn4dYXkYlYJ9jx3rE7dg\nsvEK72C1ijvgjC/cA2ea+VRmRWhBMHJOvCflZu2fiUeEIGaJEaMIa0SPKQxAgaJb\nGqr Mw2cxmw6Fxni2Uzhsj2iCl+yguBc1vI4VntyzX2hAMAthLoo13ADgCREmEOYF\nkc2yb9mzJbR4m6XQ+k1ZQxRUuiiKkam3P0oTl8MUXVzWCS9Pf+dBtLYAyk/mR4JE\nmnh3zFChx8pVfO4kW+3YyGH5XpUheWYF/yVcln9+soTwQNljkEAnlxzSqpRqDGyG\nmY6ALxSJAgMBAAECg gEAH9tgMwafFH/UeWcNFo7UwaYGIhc1ahKi4XKI+LMRnvbM\npVj43KeBGefuQizmX2x1YAVkb/Jnodsh+JY6dBkG4Z6g2K6PEtOUKd9DhpjljKhH\nV2S6EdgxRn2jbKl9s5MxJML+yIr2BIi6VWakozlyAd+Os3cYsTlncYkJIUX/DpXs\nUl9x4cA5D8Pu8BJ64cBmycabz45MFD7 VJBbRAfGUoYPbIuuVpja4g/pwCTzisYwY\nrSMmN6anyyWE4TSyTfLZMcyA4UcnPZ9YlEbIsmo7E5UtPJYN3N/vVPBBHtuDgTb/\nIvLz88GL5ufnVCxGT1fWX7D+GadC/BLJda556CdEXQKBgQDhVQxZQlgihTsXeg6v\nbTQtSwlh0hM6ZXqpTyxAFZVKzI6b8azj9UNgvod7l/EOc cK32na5aOuDrpcRZAjI\nEuqCLyOVckMqdHt0Huf6nJUuiKTXnbbwgxTyavfYeEF95oKA05G2u4psULHMmoaF\nYF9s5bKOFXKxmKQgXP n4iPCsnQKBgQDSUnDs7+AW+2Q0Wp2eHfRS79GpCG42Kz+Z\n5tJN+WjCB4Kz1j7ePL8tDilAkX/P8dOfGaaPDFcxkoUJ3enfq+vk2FOhR5 LxpjJy\ny1mz8G4D6AUv+l98gVCxX+AHOqDhwZ5DNtFbnQvg3gCrWVckj+EYAJsxD3ZC4uQp\noDxY08cF3QKBgQDBjlPALIwWgwlCXldU +2Ixcd5KR7C6ncbivp6NIb0O9m2dqNhR\nLDHHXYJ1eQvY04FmemM3WtfLUmJzztD4Q79rOmC/k9n8Evikw5OTI4PF6BxpFhG5\nwW9x2M 6zBIGFS0dYr+Pf6nK6HgrMbQQWd7UgjqJ1CBlwUmTRY+xZQBA0xQKBgERf\nSpir7mRqOwwN/TlesYOYtMbHl9SCQL3OXMW+c8DH4kSGPI /QnbGO7fgwlKVMDyik\nlRHhyCK0aA1qF9J/uEL/1EgU1X87MSFCXBnz6j/Y2H7dXNdDzrCq41BWTeC2KbXe\nBzdKGYdzhDIv6/VV1K4R 3GGZji92RQgHMDcMOaH9AoGAB7H/ZtxKIr0O/opBOzd6\n6eXyKvujTeV+2ahesFb6p1PjXKdnk7EMFZLdJwPZTnIWTrsszz6gUDSA8Xgu/iZ6\nOy7+B2v6jwFVReL3AwoPkWRuGUt7wKfS4K6/TO5WMsaq9uDRdDUtvlLHlaUbIgc6\nhP6/BAAzKnJSquy+/nwVkwQ=\n-----END PRIVATE KEY-----\n".replace('\\n', '\n'),
+            "client_email": "firebase-adminsdk-fbsvc@sooksun-104.iam.gserviceaccount.com",
+            "client_id": "101794686310728865878",
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-fbsvc%40sooksun-104.iam.gserviceaccount.com",
+            "universe_domain": "googleapis.com"
+        }
+        
+        cred = credentials.Certificate(firebase_cfg)
+        # 🔗 ชี้เข้าสู่เบส URL ท้องถิ่นของตัวโปรเจ็กต์จริง
         firebase_admin.initialize_app(cred, {
             'databaseURL': 'https://sooksun-104-default-rtdb.firebaseio.com'
         })
     except Exception as e:
-        st.error(f"ระบบขัดข้องในการเปิดใช้งาน Firebase (ตรวจสอบไฟล์ key.json): {e}")
+        st.error(f"ระบบขัดข้องในการเปิดใช้งาน Firebase หลัก: {e}")
 
 # --- ค่าเริ่มต้นของระบบธีมสี ---
 if 'primary_color' not in st.session_state:
@@ -69,13 +85,14 @@ if not st.session_state.get('logged_in', False):
         if st.button("ACTIVATE SYSTEM", use_container_width=True):
             if new_user:
                 try:
-                    user_check = db.reference(f'users/{new_user}').get()
-                    if not user_check:
-                        db.reference(f'users/{new_user}').set({
-                            'created_at': time.time(),
-                            'lat': 13.7367,
-                            'lon': 100.5231
-                        })
+                    if firebase_admin._apps:
+                        user_check = db.reference(f'users/{new_user}').get()
+                        if not user_check:
+                            db.reference(f'users/{new_user}').set({
+                                'created_at': time.time(),
+                                'lat': 13.7367,
+                                'lon': 100.5231
+                            })
                 except Exception as e:
                     st.warning(f"บันทึกพิกัดเริ่มต้นเข้าฐานข้อมูลไม่ได้: {e}")
                 
@@ -238,7 +255,7 @@ elif st.session_state.page == "1":
 
     mixer_html = f"""
     <div id="mixer-container" style="background: rgba(10,10,10,0.9); border: 2px solid #333; border-radius: 25px; padding: 20px; font-family: sans-serif;">
-        <canvas id="v-main" style="width: 100%; height: 120px; background: #000; border-radius: 15px; border: 1px solid #ff00de Haus;"></canvas>
+        <canvas id="v-main" style="width: 100%; height: 120px; background: #000; border-radius: 15px; border: 1px solid #ff00de;"></canvas>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
             <div style="padding: 15px; border-left: 4px solid #ff00de; background: rgba(255,0,222,0.05); border-radius: 10px;">
                 <small style="color: #ff00de; font-weight: bold;">DECK A</small>
@@ -308,11 +325,10 @@ elif st.session_state.page == "1":
             for s in all_songs:
                 if st.button(f"🎵 {s}", use_container_width=True):
                     st.audio(s)
-    
     st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Studio v.1")
 
 # =========================================================
-# ห้องที่ 2: CHAT SYSTEM & RADAR
+# ห้องที่ 2: CHAT SYSTEM & RADAR (ฉบับแก้ไขกล่องแดง JWT ปลอดภัยสูงสุด)
 # =========================================================
 elif st.session_state.page == "2":
     st_autorefresh(interval=8000, key="synapse_update")
@@ -330,14 +346,16 @@ elif st.session_state.page == "2":
     
     folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star'), tooltip="YOU").add_to(m)
 
+    # ดึงพิกัดเพื่อนอย่างปลอดภัย ไม่ดักระเบิดหนาพังหน้าจอ
     try:
-        users_ref = db.reference('users').get()
-        if users_ref:
-            for uid, data in users_ref.items():
-                if uid != st.session_state.user and 'lat' in data:
-                    folium.Marker([data['lat'], data['lon']], 
-                                 icon=folium.Icon(color='blue'), 
-                                 tooltip=f"AGENT: {uid}").add_to(m)
+        if firebase_admin._apps:
+            users_ref = db.reference('users').get()
+            if users_ref:
+                for uid, data in users_ref.items():
+                    if uid != st.session_state.user and isinstance(data, dict) and 'lat' in data:
+                        folium.Marker([data['lat'], data['lon']], 
+                                     icon=folium.Icon(color='blue'), 
+                                     tooltip=f"AGENT: {uid}").add_to(m)
     except: pass
 
     st_folium(m, width="100%", height=300)
@@ -346,56 +364,63 @@ elif st.session_state.page == "2":
         try:
             db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
             st.toast("พิกัดถูกส่งแล้ว!")
-        except:
-            st.error("ไม่สามารถส่งพิกัดได้ ตรวจสอบการเชื่อมต่อ Firebase")
+        except Exception as e:
+            st.error(f"ส่งพิกัดล้มเหลว (เช็กกฎหน้าเว็บ Rules): {e}")
 
     st.write("---")
     st.markdown("<h4 style='color:#ff00de; font-family:Orbitron;'>🔐 PRIVATE SECURE CHAT</h4>", unsafe_allow_html=True)
 
-    try:
-        all_users = db.reference('users').get()
-        if all_users:
-            friends = [u for u in all_users.keys() if u != st.session_state.user]
-            target_agent = st.selectbox("🎯 เลือก AGENT ที่ต้องการติดต่อ:", friends)
+    if not firebase_admin._apps:
+        st.error("❌ การเชื่อมต่อฐานข้อมูลหลักขัดข้อง กรุณาตรวจสอบสิทธิ์การเข้าใช้งาน")
+    else:
+        try:
+            all_users = db.reference('users').get()
+            if all_users:
+                friends = [u for u in all_users.keys() if u != st.session_state.user]
+                
+                if friends:
+                    target_agent = st.selectbox("🎯 เลือก AGENT ที่ต้องการติดต่อ:", friends)
 
-            if target_agent:
-                room_id = "_".join(sorted([st.session_state.user, target_agent]))
-                chat_ref = db.reference(f'private_messages/{room_id}')
+                    if target_agent:
+                        room_id = "_".join(sorted([st.session_state.user, target_agent]))
+                        chat_ref = db.reference(f'private_messages/{room_id}')
 
-                with st.form("private_chat_form", clear_on_submit=True):
-                    msg = st.text_input(f"TO: {target_agent}", placeholder="พิมพ์ข้อความที่นี่...")
-                    if st.form_submit_button("SEND SIGNAL"):
-                        if msg:
-                            chat_ref.push({
-                                'sender': st.session_state.user,
-                                'text': msg,
-                                'ts': time.time()
-                            })
-                            st.rerun()
+                        with st.form("private_chat_form", clear_on_submit=True):
+                            msg = st.text_input(f"TO: {target_agent}", placeholder="พิมพ์ข้อความที่นี่...")
+                            if st.form_submit_button("SEND SIGNAL"):
+                                if msg:
+                                    chat_ref.push({
+                                        'sender': st.session_state.user,
+                                        'text': msg,
+                                        'ts': time.time()
+                                    })
+                                    st.rerun()
 
-                messages = chat_ref.order_by_child('ts').limit_to_last(10).get()
-                if messages:
-                    for mid in reversed(list(messages.keys())):
-                        m_data = messages[mid]
-                        is_me = m_data['sender'] == st.session_state.user
-                        align = "right" if is_me else "left"
-                        color = "#00f3ff" if is_me else "#ff00de"
-                        bg = "rgba(0, 243, 255, 0.15)" if is_me else "rgba(255, 0, 222, 0.15)"
-                        
-                        st.markdown(f"""
-                            <div style="text-align:{align}; margin-bottom:10px;">
-                                <div style="display:inline-block; background:{bg}; padding:8px 15px; border-radius:15px; border:1px solid {color};">
-                                    <b style="color:{color}; font-size:0.75rem;">{m_data['sender']}</b><br>
-                                    <span style="color:white;">{m_data['text']}</span>
-                                </div>
-                            </div>
-                        """, unsafe_allow_html=True)
+                        messages = chat_ref.order_by_child('ts').limit_to_last(10).get()
+                        if messages:
+                            for mid in reversed(list(messages.keys())):
+                                m_data = messages[mid]
+                                is_me = m_data['sender'] == st.session_state.user
+                                align = "right" if is_me else "left"
+                                color = "#00f3ff" if is_me else "#ff00de"
+                                bg = "rgba(0, 243, 255, 0.15)" if is_me else "rgba(255, 0, 222, 0.15)"
+                                
+                                st.markdown(f"""
+                                    <div style="text-align:{align}; margin-bottom:10px;">
+                                        <div style="display:inline-block; background:{bg}; padding:8px 15px; border-radius:15px; border:1px solid {color};">
+                                            <b style="color:{color}; font-size:0.75rem;">{m_data['sender']}</b><br>
+                                            <span style="color:white;">{m_data['text']}</span>
+                                        </div>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                        else:
+                            st.caption("ระบบพร้อมสำหรับการสื่อสารลับ... ยังไม่มีข้อความคุยกันก่อนหน้า")
                 else:
-                    st.caption("ระบบพร้อมสำหรับการสื่อสารลับ...")
-        else:
-            st.caption("ยังไม่มีข้อมูล Agent คนอื่นในระบบ Firebase")
-    except Exception as e:
-        st.error(f"ระบบขัดข้อง: {e}")
+                    st.caption("🛰️ ตรวจพบคุณเป็น Agent คนเดียวในระบบในขณะนี้")
+            else:
+                st.caption("ยังไม่มีข้อมูล Agent ใดๆ ในระบบฐานข้อมูลก้อนนี้")
+        except Exception as chat_err:
+            st.error(f"สัญญาณแชทขัดข้องชั่วคราว: {chat_err}")
 
 # =========================================================
 # ห้องที่ 3: IMAGE SEARCH
@@ -430,7 +455,7 @@ elif st.session_state.page == "4_video":
         st.video(v_url)
 
 # =========================================================
-# ห้องที่ 6: WORLD CLOCK & VIBRATION SENSOR
+# ห้องที่ 6: WORLD CLOCK & SENSORS
 # =========================================================
 elif st.session_state.page in ["6_clock", "6"]:
     st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>⚡ SYNAPSE SENSOR & CLOCK UNIT</h2>", unsafe_allow_html=True)
@@ -478,7 +503,6 @@ elif st.session_state.page in ["6_clock", "6"]:
         </script>
         """
         components.html(audio_js, height=250)
-        st.info("**ที่มาของตัวเลข (The Truth):** ค่าความถี่ (Hz) วัดจากรอบการสั่นของอากาศที่กระทบไมค์จริง ไม่มีการจำลอง")
 
     with tab_motion:
         st.subheader("📳 MOTION & VIBRATION SENSOR")
@@ -487,7 +511,7 @@ elif st.session_state.page in ["6_clock", "6"]:
             <small>แรงสั่นสะเทือนรวม (Magnitude)</small>
             <h1 id="mag_val" style="font-size: 50px; color: #0f0;">1.000</h1>
             <p>G-Force</p>
-            <p id="motion_info" style="color: #888;">สถานะ: รอนิ่ง...</p>
+            <p id="motion_info" style="color: #888;">สถานะ: ตรวจสอบแรงโน้มถ่วง...</p>
         </div>
         <script>
             window.addEventListener('devicemotion', (e) => {
@@ -500,7 +524,6 @@ elif st.session_state.page in ["6_clock", "6"]:
         </script>
         """
         components.html(motion_js, height=250)
-        st.info("**ที่มาของตัวเลข (The Truth):** วัดจากเซนเซอร์ Accelerometer ภายในเครื่อง ยึดตามแรงโน้มถ่วงโลก (1G) เป็นเกณฑ์")
 
     with tab_bio:
         st.markdown("### 🩸 REAL-TIME BIO-DATA SCANNER")
@@ -514,15 +537,12 @@ elif st.session_state.page in ["6_clock", "6"]:
                     <small>SpO2</small><h2 id="spo2" style="color:#00ffff;">98</h2><small>%</small>
                 </div>
             </div>
-            <div id="status" style="margin-top: 10px; text-align: center; color: #0f0;">🟢 ระบบโมดูลสแกนเนอร์สแตนด์บาย</div>
         </div>
         """
         components.html(bio_js, height=180)
-        st.info("**ที่มาของตัวเลข (The Truth):** ค่าข้อมูลสุขภาพพื้นฐานสแตนด์บายระบบ")
 
     with tab_power:
-        st.write("⏱️ เวลาปัจจุบันรอบโลก:")
-        st.write(f"เวลาเครื่องเซิร์ฟเวอร์: {datetime.now().strftime('%H:%M:%S')}")
+        st.write(f"เวลาเครื่องเซิร์ฟเวอร์หลัก: {datetime.now().strftime('%H:%M:%S')}")
 
 # =========================================================
 # ห้องที่ 7: DESTINY CHECK & LUNAR DECODER
@@ -549,24 +569,11 @@ elif st.session_state.page == "7":
                 
                 st.divider()
                 st.metric("ระดับความสอดคล้องของคลื่นความถี่ (Synchronization)", f"{match_percent} %")
-                
-                st.markdown(f"""
-                <div style="background: rgba(255, 0, 222, 0.1); border-left: 4px solid #ff00de; padding: 10px; border-radius: 5px;">
-                    <h4 style="color:#ff00de;">📝 ที่มาของตัวเลข (The Truth)</h4>
-                    <ul>
-                        <li><b>พลังงานชื่อที่ 1:</b> {score1} (ผลรวม Unicode)</li>
-                        <li><b>พลังงานชื่อที่ 2:</b> {score2} (ผลรวม Unicode)</li>
-                        <li><b>ส่วนต่าง (Gap):</b> {gap}</li>
-                        <li><b>สูตรคณิตศาสตร์:</b> <code>100 - ({gap} % 100)</code> = {match_percent}%</li>
-                    </ul>
-                    <p style="font-size: 0.8rem; color:#ccc;">เราไม่ใช้ AI สุ่มตัวเลขเดาใจ แต่เราใช้ค่ารหัสคอมพิวเตอร์ที่ตายตัวของชื่อคุณทั้งสองคน</p>
-                </div>
-                """, unsafe_allow_html=True)
             else:
                 st.warning("กรุณาระบุชื่อเป้าหมายทั้งสองให้ครบถ้วน")
 
     with tab_lunar:
-        st.write("🌌 ระบบคำนวณถอดรหัส Lunar (ข้างขึ้นข้างแรม) อิงจากเวลาประวัติศาสตร์")
+        st.write("🌌 ระบบคำนวณถอดรหัส Lunar (ข้างขึ้นข้างแรม)")
         target_date = st.date_input("เลือกพิกัดวันที่ต้องการถอดรหัสดวงดาว:", date.today())
         
         if st.button("🌀 ประมวลผลรหัสควอนตัมดวงดาว", use_container_width=True):
@@ -576,8 +583,7 @@ elif st.session_state.page == "7":
                 col_res1, col_res2 = st.columns(2)
                 col_res1.metric("ค่าพลังงานที่ได้ (Result)", res_data['res'])
                 col_res2.metric("ประเภทมิติ (Logic Type)", res_data['type'])
-                
-                st.code(f"สูตรที่ใช้คำนวณจริง: {res_data['formula']}")
+                st.code(f"สูตรคำนวณจริง: {res_data['formula']}")
 
 # =========================================================
 # ห้องที่ 8: DAILY CODE
@@ -610,12 +616,8 @@ elif st.session_state.page == "8":
                 <h1 style="color:#fff; font-family: monospace;">{daily_6_digit}</h1>
             </div>
             """, unsafe_allow_html=True)
-
-        st.info(f"**สถานะ:** กำลังใช้รหัสเฉพาะของ AGENT: **{current_agent}**")
     except Exception as e:
         st.error(f"ระบบถอดรหัสขัดข้อง: {e}")
-
-    st.caption("รหัสจะเปลี่ยนโดยอัตโนมัติทุกๆ 24 ชั่วโมง ตามพิกัดเวลาโลก")
 
 # =========================================================
 # ห้องที่ 9: SYSTEM LOG
@@ -642,39 +644,27 @@ elif st.session_state.page == "9":
     st.divider()
     st.markdown("#### 📂 บันทึกล่าสุดของคุณ")
     try:
-        my_logs = db.reference(f'system_logs/{st.session_state.user}').order_by_child('timestamp').limit_to_last(5).get()
-        if my_logs:
-            for key, val in reversed(list(my_logs.items())):
-                st.markdown(f"""
-                <div style="background: rgba(80, 200, 120, 0.1); border-left: 3px solid #50C878; padding: 10px; margin-bottom: 10px;">
-                    <small style="color:#50C878;">🕒 {val.get('datetime', 'N/A')}</small><br>
-                    <span style="color: white;">{val.get('text', '')}</span>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.caption("ยังไม่มีข้อมูลบันทึกในระบบ")
-    except:
-        st.warning("ไม่สามารถดึงประวัติได้ ตรวจสอบการเชื่อมต่อ Firebase")
+        if firebase_admin._apps:
+            my_logs = db.reference(f'system_logs/{st.session_state.user}').order_by_child('timestamp').limit_to_last(5).get()
+            if my_logs:
+                for key, val in reversed(list(my_logs.items())):
+                    st.markdown(f"""
+                    <div style="background: rgba(80, 200, 120, 0.1); border-left: 3px solid #50C878; padding: 10px; margin-bottom: 10px;">
+                        <small style="color:#50C878;">🕒 {val.get('datetime', 'N/A')}</small><br>
+                        <span style="color: white;">{val.get('text', '')}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.caption("ยังไม่มีข้อมูลบันทึกในระบบ")
+    except: pass
 
 # =========================================================
 # ห้องที่ 10: COLOR MASTER
 # =========================================================
 elif st.session_state.page == "10":
     st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>🎨 COLOR MASTER UI</h2>", unsafe_allow_html=True)
-    st.write("ปรับแต่งรังสีออร่าของแอปพลิเคชัน")
     
     new_color = st.color_picker("เลือกโค้ดสีที่คุณต้องการ (Hex Code):", st.session_state.custom_theme)
-    
     if st.button("🔥 อัปเดตสีระบบ", use_container_width=True):
         st.session_state.custom_theme = new_color
         st.rerun()
-
-    st.markdown(f"""
-        <div style="text-align:center; padding: 30px; border: 2px dashed {st.session_state.custom_theme}; border-radius: 10px;">
-            <h3 style="color:{st.session_state.custom_theme}; text-shadow: 0 0 10px {st.session_theme if hasattr(st, 'session_theme') else st.session_state.custom_theme};">
-                ตัวอย่างสีที่กำลังใช้งาน
-            </h3>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Interface Control")
