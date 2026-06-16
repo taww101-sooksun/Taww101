@@ -1,1 +1,30 @@
-
+{
+  "project_info": {
+    "project_number": "347551399794",
+    "firebase_url": "https://sooksun-104-default-rtdb.firebaseio.com",
+    "project_id": "sooksun-104",
+    "storage_bucket": "sooksun-104.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:347551399794:android:e6114654ac435da78b27eb",
+        "android_client_info": {
+          "package_name": "sooksun101.streamlit.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHjLvM0DYo1bqoS6mPOi1_JDQjeP6MfQ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
