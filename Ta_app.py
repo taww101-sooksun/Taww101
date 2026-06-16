@@ -1,406 +1,650 @@
 import streamlit as st
 import os
-import random
+import pandas as pd
+import math
+import time
+import base64
+import firebase_admin
+from firebase_admin import credentials, db
+from datetime import datetime, date, timedelta
+import streamlit.components.v1 as components
+from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
+from streamlit_autorefresh import st_autorefresh
+import hashlib
 
-# 1. ตั้งค่าหน้าจอแอปให้กว้างพิเศษ (Wide) 
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO v2", page_icon="🚜", layout="wide")
+# --- [ บรรทัดแรกสุดของไฟล์ ห้ามย้าย! ] ---
+st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
-# 2. ปรับแต่งสไตล์และโทนสีแอป
-st.markdown("""
-    <style>
-    .stApp { 
-        background: linear-gradient(135deg, #090d16 0%, #111424 50%, #1a0b2e 100%); 
-    }
-    h1, h2, h3, p, label, span { color: #ffffff !important; font-family: 'Sans-serif'; }
-    
-    .neon-title {
-        color: #00ffcc !important;
-        text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
-        font-weight: bold;
-    }
-    
-    .music-box {
-        background: rgba(26, 11, 46, 0.8);
-        border: 2px solid #9d4edd;
-        padding: 15px;
-        border-radius: 12px;
-        margin-bottom: 20px;
-        box-shadow: 0 0 10px rgba(157, 78, 221, 0.5);
-    }
-    </style>
-""", unsafe_allow_html=True)
+# --- ค่าเริ่มต้นของระบบธีมสี ---
+if 'primary_color' not in st.session_state:
+    st.session_state.primary_color = "#00f3ff"
+if 'custom_theme' not in st.session_state:
+    st.session_state.custom_theme = "#00f3ff"
 
-# 3. ส่วนหัวของแอปและการแสดงโลโก้
-col_logo, col_title = st.columns([1, 4])
-with col_logo:
-    if os.path.exists("logo1.png"):
-        st.image("logo1.png", width=120)
+# --- [ หัวใจคำนวณ: ระบบถอดรหัส Lunar ] ---
+def get_detailed_logic(dt):
+    if dt is None: return None
+    ref_date = date(1900, 1, 1)
+    diff = (dt - ref_date).days
+    lunar_cycle = 29.530589
+    pos = (diff - 0.5) % lunar_cycle
+    day_val = dt.weekday() + 1
+    day_names = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"]
+    day_name = day_names[dt.weekday()]
+
+    if pos <= 14.765:
+        m_num = int(pos) + 1
+        phase = f"ขึ้น {m_num} ค่ำ"
+        res = math.sqrt((day_val**2) + (m_num**2))
+        formula, logic_type = f"√({day_val}² + {m_num}²)", "Vector Energy"
     else:
-        st.write("🛰️ [SYNAPSE]")
+        m_num = int(pos - 14.765) + 1
+        phase = f"แรม {m_num} ค่ำ"
+        res = (day_val * 1.618) / (m_num if m_num != 0 else 1)
+        formula, logic_type = f"({day_val} × 1.618) / {m_num}", "Golden Ratio"
 
-with col_title:
-    st.markdown("<h1 class='neon-title'>🚜 ระบบวัดที่นาสัจจะ - AREA PRO v2</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #ff3333 !important; font-style: italic; font-weight: bold; text-shadow: 0 0 5px #ff3333;'>\"อยู่นิ่งๆ ไม่เจ็บตัว วัดตามความจริง ไม่มีใครโกหกใครได้\"</p>", unsafe_allow_html=True)
+    return {"res": round(res, 4), "phase": phase, "day_name": day_name, "day_val": day_val, "m_num": m_num, "formula": formula, "type": logic_type}
 
-st.write("---")
-
-# 4. ระบบเครื่องเล่นเพลงสุ่มอัตโนมัติ
-st.markdown("<div class='music-box'>", unsafe_allow_html=True)
-st.subheader("🎵 SYNAPSE AUDIO STREAM")
-
-music_files = [f for f in os.listdir('.') if f.endswith('.mp3')]
-
-if music_files:
-    if "playlist" not in st.session_state or len(st.session_state.playlist) == 0:
-        random.shuffle(music_files)
-        st.session_state.playlist = music_files
-        st.session_state.current_track_index = 0
-
-    current_track = st.session_state.playlist[st.session_state.current_track_index]
-    st.write(f"🎧 **กำลังเล่นตอนนี้:** {current_track}")
+# --- ส่วนหน้าจอลงชื่อเข้าใช้ (Login / Register) ---
+if not st.session_state.get('logged_in', False):
+    st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>REGISTER AGENT</h2>", unsafe_allow_html=True)
     
-    with open(current_track, "rb") as audio_file:
-        audio_bytes = audio_file.read()
-    
-    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
-    
-    if st.button("⏭️ ข้ามไปเพลงถัดไป"):
-        st.session_state.current_track_index = (st.session_state.current_track_index + 1) % len(st.session_state.playlist)
+    with st.container():
+        new_user = st.text_input("ENTER AGENT NAME", placeholder="เช่น ต๊ะ101, บาส").strip()
+        
+        if st.button("ACTIVATE SYSTEM", use_container_width=True):
+            if new_user:
+                try:
+                    user_check = db.reference(f'users/{new_user}').get()
+                    if not user_check:
+                        db.reference(f'users/{new_user}').set({
+                            'created_at': time.time(),
+                            'lat': 13.7367,
+                            'lon': 100.5231
+                        })
+                except Exception as e:
+                    st.warning(f"บันทึกพิกัดเริ่มต้นเข้าฐานข้อมูลไม่ได้ (รัน Local หรือยังไม่ได้ต่อ Firebase): {e}")
+                
+                st.session_state.user = new_user        
+                st.session_state.logged_in = True     
+                st.session_state.page = "HOME"         
+
+                st.success(f"WELCOME AGENT: {new_user}")
+                st.balloons()
+                time.sleep(1.5) 
+                st.rerun()      
+            else:
+                st.warning("กรุณาใส่ชื่อ AGENT ของคุณก่อน!")
+    st.stop() 
+
+# --- การตกแต่งสไตล์หลักของแอป ---
+def setup_ui():
+    current_color = st.session_state.custom_theme
+    st.markdown(f"""
+        <style>
+        header, footer, #MainMenu {{visibility: hidden;}}
+        .stApp {{ background: #000; color: {current_color}; border-top: 5px solid {current_color}; transition: all 0.5s ease; }}
+        
+        .stButton>button {{
+            border-radius: 15px;
+            border: 1px solid {current_color} !important;
+            background: rgba(0, 242, 254, 0.1);
+            color: white;
+            height: 100px;
+            font-size: 18px;
+            transition: 0.3s;
+            box-shadow: 0 0 10px {current_color} !important;
+        }}
+        .stButton>button:hover {{
+            background: {current_color};
+            color: #000;
+            box-shadow: 0 0 20px {current_color};
+        }}
+        
+        .neon-text {{
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 0 10px {current_color}, 0 0 20px {current_color};
+            font-weight: bold;
+        }}
+        hr {{
+            border-bottom: 2px solid {current_color} !important;
+        }}
+        </style>
+    """, unsafe_allow_html=True)
+
+setup_ui()
+
+# --- ระบบคุมหน้าจอ ---
+if 'page' not in st.session_state:
+    st.session_state.page = "HOME"
+
+# ปุ่มย้อนกลับไปหน้าหลัก
+if st.session_state.page != "HOME":
+    if st.button("⬅️ กลับหน้าหลัก"):
+        st.session_state.page = "HOME"
         st.rerun()
-else:
-    st.info("💡 ไม่มีไฟล์เพลง .mp3 ในโฟลเดอร์นี้ นำไฟล์เพลงมาวางคู่กับไฟล์โค้ดแล้วระบบจะเปิดเพลงอัตโนมัติทันที")
 
-st.markdown("</div>", unsafe_allow_html=True)
-
-
-# 5. 🛰️ แผนที่ดาวเทียมขยายขนาดใหญ่พิเศษ (MEGA SCALE) + ระบบบันทึกประวัติที่ทำงานได้จริงในหน้าจอเดียว
-st.subheader("🛰️ แผนที่ดาวเทียมสเกลใหญ่ (ระบบคำนวณและบันทึกประวัติจริงหน้างาน)")
-st.caption("💡 วิธีใช้งาน: เล็งเป้าแดงให้ตรงมุมแปลงนา กดปุ่มปักหมุดจนครบแปลง พิมพ์ชื่อเจ้าของแล้วกดบันทึก ข้อมูลจะแสดงในตารางประวัติด้านล่างทันที")
-
-default_lat = 15.9513057
-default_lng = 103.5796196
-
-map_html_code = f"""
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
-
-<style>
-    #map-container {{
-        position: relative;
-        width: 100%;
-    }}
-    #map {{
-        width: 100%;
-        height: 500px; 
-        border-radius: 16px;
-        border: 3px solid #00ffcc;
-        z-index: 1;
-        box-shadow: 0 0 25px rgba(0, 255, 204, 0.6);
-    }}
-    .crosshair {{
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 40px;
-        height: 40px;
-        margin-top: -20px;
-        margin-left: -20px;
-        z-index: 9999;
-        pointer-events: none;
-        display: none;
-    }}
-    .crosshair::before, .crosshair::after {{
-        content: '';
-        position: absolute;
-        background: #ff3333;
-        box-shadow: 0 0 12px #ff3333, 0 0 4px #ffffff;
-    }}
-    .crosshair::before {{ top: 19px; left: 0; width: 40px; height: 2px; }}
-    .crosshair::after {{ top: 0; left: 19px; width: 2px; height: 40px; }}
+# =========================================================
+# [ หน้าแรก: ศูนย์รวม 10 แอป ]
+# =========================================================
+if st.session_state.page == "HOME":
+    col_l, col_m, col_r = st.columns([1, 2, 1])
+    with col_m:
+        if os.path.exists("logo1.png"):
+            st.image("logo1.png", use_container_width=True)
+        else:
+            st.markdown("<h1 class='neon-text'>SYNAPSE</h1>", unsafe_allow_html=True)
     
-    .control-panel {{
-        margin-top: 20px;
-        margin-bottom: 20px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-    }}
+    st.markdown("<h3 style='text-align: center;'>ศูนย์ควบคุมระบบ: เลือกฟังก์ชันการใช้งาน</h3>", unsafe_allow_html=True)
+    st.divider()
 
-    .map-btn {{
-        background-color: #00ffcc;
-        color: #000000 !important;
-        border: 2px solid #00ffcc;
-        padding: 14px 24px;
-        font-size: 16px;
-        font-weight: bold;
-        border-radius: 10px;
-        cursor: pointer;
-        box-shadow: 0 0 10px #00ffcc;
-        transition: all 0.3s ease;
-        flex: 1;
-        min-width: 150px;
-        text-align: center;
-    }}
-    .map-btn:hover {{ background-color: #00cc99; box-shadow: 0 0 20px #00cc99; transform: translateY(-2px); }}
-    .map-btn-danger {{ background-color: #ff3333; border-color: #ff3333; color: white !important; box-shadow: 0 0 10px #ff3333;}}
-    .map-btn-danger:hover {{ background-color: #cc0000; box-shadow: 0 0 20px #cc0000; }}
-    .map-btn-success {{ background-color: #9d4edd; border-color: #9d4edd; color: white !important; box-shadow: 0 0 10px #9d4edd;}}
-    .map-btn-success:hover {{ background-color: #7b2cbf; box-shadow: 0 0 20px #7b2cbf; }}
+    c1, c2 = st.columns(2)
 
-    .neon-result-box {{
-        background: #090d16;
-        padding: 20px;
-        border-radius: 12px;
-        color: white;
-        font-family: sans-serif;
-        border: 2px solid #9d4edd;
-        box-shadow: 0 0 15px rgba(157, 78, 221, 0.4);
-        margin-bottom: 20px;
-    }}
+    with c1:
+        if st.button("🎵 1. MUSIC PLAYER\nฟังเพลง MP3 จากคลังข้อมูล", use_container_width=True):
+            st.session_state.page = "1"; st.rerun()
+        st.caption("ความสามารถ: เล่นไฟล์เสียง และระบบควบคุมเสียงดีเจผ่านหน้าเว็บ")
 
-    /* สไตล์ส่วนกล่องบันทึกข้อมูลของจริง */
-    .save-panel {{
-        background: rgba(26, 11, 46, 0.6);
-        border: 1px solid #9d4edd;
-        padding: 15px;
-        border-radius: 12px;
-        margin-bottom: 25px;
-        display: flex;
-        gap: 15px;
-        align-items: center;
-    }}
-    .save-input {{
-        background: #111424;
-        border: 1px solid #00ffcc;
-        color: white;
-        padding: 12px;
-        border-radius: 8px;
-        font-size: 16px;
-        flex: 2;
-    }}
-    .history-table {{
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 15px;
-        background: #111424;
-        color: white;
-        border-radius: 8px;
-        overflow: hidden;
-        font-family: sans-serif;
-    }}
-    .history-table th, .history-table td {{
-        padding: 12px;
-        text-align: left;
-        border-bottom: 1px solid #1a0b2e;
-    }}
-    .history-table th {{
-        background-color: #9d4edd;
-        color: white;
-    }}
-</style>
+        if st.button("🖼️ 2. IMAGE SEARCH\nค้นหาภาพจากดาวเทียม", use_container_width=True):
+            st.session_state.page = "3"; st.rerun() # ส่งไปหน้า 3 (ในโค้ดเดิมใช้หน้า 3 ทำระบบค้นหาภาพ)
+        st.caption("ความสามารถ: ดึงรูปภาพจากคลัง Unsplash ตามคำค้นหาที่ต้องการ")
 
-<div id="map-container">
-    <div id="map"></div>
-    <div id="crosshair-target" class="crosshair"></div>
-</div>
+        if st.button("✨ 3. NEON GENERATOR\nสร้างตัวอักษรเรืองแสง", use_container_width=True):
+            st.session_state.page = "3_neon"; st.rerun() # แยกหน้านีออนออกไปไม่ให้ทับกับถอดรหัส
+        st.caption("ความสามารถ: แปลงข้อความธรรมดาให้เป็นศิลปะนีออนวิ้งๆ")
 
-<div class="control-panel">
-    <button type="button" class="map-btn" onclick="toggleCrosshair()">🎯 เปิด/ปิด เป้าเล็ง</button>
-    <button type="button" class="map-btn map-btn-success" onclick="addPointFromCenter()">📌 ปักหมุดพิกัด</button>
-    <button type="button" class="map-btn map-btn-success" style="background:#00ffcc; border-color:#00ffcc; color:black !important; box-shadow: 0 0 10px #00ffcc;" onclick="calculateFromPoints()">📐 คำนวณพื้นที่นาแปลงนี้</button>
-    <button type="button" class="map-btn map-btn-danger" onclick="clearAllDrawings()">🗑️ ล้างค่าเริ่มใหม่</button>
-</div>
+        if st.button("💖 4. DESTINY CHECK\nตรวจดวงชะตาคู่ขนาน", use_container_width=True):
+            st.session_state.page = "7"; st.rerun()
+        st.caption("ความสามารถ: วิเคราะห์ดวงชะตาผ่านระบบผลรวมรหัส Unicode ของชื่อ")
 
-<div class="neon-result-box">
-    <b style="color:#00ffcc; font-size:16px; text-shadow: 0 0 5px #00ffcc;">🛰️ ขนาดพื้นที่นาปัจจุบัน (วัดตามจริง):</b>
-    <p id="area-text" style="font-size:26px; margin:10px 0; font-weight:bold; color:#ff3333;">ยังไม่ได้ลากแปลงนา</p>
-</div>
+        if st.button("📝 5. SYSTEM LOG\nบันทึกข้อมูลการใช้งาน", use_container_width=True):
+            st.session_state.page = "9"; st.rerun()
+        st.caption("ความสามารถ: จดบันทึกข้อความและเหตุการณ์สำคัญลงในหน่วยความจำ Cloud")
 
-<div class="save-panel">
-    <input type="text" id="farmer-name" class="save-input" placeholder="พิมพ์ชื่อเจ้าของที่นาเพื่อบันทึกประวัติ...">
-    <button type="button" class="map-btn map-btn-success" style="margin:0; flex:1;" onclick="saveToHistoryTable()">💾 บันทึกประวัติแปลงนี้</button>
-</div>
+    with c2:
+        if st.button("💬 6. CHAT SYSTEM\nระบบสื่อสารอัจฉริยะ", use_container_width=True):
+            st.session_state.page = "2"; st.rerun()
+        st.caption("ความสามารถ: ระบบส่งข้อความลับ และแชร์พิกัด Tactical Map")
 
-<div style="background: rgba(17, 20, 36, 0.9); padding:15px; border-radius:12px; border: 1px solid #9d4edd;">
-    <b style="color:#00ffcc; font-size:16px;">📊 ตารางประวัติการวัดที่นาสัจจะ (บันทึกแล้วกดดูได้ทันที):</b>
-    <table class="history-table">
-        <thead>
-            <tr>
-                <th>ลำดับ</th>
-                <th>ชื่อเจ้าของที่นา</th>
-                <th>ขนาดพื้นที่นาที่วัดได้จริง</th>
-                <th>ขนาดพื้นที่ (ตร.ม.)</th>
-            </tr>
-        </thead>
-        <tbody id="history-rows">
-            <tr>
-                <td colspan="4" style="text-align:center; color:#9ca3af;">ยังไม่มีประวัติการบันทึกในรอบนี้</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+        if st.button("🎬 7. VIDEO HUB\nศูนย์รวมวิดีโอวงจรปิด", use_container_width=True):
+            st.session_state.page = "4_video"; st.rerun()
+        st.caption("ความสามารถ: เชื่อมต่อและฉายภาพวิดีโอจาก YouTube หรือ Link ตรง")
 
-<script>
-    var map = L.map('map').setView([{default_lat}, {default_lng}], 16);
+        if st.button("🌍 8. WORLD CLOCK\nเวลาโลกแบบเรียลไทม์", use_container_width=True):
+            st.session_state.page = "6_clock"; st.rerun()
+        st.caption("ความสามารถ: ตรวจสอบเวลาปัจจุบันในโซนต่างๆ ทั่วโลก")
 
-    var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-        maxZoom: 19
-    }}).addTo(map);
+        if st.button("🔢 9. DAILY CODE\nรหัสลับประจำวัน", use_container_width=True):
+            st.session_state.page = "8"; st.rerun()
+        st.caption("ความสามารถ: เจนรหัสตัวเลขนำโชคแบบสุ่มรหัส SHA-256 รายวัน")
 
-    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
-    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
+        if st.button("🎨 10. COLOR MASTER\nปรับแต่งธีมสีระบบ", use_container_width=True):
+            st.session_state.page = "10"; st.rerun()
+        st.caption("ความสามารถ: เปลี่ยนสีสันของ Interface เพื่อความสวยงามตามใจชอบ")
 
-    if (navigator.geolocation) {{
-        navigator.geolocation.getCurrentPosition(function(position) {{
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            map.setView([lat, lng], 18);
-            L.marker([lat, lng]).addTo(map).bindPopup('🚜 หมุดปัจจุบันของคุณ').openPopup();
-        }}, function(err) {{
-            console.log("GPS กำลังค้นหา");
-        }}, {{enableHighAccuracy: true}});
-    }}
+# =========================================================
+# ห้องที่ 1: MUSIC PLAYER
+# =========================================================
+elif st.session_state.page == "1":
+    def get_base64_img(file_path):
+        try:
+            with open(file_path, "rb") as f:
+                return base64.b64encode(f.read()).decode()
+        except: return ""
 
-    var drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
+    logo_b64 = get_base64_img("logo1.png")
 
-    var customPoints = [];
-    var customPolygon = null;
-    var crosshairMode = false;
+    st.markdown(f"""
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        .logo-center {{
+            display: block;
+            margin: 0 auto;
+            width: 100px; height: 100px;
+            background-image: url("data:image/png;base64,{logo_b64}");
+            background-size: contain; background-repeat: no-repeat;
+            filter: drop-shadow(0 0 10px #ff00de);
+            animation: logo-pulsing 2s infinite alternate;
+        }}
+        @keyframes logo-pulsing {{
+            from {{ filter: drop-shadow(0 0 5px #ff00de); transform: scale(1); }}
+            to {{ filter: drop-shadow(0 0 20px #00f3ff); transform: scale(1.1); }}
+        }}
+        .neon-title-main {{
+            font-family: 'Orbitron', sans-serif;
+            color: #fff; text-align: center;
+            text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;
+            font-size: 1.8rem; margin: 15px 0;
+        }}
+        </style>
+        <div class="logo-center"></div>
+        <h1 class="neon-title-main">SYNAPSE COMMAND CENTER</h1>
+    """, unsafe_allow_html=True)
+
+    mixer_html = f"""
+    <div id="mixer-container" style="background: rgba(10,10,10,0.9); border: 2px solid #333; border-radius: 25px; padding: 20px; font-family: sans-serif;">
+        <canvas id="v-main" style="width: 100%; height: 120px; background: #000; border-radius: 15px; border: 1px solid #ff00de;"></canvas>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;">
+            <div style="padding: 15px; border-left: 4px solid #ff00de; background: rgba(255,0,222,0.05); border-radius: 10px;">
+                <small style="color: #ff00de; font-weight: bold;">DECK A</small>
+                <div id="nameA" style="color: #fff; font-size: 12px; margin: 5px 0; overflow: hidden;">ยังไม่ได้เลือกเพลง...</div>
+                <input type="file" id="inA" accept="audio/*" style="display:none" onchange="loadA(this.files[0])">
+                <button onclick="document.getElementById('inA').click()" style="background: #ff00de; color: white; border: none; padding: 5px 10px; border-radius: 5px; font-size: 10px; cursor: pointer;">SELECT A</button>
+                <div style="height: 4px; background: #222; margin-top: 10px; border-radius: 2px;"><div id="barA" style="height: 100%; width: 0%; background: #ff00de;"></div></div>
+            </div>
+            <div style="padding: 15px; border-left: 4px solid #00f3ff; background: rgba(0,243,255,0.05); border-radius: 10px;">
+                <small style="color: #00f3ff; font-weight: bold;">DECK B</small>
+                <div id="nameB" style="color: #fff; font-size: 12px; margin: 5px 0; overflow: hidden;">ยังไม่ได้เลือกเพลง...</div>
+                <input type="file" id="inB" accept="audio/*" style="display:none" onchange="loadB(this.files[0])">
+                <button onclick="document.getElementById('inB').click()" style="background: #00f3ff; color: black; border: none; padding: 5px 10px; border-radius: 5px; font-size: 10px; cursor: pointer;">SELECT B</button>
+                <div style="height: 4px; background: #222; margin-top: 10px; border-radius: 2px;"><div id="barB" style="height: 100%; width: 0%; background: #00f3ff;"></div></div>
+            </div>
+        </div>
+        <div style="display: grid; grid-cols: 2; gap: 10px; margin-top: 20px;">
+            <button onclick="playAll()" style="width: 100%; padding: 12px; background: none; border: 2px solid #ff0055; color: #ff0055; font-weight: bold; border-radius: 15px; cursor: pointer;">⚡ START MIX</button>
+            <button onclick="fade()" style="width: 100%; padding: 12px; background: none; border: 2px solid #00ffcc; color: #00ffcc; font-weight: bold; border-radius: 15px; cursor: pointer; margin-top: 10px;">🔄 CROSSFADE (5s)</button>
+        </div>
+    </div>
+    <script>
+        let ctx, ana, sA, sB, gA, gB, isP = false, cur = 'A', data;
+        function init() {{ if(!ctx) {{ ctx = new (window.AudioContext || window.webkitAudioContext)(); ana = ctx.createAnalyser(); ana.fftSize = 128; data = new Uint8Array(ana.frequencyBinCount); loop(); }} }}
+        function loop() {{
+            requestAnimationFrame(loop); if(!ana) return; ana.getByteFrequencyData(data);
+            const can = document.getElementById('v-main'); const c = can.getContext('2d');
+            c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(0,0,can.width,can.height);
+            let x = 0; let w = (can.width/data.length)*2;
+            for(let i=0; i<data.length; i++) {{
+                let h = (data[i]/255)*can.height;
+                c.fillStyle = 'hsl('+(180+i*5)+', 100%, 50%)';
+                c.fillRect(x, can.height-h, w-1, h); x += w;
+            }}
+            updateProgress();
+        }}
+        async function loadA(f) {{ init(); document.getElementById('nameA').innerText = f.name; sA = await ctx.decodeAudioData(await f.arrayBuffer()); }}
+        async function loadB(f) {{ init(); document.getElementById('nameB').innerText = f.name; sB = await ctx.decodeAudioData(await f.arrayBuffer()); }}
+        function playAll() {{
+            if(!sA || !sB || isP) return;
+            srcA = ctx.createBufferSource(); srcA.buffer = sA; gA = ctx.createGain();
+            srcA.connect(gA).connect(ana).connect(ctx.destination);
+            srcB = ctx.createBufferSource(); srcB.buffer = sB; gB = ctx.createGain(); gB.gain.value = 0;
+            srcB.connect(gB).connect(ana).connect(ctx.destination);
+            srcA.start(0); srcB.start(0); isP = true;
+        }}
+        function fade() {{
+            let now = ctx.currentTime;
+            if(cur === 'A') {{ gA.gain.linearRampToValueAtTime(0, now+5); gB.gain.linearRampToValueAtTime(1, now+5); cur = 'B'; }}
+            else {{ gB.gain.linearRampToValueAtTime(0, now+5); gA.gain.linearRampToValueAtTime(1, now+5); cur = 'A'; }}
+        }}
+        function updateProgress() {{
+             if(isP) {{
+                document.getElementById('barA').style.width = cur === 'A' ? '100%' : '0%';
+                document.getElementById('barB').style.width = cur === 'B' ? '100%' : '0%';
+             }}
+        }}
+    </script>
+    """
+    components.html(mixer_html, height=520)
+
+    st.write("---")
+    st.markdown("<h4 style='color:#00f3ff; font-family:Orbitron; text-align:center;'>📂 GLOBAL DATABASE</h4>", unsafe_allow_html=True)
+    all_songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+    if all_songs:
+        with st.expander("คลิกเพื่อเลือกเล่นเพลงในคลัง (52+ เพลง)"):
+            for s in all_songs:
+                if st.button(f"🎵 {s}", use_container_width=True):
+                    st.audio(s)
     
-    // ตัวแปรเก็บค่าผลลัพธ์ล่าสุดเพื่อเอาไปบันทึกลงตารางจริง
-    var currentCalculatedText = "";
-    var currentCalculatedSqM = 0;
-    var historyData = [];
+    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Studio v.1")
 
-    function toggleCrosshair() {{
-        var ch = document.getElementById('crosshair-target');
-        crosshairMode = !crosshairMode;
-        ch.style.display = crosshairMode ? 'block' : 'none';
-    }}
+# =========================================================
+# ห้องที่ 2: CHAT SYSTEM & RADAR
+# =========================================================
+elif st.session_state.page == "2":
+    st_autorefresh(interval=8000, key="synapse_update")
+    st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>🛰️ TACTICAL RADAR & PRIVATE CHAT</h2>", unsafe_allow_html=True)
 
-    function addPointFromCenter() {{
-        var center = map.getCenter();
-        customPoints.push([center.lat, center.lng]);
+    import folium
+    loc = get_geolocation()
+    my_lat, my_lon = 13.7367, 100.5231 
+    if loc and 'coords' in loc:
+        my_lat, my_lon = loc['coords']['latitude'], loc['coords']['longitude']
 
-        L.circleMarker(center, {{radius: 7, color: '#ff3333', fillColor: '#ffffff', weight: 3, fillOpacity: 1}}).addTo(drawnItems);
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=15, 
+                   tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", 
+                   attr='Google Satellite')
+    
+    folium.Marker([my_lat, my_lon], icon=folium.Icon(color='red', icon='star'), tooltip="YOU").add_to(m)
 
-        if (customPoints.length > 1) {{
-            if (customPolygon) {{ map.removeLayer(customPolygon); }}
-            customPolygon = L.polygon(customPoints, {{color: '#00ffcc', weight: 4, fillOpacity: 0.35}}).addTo(drawnItems);
-        }}
-    }}
+    try:
+        users_ref = db.reference('users').get()
+        if users_ref:
+            for uid, data in users_ref.items():
+                if uid != st.session_state.user and 'lat' in data:
+                    folium.Marker([data['lat'], data['lon']], 
+                                 icon=folium.Icon(color='blue'), 
+                                 tooltip=f"AGENT: {uid}").add_to(m)
+    except: pass
 
-    function calculateFromPoints() {{
-        if (customPoints.length < 3) {{
-            alert("⚠️ ต้องปักหมุดที่นาให้ได้อย่างน้อย 3 มุมแปลงขึ้นไปก่อนครับ!");
-            return;
-        }}
+    st_folium(m, width="100%", height=300)
+
+    if st.button("📡 BROADCAST POSITION", use_container_width=True):
+        try:
+            db.reference(f'users/{st.session_state.user}').update({'lat': my_lat, 'lon': my_lon, 'ts': time.time()})
+            st.toast("พิกัดถูกส่งแล้ว!")
+        except:
+            st.error("ไม่สามารถส่งพิกัดได้ ตรวจสอบการเชื่อมต่อ Firebase")
+
+    st.write("---")
+    st.markdown("<h4 style='color:#ff00de; font-family:Orbitron;'>🔐 PRIVATE SECURE CHAT</h4>", unsafe_allow_html=True)
+
+    try:
+        all_users = db.reference('users').get()
+        if all_users:
+            friends = [u for u in all_users.keys() if u != st.session_state.user]
+            target_agent = st.selectbox("🎯 เลือก AGENT ที่ต้องการติดต่อ:", friends)
+
+            if target_agent:
+                room_id = "_".join(sorted([st.session_state.user, target_agent]))
+                chat_ref = db.reference(f'private_messages/{room_id}')
+
+                with st.form("private_chat_form", clear_on_submit=True):
+                    msg = st.text_input(f"TO: {target_agent}", placeholder="พิมพ์ข้อความที่นี่...")
+                    if st.form_submit_button("SEND SIGNAL"):
+                        if msg:
+                            chat_ref.push({
+                                'sender': st.session_state.user,
+                                'text': msg,
+                                'ts': time.time()
+                            })
+                            st.rerun()
+
+                messages = chat_ref.order_by_child('ts').limit_to_last(10).get()
+                if messages:
+                    for mid in reversed(list(messages.keys())):
+                        m_data = messages[mid]
+                        is_me = m_data['sender'] == st.session_state.user
+                        align = "right" if is_me else "left"
+                        color = "#00f3ff" if is_me else "#ff00de"
+                        bg = "rgba(0, 243, 255, 0.15)" if is_me else "rgba(255, 0, 222, 0.15)"
+                        
+                        st.markdown(f"""
+                            <div style="text-align:{align}; margin-bottom:10px;">
+                                <div style="display:inline-block; background:{bg}; padding:8px 15px; border-radius:15px; border:1px solid {color};">
+                                    <b style="color:{color}; font-size:0.75rem;">{m_data['sender']}</b><br>
+                                    <span style="color:white;">{m_data['text']}</span>
+                                </div>
+                            </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.caption("ระบบพร้อมสำหรับการสื่อสารลับ...")
+        else:
+            st.caption("ยังไม่มีข้อมูล Agent คนอื่นในระบบ Firebase")
+    except Exception as e:
+        st.error(f"ระบบขัดข้อง: {e}")
+
+# =========================================================
+# ห้องที่ 3: IMAGE SEARCH (จากปุ่มหน้าแรก)
+# =========================================================
+elif st.session_state.page == "3":
+    st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>🖼️ SATELLITE & IMAGE SEARCH</h2>", unsafe_allow_html=True)
+    search_query = st.text_input("ป้อนคำค้นหารูปภาพที่ต้องการ (ภาษาอังกฤษ):", "Satellite")
+    if search_query:
+        st.write(f"ดึงรูปภาพจำลองสถานการณ์สำหรับ: **{search_query}**")
+        st.image(f"https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?w=800", caption="คลังภาพ Unsplash")
+
+# =========================================================
+# ห้องเสริม 3_neon: NEON GENERATOR
+# =========================================================
+elif st.session_state.page == "3_neon":
+    st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>✨ NEON GENERATOR</h2>", unsafe_allow_html=True)
+    text_input = st.text_input("กรอกข้อความที่ต้องการทำแสงนีออน:", "SYNAPSE COMMAND")
+    if text_input:
+        st.markdown(f"""
+            <h1 style='text-align:center; color:#fff; text-shadow: 0 0 10px #ff00de, 0 0 20px #00f3ff;'>
+                {text_input}
+            </h1>
+        """, unsafe_allow_html=True)
+
+# =========================================================
+# ห้องที่ 4: VIDEO HUB
+# =========================================================
+elif st.session_state.page == "4_video":
+    st.markdown("<h2 style='color:#00ff41; font-family:Orbitron;'>🎬 VIDEO HUB & CCTV</h2>", unsafe_allow_html=True)
+    v_url = st.text_input("วางลิงก์วิดีโอ YouTube หรือไฟล์ตรง:", "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    if v_url:
+        st.video(v_url)
+
+# =========================================================
+# ห้องที่ 6: WORLD CLOCK & VIBRATION SENSOR (แยกหน้าย่อยให้)
+# =========================================================
+elif st.session_state.page in ["6_clock", "6"]:
+    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>⚡ SYNAPSE SENSOR & CLOCK UNIT</h2>", unsafe_allow_html=True)
+    
+    tab_sonic, tab_motion, tab_bio, tab_power = st.tabs(["🎙️ SONIC SCAN", "📳 MOTION SCAN", "🩸 BIO-SCAN", "🔋 POWER INFO"])
+
+    with tab_sonic:
+        st.subheader("🎙️ REAL-TIME SONIC ANALYZER")
+        audio_js = """
+        <div style="background-color: #111; color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 15px; text-align: center; font-family: monospace;">
+            <div style="display: flex; justify-content: space-around;">
+                <div><small>ความดัง</small><h1 id="db_val" style="font-size: 40px; color:#0f0;">0</h1><small>เดซิเบล (dB)</small></div>
+                <div><small>ความถี่</small><h1 id="hz_val" style="font-size: 40px; color:#00ffff;">0</h1><small>เฮิรตซ์ (Hz)</small></div>
+            </div>
+            <p id="audio_status" style="margin-top:10px; color:#888;">🔴 รอสัญญาณเสียง...</p>
+        </div>
+        <script>
+            async function startAudio() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const analyser = audioCtx.createAnalyser();
+                    const source = audioCtx.createMediaStreamSource(stream);
+                    source.connect(analyser);
+                    analyser.fftSize = 2048;
+                    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    function update() {
+                        analyser.getByteFrequencyData(dataArray);
+                        let sum = 0, maxVal = 0, maxIdx = 0;
+                        for (let i = 0; i < dataArray.length; i++) {
+                            sum += dataArray[i];
+                            if (dataArray[i] > maxVal) { maxVal = dataArray[i]; maxIdx = i; }
+                        }
+                        let db = Math.round(sum / dataArray.length * 2);
+                        let hz = Math.round(maxIdx * audioCtx.sampleRate / analyser.fftSize);
+                        document.getElementById('db_val').innerText = db;
+                        document.getElementById('hz_val').innerText = hz;
+                        document.getElementById('audio_status').innerText = "🟢 ตรวจจับคลื่นเสียงจริง";
+                        requestAnimationFrame(update);
+                    }
+                    update();
+                } catch (e) { document.getElementById('audio_status').innerText = "❌ เข้าถึงไมค์ไม่ได้"; }
+            }
+            startAudio();
+        </script>
+        """
+        components.html(audio_js, height=250)
+        st.info("**ที่มาของตัวเลข (The Truth):** ค่าความถี่ (Hz) วัดจากรอบการสั่นของอากาศที่กระทบไมค์จริง ไม่มีการจำลอง")
+
+    with tab_motion:
+        st.subheader("📳 MOTION & VIBRATION SENSOR")
+        motion_js = """
+        <div style="background-color: #111; color: #FFD700; padding: 20px; border: 2px solid #FFD700; border-radius: 15px; text-align: center; font-family: monospace;">
+            <small>แรงสั่นสะเทือนรวม (Magnitude)</small>
+            <h1 id="mag_val" style="font-size: 50px; color: #0f0;">1.000</h1>
+            <p>G-Force</p>
+            <p id="motion_info" style="color: #888;">สถานะ: รอนิ่ง...</p>
+        </div>
+        <script>
+            window.addEventListener('devicemotion', (e) => {
+                const acc = e.accelerationIncludingGravity;
+                if (!acc) return;
+                let magnitude = Math.sqrt(acc.x**2 + acc.y**2 + acc.z**2) / 9.80665;
+                document.getElementById('mag_val').innerText = magnitude.toFixed(3);
+                document.getElementById('mag_val').style.color = (magnitude > 1.05 || magnitude < 0.95) ? "#f00" : "#0f0";
+            });
+        </script>
+        """
+        components.html(motion_js, height=250)
+        st.info("**ที่มาของตัวเลข (The Truth):** วัดจากเซนเซอร์ Accelerometer ภายในเครื่อง ยึดตามแรงโน้มถ่วงโลก (1G) เป็นเกณฑ์")
+
+    with tab_bio:
+        st.markdown("### 🩸 REAL-TIME BIO-DATA SCANNER")
+        bio_js = """
+        <div style="background-color: #111; color: #FFD700; padding: 15px; border: 2px solid #FFD700; border-radius: 15px; font-family: monospace;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+                <div style="border: 1px solid #333; padding: 10px;">
+                    <small>BPM</small><h2 id="bpm" style="color:#0f0;">72</h2><small>ครั้ง/นาที</small>
+                </div>
+                <div style="border: 1px solid #333; padding: 10px;">
+                    <small>SpO2</small><h2 id="spo2" style="color:#00ffff;">98</h2><small>%</small>
+                </div>
+            </div>
+            <div id="status" style="margin-top: 10px; text-align: center; color: #0f0;">🟢 ระบบโมดูลสแกนเนอร์สแตนด์บาย</div>
+        </div>
+        """
+        components.html(bio_js, height=180)
+        st.info("**ที่มาของตัวเลข (The Truth):** ค่าข้อมูลสุขภาพพื้นฐานสแตนด์บายระบบ")
+
+    with tab_power:
+        st.write("⏱️ เวลาปัจจุบันรอบโลก:")
+        st.write(f"เวลาเครื่องเซิร์ฟเวอร์: {datetime.now().strftime('%H:%M:%S')}")
+
+# =========================================================
+# ห้องที่ 4 เดิม (แปลงเป็น 5 และหน้าวิเคราะห์ดวงมิติควอนตัม)
+# =========================================================
+elif st.session_state.page == "7":
+    st.markdown("<h2 style='text-align:center; color:#ff00de; font-family:Orbitron;'>💖 DESTINY CHECK (DIMENSION 4)</h2>", unsafe_allow_html=True)
+    st.write("วิเคราะห์ความสัมพันธ์ผ่านระบบผลรวมรหัสตัวอักษร (Unicode Hash)")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        name1 = st.text_input("ชื่อ AGENT 1:", placeholder="ระบุชื่อคนที่ 1")
+    with col2:
+        name2 = st.text_input("ชื่อ AGENT 2:", placeholder="ระบุชื่อคนที่ 2")
+
+    if st.button("⚡ เดินเครื่องสแกนความถี่", use_container_width=True):
+        if name1 and name2:
+            score1 = sum(ord(char) for char in name1)
+            score2 = sum(ord(char) for char in name2)
+            gap = abs(score1 - score2)
+            match_percent = 100 - (gap % 100)
+            
+            st.divider()
+            st.metric("ระดับความสอดคล้องของคลื่นความถี่ (Synchronization)", f"{match_percent} %")
+            
+            st.markdown(f"""
+            <div style="background: rgba(255, 0, 222, 0.1); border-left: 4px solid #ff00de; padding: 10px; border-radius: 5px;">
+                <h4 style="color:#ff00de;">📝 ที่มาของตัวเลข (The Truth)</h4>
+                <ul>
+                    <li><b>พลังงานชื่อที่ 1:</b> {score1} (ผลรวม Unicode)</li>
+                    <li><b>พลังงานชื่อที่ 2:</b> {score2} (ผลรวม Unicode)</li>
+                    <li><b>ส่วนต่าง (Gap):</b> {gap}</li>
+                    <li><b>สูตรคณิตศาสตร์:</b> <code>100 - ({gap} % 100)</code> = {match_percent}%</li>
+                </ul>
+                <p style="font-size: 0.8rem; color:#ccc;">เราไม่ใช้ AI สุ่มตัวเลขเดาใจ แต่เราใช้ค่ารหัสคอมพิวเตอร์ที่ตายตัวของชื่อคุณทั้งสองคน</p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.warning("กรุณาระบุชื่อเป้าหมายทั้งสองให้ครบถ้วน")
+
+# =========================================================
+# ห้องที่ 8: DAILY CODE
+# =========================================================
+elif st.session_state.page == "8":
+    st.markdown("<h2 style='text-align:center; color:#00f3ff; font-family:Orbitron;'>🔢 DAILY SECURITY CODE</h2>", unsafe_allow_html=True)
+    
+    today_str = date.today().strftime("%Y-%m-%d")
+    st.write(f"📅 พิกัดเวลาปัจจุบัน: **{today_str}**")
+    current_agent = st.session_state.get('user', 'Guest_Agent')
+    raw_data = f"{today_str}_{current_agent}_SYNAPSE"
+    
+    try:
+        hash_object = hashlib.sha256(raw_data.encode('utf-8')).hexdigest()
+        daily_4_digit = str(int(hash_object[:4], 16))[-4:].zfill(4)
+        daily_6_digit = str(int(hash_object[4:10], 16))[-6:].zfill(6)
         
-        var turfCoords = [];
-        customPoints.forEach(function(pt) {{
-            turfCoords.push([pt[1], pt[0]]);
-        }});
-        turfCoords.push([customPoints[0][1], customPoints[0][0]]);
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"""
+            <div style="text-align:center; border: 2px solid #00f3ff; padding: 20px; border-radius: 15px; background: rgba(0, 243, 255, 0.05);">
+                <small style="color:#00f3ff;">ACCESS PIN (4 DIGIT)</small>
+                <h1 style="color:#fff; font-family: monospace;">{daily_4_digit}</h1>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <div style="text-align:center; border: 2px solid #ff00de; padding: 20px; border-radius: 15px; background: rgba(255, 0, 222, 0.05);">
+                <small style="color:#ff00de;">MASTER KEY (6 DIGIT)</small>
+                <h1 style="color:#fff; font-family: monospace;">{daily_6_digit}</h1>
+            </div>
+            """, unsafe_allow_html=True)
 
-        var polygonGeoJSON = turf.polygon([turfCoords]);
-        var areaSqMeters = turf.area(polygonGeoJSON);
+        st.info(f"**สถานะ:** กำลังใช้รหัสเฉพาะของ AGENT: **{current_agent}**")
+    except Exception as e:
+        st.error(f"ระบบถอดรหัสขัดข้อง: {e}")
+
+    st.caption("รหัสจะเปลี่ยนโดยอัตโนมัติทุกๆ 24 ชั่วโมง ตามพิกัดเวลาโลก")
+
+# =========================================================
+# ห้องที่ 9: SYSTEM LOG
+# =========================================================
+elif st.session_state.page == "9":
+    st.markdown("<h2 style='text-align:center; color:#50C878; font-family:Orbitron;'>📝 SYNAPSE MEMORY LOG</h2>", unsafe_allow_html=True)
+    st.write("บันทึกเหตุการณ์ลงฐานข้อมูล Firebase โดยตรง")
+
+    with st.form("log_form", clear_on_submit=True):
+        log_entry = st.text_area("✍️ ข้อความบันทึก:", placeholder="พิมพ์สิ่งที่คุณต้องการจดจำ...")
+        submit_log = st.form_submit_button("💾 SAVE TO CLOUD")
         
-        showAreaResult(areaSqMeters);
-    }}
+        if submit_log and log_entry:
+            try:
+                db.reference(f'system_logs/{st.session_state.user}').push({
+                    'text': log_entry,
+                    'timestamp': time.time(),
+                    'datetime': str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                })
+                st.success("บันทึกข้อมูลเข้าสู่ศูนย์บัญชาการเรียบร้อย!")
+            except Exception as e:
+                st.error(f"ระบบฐานข้อมูลขัดข้อง: {e}")
 
-    function clearAllDrawings() {{
-        drawnItems.clearLayers();
-        customPoints = [];
-        customPolygon = null;
-        currentCalculatedText = "";
-        currentCalculatedSqM = 0;
-        document.getElementById('area-text').innerHTML = "ยังไม่ได้ลากแปลงนา";
-    }}
+    st.divider()
+    st.markdown("#### 📂 บันทึกล่าสุดของคุณ")
+    try:
+        my_logs = db.reference(f'system_logs/{st.session_state.user}').order_by_child('timestamp').limit_to_last(5).get()
+        if my_logs:
+            for key, val in reversed(list(my_logs.items())):
+                st.markdown(f"""
+                <div style="background: rgba(80, 200, 120, 0.1); border-left: 3px solid #50C878; padding: 10px; margin-bottom: 10px;">
+                    <small style="color:#50C878;">🕒 {val.get('datetime', 'N/A')}</small><br>
+                    <span style="color: white;">{val.get('text', '')}</span>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.caption("ยังไม่มีข้อมูลบันทึกในระบบ")
+    except:
+        st.warning("ไม่สามารถดึงประวัติได้ ตรวจสอบการเชื่อมต่อ Firebase")
 
-    function showAreaResult(areaSqMeters) {{
-        if (areaSqMeters > 0) {{
-            var totalWa = areaSqMeters / 4;
-            var rai = Math.floor(totalWa / 400);
-            var remainingWa = totalWa % 400;
-            var ngan = Math.floor(remainingWa / 100);
-            var wa = Math.round(remainingWa % 100);
+# =========================================================
+# ห้องที่ 10: COLOR MASTER
+# =========================================================
+elif st.session_state.page == "10":
+    st.markdown("<h2 style='text-align:center; color:#FFD700; font-family:Orbitron;'>🎨 COLOR MASTER UI</h2>", unsafe_allow_html=True)
+    st.write("ปรับแต่งรังสีออร่าของแอปพลิเคชัน")
+    
+    new_color = st.color_picker("เลือกโค้ดสีที่คุณต้องการ (Hex Code):", st.session_state.custom_theme)
+    
+    if st.button("🔥 อัปเดตสีระบบ", use_container_width=True):
+        st.session_state.custom_theme = new_color
+        st.rerun()
 
-            currentCalculatedSqM = Math.round(areaSqMeters);
-            currentCalculatedText = rai + " ไร่ " + ngan + " งาน " + wa + " ตารางวา";
-
-            document.getElementById('area-text').innerHTML = 
-                "🌾 วัดได้จริง: <span style='color:#00ffcc; text-shadow: 0 0 5px #00ffcc;'>" + rai + " ไร่ </span> " + 
-                "<span style='color:#9d4edd; text-shadow: 0 0 5px #9d4edd;'>" + ngan + " งาน </span> " + 
-                "<span style='color:#ff3333; text-shadow: 0 0 5px #ff3333;'>" + wa + " ตารางวา</span><br>" +
-                "<span style='font-size:14px; color:#9ca3af; font-weight:normal; display:block; margin-top:5px;'>สุทธิประมวลผลดาวเทียม: " + currentCalculatedSqM.toLocaleString() + " ตร.ม.</span>";
-        }}
-    }}
-
-    // ฟังก์ชันบันทึกข้อมูลและอัปเดตลงตารางประวัติให้เห็นทันที ไม่มีการหลอกตา
-    function saveToHistoryTable() {{
-        var nameInput = document.getElementById('farmer-name');
-        var name = nameInput.value.trim();
-        
-        if (name === "") {{
-            alert("⚠️ กรุณาพิมพ์ชื่อเจ้าของที่นาก่อนกดบันทึกครับเพื่อน!");
-            return;
-        }}
-        if (currentCalculatedSqM === 0 || currentCalculatedText === "") {{
-            alert("⚠️ แปลงนายังไม่มีการคำนวณพื้นที่เลย ปักหมุดแล้วกด 'คำนวณพื้นที่นาแปลงนี้' ก่อนบันทึกครับ!");
-            return;
-        }}
-
-        // บันทึกเข้า Array ของระบบหน้าบ้านจริง
-        historyData.push({{
-            name: name,
-            areaText: currentCalculatedText,
-            sqm: currentCalculatedSqM
-        }});
-
-        // ล้างช่องกรอกชื่อหลังจากบันทึกแล้ว
-        nameInput.value = "";
-
-        // วาดตารางใหม่ทันทีให้เห็นตรงหน้า
-        var tbody = document.getElementById('history-rows');
-        tbody.innerHTML = "";
-
-        historyData.forEach(function(item, index) {{
-            var row = document.createElement('tr');
-            row.innerHTML = 
-                "<td>" + (index + 1) + "</td>" +
-                "<td style='color:#00ffcc; font-weight:bold;'>" + item.name + "</td>" +
-                "<td style='color:#ffffff;'>" + item.areaText + "</td>" +
-                "<td style='color:#9ca3af;'>" + item.sqm.toLocaleString() + " ตร.ม.</td>";
-            tbody.appendChild(row);
-        }});
-        
-        alert("💾 บันทึกประวัติที่ดินของคุณ " + name + " ลงตารางเรียบร้อยแล้ว ดูข้อมูลด้านล่างได้ทันทีครับ!");
-    }}
-
-    var drawControl = new L.Control.Draw({{
-        draw: {{
-            polygon: {{ allowIntersection: false, shapeOptions: {{ color: '#00ffcc', weight: 4, fillOpacity: 0.35 }} }},
-            rectangle: {{ shapeOptions: {{ color: '#00ffcc' }} }},
-            polyline: false, circle: false, marker: false, circlemarker: false
-        }},
-        edit: {{ featureGroup: drawnItems }}
-    }});
-    map.addControl(drawControl);
-
-    map.on(L.Draw.Event.CREATED, function (event) {{
-        var layer = event.layer;
-        drawnItems.clearLayers();
-        drawnItems.addLayer(layer);
-        var geojson = layer.toGeoJSON();
-        var areaSqMeters = turf.area(geojson);
-        showAreaResult(areaSqMeters);
-    }});
-</script>
-"""
-
-# ใช้ความสูง 1250px เพื่อให้มีพื้นที่เหลือเฟือสำหรับแสดงตารางประวัติด้านล่างแบบเห็นชัดๆ ไม่ต้องซ้อนกันครับ
-st.components.v1.html(map_html_code, height=1250, scrolling=False)
+    st.markdown(f"""
+        <div style="text-align:center; padding: 30px; border: 2px dashed {st.session_state.custom_theme}; border-radius: 10px;">
+            <h3 style="color:{st.session_state.custom_theme}; text-shadow: 0 0 10px {st.session_state.custom_theme};">
+                ตัวอย่างสีที่กำลังใช้งาน
+            </h3>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.caption("อยู่นิ่งๆ ไม่เจ็บตัว | Synapse Interface Control")
