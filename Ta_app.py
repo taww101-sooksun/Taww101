@@ -1,6 +1,9 @@
 import streamlit as st
 import os
 import random
+import json
+from streamlit_folium import st_folium
+import folium
 
 # 1. ตั้งค่าหน้าจอแอปให้กว้างพิเศษ (Wide)
 st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO v5", page_icon="🚜", layout="wide")
@@ -11,7 +14,7 @@ st.markdown("""
     .stApp { 
         background: linear-gradient(135deg, #090d16 0%, #111424 50%, #1a0b2e 100%); 
     }
-    h1, h2, h3, p, label, span { color: #ffffff !important; font-family: 'Sans-serif'; }
+    h1, h2, h3, p, label, span, button { color: #ffffff !important; font-family: 'Sans-serif'; }
     
     .neon-title {
         color: #00ffcc !important;
@@ -28,17 +31,13 @@ st.markdown("""
         box-shadow: 0 0 10px rgba(157, 78, 221, 0.5);
     }
     
-    .map-btn {
-        background-color: #00ffcc; color: #000000; border: 2px solid #00ffcc;
-        padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 8px;
-        cursor: pointer; margin-right: 10px; margin-bottom: 10px; box-shadow: 0 0 8px #00ffcc;
-    }
-    .map-btn-danger { background-color: #ff3333; border-color: #ff3333; color: white !important; box-shadow: 0 0 8px #ff3333; }
-    .map-btn-success { background-color: #9d4edd; border-color: #9d4edd; color: white !important; box-shadow: 0 0 8px #9d4edd; }
-    
-    .history-box {
-        background: #1a0b2e; border: 1px solid #9d4edd; padding: 15px; 
-        border-radius: 10px; margin-top: 15px; color: white;
+    /* กล่องประวัติ */
+    .history-container {
+        background: #1a0b2e;
+        border: 1px solid #9d4edd;
+        padding: 15px;
+        border-radius: 10px;
+        margin-top: 15px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -52,7 +51,7 @@ with col_logo:
         st.write("🛰️ [SYNAPSE]")
 
 with col_title:
-    st.markdown("<h1 class='neon-title'>🚜 ระบบวัดที่นาสัจจะ - AREA PRO v5 (แก้ไขแผนที่)</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='neon-title'>🚜 ระบบวัดที่นาสัจจะ - AREA PRO v5 (Streamlit Native)</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color: #ff3333 !important; font-style: italic; font-weight: bold; text-shadow: 0 0 5px #ff3333;'>\"อยู่นิ่งๆ ไม่เจ็บตัว วัดตามความจริง ไม่มีใครโกหกใครได้\"</p>", unsafe_allow_html=True)
 
 st.write("---")
@@ -85,261 +84,160 @@ else:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
+# 5. ระบบบันทึกข้อมูลและพิกัดลงใน Session State ของ Python เพื่อความชัวร์
+if "points" not in st.session_state:
+    st.session_state.points = []
+if "history" not in st.session_state:
+    st.session_state.history = []
+if "area_result" not in st.session_state:
+    st.session_state.area_result = "ยังไม่ได้ลากแปลงนา"
 
-# 5. ระบบแผนที่ดาวเทียม (แก้ปัญหาสตริงและล็อคค่าพิกัดตรงตัวเพื่อป้องกันจอดำ)
-st.subheader("🛰️ แผนที่ดาวเทียมระบบเป้าเล็งกึ่งกลาง (ความละเอียดสูง)")
-st.caption("💡 วิธีใช้งาน: เลื่อนหน้าจอให้มุมแปลงนาอยู่ตรงเป้าแดงพอดี แล้วกดปุ่มปักหมุดสีม่วง")
+st.subheader("🛰️ แผนที่ดาวเทียมระบบเซ็นเตอร์ (ดึงตรงผ่านเซิร์ฟเวอร์ ไม่โดนบล็อก)")
+st.caption("💡 วิธีใช้งานแบบชัวร์ที่สุด: เลื่อนดูแผนที่ ยืดซูมเข้าออกด้วยนิ้วมือได้ตามต้องการ เมื่อได้มุมคันนาแล้วให้ 'จิ้มไปที่หน้าจอแผนที่ตรงคันนานั้นโดยตรง' เพื่อปักหมุดสีแดงได้เลยครับ")
 
-# แก้ไขสคริปต์หน้าบ้านโดยตรง ป้องกันการพังจากการแปลง String ของ Python
-map_html_code = """
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+# พิกัดเริ่มต้น (ร้อยเอ็ด)
+start_lat = 15.9513057
+start_lng = 103.5796196
 
-<style>
-    #map-container {
-        position: relative;
-        width: 100%;
-    }
-    #map {
-        width: 100%;
-        height: 650px; 
-        border-radius: 14px;
-        border: 2px solid #00ffcc;
-        z-index: 1;
-        box-shadow: 0 0 20px rgba(0, 255, 204, 0.5);
-    }
-    .crosshair {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 30px;
-        height: 30px;
-        margin-top: -15px;
-        margin-left: -15px;
-        z-index: 9999;
-        pointer-events: none;
-    }
-    .crosshair::before, .crosshair::after {
-        content: '';
-        position: absolute;
-        background: #ff3333;
-        box-shadow: 0 0 8px #ff3333;
-    }
-    .crosshair::before { top: 14px; left: 0; width: 30px; height: 2px; }
-    .crosshair::after { top: 0; left: 14px; width: 2px; height: 30px; }
-    
-    .map-btn {
-        background-color: #00ffcc; color: #000000; border: 2px solid #00ffcc;
-        padding: 12px 20px; font-size: 16px; font-weight: bold; border-radius: 8px;
-        cursor: pointer; margin-right: 10px; margin-bottom: 10px; box-shadow: 0 0 8px #00ffcc;
-    }
-    .map-btn-danger { background-color: #ff3333; border-color: #ff3333; color: white; box-shadow: 0 0 8px #ff3333; }
-    .map-btn-success { background-color: #9d4edd; border-color: #9d4edd; color: white; box-shadow: 0 0 8px #9d4edd; }
-    
-    .history-box {
-        background: #1a0b2e; border: 1px solid #9d4edd; padding: 15px; 
-        border-radius: 10px; margin-top: 15px; color: white; font-family: sans-serif;
-    }
-    .history-item {
-        background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;
-        margin-bottom: 8px; border-left: 4px solid #00ffcc; display: flex; justify-content: space-between; align-items: center;
-    }
-</style>
+# สร้างแผนที่ Folium โดยใช้ภาพดาวเทียมของ Esri ผ่านระบบหลังบ้าน Python
+m = folium.Map(
+    location=[start_lat, start_lng], 
+    zoom_start=17, 
+    max_zoom=20,
+    control_scale=True
+)
 
-<div id="map-container">
-    <div id="map"></div>
-    <div id="crosshair-target" class="crosshair"></div>
-</div>
+# ดึง Layer ดาวเทียมแท้
+folium.TileLayer(
+    tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attr='Esri',
+    name='Satellite',
+    max_zoom=20,
+    overlay=False,
+    control=True
+).addTo(m)
 
-<div style="margin-top: 15px;">
-    <button type="button" class="map-btn map-btn-success" onclick="addPointFromCenter()">📌 ปักหมุดตรงเป้าแดง</button>
-    <button type="button" class="map-btn map-btn-success" style="background:#2a9d8f; border-color:#2a9d8f;" onclick="calculateFromPoints()">📐 คำนวณพื้นที่จริง</button>
-    <button type="button" class="map-btn map-btn-danger" onclick="clearAllDrawings()">🗑️ ล้างค่าเริ่มใหม่</button>
-</div>
+# วาดหมุดสีแดงตามพิกัดที่คนจิ้มไว้
+for idx, pt in enumerate(st.session_state.points):
+    folium.CircleMarker(
+        location=[pt[0], pt[1]],
+        radius=6,
+        color='red',
+        fill=True,
+        fill_color='red',
+        popup=f"จุดที่ {idx+1}"
+    ).addTo(m)
 
-<div id="result-box" style="background:#111424; padding:15px; border-radius:10px; color:white; font-family:sans-serif; border: 1px solid #9d4edd;">
-    <b style="color:#00ffcc; font-size:16px;"> 📐 หลักฐานขนาดพื้นที่นา (ตามจริง):</b>
-    <p id="area-text" style="font-size:24px; margin:5px 0; font-weight:bold; color:#ff3333;">ยังไม่ได้ลากแปลงนา</p>
-    
-    <div style="margin-top:10px;" id="save-panel">
-        <input type="text" id="owner-name" placeholder="ระบุชื่อเจ้าของนา เช่น ตาสี ยายมี" style="padding: 10px; border-radius: 5px; border: 1px solid #9d4edd; width: 220px; background: #090d16; color: white;">
-        <button type="button" class="map-btn" style="padding: 8px 15px; font-size:14px; margin-left:10px;" onclick="saveCurrentData()">💾 บันทึกข้อมูลแปลงนา</button>
+# วาดเส้นเชื่อมแปลงนาถ้ามีมากกว่า 2 จุดขึ้นไป
+if len(st.session_state.points) > 1:
+    folium.Polygon(
+        locations=st.session_state.points,
+        color='#00ffcc',
+        weight=3,
+        fill=True,
+        fill_color='#00ffcc',
+        fill_opacity=0.3
+    ).addTo(m)
+
+# ปุ่มสั่งการฝั่ง Python เพื่อให้กดง่ายและแสดงผลไวบนมือถือ
+col_btn1, col_btn2, col_btn3 = st.columns(3)
+
+with col_btn1:
+    if st.button("🗑️ ล้างค่าเริ่มใหม่", use_container_width=True):
+        st.session_state.points = []
+        st.session_state.area_result = "ยังไม่ได้ลากแปลงนา"
+        st.rerun()
+
+with col_btn2:
+    if st.button("📐 คำนวณพื้นที่นาจริง", use_container_width=True):
+        if len(st.session_state.points) < 3:
+            st.error("⚠️ ต้องจิ้มปักหมุดบนแผนที่อย่างน้อย 3 มุมขึ้นไปถึงจะคำนวณแปลงนาได้ครับ!")
+        else:
+            # ใช้สูตรคำนวณพื้นที่แบบ Shoelace บนพิกัดภูมิศาสตร์ (ทำได้จริงบน Python ไม่พึ่งพาคลังภายนอก)
+            import math
+            def get_area(pts):
+                # แปลงพิกัดเป็นเมตรคร่าวๆ เพื่อความแม่นยำทางพื้นที่แปลงนาไทย
+                R = 6378137
+                x = []
+                y = []
+                for p in pts:
+                    lat_rad = math.radians(p[0])
+                    lng_rad = math.radians(p[1])
+                    x.append(R * lng_rad * math.cos(math.radians(start_lat)))
+                    y.append(R * lat_rad)
+                # ปิดลูป
+                x.append(x[0])
+                y.append(y[0])
+                
+                area = 0.0
+                for i in range(len(pts)):
+                    area += (x[i] * y[i+1]) - (x[i+1] * y[i])
+                return abs(area) / 2.0
+
+            area_sqm = get_area(st.session_state.points)
+            total_wa = area_sqm / 4
+            rai = int(total_wa // 400)
+            remaining_wa = total_wa % 400
+            ngan = int(remaining_wa // 100)
+            wa = round(remaining_wa % 100)
+            
+            st.session_state.area_result = f"{rai} ไร่ {ngan} งาน {wa} ตารางวา (สุทธิ {round(area_sqm, 1):,} ตร.ม.)"
+            st.rerun()
+
+# แสดงผลแผนที่ดาวเทียมของจริง และจับค่าการคลิกหน้าจอ
+map_data = st_folium(m, height=600, width=1300, returned_objects=["last_clicked"])
+
+# ถ้าผู้ใช้มีการ "จิ้ม" ที่แผนที่ดาวเทียม ให้เอาพิกัดเข้าคิวปักหมุดทันที
+if map_data and map_data.get("last_clicked"):
+    clicked_coords = (map_data["last_clicked"]["lat"], map_data["last_clicked"]["lng"])
+    # ป้องกันไม่ให้จุดมันแอดซ้ำๆ ตอนรีรัน
+    if not st.session_state.points or st.session_state.points[-1] != clicked_coords:
+        st.session_state.points.append(clicked_coords)
+        st.rerun()
+
+# แสดงผลพื้นที่ที่คำนวณได้
+st.markdown(f"""
+    <div style='background:#111424; padding:20px; border-radius:10px; border: 1px solid #9d4edd; margin-top:15px;'>
+        <b style='color:#00ffcc; font-size:16px;'>📐 หลักฐานขนาดพื้นที่นา (ตามจริง):</b>
+        <h2 style='color:#ff3333; margin:10px 0;'>🌾 {st.session_state.area_result}</h2>
     </div>
-</div>
+""", unsafe_allow_html=True)
 
-<div class="history-box">
-    <h3 style="color:#00ffcc; margin-top:0;">📂 บันทึกประวัติที่นาเก่า (กดเปิดดูซ้ำให้เจ้าของดูได้ตลอด)</h3>
-    <div id="history-list">ไม่มีประวัติการบันทึก</div>
-</div>
+# 6. ฟอร์มเซฟประวัติและเรียกดูย้อนหลังให้กับเจ้าของนา
+st.write("")
+col_input, col_save = st.columns([3, 1])
+with col_input:
+    owner_name = st.text_input("ระบุชื่อเจ้าของนา เช่น ตาดี ยายมี (เพื่อบันทึกประวัติ)", placeholder="พิมพ์ชื่อตรงนี้...")
+with col_save:
+    st.write("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
+    if st.button("💾 บันทึกข้อมูลแปลงนา", use_container_width=True):
+        if owner_name.strip() == "":
+            st.warning("⚠️ โปรดระบุชื่อเจ้าของนาก่อนบันทึกครับ")
+        elif st.session_state.area_result == "ยังไม่ได้ลากแปลงนา":
+            st.warning("⚠️ โปรดกดปุ่มคำนวณพื้นที่ให้เรียบร้อยก่อนบันทึก")
+        else:
+            st.session_state.history.append({
+                "owner": owner_name,
+                "result": st.session_state.area_result,
+                "points": list(st.session_state.points)
+            })
+            st.success(f"💾 บันทึกที่นาของ {owner_name} ลงฐานข้อมูลเรียบร้อย!")
+            st.rerun()
 
-<script>
-    // หยอดพิกัดตัวเลขตรงๆ แก้ปัญหาจอดำ และปรับ Zoom เริ่มต้นเป็น 17
-    var map = L.map('map').setView([15.9513057, 103.5796196], 17);
+# ส่วนแสดงกล่องประวัติย้อนหลังให้เจ้าของนาดูอีกรอบ
+st.markdown("<div class='history-container'>", unsafe_allow_html=True)
+st.markdown("<h3 style='color:#00ffcc; margin-top:0;'>📂 บันทึกประวัติที่นาเก่า (เปิดดูซ้ำให้เจ้าของดูย้อนหลัง)</h3>", unsafe_allow_html=True)
 
-    var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 20,
-        maxNativeZoom: 19
-    }).addTo(map);
-
-    // พยายามดึง GPS หน้างานจริงของมือถือ ถ้าดึงได้ แผนที่จะวาร์ปไปหาผู้ใช้ทันที
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            map.setView([lat, lng], 18);
-            L.marker([lat, lng]).addTo(map).bindPopup('🚜 พิกัดปัจจุบันของคุณ').openPopup();
-        }, function(err) {
-            console.log("GPS โหลดช้า ใช้พิกัดเริ่มต้นแทน");
-        }, {enableHighAccuracy: true, timeout: 5000});
-    }
-
-    var drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    var customPoints = [];
-    var customPolygon = null;
-    var lastCalculatedText = "";
-    var lastAreaSqMeters = 0;
-
-    window.onload = function() {
-        loadHistoryList();
-    };
-
-    function addPointFromCenter() {
-        var center = map.getCenter();
-        customPoints.push([center.lat, center.lng]);
-
-        L.circleMarker(center, {radius: 6, color: '#ff3333', fillColor: '#ff3333', fillOpacity: 1}).addTo(drawnItems);
-
-        if (customPoints.length > 1) {
-            if (customPolygon) { map.removeLayer(customPolygon); }
-            customPolygon = L.polygon(customPoints, {color: '#00ffcc', weight: 3, fillOpacity: 0.4}).addTo(drawnItems);
-        }
-    }
-
-    function calculateFromPoints() {
-        if (customPoints.length < 3) {
-            alert("ต้องปักหมุดอย่างน้อย 3 มุมขึ้นไปครับ!");
-            return;
-        }
-        
-        var turfCoords = [];
-        customPoints.forEach(function(pt) {
-            turfCoords.push([pt[1], pt[0]]);
-        });
-        turfCoords.push([customPoints[0][1], customPoints[0][0]]);
-
-        var polygonGeoJSON = turf.polygon([turfCoords]);
-        var areaSqMeters = turf.area(polygonGeoJSON);
-        lastAreaSqMeters = areaSqMeters;
-        
-        showAreaResult(areaSqMeters);
-    }
-
-    function showAreaResult(areaSqMeters) {
-        if (areaSqMeters > 0) {
-            var totalWa = areaSqMeters / 4;
-            var rai = Math.floor(totalWa / 400);
-            var remainingWa = totalWa % 400;
-            var ngan = Math.floor(remainingWa / 100);
-            var wa = Math.round(remainingWa % 100);
-
-            lastCalculatedText = rai + " ไร่ " + ngan + " งาน " + wa + " ตารางวา (" + Math.round(areaSqMeters).toLocaleString() + " ตร.ม.)";
-
-            document.getElementById('area-text').innerHTML = 
-                "🌾 พื้นที่นาจริง: <span style='color:#00ffcc;'>" + rai + " ไร่ </span> " + 
-                "<span style='color:#9d4edd;'>" + ngan + " งาน </span> " + 
-                "<span style='color:#ff3333;'>" + wa + " ตารางวา</span><br>" +
-                "<span style='font-size:14px; color:#9ca3af;'>คำนวณสุทธิ: " + Math.round(areaSqMeters).toLocaleString() + " ตารางเมตร</span>";
-        }
-    }
-
-    function saveCurrentData() {
-        var name = document.getElementById('owner-name').value.trim();
-        if (!name) {
-            alert("กรุณาพิมพ์ชื่อเจ้าของนาก่อนกดบันทึกครับ!");
-            return;
-        }
-        if (customPoints.length === 0 || lastAreaSqMeters === 0) {
-            alert("กรุณาปักหมุดและกดคำนวณพื้นที่ก่อนบันทึกครับ!");
-            return;
-        }
-
-        var historyData = localStorage.getItem('synapse_farm_history');
-        var historyArr = historyData ? JSON.parse(historyData) : [];
-
-        var newRecord = {
-            id: Date.now(),
-            owner: name,
-            areaText: lastCalculatedText,
-            points: customPoints
-        };
-
-        historyArr.push(newRecord);
-        localStorage.setItem('synapse_farm_history', JSON.stringify(historyArr));
-        
-        document.getElementById('owner-name').value = "";
-        alert("💾 บันทึกประวัติที่นาของ " + name + " เรียบร้อยแล้ว!");
-        loadHistoryList();
-    }
-
-    function loadHistoryList() {
-        var historyData = localStorage.getItem('synapse_farm_history');
-        var container = document.getElementById('history-list');
-        
-        if (!historyData || JSON.parse(historyData).length === 0) {
-            container.innerHTML = "ไม่มีประวัติการบันทึก";
-            return;
-        }
-
-        var historyArr = JSON.parse(historyData);
-        var html = "";
-        
-        historyArr.forEach(function(item) {
-            html += "<div class='history-item'>" +
-                    "<div>👤 <b>" + item.owner + "</b> - " + item.areaText + "</div>" +
-                    "<div>" +
-                        "<button type='button' class='map-btn' style='padding:5px 10px; font-size:12px; margin:0 5px 0 0;' onclick='viewOldRecord(" + JSON.stringify(item.points) + ", \"" + item.areaText + "\")'>👁️ เปิดดูแปลง</button>" +
-                        "<button type='button' class='map-btn map-btn-danger' style='padding:5px 10px; font-size:12px; margin:0;' onclick='deleteRecord(" + item.id + ")'>🗑️ ลบ</button>" +
-                    "</div>" +
-                   "</div>";
-        });
-        container.innerHTML = html;
-    }
-
-    function viewOldRecord(points, areaText) {
-        clearAllDrawings();
-        customPoints = points;
-        
-        customPoints.forEach(function(pt) {
-            L.circleMarker([pt[0], pt[1]], {radius: 6, color: '#ff3333', fillColor: '#ff3333', fillOpacity: 1}).addTo(drawnItems);
-        });
-
-        customPolygon = L.polygon(customPoints, {color: '#00ffcc', weight: 3, fillOpacity: 0.4}).addTo(drawnItems);
-        map.panTo(new L.LatLng(customPoints[0][0], customPoints[0][1]));
-        document.getElementById('area-text').innerHTML = "📂 กำลังแสดงข้อมูลเก่าของ: " + areaText;
-    }
-
-    function deleteRecord(id) {
-        if(confirm("ยืนยันที่จะลบประวัตินี้ใช่ไหมเพื่อน?")) {
-            var historyData = localStorage.getItem('synapse_farm_history');
-            var historyArr = JSON.parse(historyData);
-            var filtered = historyArr.filter(function(item) { return item.id !== id; });
-            localStorage.setItem('synapse_farm_history', JSON.stringify(filtered));
-            loadHistoryList();
-        }
-    }
-
-    function clearAllDrawings() {
-        drawnItems.clearLayers();
-        customPoints = [];
-        customPolygon = null;
-        lastAreaSqMeters = 0;
-        document.getElementById('area-text').innerHTML = "ยังไม่ได้ลากแปลงนา";
-    }
-</script>
-"""
-
-st.components.v1.html(map_html_code, height=1050, scrolling=False)
-st.success("⚡ แก้ไขปัญหาการเชื่อมต่อพิกัดเรียบร้อย! คราวนี้แผนที่และเป้าเล็งสีแดงจะแสดงผลขึ้นมาอย่างถูกต้องแน่นอนครับเพื่อน!")
+if not st.session_state.history:
+    st.write("ยังไม่มีข้อมูลประวัติการบันทึกในเซสชันนี้")
+else:
+    for idx, item in enumerate(st.session_state.history):
+        col_hist_txt, col_hist_btn = st.columns([4, 1])
+        with col_hist_txt:
+            st.write(f"👤 **{item['owner']}** — {item['result']}")
+        with col_hist_btn:
+            if st.button(f"👁️ เปิดดูแปลง", key=f"load_{idx}", use_container_width=True):
+                st.session_state.points = item["points"]
+                st.session_state.area_result = item["result"]
+                st.rerun()
+st.markdown("</div>", unsafe_allow_html=True)
