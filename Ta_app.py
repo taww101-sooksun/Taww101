@@ -89,6 +89,9 @@ if "history" not in st.session_state:
     st.session_state.history = []
 if "area_result" not in st.session_state:
     st.session_state.area_result = "ยังไม่ได้ลากแปลงนา"
+# เพิ่มตัวแปรเช็คการกดซ้ำเพื่อป้องกัน Loop ค้าง
+if "last_click_info" not in st.session_state:
+    st.session_state.last_click_info = None
 
 st.subheader("🛰️ แผนที่ดาวเทียม (ใช้นิ้วจิ้มมุมคันนาเพื่อปักหมุดจริงได้เลย)")
 st.caption("💡 วิธีใช้งาน: ใช้นิ้วเลื่อนและถ่างซูมแผนที่หาแปลงนา จากนั้น 'จิ้มลงไปบนหน้าจอแผนที่ตรงมุมคันนาโดยตรง' เพื่อเริ่มปักหมุดสีแดง")
@@ -97,7 +100,7 @@ st.caption("💡 วิธีใช้งาน: ใช้นิ้วเลื�
 start_lat = 15.9513057
 start_lng = 103.5796196
 
-# สร้างแผนที่ผ่าน Python โดยตรง ไม่ผ่านสคริปต์ HTML ปลอดภัยหายห่วง
+# สร้างแผนที่ผ่าน Python โดยตรง
 m = folium.Map(
     location=[start_lat, start_lng], 
     zoom_start=16, 
@@ -106,7 +109,7 @@ m = folium.Map(
     attr='Google'
 )
 
-# วาดหมุดสีแดงตามพิกัดที่คนจิ้มไว้
+# วาดหมุดสีแดงตามพิกัดที่บันทึกไว้ในระบบ
 for idx, pt in enumerate(st.session_state.points):
     folium.CircleMarker(
         location=[pt[0], pt[1]],
@@ -135,6 +138,7 @@ col_btn1, col_btn2 = st.columns(2)
 with col_btn1:
     if st.button("🗑️ ล้างค่าเริ่มใหม่ทั้งหมด", use_container_width=True):
         st.session_state.points = []
+        st.session_state.last_click_info = None
         st.session_state.area_result = "ยังไม่ได้ลากแปลงนา"
         st.rerun()
 
@@ -143,7 +147,7 @@ with col_btn2:
         if len(st.session_state.points) < 3:
             st.error("⚠️ ต้องใช้นิ้วจิ้มปักหมุดบนแผนที่ให้ได้อย่างน้อย 3 มุมก่อนครับแปลงนาถึงจะสมบูรณ์!")
         else:
-            # คำนวณสูตรคณิตศาสตร์บน Python ปลอดภัยและไม่พังชัวร์
+            # คำนวณสูตรคณิตศาสตร์พื้นที่บนพื้นผิวโลก
             import math
             def get_area(pts):
                 R = 6378137
@@ -172,20 +176,24 @@ with col_btn2:
             st.session_state.area_result = f"{rai} ไร่ {ngan} งาน {wa} ตารางวา (สุทธิ {round(area_sqm, 1):,} ตร.ม.)"
             st.rerun()
 
-# แสดงแผนที่ขนาดใหญ่ และระบบหลังบ้านของ st_folium จะดักจับพิกัดการจิ้มจอส่งให้ Python เองอัตโนมัติ
+# บรรทัดที่ 119 เดิม (ปรับปรุงระบบจับตรวจการคลิกให้ปลอดภัย)
 map_data = st_folium(m, height=700, width=1300, returned_objects=["last_clicked"])
 
-# ถ้านิ้วจิ้มแผนที่ ให้บันทึกพิกัดลงพายธอนทันที
+# แก้ไขจุดนี้: ดักลูปค้าง ตรวจสอบว่าเป็นการจิ้มครั้งใหม่จริงๆ หรือไม่
 if map_data and map_data.get("last_clicked"):
-    clicked_coords = (map_data["last_clicked"]["lat"], map_data["last_clicked"]["lng"])
-    if not st.session_state.points or st.session_state.points[-1] != clicked_coords:
+    current_click = map_data["last_clicked"]
+    
+    # ตรวจสอบว่าค่าคลิกนี้ แตกต่างจากการคลิกครั้งล่าสุดที่บันทึกไว้หรือไม่
+    if st.session_state.last_click_info != current_click:
+        st.session_state.last_click_info = current_click # อัปเดตจุดที่คลิกล่าสุดทันที
+        clicked_coords = (current_click["lat"], current_click["lng"])
         st.session_state.points.append(clicked_coords)
         st.rerun()
 
 # แสดงผลพื้นที่ที่คำนวณได้จริง
 st.markdown(f"""
     <div style='background:#111424; padding:20px; border-radius:10px; border: 1px solid #9d4edd; margin-top:15px;'>
-        <b style='color:#00ffcc; font-size:16px;'>📐 หลักฐานขนาดพื้นที่นา (ตามจริง):</b>
+        <b style='color:#00ffcc; font-size:16px;'>📐  หลักฐานขนาดพื้นที่นา (ตามจริง):</b>
         <h2 style='color:#ff3333; margin:10px 0;'>🌾 {st.session_state.area_result}</h2>
     </div>
 """, unsafe_allow_html=True)
