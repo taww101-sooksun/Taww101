@@ -17,55 +17,50 @@ import hashlib
 st.set_page_config(page_title="SYNAPSE HUB", layout="wide")
 
 # =========================================================
-# 🔐 ระบบเชื่อมต่อ FIREBASE (DEEP CLEAN KEY: ล้างช่องว่างหลุดจากจอมือถือ)
+# 🔐 ระบบเชื่อมต่อ FIREBASE (รหัสลับ BASE64 กันคีย์พังบนมือถือ 100%)
 # =========================================================
 firebase_ready = False
 
 if not firebase_admin._apps:
     try:
-        # ก้อนกุญแจลับดิบๆ ที่ติดเว้นวรรคจากการก๊อปปี้บนหน้าจอมือถือ
-        raw_key_block = """MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCjG40Z0gib0k65
-yE4jV8q6uwKQhznwV3ybK8F8Z8pF6tdIilR8EiSGQpPTvgTcNIu2gUtC3VNZV7qf
-+68alnNpgF5ZnrrLot/QqtxnjzzxZrHQIUz6D1BUjLi3zj1DpG9KPWKb5GgOjFnD
-1MEbivAJqpQSA5h/PG/yC6vVruNLw/RCwfnOyZiCkrbTvDppdRQxYtQGcMM1uslk
-lJrV5qnpAjBAg90FF1F2Yzl6yGj0d/xfrReq1dkwJVBiQ1nN73SXvu7Rt/cxY42U
-d+n9WWKP4K12iH4Pq55lyEik01TQ/IiLrivxo/wDLIjF8HSTI4fkUxJajgak9cmm
-P2Bzhi2lAgMBAAECggeAGjR+uLeFMQ26nsAXB7ge5t3NVW2YaiwQJbkDsspVFeMb
-V/j7hlx+2EBBklsc2kkp6jY/Iny/G6NL5VCxKw8hd0GLxw/IuJdQKK0O0KeTdcBX
-UJZNEP7dW9wpAETnFGNKiw2uNlgdvLqhYGRh6xwpIRByDivcOBL8dFGaN7BLrdwJ
-yFrVl9vFcl9Bb9wCItJTlcKT3CRpMZud3M/KcWW36pxLVN3JWLssZtCBdw4BZqBY
-VHD/QYHO1su28xL10gpaEXYJNA7zYzSc23BiCE2Lkx2vWKt2GhfmYhiBW+dHLSpa
-V72xTiGcUpkbr8L3S3i5cgjwyz7riibUqz9TL5I4kQKBgQDRNx8kRVqkQ8yf0OdN
-QJshB1P4ZCSDkTPv75TZOD1aKPbzrbK6Hf+tdcaN8ktv/fcAxkaZORgq6CJr9Q0w
-Xnio4g74VHJ5vy9ER7lUK85qs5jqXcubilP3MF5ilpMfFo9V09ERDjrllWGo5Jqn
-a5PJmq0FuKlF1+kcrkoH8VF+VQKBgQDHlOr3dhVYquCrO9wXxDzzEi2yRAj0Hoj9
-XpD9wZFtpb54EfQ4odkJdKe5zCcQFOIgmmIYMeevhMyToHKjMi2qPbSEgCYYzcYf
-IJLbzLPfQfU+cn0ayuDPic69JRJPhqOAYnA2CEDOzAtbwl5aKRxqYe2beWBfcvdS
-I3kec3+iEQKBgQCAjt2M/S0AiUTg445uMwfgGM+pb2fcjMocYtzVSbCxiUCOZirQ
-IQTuQtPaf4uJasZv7GaPWr0WCIS2T+Nl2HdOV3KZd9LMKwXRcD1aknyJpoiNY0ts
-7WhBGbC15g7LaKJ1O+5ZC6R3VP6ouKirvfgXRvuQ63Lgnxb4b8S/8rJ/7QKBgQCT
-pMTV4BMWjwK5agT9x/xWzSHk+JOvFE+/MBAOyP2uoahv5shGhOSsLBJQToivSuOl
-vs/GmlSM8a7tnwpvVBWYFSHPy4VjYAaqzEwYMiz2gjLMyaFnCqKYpZe9MQmEr1OR
-DEF6l0xqL2RPs1BdXoBY6qz+ESKMOd5gc0GMl2DaIQKBgAgLzHmGQj+gVmr4Nz4d
-/eH7xPVWB5Y0yGpIFxAUTfnIv+wjTLfF0DnT6xCgOBag2cEFy3YmLa85n/hwd4vb
-cNoWeThofCTEVdwnJ8nwreRAepqOQ5Qp1oWFyCUojH6uetFzwoyMCdQdDXVwlBdi
-YmaeksHQ6/3MQ6w4Q/IJ9a4L"""
-
-        # ทำความสะอาดระดับลึก: เอาเว้นวรรคและขึ้นบรรทัดใหม่ทั้งหมดออกก่อน แล้วมาจัดระเบียบใหม่ให้ถูกต้องร้อยเปอร์เซ็นต์
-        clean_lines = []
-        for line in raw_key_block.split('\n'):
-            stripped = line.replace(" ", "").replace("\r", "").strip()
-            if stripped:
-                clean_lines.append(stripped)
+        # ล้างช่องว่างขยะจากชุดคีย์ใหม่ ID: 203615ab4def5a9218aa2ba27b80bfb9503b2504 ของบาส
+        raw_key_parts = [
+            "MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCZsepZJy1xNU79",
+            "stLq1jVdeFsJUf/54j45gEYKffO6IfUuJaDeJTzrw8uDrYJwxmOtkO2Mjnz49kPh",
+            "it6n3dqmlZkkp4JYtVGDDETDHTr2oq+hh3C7hs2BcaK04dpx/0RF+P1HDEsxPAHO",
+            "J0vOgiNjdyrWHd8zXAvpG2CpazwF2IK8ul+PhCAOMb98DSR8CZ7QibLmoSZbGTc0",
+            "Et3aA5/lWvXSha8ASlFeGh++Xyc5cuJ1v6dA7lnb22YkCMpFTGNDde5j0XLfkfOQ",
+            "fe2QpioyJOrspHuzrbFZqvajGBWUmlsGTu4lYgtHaWjbPhwB2g/4btJPusOA6AdW",
+            "rwPL4ZefAgMBAAECggEAOlo0MVkQhbTJosSsE4D0jeJOHgHF/+eH3Gj5Lq6XRInz",
+            "/mtG4lCdCp4xvHK53XtVCObHaeAHTrahGxaQZodypmCR3jrC4E8m/WxBBxsn8c/e",
+            "gqNbh7csewLb1XUSbMmP8EkSUFE4kx7HSK/eti7upKrv1o9M2MEPvJcqYehWx5jP",
+            "mnLA4q11JOinv6sGpe+es5CROnnWaXDyUlZ4XWJY2jefte59UYUzBckcXLn6y0zM",
+            "yiS9crCwASZaEnqXbh1IWe8+KCzORW+xk7DHuy+W59R94NhKmWEPL0PFm7hnwhHG",
+            "gva+3ssCWBLUAY3Q4Tn+tkMx+LJzjH/vG9P+RodpoQKBgQDHrBKLz7CuQRCaghGg",
+            "rAaHVg/9bRL9P9WNAILbeEajxx3uKmlOLXKYKrtbr2pYDwHZo2mG8q4RT8C1Ns1I",
+            "ovbWtN0GNJeHcHQ9PGxUW0JTxvrOf/Q++rRTb/v4GL60yJzreCH6LTuMA+DljMBU",
+            "YAqLnrsO6DElIVbdNQ8U3vIaVwKBgQDFDXZjHbH862FBiMJZL/skc00xQY3Se/Z7",
+            "hO/ZroZUXhraH8PH5PH5aWeCddFcGx2ia478KFN5hcNJmbP8g3DJ0rt5wMdnQ8Kr",
+            "KU5JTtSO4L+WFVY3ztngx64piADRzTAxjIQ46E6m55+uk4zL8UqB0Rd1Abe1eLz6",
+            "MGiJ4vAv+QKBgA+SXNPoe5frXRcfo65LHCs7y/1wnzV+3/GiI5JoG+Iz6iKjzhiZ",
+            "tMEnO/tXf8ykRvmpI9axYF/bP2Uig/nxM5zk+AO+4D5gx7/q0Wv2vgJ4lyC5m9u5",
+            "g4yqRBVCIMVKi+pVMRkoo+c0ejqMsociAlCHLYFpHEQQCI0x0R5IkMr7AoGBAIQI",
+            "7j+hoSaQbV1lDpyGKuiUna+YdjgIOfMv8yrP51BWsfVf/WZOgNiXCPWAjmUCAkxX",
+            "d7p8Jtqxh1YkuFZFmGiTXG1LgBEwdRsNFVjHimOmMpmU+G1ym8ki4w8PA0WREG7S",
+            "bBHT7welAfkPAvOQXVU4zlfna7ocCbw2fYWO21O5AoGACzICVMDNTVPOMgzEiEPf",
+            "UO5vBL1xiYWRSO4+gt+WDb1V3ObdZlRlA/Gkek6xtkwJeZphIza1ItXw0MvaJd1h",
+            "Y2eY6y4Z5ZYLF1R8HdQCVkQJ162IAkA9wjzeTrX7JXb3gkNhoMhHUT+rTn/IiTVB",
+            "Ostu6lT++fIZqXmuw2SqjCs="
+        ]
         
-        # ประกอบร่างกลับคืนตามมาตรฐาน JWT ของ Google
-        formatted_private_key = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(clean_lines) + "\n-----END PRIVATE KEY-----\n"
+        # ประกอบร่างกุญแจหลักแบบล้างช่องว่างสะอาดสมบูรณ์ร้อยเปอร์เซ็นต์
+        clean_private_key = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(raw_key_parts) + "\n-----END PRIVATE KEY-----\n"
 
         firebase_cfg = {
             "type": "service_account",
             "project_id": "sooksun-104",
-            "private_key_id": "e13ddd5244c07d6f5c7d9c46c4e604ca2c7b8e3e",
-            "private_key": formatted_private_key,
+            "private_key_id": "203615ab4def5a9218aa2ba27b80bfb9503b2504",
+            "private_key": clean_private_key,
             "client_email": "firebase-adminsdk-fbsvc@sooksun-104.iam.gserviceaccount.com",
             "client_id": "101794686310728865878",
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -89,7 +84,7 @@ else:
 if 'custom_theme' not in st.session_state:
     st.session_state.custom_theme = "#00f3ff"
 
-# --- ฟังก์ชันคำนวณดาราศาสตร์/ควอนตัมประจำวัน ---
+# --- ฟังก์ชันคำนวณข้างขึ้นข้างแรม ---
 def get_detailed_logic(dt):
     if dt is None: return None
     ref_date = date(1900, 1, 1)
@@ -207,9 +202,10 @@ elif st.session_state.page == "1":
         st.caption("ไม่พบไฟล์ .mp3 ในโฟลเดอร์แอปหลัก")
 
 # =========================================================
-# ห้องที่ 2: CHAT SYSTEM & RADAR (เชื่อมต่อตรงสลุด 100%)
+# ห้องที่ 2: TACTICAL CHAT & MAP (เปิดระบบออนไลน์ได้จริงแล้ว!)
 # =========================================================
 elif st.session_state.page == "2":
+    st_autorefresh(interval=6000, key="chat_refresh")
     st.markdown("<h2 style='text-align:center; color:#ff00de;'>🛰️ TACTICAL RADAR & PRIVATE CHAT</h2>", unsafe_allow_html=True)
     
     import folium
@@ -243,7 +239,7 @@ elif st.session_state.page == "2":
     st.markdown("<h4>🔐 PRIVATE SECURE CHAT</h4>", unsafe_allow_html=True)
     
     if not firebase_ready:
-        st.error("⚠️ ขัดข้อง: ระบบตรวจพบบั๊ก JWT Token ไม่ยอมทำงาน")
+        st.error("⚠️ บั๊กการเชื่อมต่อฐานข้อมูล")
     else:
         try:
             all_users = db.reference('users').get()
@@ -355,7 +351,7 @@ elif st.session_state.page == "8":
     st.success(f"🔐 รหัสเข้าเซิร์ฟเวอร์สูงสุดของคุณประจำวันนี้คือ: {pin}")
 
 # =========================================================
-# ห้องที่ 9: SYSTEM LOG (บันทึกข้อมูลเข้าเซิร์ฟเวอร์)
+# ห้องที่ 9: SYSTEM LOG (จดบันทึกลงฐานข้อมูลจริง)
 # =========================================================
 elif st.session_state.page == "9":
     st.markdown("<h2>📝 MEMORY SYSTEM LOG</h2>", unsafe_allow_html=True)
