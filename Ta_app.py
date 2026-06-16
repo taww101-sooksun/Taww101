@@ -94,7 +94,7 @@ map_html_code = f"""
     }}
     #map {{
         width: 100%;
-        height: 700px; 
+        height: 500px; 
         border-radius: 16px;
         border: 3px solid #00ffcc;
         z-index: 1;
