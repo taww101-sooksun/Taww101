@@ -41,6 +41,5 @@ uvicorn
 pydantic
 streamlit-folium
 folium
-customtkinter
-pygame
+
 
