@@ -124,3 +124,101 @@ def get_base64_image(img_path):
 
 # ตรวจสอบคลังเพลง .mp3 ในโฟลเดอร์ปัจจุบัน
 current_dir = os.path.dirname(os.path.abspath(__file__)) if "__file__" in locals() else os.getcwd()
+song_list = sorted([f for f in os.listdir(current_dir) if f.lower().endswith(".mp3")])
+
+# แสดงชื่อหัวข้อหลัก
+st.markdown('<h1 class="neon-title" style="text-align:center;">SYNAPSE QUANTUM PLAYER</h1>', unsafe_allow_html=True)
+st.markdown('<p style="text-align:center; color:#888; font-family:sans-serif;">📊 NEXT-GEN AUDIO RADAR | อยู่นิ่งๆ ไม่เจ็บตัว</p>', unsafe_allow_html=True)
+st.write("---")
+
+# =========================================================
+# 🖼️ รวมร่าง: โลโก้ + กรอบวงกลมเรืองแสงเต้นได้ให้อยู่จุดเดียวกัน
+# =========================================================
+logo_file_path = os.path.join(current_dir, "logo1.png")
+img_base64 = get_base64_image(logo_file_path)
+
+# เริ่มต้นกล่องห่อหุ้มแกนกลาง
+st.markdown('<div class="avatar-wrapper">', unsafe_allow_html=True)
+st.markdown('<div class="neon-pulse-circle"></div>', unsafe_allow_html=True) # ตัววงกลมเรืองแสงที่เต้น
+
+if img_base64:
+    # ถ้ารูปภาพ logo1.png มีอยู่จริง จะถูกดึงมาครอบให้อยู่ตรงกลางวงกลมพอดีเป๊ะ ไม่หนีไปไหน
+    st.markdown(f'<img src="data:image/png;base64,{img_base64}" class="logo-core">', unsafe_allow_html=True)
+else:
+    # หากไม่มีรูปภาพ จะแสดงแกนพลังงานข้อความเรืองแสงสลับสีแทน
+    st.markdown('<h1 class="text-core">🧬</h1>', unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# =========================================================
+# 📈 เส้นกราฟชีพจรเสียงวิ่งสด (HTML5 Canvas สีเขียวนีออน)
+# =========================================================
+pulse_graph_html = """
+<div style="background:#050508; border:1px solid #222; border-radius:10px; padding:5px;">
+    <canvas id="pulseCanvas" style="width:100%; height:60px;"></canvas>
+</div>
+<script>
+    const canvas = document.getElementById('pulseCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = 60;
+    
+    let x = 0;
+    ctx.strokeStyle = '#00ff66'; 
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#00ff66';
+    
+    function drawPulse() {
+        ctx.fillStyle = 'rgba(5, 5, 8, 0.12)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.beginPath();
+        ctx.moveTo(x, canvas.height / 2);
+        
+        let y = canvas.height / 2;
+        if (Math.random() < 0.15) { 
+            y = (Math.random() < 0.5) ? (10 + Math.random()*10) : (40 + Math.random()*10);
+        } else {
+            y = (canvas.height / 2) + (Math.random() * 4 - 2);
+        }
+        
+        x += 3;
+        if (x > canvas.width) x = 0;
+        
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        requestAnimationFrame(drawPulse);
+    }
+    drawPulse();
+</script>
+"""
+
+# =========================================================
+# 🎛️ กล่องแผงควบคุมระบบเสียง
+# =========================================================
+if not song_list:
+    st.error("❌ ไม่พบไฟล์ .mp3 ในเซิร์ฟเวอร์ กรุณาตรวจสอบคลังบน GitHub ของนาย")
+else:
+    st.markdown('<div class="neon-box">', unsafe_allow_html=True)
+    
+    selected_song = st.selectbox("🎵 ค้นพบสัญญาณเสียงในคลัง (SELECT TRACK):", song_list)
+    
+    if selected_song:
+        st.markdown(f"📡 **FREQUENCY:** `STREAMING // {selected_song.upper()}`")
+        st.markdown('<span class="neon-status">STATUS: TRANSMITTING SIGNAL...</span>', unsafe_allow_html=True)
+        
+        # แทรกตัวกราฟชีพจรสีเขียวนีออน
+        import streamlit.components.v1 as components
+        components.html(pulse_graph_html, height=75)
+        
+        # โหลดเสียงเพลงมาเล่นจริง
+        song_bytes = open(os.path.join(current_dir, selected_song), "rb").read()
+        st.audio(song_bytes, format="audio/mp3")
+        
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # คลังรายชื่อแบบพับเก็บได้
+    with st.expander("📂 ดูฐานข้อมูลคลังเพลงทั้งหมด"):
+        for index, song in enumerate(song_list, start=1):
+            st.write(f"`[{index:02d}]` -- {song}")
