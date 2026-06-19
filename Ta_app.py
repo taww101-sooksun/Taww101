@@ -214,80 +214,40 @@ elif menu == "10. ตั้งค่าระบบควบคุม (System Se
     st.write("**สถานะการติดตั้งระบบ:**")
     st.text(f"Project ID: sooksun-101\nPlatform: Streamlit Mobile Web App\nCore Philosophy: Stay still, no pain.")
 
-# --- หัวข้อที่ 11: ระบบรางวัดและแผนที่วาดกรอบแปลงที่ดินจริง ---
+# --- หัวข้อที่ 11: ระบบเชื่อมโยงระบบค้นหารูปแปลงที่ดินของรัฐบาล ---
 elif menu == "11. ระบบคำนวณและรางวัดที่ดิน (Land Surveyor)":
-    st.title("📐 LAND BOUNDARY CONTROL CENTER")
-    st.write("ระบบแผนที่ดาวเทียมจำลองการวาดกรอบขอบเขตที่ดินเป็นล็อกแยกรายบุคคล")
+    st.title("📐 GOVERNMENT LAND SURVEYOR LINK")
+    st.write("ระบบอำนวยความสะดวกเพื่อเชื่อมโยงไปยังระบบค้นหารูปแปลงที่ดิน (LandsMaps) ของกรมที่ดินรัฐบาล")
 
-    tab1, tab2 = st.tabs(["🗺️ แผนที่แสดงกรอบที่ดินรวม", "➕ บันทึกกรอบที่ดินใหม่"])
+    # ส่วนที่ 1: เครื่องช่วยคำนวณพื้นที่ดินมาตราไทย
+    st.subheader("🧮 เครื่องคำนวณพื้นที่ก่อนไปค้นหา")
+    col_r, col_ng, col_w = st.columns(3)
+    input_rai = col_r.number_input("จำนวน ไร่", min_value=0, value=1, step=1, key="gov_rai")
+    input_ngan = col_ng.number_input("จำนวน งาน", min_value=0, max_value=3, value=0, step=1, key="gov_ngan")
+    input_wa = col_w.number_input("จำนวน ตารางวา", min_value=0, max_value=399, value=0, step=1, key="gov_wa")
+    
+    total_wa = (input_rai * 400) + (input_ngan * 100) + input_wa
+    st.info(f"📊 ขนาดพื้นที่รวมคำนวณได้จริง: **{total_wa:,} ตารางวา** ({total_wa*4:,} ตารางเมตร)")
 
-    with tab1:
-        st.subheader("🌐 ผังแปลงที่ดินดาวเทียม (เห็นขอบเขตชัดเจน)")
-        center_lat, center_lon = 16.054000, 103.652000
-        
-        m = folium.Map(location=[center_lat, center_lon], zoom_start=18, tiles='OpenStreetMap')
-        
-        folium.TileLayer(
-            tiles='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-            attr='Esri',
-            name='แผนที่ดาวเทียม (Satellite)',
-            overlay=False,
-            control=True
-        ).add_to(m)
-        folium.LayerControl().add_to(m)
+    st.write("---")
 
-        # จำลองล็อกกรอบที่ดินต๊ะ
-        boundary_ta = [
-            [16.054200, 103.651800],
-            [16.054200, 103.652200],
-            [16.053900, 103.652200],
-            [16.053900, 103.651800]
-        ]
-        folium.Polygon(
-            locations=boundary_ta,
-            color='blue',
-            fill=True,
-            fill_color='blue',
-            fill_opacity=0.3,
-            popup='<b>แปลงที่ดิน: ของต๊ะ</b><br>พื้นที่ประมาณ: 1 ไร่ 2 งาน'
-        ).add_to(m)
-
-        # จำลองล็อกกรอบที่ดินเพื่อนบ้าน
-        boundary_neighbor = [
-            [16.053900, 103.651800],
-            [16.053900, 103.652200],
-            [16.053600, 103.652200],
-            [16.053600, 103.651800]
-        ]
-        folium.Polygon(
-            locations=boundary_neighbor,
-            color='red',
-            fill=True,
-            fill_color='red',
-            fill_opacity=0.2,
-            popup='<b>แปลงที่ดิน: นายสมชาย</b><br>พื้นที่ประมาณ: 1 ไร่'
-        ).add_to(m)
-
-        st_folium(m, width="100%", height=450, returned_objects=[])
-
-    with tab2:
-        st.subheader("📝 โครงสร้างการคำนวณและบันทึกค่าไร่-งาน-วา")
-        col_r, col_ng, col_w = st.columns(3)
-        input_rai = col_r.number_input("จำนวน ไร่", min_value=0, value=1, step=1, key="rai_survey")
-        input_ngan = col_ng.number_input("จำนวน งาน", min_value=0, max_value=3, value=0, step=1, key="ngan_survey")
-        input_wa = col_w.number_input("จำนวน ตารางวา", min_value=0, max_value=399, value=0, step=1, key="wa_survey")
-        
-        total_wa = (input_rai * 400) + (input_ngan * 100) + input_wa
-        st.write("---")
-        st.markdown(f"### 📊 ขนาดพื้นที่: **{total_wa:,} ตารางวา**")
-        
-        land_owner_name = st.text_input("กรอกชื่อผู้ครอบครองแปลง:", value="ต๊ะ_บาส 101", key="owner_survey")
-        if st.button("ส่งพิกัดฐานข้อมูลด่วน (Save to Firebase)", use_container_width=True):
-            if is_connected and land_owner_name.strip():
-                try:
-                    db.reference("land_grids").push({
-                        "owner": land_owner_name, "total_sq_wa": total_wa, "timestamp": {".sv": "timestamp"}
-                    })
-                    st.success("💾 บันทึกข้อมูลเรียบร้อย!")
-                except Exception as e: 
-                    st.error(str(e))
+    # ส่วนที่ 2: ช่องเตรียมข้อมูลเพื่อไปค้นหาบนเว็บรัฐบาล
+    st.subheader("🔍 เตรียมข้อมูลค้นหาโฉนด (LandsMaps)")
+    st.write("พิมพ์เลขโฉนดและข้อมูลไว้ที่นี่เพื่อความสะดวกในการคัดลอก (Copy) ไปใช้วางในเว็บรัฐบาล")
+    
+    chanote_no = st.text_input("ระบุ เลขที่โฉนด (ถ้ามี):", value="12345")
+    province_select = st.text_input("ระบุ จังหวัด / อำเภอ:", value="ร้อยเอ็ด")
+    
+    # ส่วนที่ 3: ปุ่มลิงก์ทางเข้าเว็บรัฐบาลทำได้จริง
+    st.subheader("🌐 ปุ่มทางเข้าเว็บแอปพลิเคชันของรัฐบาล")
+    st.write("เมื่อกดปุ่มด้านล่าง ระบบจะเปิดหน้าต่างใหม่ไปยังเว็บไซต์ **LandsMaps ของกรมที่ดิน** ทันที เพื่อให้เพื่อนตรวจสอบกรอบโฉนดล็อกของจริงรายบุคคล")
+    
+    # ใช้คำสั่ง st.link_button ซึ่งเป็นคำสั่งแท้ของ Streamlit ที่ใช้สำหรับเปิดลิงก์ภายนอกได้จริงบนมือถือ
+    st.link_button(
+        "🏛️ เปิดระบบค้นหารูปแปลงที่ดินกรมที่ดิน (LandsMaps)", 
+        "https://landsmaps.dol.go.th/",
+        use_container_width=True,
+        type="primary"
+    )
+    
+    st.caption("⚠️ หมายเหตุ: ข้อมูลรูปแปลงที่ดิน ขอบเขตล็อก และผังเมือง เป็นสิทธิ์และข้อมูลภายใต้การดูแลของกรมที่ดิน กระทรวงมหาดไทย")
