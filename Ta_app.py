@@ -1,253 +1,406 @@
 import streamlit as st
-import firebase_admin
-from firebase_admin import credentials, db
-import json
-import time
-import pandas as pd
-import folium
-from streamlit_folium import st_folium
+import os
+import random
 
-# ตั้งค่าการแสดงผลหน้าเว็บแอปพลิเคชัน
-st.set_page_config(
-    page_title="SYNAPSE COMMAND CENTER",
-    page_icon="⚡",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# 1. ตั้งค่าหน้าจอแอปให้กว้างพิเศษ (Wide) 
+st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO v2", page_icon="🚜", layout="wide")
 
-# =========================================================
-# [ ระบบเชื่อมต่อหลังบ้าน FIREBASE - โครงสร้างรองรับความเสถียร ]
-# =========================================================
-def init_firebase_system():
-    if not firebase_admin._apps:
-        try:
-            cred_dict = {
-                "type": "service_account",
-                "project_id": st.secrets["firebase"]["project_id"],
-                "private_key_id": st.secrets["firebase"]["private_key_id"],
-                "private_key": st.secrets["firebase"]["private_key"],
-                "client_email": st.secrets["firebase"]["client_email"],
-                "client_id": st.secrets["firebase"]["client_id"],
-                "auth_uri": st.secrets["firebase"]["auth_uri"],
-                "token_uri": st.secrets["firebase"]["token_uri"],
-                "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
-                "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"],
-                "universe_domain": st.secrets["firebase"]["universe_domain"]
-            }
-            
-            if "private_key" in cred_dict:
-                cred_dict["private_key"] = cred_dict["private_key"].replace("\\n", "\n")
-            
-            cred = credentials.Certificate(cred_dict)
-            firebase_admin.initialize_app(cred, {
-                'databaseURL': 'https://sooksun-101-default-rtdb.firebaseio.com' 
-            })
-            return True, "Connected"
-        except Exception as e:
-            return False, str(e)
+# 2. ปรับแต่งสไตล์และโทนสีแอป
+st.markdown("""
+    <style>
+    .stApp { 
+        background: linear-gradient(135deg, #090d16 0%, #111424 50%, #1a0b2e 100%); 
+    }
+    h1, h2, h3, p, label, span { color: #ffffff !important; font-family: 'Sans-serif'; }
+    
+    .neon-title {
+        color: #00ffcc !important;
+        text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
+        font-weight: bold;
+    }
+    
+    .music-box {
+        background: rgba(26, 11, 46, 0.8);
+        border: 2px solid #9d4edd;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: 0 0 10px rgba(157, 78, 221, 0.5);
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# 3. ส่วนหัวของแอปและการแสดงโลโก้
+col_logo, col_title = st.columns([1, 4])
+with col_logo:
+    if os.path.exists("logo1.png"):
+        st.image("logo1.png", width=120)
     else:
-        return True, "Already Connected"
+        st.write("🛰️ [SYNAPSE]")
 
-# เรียกใช้งานการเชื่อมต่อระบบ
-is_connected, system_message = init_firebase_system()
+with col_title:
+    st.markdown("<h1 class='neon-title'>🚜 ระบบวัดที่นาสัจจะ - AREA PRO v2</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #ff3333 !important; font-style: italic; font-weight: bold; text-shadow: 0 0 5px #ff3333;'>\"อยู่นิ่งๆ ไม่เจ็บตัว วัดตามความจริง ไม่มีใครโกหกใครได้\"</p>", unsafe_allow_html=True)
 
-# =========================================================
-# [ โครงสร้างเมนูอัปเดตใหม่ 11 หัวข้อหลัก (Sidebar Navigation) ]
-# =========================================================
-st.sidebar.title("SYNAPSE HUB v2.0")
-st.sidebar.markdown("**สโลแกน:** *อยู่นิ่งๆ ไม่เจ็บตัว*")
-st.sidebar.write("---")
+st.write("---")
 
-menu = st.sidebar.radio(
-    "เลือกหัวข้อการใช้งาน:",
-    [
-        "1. หน้าหลัก & สรุปสถานะ (Dashboard)",
-        "2. ลงทะเบียนเจ้าหน้าที่ (Register Agent)",
-        "3. ศูนย์ควบคุมเพลงระดับโลก (Global Player)",
-        "4. แผนที่และพิกัดดาวเทียม (Real-time GPS Map)",
-        "5. ตัวสแกนความถี่ & เซนเซอร์ (Frequency Scanner)",
-        "6. ห้องแชทเข้ารหัสความปลอดภัย (Secure Chat)",
-        "7. ระบบวิเคราะห์รหัสควอนตัม (Quantum Numerology)",
-        "8. แอปบำบัดและเยียวยาจิตใจ (Healing Space)",
-        "9. ตรวจสอบระบบพลังงานโซลาร์เซลล์ (Solar Monitor)",
-        "10. ตั้งค่าระบบควบคุม (System Settings)",
-        "11. ระบบคำนวณและรางวัดที่ดิน (Land Surveyor)"
-    ]
-)
+# 4. ระบบเครื่องเล่นเพลงสุ่มอัตโนมัติ
+st.markdown("<div class='music-box'>", unsafe_allow_html=True)
+st.subheader("🎵 SYNAPSE AUDIO STREAM")
 
-st.sidebar.write("---")
-if is_connected:
-    st.sidebar.success("📡 Cloud Database: Online")
+music_files = [f for f in os.listdir('.') if f.endswith('.mp3')]
+
+if music_files:
+    if "playlist" not in st.session_state or len(st.session_state.playlist) == 0:
+        random.shuffle(music_files)
+        st.session_state.playlist = music_files
+        st.session_state.current_track_index = 0
+
+    current_track = st.session_state.playlist[st.session_state.current_track_index]
+    st.write(f"🎧 **กำลังเล่นตอนนี้:** {current_track}")
+    
+    with open(current_track, "rb") as audio_file:
+        audio_bytes = audio_file.read()
+    
+    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
+    
+    if st.button("⏭️ ข้ามไปเพลงถัดไป"):
+        st.session_state.current_track_index = (st.session_state.current_track_index + 1) % len(st.session_state.playlist)
+        st.rerun()
 else:
-    st.sidebar.error("⚠️ Cloud Database: Offline")
+    st.info("💡 ไม่มีไฟล์เพลง .mp3 ในโฟลเดอร์นี้ นำไฟล์เพลงมาวางคู่กับไฟล์โค้ดแล้วระบบจะเปิดเพลงอัตโนมัติทันที")
 
-# =========================================================
-# [ ฟังก์ชันการทำงานของแต่ละหัวข้อ - ชิดซ้ายระนาบเดียวกันทั้งหมด ]
-# =========================================================
+st.markdown("</div>", unsafe_allow_html=True)
 
-# --- หัวข้อที่ 1: หน้าหลัก & สรุปสถานะ ---
-if menu == "1. หน้าหลัก & สรุปสถานะ (Dashboard)":
-    st.title("🏛️ SYNAPSE COMMAND CENTER")
-    st.write("ยินดีต้อนรับเข้าสู่ระบบควบคุมกลาง บาส/ต๊ะ แอปพลิเคชันถูกรันผ่านอุปกรณ์พกพาอย่างสมบูรณ์แบบ")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("ความเร็วการประมวลผล", "Real-time", "100%")
-    col2.metric("ฐานข้อมูลคลาวด์", "sooksun-101", "เสถียร" if is_connected else "ปิดการเชื่อมต่อ")
-    col3.metric("ปรัชญาประจำวัน", "อยู่นิ่งๆ", "ไม่เจ็บตัว")
-    if is_connected:
-        st.info("💡 ข้อมูลระบบ: สัญญาณเครือข่ายพร้อมใช้งาน พร้อมเชื่อมต่ออัปเดตข้อมูลแบบทันทีอนุกรมเวลา")
-    else:
-        st.error(f"เกิดปัญหาเชื่อมต่อระบบฐานข้อมูล: {system_message}")
 
-# --- หัวข้อที่ 2: ลงทะเบียนเจ้าหน้าที่ ---
-elif menu == "2. ลงทะเบียนเจ้าหน้าที่ (Register Agent)":
-    st.title("⚠️ REGISTER AGENT SYSTEM")
-    st.write("บันทึกรหัสสัญญาณเจ้าหน้าที่เข้าสู่ฐานข้อมูลคลาวด์ Firebase เพื่อยืนยันตน")
-    agent_name = st.text_input("ENTER AGENT NAME", value="Ta101")
-    if st.button("ส่งข้อมูลขึ้นคลาวด์ (Save to Firebase)", use_container_width=True):
-        if not is_connected:
-            st.error(f"ระบบเชื่อมต่อหลังบ้านตรวจพบปัญหา: {system_message}")
-        elif not agent_name.strip():
-            st.warning("กรุณากรอกรหัสชื่อก่อน")
-        else:
-            try:
-                ref = db.reference("agents")
-                ref.child(agent_name).set({
-                    "status": "Active",
-                    "slogan": "อยู่นิ่งๆ ไม่เจ็บตัว",
-                    "timestamp": {".sv": "timestamp"}
-                })
-                st.success(f"🎉 สำเร็จ! บันทึกรหัสเอเจนต์ '{agent_name}' เรียบร้อย")
-                st.balloons()
-            except Exception as e:
-                st.error(f"ระบบไม่สามารถเข้าถึงฐานข้อมูลคลาวด์ได้: {e}")
+# 5. 🛰️ แผนที่ดาวเทียมขยายขนาดใหญ่พิเศษ (MEGA SCALE) + ระบบบันทึกประวัติที่ทำงานได้จริงในหน้าจอเดียว
+st.subheader("🛰️ แผนที่ดาวเทียมสเกลใหญ่ (ระบบคำนวณและบันทึกประวัติจริงหน้างาน)")
+st.caption("💡 วิธีใช้งาน: เล็งเป้าแดงให้ตรงมุมแปลงนา กดปุ่มปักหมุดจนครบแปลง พิมพ์ชื่อเจ้าของแล้วกดบันทึก ข้อมูลจะแสดงในตารางประวัติด้านล่างทันที")
 
-# --- หัวข้อที่ 3: ศูนย์ควบคุมเพลงระดับโลก ---
-elif menu == "3. ศูนย์ควบคุมเพลงระดับโลก (Global Player)":
-    st.title("🎵 SYNAPSE GLOBAL PLAYER")
-    st.write("ห้องควบคุมเสียงเพลงและเนื้อร้องสำหรับนำข้อความไปใช้ในเครื่องมือสร้างเพลง AI (เช่น Suno AI)")
-    genre = st.selectbox("เลือกแนวเพลงที่ต้องการแต่ง:", ["R&B", "Rap / Hip Hop", "ลูกทุ่งหมอลำ", "Alternative"])
-    lyrics_topic = st.text_input("หัวข้อหรือแรงบันดาลใจ:", value="คิดถึงยายวัน (แม่ใหญ่วัน)")
-    if st.button("ร่างเนื้อเพลงด่วน"):
-        st.write("🤖 **เนื้อร้องตัวอย่างที่ระบบประมวลผลให้:**")
-        st.code(f"([Verse]\nสายลมโชยโบกมาจากอีสานบ้านเฮา...\nหัวใจเหงาคึดฮอดคนที่อยู่บนฟ้า...\n{lyrics_topic} ในใจไม่เคยเลือนลา...\n[Chorus]\nอยู่นิ่งๆ ไม่เจ็บตัว แต่คิดถึงเหลือเกิน...)", language="text")
+default_lat = 15.9513057
+default_lng = 103.5796196
 
-# --- หัวข้อที่ 4: แผนที่และพิกัดดาวเทียม ---
-elif menu == "4. แผนที่และพิกัดดาวเทียม (Real-time GPS Map)":
-    st.title("📍 REAL-TIME GPS MAP")
-    st.write("จำลองการแสดงพิกัดและการติดตามตำแหน่งผ่านสัญญาณดาวเทียม")
-    lat, lon = 16.054, 103.652
-    map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
-    st.map(map_data)
-    st.metric("พิกัดปัจจุบัน (ละติจูด, ลองจิจูด)", f"{lat}, {lon}")
+map_html_code = f"""
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
 
-# --- หัวข้อที่ 5: ตัวสแกนความถี่ & เซนเซอร์ ---
-elif menu == "5. ตัวสแกนความถี่ & เซนเซอร์ (Frequency Scanner)":
-    st.title("📡 REAL-TIME FREQUENCY SCANNER")
-    st.write("หน้าต่างจำลองการทำงานของเซนเซอร์ความสั่นสะเทือนและการอ่านค่าความถี่จิตสำนึก")
-    scan_active = st.checkbox("เริ่มการสแกนสัญญาณรอบทิศทาง")
-    if scan_active:
-        progress_bar = st.progress(0)
-        for percent_complete in range(100):
-            time.sleep(0.01)
-            progress_bar.progress(percent_complete + 1)
-        st.success("📶 สแกนคลื่นความถี่สำเร็จ: ตรวจพบคลื่นพลังงานเสถียรที่ 432Hz (คลื่นบำบัด)")
-
-# --- หัวข้อที่ 6: ห้องแชทเข้ารหัสความปลอดภัย ---
-elif menu == "6. ห้องแชทเข้ารหัสความปลอดภัย (Secure Chat)":
-    st.title("💬 SECURE CHAT INTERCOM")
-    st.write("กล่องข้อความสื่อสารภายในเครือข่าย (ข้อมูลจะถูกซิงค์ผ่าน Firebase)")
-    chat_user = st.text_input("ชื่อผู้ส่ง:", value="Ta_Bas")
-    chat_msg = st.text_area("พิมพ์ข้อความแชท:")
-    if st.button("ส่งข้อความเข้ารหัส"):
-        if is_connected and chat_msg:
-            try:
-                db.reference("secure_chats").push({
-                    "user": chat_user,
-                    "message": chat_msg,
-                    "time": {".sv": "timestamp"}
-                })
-                st.success("ส่งแชทเข้ารหัสสำเร็จ!")
-            except Exception as e:
-                st.error(f"แชทล้มเหลว: {e}")
-        else:
-            st.warning("กรุณาพิมพ์ข้อความหรือตรวจสอบการเชื่อมต่อฐานข้อมูล")
-
-# --- หัวข้อที่ 7: ระบบวิเคราะห์รหัสควอนตัม ---
-elif menu == "7. ระบบวิเคราะห์รหัสควอนตัม (Quantum Numerology)":
-    st.title("🔢 QUANTUM NUMEROLOGY ANALYZER")
-    st.write("คำนวณและวิเคราะห์ความสัมพันธ์ของตัวเลข พลังงานดวงดาว และลำดับรหัสควอนตัมของชีวิต")
-    birth_date = st.date_input("เลือกวันเดือนปีเกิดที่ต้องการวิเคราะห์:")
-    lucky_num = st.number_input("รหัสตัวเลขประจำตัว (ถ้ามี):", value=101)
-    if st.button("ถอดรหัสความถี่ควอนตัม"):
-        st.write("🔮 **ผลการวิเคราะห์รูปแบบพลังงานดวงดาว:**")
-        st.info(f"วันเกิด {birth_date} ร่วมกับรหัสเลข {lucky_num} สะท้อนคลื่นพลังงานเชิงรับที่แข็งแกร่ง สอดคล้องกับปรัชญา 'อยู่นิ่งๆ ไม่เจ็บตัว'")
-
-# --- หัวข้อที่ 8: แอปบำบัดและเยียวยาจิตใจ ---
-elif menu == "8. แอปบำบัดและเยียวยาจิตใจ (Healing Space)":
-    st.title("🧘 MENTAL HEALING SPACE")
-    st.write("พื้นที่สำหรับปรับแต่งคลื่นความถี่เสียงและเสียงดนตรีเพื่อการเยียวยาจิตใจ")
-    frequency_mode = st.radio("เลือกความถี่เสียงที่ใช้ในการบำบัดตามอาการ:", 
-                              ["528Hz (ซ่อมแซม DNA และยกระดับจิตใจ)", 
-                               "432Hz (ลดความเครียดและความกังวล)", 
-                               "396Hz (ปลดปล่อยความกลัวและความรู้สึกผิด)"])
-    st.write(f"🎧 ขณะนี้ระบบจำลองการปล่อยสัญญานคลื่นความถี่เสียง: **{frequency_mode}**")
-
-# --- หัวข้อที่ 9: ตรวจสอบระบบพลังงานโซลาร์เซลล์ ---
-elif menu == "9. ตรวจสอบระบบพลังงานโซลาร์เซลล์ (Solar Monitor)":
-    st.title("☀️ SOLAR ENERGY MONITOR")
-    st.write("หน้าจอตรวจสอบแรงดันไฟฟ้าและแบตเตอรี่ 12V ร่วมกับคอนโทรลเลอร์ Lebento")
-    battery_v = st.slider("แรงดันไฟฟ้าแบตเตอรี่ในระบบ (โวลต์):", 10.0, 15.0, 12.6)
-    if battery_v < 11.5:
-        st.error(f"⚡ แรงดันต่ำผิดปกติ ({battery_v}V): กรุณาตรวจสอบอินเวอร์เตอร์!")
-    elif battery_v >= 14.2:
-        st.warning(f"🔋 แบตเตอรี่เต็มกำลังชาร์จตัด ({battery_v}V): ระบบควบคุม Lebento ทำงานปกติ")
-    else:
-        st.success(f"🟢 สถานะระบบปกติ ({battery_v}V): พลังงานแสงอาทิตย์ไหลเวียนคงที่")
-
-# --- หัวข้อที่ 10: ตั้งค่าระบบควบคุม ---
-elif menu == "10. ตั้งค่าระบบควบคุม (System Settings)":
-    st.title("⚙️ SYSTEM SETTINGS")
-    st.write("ปรับแต่งและดูแลรักษาความปลอดภัยของระบบ Command Center")
-    st.checkbox("เปิดโหมดการเข้ารหัสข้อมูลระดับสูง (High Encryption)", value=True)
-    st.checkbox("เปิดโหมดใช้งานประหยัดพลังงานบนมือถือ (Mobile Optimized)", value=True)
-    st.write("---")
-    st.write("**สถานะการติดตั้งระบบ:**")
-    st.text(f"Project ID: sooksun-101\nPlatform: Streamlit Mobile Web App\nCore Philosophy: Stay still, no pain.")
-
-# --- หัวข้อที่ 11: ระบบเชื่อมโยงระบบค้นหารูปแปลงที่ดินของรัฐบาล ---
-elif menu == "11. ระบบคำนวณและรางวัดที่ดิน (Land Surveyor)":
-    st.title("📐 GOVERNMENT LAND SURVEYOR LINK")
-    st.write("ระบบอำนวยความสะดวกเพื่อเชื่อมโยงไปยังระบบค้นหารูปแปลงที่ดิน (LandsMaps) ของกรมที่ดินรัฐบาล")
-
-    # ส่วนที่ 1: เครื่องช่วยคำนวณพื้นที่ดินมาตราไทย
-    st.subheader("🧮 เครื่องคำนวณพื้นที่ก่อนไปค้นหา")
-    col_r, col_ng, col_w = st.columns(3)
-    input_rai = col_r.number_input("จำนวน ไร่", min_value=0, value=1, step=1, key="gov_rai")
-    input_ngan = col_ng.number_input("จำนวน งาน", min_value=0, max_value=3, value=0, step=1, key="gov_ngan")
-    input_wa = col_w.number_input("จำนวน ตารางวา", min_value=0, max_value=399, value=0, step=1, key="gov_wa")
+<style>
+    #map-container {{
+        position: relative;
+        width: 100%;
+    }}
+    #map {{
+        width: 100%;
+        height: 700px; 
+        border-radius: 16px;
+        border: 3px solid #00ffcc;
+        z-index: 1;
+        box-shadow: 0 0 25px rgba(0, 255, 204, 0.6);
+    }}
+    .crosshair {{
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 40px;
+        height: 40px;
+        margin-top: -20px;
+        margin-left: -20px;
+        z-index: 9999;
+        pointer-events: none;
+        display: none;
+    }}
+    .crosshair::before, .crosshair::after {{
+        content: '';
+        position: absolute;
+        background: #ff3333;
+        box-shadow: 0 0 12px #ff3333, 0 0 4px #ffffff;
+    }}
+    .crosshair::before {{ top: 19px; left: 0; width: 40px; height: 2px; }}
+    .crosshair::after {{ top: 0; left: 19px; width: 2px; height: 40px; }}
     
-    total_wa = (input_rai * 400) + (input_ngan * 100) + input_wa
-    st.info(f"📊 ขนาดพื้นที่รวมคำนวณได้จริง: **{total_wa:,} ตารางวา** ({total_wa*4:,} ตารางเมตร)")
+    .control-panel {{
+        margin-top: 20px;
+        margin-bottom: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }}
 
-    st.write("---")
+    .map-btn {{
+        background-color: #00ffcc;
+        color: #000000 !important;
+        border: 2px solid #00ffcc;
+        padding: 14px 24px;
+        font-size: 16px;
+        font-weight: bold;
+        border-radius: 10px;
+        cursor: pointer;
+        box-shadow: 0 0 10px #00ffcc;
+        transition: all 0.3s ease;
+        flex: 1;
+        min-width: 150px;
+        text-align: center;
+    }}
+    .map-btn:hover {{ background-color: #00cc99; box-shadow: 0 0 20px #00cc99; transform: translateY(-2px); }}
+    .map-btn-danger {{ background-color: #ff3333; border-color: #ff3333; color: white !important; box-shadow: 0 0 10px #ff3333;}}
+    .map-btn-danger:hover {{ background-color: #cc0000; box-shadow: 0 0 20px #cc0000; }}
+    .map-btn-success {{ background-color: #9d4edd; border-color: #9d4edd; color: white !important; box-shadow: 0 0 10px #9d4edd;}}
+    .map-btn-success:hover {{ background-color: #7b2cbf; box-shadow: 0 0 20px #7b2cbf; }}
 
-    # ส่วนที่ 2: ช่องเตรียมข้อมูลเพื่อไปค้นหาบนเว็บรัฐบาล
-    st.subheader("🔍 เตรียมข้อมูลค้นหาโฉนด (LandsMaps)")
-    st.write("พิมพ์เลขโฉนดและข้อมูลไว้ที่นี่เพื่อความสะดวกในการคัดลอก (Copy) ไปใช้วางในเว็บรัฐบาล")
+    .neon-result-box {{
+        background: #090d16;
+        padding: 20px;
+        border-radius: 12px;
+        color: white;
+        font-family: sans-serif;
+        border: 2px solid #9d4edd;
+        box-shadow: 0 0 15px rgba(157, 78, 221, 0.4);
+        margin-bottom: 20px;
+    }}
+
+    /* สไตล์ส่วนกล่องบันทึกข้อมูลของจริง */
+    .save-panel {{
+        background: rgba(26, 11, 46, 0.6);
+        border: 1px solid #9d4edd;
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        display: flex;
+        gap: 15px;
+        align-items: center;
+    }}
+    .save-input {{
+        background: #111424;
+        border: 1px solid #00ffcc;
+        color: white;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 16px;
+        flex: 2;
+    }}
+    .history-table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        background: #111424;
+        color: white;
+        border-radius: 8px;
+        overflow: hidden;
+        font-family: sans-serif;
+    }}
+    .history-table th, .history-table td {{
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #1a0b2e;
+    }}
+    .history-table th {{
+        background-color: #9d4edd;
+        color: white;
+    }}
+</style>
+
+<div id="map-container">
+    <div id="map"></div>
+    <div id="crosshair-target" class="crosshair"></div>
+</div>
+
+<div class="control-panel">
+    <button type="button" class="map-btn" onclick="toggleCrosshair()">🎯 เปิด/ปิด เป้าเล็ง</button>
+    <button type="button" class="map-btn map-btn-success" onclick="addPointFromCenter()">📌 ปักหมุดพิกัด</button>
+    <button type="button" class="map-btn map-btn-success" style="background:#00ffcc; border-color:#00ffcc; color:black !important; box-shadow: 0 0 10px #00ffcc;" onclick="calculateFromPoints()">📐 คำนวณพื้นที่นาแปลงนี้</button>
+    <button type="button" class="map-btn map-btn-danger" onclick="clearAllDrawings()">🗑️ ล้างค่าเริ่มใหม่</button>
+</div>
+
+<div class="neon-result-box">
+    <b style="color:#00ffcc; font-size:16px; text-shadow: 0 0 5px #00ffcc;">🛰️ ขนาดพื้นที่นาปัจจุบัน (วัดตามจริง):</b>
+    <p id="area-text" style="font-size:26px; margin:10px 0; font-weight:bold; color:#ff3333;">ยังไม่ได้ลากแปลงนา</p>
+</div>
+
+<div class="save-panel">
+    <input type="text" id="farmer-name" class="save-input" placeholder="พิมพ์ชื่อเจ้าของที่นาเพื่อบันทึกประวัติ...">
+    <button type="button" class="map-btn map-btn-success" style="margin:0; flex:1;" onclick="saveToHistoryTable()">💾 บันทึกประวัติแปลงนี้</button>
+</div>
+
+<div style="background: rgba(17, 20, 36, 0.9); padding:15px; border-radius:12px; border: 1px solid #9d4edd;">
+    <b style="color:#00ffcc; font-size:16px;">📊 ตารางประวัติการวัดที่นาสัจจะ (บันทึกแล้วกดดูได้ทันที):</b>
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>ลำดับ</th>
+                <th>ชื่อเจ้าของที่นา</th>
+                <th>ขนาดพื้นที่นาที่วัดได้จริง</th>
+                <th>ขนาดพื้นที่ (ตร.ม.)</th>
+            </tr>
+        </thead>
+        <tbody id="history-rows">
+            <tr>
+                <td colspan="4" style="text-align:center; color:#9ca3af;">ยังไม่มีประวัติการบันทึกในรอบนี้</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<script>
+    var map = L.map('map').setView([{default_lat}, {default_lng}], 16);
+
+    var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+        maxZoom: 19
+    }}).addTo(map);
+
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
+    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
+
+    if (navigator.geolocation) {{
+        navigator.geolocation.getCurrentPosition(function(position) {{
+            var lat = position.coords.latitude;
+            var lng = position.coords.longitude;
+            map.setView([lat, lng], 18);
+            L.marker([lat, lng]).addTo(map).bindPopup('🚜 หมุดปัจจุบันของคุณ').openPopup();
+        }}, function(err) {{
+            console.log("GPS กำลังค้นหา");
+        }}, {{enableHighAccuracy: true}});
+    }}
+
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    var customPoints = [];
+    var customPolygon = null;
+    var crosshairMode = false;
     
-    chanote_no = st.text_input("ระบุ เลขที่โฉนด (ถ้ามี):", value="12345")
-    province_select = st.text_input("ระบุ จังหวัด / อำเภอ:", value="ร้อยเอ็ด")
-    
-    # ส่วนที่ 3: ปุ่มลิงก์ทางเข้าเว็บรัฐบาลทำได้จริง
-    st.subheader("🌐 ปุ่มทางเข้าเว็บแอปพลิเคชันของรัฐบาล")
-    st.write("เมื่อกดปุ่มด้านล่าง ระบบจะเปิดหน้าต่างใหม่ไปยังเว็บไซต์ **LandsMaps ของกรมที่ดิน** ทันที เพื่อให้เพื่อนตรวจสอบกรอบโฉนดล็อกของจริงรายบุคคล")
-    
-    # ใช้คำสั่ง st.link_button ซึ่งเป็นคำสั่งแท้ของ Streamlit ที่ใช้สำหรับเปิดลิงก์ภายนอกได้จริงบนมือถือ
-    st.link_button(
-        "🏛️ เปิดระบบค้นหารูปแปลงที่ดินกรมที่ดิน (LandsMaps)", 
-        "https://landsmaps.dol.go.th/",
-        use_container_width=True,
-        type="primary"
-    )
-    
-    st.caption("⚠️ หมายเหตุ: ข้อมูลรูปแปลงที่ดิน ขอบเขตล็อก และผังเมือง เป็นสิทธิ์และข้อมูลภายใต้การดูแลของกรมที่ดิน กระทรวงมหาดไทย")
+    // ตัวแปรเก็บค่าผลลัพธ์ล่าสุดเพื่อเอาไปบันทึกลงตารางจริง
+    var currentCalculatedText = "";
+    var currentCalculatedSqM = 0;
+    var historyData = [];
+
+    function toggleCrosshair() {{
+        var ch = document.getElementById('crosshair-target');
+        crosshairMode = !crosshairMode;
+        ch.style.display = crosshairMode ? 'block' : 'none';
+    }}
+
+    function addPointFromCenter() {{
+        var center = map.getCenter();
+        customPoints.push([center.lat, center.lng]);
+
+        L.circleMarker(center, {{radius: 7, color: '#ff3333', fillColor: '#ffffff', weight: 3, fillOpacity: 1}}).addTo(drawnItems);
+
+        if (customPoints.length > 1) {{
+            if (customPolygon) {{ map.removeLayer(customPolygon); }}
+            customPolygon = L.polygon(customPoints, {{color: '#00ffcc', weight: 4, fillOpacity: 0.35}}).addTo(drawnItems);
+        }}
+    }}
+
+    function calculateFromPoints() {{
+        if (customPoints.length < 3) {{
+            alert("⚠️ ต้องปักหมุดที่นาให้ได้อย่างน้อย 3 มุมแปลงขึ้นไปก่อนครับ!");
+            return;
+        }}
+        
+        var turfCoords = [];
+        customPoints.forEach(function(pt) {{
+            turfCoords.push([pt[1], pt[0]]);
+        }});
+        turfCoords.push([customPoints[0][1], customPoints[0][0]]);
+
+        var polygonGeoJSON = turf.polygon([turfCoords]);
+        var areaSqMeters = turf.area(polygonGeoJSON);
+        
+        showAreaResult(areaSqMeters);
+    }}
+
+    function clearAllDrawings() {{
+        drawnItems.clearLayers();
+        customPoints = [];
+        customPolygon = null;
+        currentCalculatedText = "";
+        currentCalculatedSqM = 0;
+        document.getElementById('area-text').innerHTML = "ยังไม่ได้ลากแปลงนา";
+    }}
+
+    function showAreaResult(areaSqMeters) {{
+        if (areaSqMeters > 0) {{
+            var totalWa = areaSqMeters / 4;
+            var rai = Math.floor(totalWa / 400);
+            var remainingWa = totalWa % 400;
+            var ngan = Math.floor(remainingWa / 100);
+            var wa = Math.round(remainingWa % 100);
+
+            currentCalculatedSqM = Math.round(areaSqMeters);
+            currentCalculatedText = rai + " ไร่ " + ngan + " งาน " + wa + " ตารางวา";
+
+            document.getElementById('area-text').innerHTML = 
+                "🌾 วัดได้จริง: <span style='color:#00ffcc; text-shadow: 0 0 5px #00ffcc;'>" + rai + " ไร่ </span> " + 
+                "<span style='color:#9d4edd; text-shadow: 0 0 5px #9d4edd;'>" + ngan + " งาน </span> " + 
+                "<span style='color:#ff3333; text-shadow: 0 0 5px #ff3333;'>" + wa + " ตารางวา</span><br>" +
+                "<span style='font-size:14px; color:#9ca3af; font-weight:normal; display:block; margin-top:5px;'>สุทธิประมวลผลดาวเทียม: " + currentCalculatedSqM.toLocaleString() + " ตร.ม.</span>";
+        }}
+    }}
+
+    // ฟังก์ชันบันทึกข้อมูลและอัปเดตลงตารางประวัติให้เห็นทันที ไม่มีการหลอกตา
+    function saveToHistoryTable() {{
+        var nameInput = document.getElementById('farmer-name');
+        var name = nameInput.value.trim();
+        
+        if (name === "") {{
+            alert("⚠️ กรุณาพิมพ์ชื่อเจ้าของที่นาก่อนกดบันทึกครับเพื่อน!");
+            return;
+        }}
+        if (currentCalculatedSqM === 0 || currentCalculatedText === "") {{
+            alert("⚠️ แปลงนายังไม่มีการคำนวณพื้นที่เลย ปักหมุดแล้วกด 'คำนวณพื้นที่นาแปลงนี้' ก่อนบันทึกครับ!");
+            return;
+        }}
+
+        // บันทึกเข้า Array ของระบบหน้าบ้านจริง
+        historyData.push({{
+            name: name,
+            areaText: currentCalculatedText,
+            sqm: currentCalculatedSqM
+        }});
+
+        // ล้างช่องกรอกชื่อหลังจากบันทึกแล้ว
+        nameInput.value = "";
+
+        // วาดตารางใหม่ทันทีให้เห็นตรงหน้า
+        var tbody = document.getElementById('history-rows');
+        tbody.innerHTML = "";
+
+        historyData.forEach(function(item, index) {{
+            var row = document.createElement('tr');
+            row.innerHTML = 
+                "<td>" + (index + 1) + "</td>" +
+                "<td style='color:#00ffcc; font-weight:bold;'>" + item.name + "</td>" +
+                "<td style='color:#ffffff;'>" + item.areaText + "</td>" +
+                "<td style='color:#9ca3af;'>" + item.sqm.toLocaleString() + " ตร.ม.</td>";
+            tbody.appendChild(row);
+        }});
+        
+        alert("💾 บันทึกประวัติที่ดินของคุณ " + name + " ลงตารางเรียบร้อยแล้ว ดูข้อมูลด้านล่างได้ทันทีครับ!");
+    }}
+
+    var drawControl = new L.Control.Draw({{
+        draw: {{
+            polygon: {{ allowIntersection: false, shapeOptions: {{ color: '#00ffcc', weight: 4, fillOpacity: 0.35 }} }},
+            rectangle: {{ shapeOptions: {{ color: '#00ffcc' }} }},
+            polyline: false, circle: false, marker: false, circlemarker: false
+        }},
+        edit: {{ featureGroup: drawnItems }}
+    }});
+    map.addControl(drawControl);
+
+    map.on(L.Draw.Event.CREATED, function (event) {{
+        var layer = event.layer;
+        drawnItems.clearLayers();
+        drawnItems.addLayer(layer);
+        var geojson = layer.toGeoJSON();
+        var areaSqMeters = turf.area(geojson);
+        showAreaResult(areaSqMeters);
+    }});
+</script>
+"""
+
+# ใช้ความสูง 1250px เพื่อให้มีพื้นที่เหลือเฟือสำหรับแสดงตารางประวัติด้านล่างแบบเห็นชัดๆ ไม่ต้องซ้อนกันครับ
+st.components.v1.html(map_html_code, height=1250, scrolling=False)
