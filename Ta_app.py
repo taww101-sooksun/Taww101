@@ -1,406 +1,323 @@
+
 import streamlit as st
-import os
+import os 
+import base64
 import random
+import time
+from datetime import datetime, timedelta
+import firebase_admin
+from firebase_admin import credentials, db
+import streamlit.components.v1 as components
+import folium
+from streamlit_folium import st_folium
+from streamlit_js_eval import get_geolocation
 
-# 1. ตั้งค่าหน้าจอแอปให้กว้างพิเศษ (Wide) 
-st.set_page_config(page_title="SYNAPSE COMMAND CENTER - AREA PRO v2", page_icon="🚜", layout="wide")
+# ==========================================
+# 1. INITIAL SETUP (ต้องรันก่อนอันดับแรก)
+# ==========================================
+@st.cache_resource
+def init_system():
+    if 'theme_color' not in st.session_state: st.session_state.theme_color = "#39FF14"
+    if 'bg_color' not in st.session_state: st.session_state.bg_color = "#000000"
+    if 'user' not in st.session_state: st.session_state.user = "Ta101"
+    if 'song_index' not in st.session_state: st.session_state.song_index = 0
 
-# 2. ปรับแต่งสไตล์และโทนสีแอป
-st.markdown("""
+    if not firebase_admin._apps:
+        try:
+            fb_creds = dict(st.secrets["firebase_credentials"])
+            if "private_key" in fb_creds:
+                fb_creds["private_key"] = fb_creds["private_key"].replace("\\n", "\n").strip().strip('"')
+            cred = credentials.Certificate(fb_creds)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': st.secrets["firebase_db_url"]
+            })
+        except Exception as e:
+            st.error(f"🛰️ Firebase Connection Error: {e}")
+    return True
+
+init_system()
+
+# ==========================================
+# 2. UI STYLING
+# ==========================================
+st.set_page_config(page_title="SYNAPSE X", layout="wide")
+st.markdown(f"""
     <style>
-    .stApp { 
-        background: linear-gradient(135deg, #090d16 0%, #111424 50%, #1a0b2e 100%); 
-    }
-    h1, h2, h3, p, label, span { color: #ffffff !important; font-family: 'Sans-serif'; }
-    
-    .neon-title {
-        color: #00ffcc !important;
-        text-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc;
-        font-weight: bold;
-    }
-    
-    .music-box {
-        background: rgba(26, 11, 46, 0.8);
-        border: 2px solid #9d4edd;
-        padding: 15px;
-        border-radius: 12px;
-        margin-bottom: 20px;
-        box-shadow: 0 0 10px rgba(157, 78, 221, 0.5);
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+    .stApp {{ background-color: {st.session_state.bg_color} !important; color: #FFFFFF !important; font-family: 'Orbitron', sans-serif; }}
+    .stButton>button {{ border: 2px solid {st.session_state.theme_color} !important; color: {st.session_state.theme_color} !important; background: transparent !important; border-radius: 10px; }}
+    .stButton>button:hover {{ background: {st.session_state.theme_color} !important; color: black !important; }}
+    .neon-box {{ border: 1px solid {st.session_state.theme_color}; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 0 10px {st.session_state.theme_color}; }}
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# 3. ส่วนหัวของแอปและการแสดงโลโก้
-col_logo, col_title = st.columns([1, 4])
-with col_logo:
-    if os.path.exists("logo1.png"):
-        st.image("logo1.png", width=120)
-    else:
-        st.write("🛰️ [SYNAPSE]")
+# ==========================================
+# 3. MODULES (The Rooms)
+# ==========================================
 
-with col_title:
-    st.markdown("<h1 class='neon-title'>🚜 ระบบวัดที่นาสัจจะ - AREA PRO v2</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #ff3333 !important; font-style: italic; font-weight: bold; text-shadow: 0 0 5px #ff3333;'>\"อยู่นิ่งๆ ไม่เจ็บตัว วัดตามความจริง ไม่มีใครโกหกใครได้\"</p>", unsafe_allow_html=True)
+def room_core():
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-align:center;'>🚀 CORE COMMAND</h2>", unsafe_allow_html=True)
+    now = datetime.utcnow() + timedelta(hours=7)
+    st.markdown(f"""
+        <div class="neon-box">
+            <h1 style="margin:0; color:{st.session_state.theme_color};">{now.strftime('%H:%M:%S')}</h1>
+            <p style="margin:0;">AGENT: {st.session_state.user} | 'อยู่นิ่งๆ ไม่เจ็บตัว'</p>
+        </div>
+    """, unsafe_allow_html=True)
+    seconds = (now.hour * 3600) + (now.minute * 60) + now.second
+    progress = seconds / 86400
+    st.write(f"⏳ System Uptime: {progress*100:.2f}%")
+    st.progress(min(progress, 1.0))
 
-st.write("---")
+def room_radar():
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>🛰️ SATELLITE RADAR</h2>", unsafe_allow_html=True)
+    loc = get_geolocation()
+    all_users = db.reference('users').get()
+    lat, lon = (loc['coords']['latitude'], loc['coords']['longitude']) if loc else (13.7367, 100.5231)
+    m = folium.Map(location=[lat, lon], zoom_start=16, tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google Hybrid")
+    folium.Marker([lat, lon], tooltip="YOU", icon=folium.Icon(color='red', icon='user', prefix='fa')).add_to(m)
+    if all_users:
+        for uid, data in all_users.items():
+            if uid != st.session_state.user and data.get('lat'):
+                folium.Marker([data['lat'], data['lon']], tooltip=uid, icon=folium.Icon(color='green')).add_to(m)
+    st_folium(m, width="100%", height=450, key="radar")
+    if st.button("📡 BROADCAST POSITION", use_container_width=True):
+        db.reference(f'users/{st.session_state.user}').update({'lat': lat, 'lon': lon, 'ts': time.time()})
+        st.toast("Intelligence Data Transmitted!")
 
-# 4. ระบบเครื่องเล่นเพลงสุ่มอัตโนมัติ
-st.markdown("<div class='music-box'>", unsafe_allow_html=True)
-st.subheader("🎵 SYNAPSE AUDIO STREAM")
+def room_comms():
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color};'>💬 COMM CENTER</h2>", unsafe_allow_html=True)
+    t1, t2 = st.tabs(["🌐 PUBLIC FEED", "📞 SECURE CALL"])
+    with t1:
+        with st.form("chat_form", clear_on_submit=True):
+            col1, col2 = st.columns([4, 1])
+            msg = col1.text_input("Enter Signal...")
+            up_file = col2.file_uploader("📁", type=['jpg', 'png', 'mp4'], label_visibility="collapsed")
+            if st.form_submit_button("SEND"):
+                f_b64, f_type = None, None
+                if up_file:
+                    f_b64 = base64.b64encode(up_file.getvalue()).decode()
+                    f_type = up_file.type
+                if msg or f_b64:
+                    db.reference('public_chat').push({'u': st.session_state.user, 'm': msg, 'f': f_b64, 'ft': f_type, 'ts': time.time()})
+                    st.rerun()
+        msgs = db.reference('public_chat').order_by_key().limit_to_last(15).get()
+        if msgs:
+            for v in reversed(list(msgs.values())):
+                st.markdown(f"🟢 **{v.get('u')}**: {v.get('m','')}")
+                if v.get('f'):
+                    raw = base64.b64decode(v['f'])
+                    if "image" in v['ft']: st.image(raw, width=300)
+                    elif "video" in v['ft']: st.video(raw)
+    with t2:
+        all_u = db.reference('users').get()
+        friends = [uid for uid in all_u.keys() if uid != st.session_state.user] if all_u else []
+        target = st.selectbox("🎯 Target Agent:", [""] + friends)
+        if target:
+            call_js = """
+            <div style="background:#111; padding:15px; border:1px solid %s; border-radius:10px; text-align:center;">
+                <button id="cBtn" style="width:100%%; padding:10px; background:#28a745; color:white; border:none; border-radius:5px;">📞 CALL %s</button>
+                <audio id="rAudio" autoplay></audio>
+            </div>
+            <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+            <script>
+                const peer = new Peer('%s');
+                peer.on('call', c => { navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{ c.answer(s); c.on('stream',rs=>{document.getElementById('rAudio').srcObject=rs;}); })});
+                document.getElementById('cBtn').onclick = () => {
+                    navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{ const c=peer.call('%s',s); c.on('stream',rs=>{document.getElementById('rAudio').srcObject=rs;}); });
+                };
+            </script>
+            """ % (st.session_state.theme_color, target, st.session_state.user, target)
+            components.html(call_js, height=200)
 
-music_files = [f for f in os.listdir('.') if f.endswith('.mp3')]
+def room_music():
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center;'>🎧 SYNAPSE HOLOGRAPHIC STATION</h2>", unsafe_allow_html=True)
+    songs = sorted([f for f in os.listdir('.') if f.lower().endswith(".mp3")])
+    if not songs:
+        st.warning("⚠️ ไม่พบสัญญาณเสียงในหน่วยความจำ")
+        return
+    s_a = st.selectbox("🎯 SELECT SIGNAL SOURCE", ["-- STANDBY --"] + songs, index=st.session_state.song_index + 1)
+    song_b64 = ""
+    song_name = "WAITING FOR SIGNAL..."
+    if s_a != "-- STANDBY --":
+        with open(s_a, "rb") as f:
+            song_b64 = base64.b64encode(f.read()).decode()
+        st.session_state.song_index = songs.index(s_a)
+        song_name = s_a
 
-if music_files:
-    if "playlist" not in st.session_state or len(st.session_state.playlist) == 0:
-        random.shuffle(music_files)
-        st.session_state.playlist = music_files
-        st.session_state.current_track_index = 0
+    visualizer_html = f"""
+    <div style="background: #000; border: 3px solid {st.session_state.theme_color}; border-radius: 20px; padding: 15px; box-shadow: 0 0 30px {st.session_state.theme_color}55;">
+        <div style="overflow: hidden; white-space: nowrap; background: #050505; border: 1px solid {st.session_state.theme_color}55; border-radius: 8px; margin-bottom: 10px; padding: 8px;">
+            <p id="mText" style="display: inline-block; padding-left: 100%; font-family: Orbitron, monospace; font-size: 16px; color: white; animation: marquee 12s linear infinite;">
+                <span style="animation: rainbowText 4s linear infinite;">>>></span> {song_name} <span style="animation: rainbowText 4s linear infinite;"><<< ANALYZING... SECURE LINE... >>></span>
+            </p>
+        </div>
+        <canvas id="canvas" style="width: 100%; height: 220px; background: #000; border-radius: 10px;"></canvas>
+        <button id="pBtn" style="width: 100%; margin-top:10px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; font-weight:bold; cursor: pointer;">[ CLICK TO SYNC ]</button>
+        <audio id="audio" src="data:audio/mp3;base64,{song_b64}"></audio>
+    </div>
+    <style>
+        @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
+        @keyframes rainbowText {{
+            0%, 100% {{ color: #ff0000; }} 16% {{ color: #ff7f00; }} 33% {{ color: #ffff00; }}
+            50% {{ color: #00ff00; }} 66% {{ color: #0000ff; }} 83% {{ color: #4b0082; }}
+        }}
+    </style>
+    <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const audio = document.getElementById('audio');
+    const btn = document.getElementById('pBtn');
+    const mText = document.getElementById('mText');
+    let aCtx, ans, src, data;
+    mText.style.animationPlayState = 'paused';
 
-    current_track = st.session_state.playlist[st.session_state.current_track_index]
-    st.write(f"🎧 **กำลังเล่นตอนนี้:** {current_track}")
-    
-    with open(current_track, "rb") as audio_file:
-        audio_bytes = audio_file.read()
-    
-    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
-    
-    if st.button("⏭️ ข้ามไปเพลงถัดไป"):
-        st.session_state.current_track_index = (st.session_state.current_track_index + 1) % len(st.session_state.playlist)
-        st.rerun()
-else:
-    st.info("💡 ไม่มีไฟล์เพลง .mp3 ในโฟลเดอร์นี้ นำไฟล์เพลงมาวางคู่กับไฟล์โค้ดแล้วระบบจะเปิดเพลงอัตโนมัติทันที")
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-
-# 5. 🛰️ แผนที่ดาวเทียมขยายขนาดใหญ่พิเศษ (MEGA SCALE) + ระบบบันทึกประวัติที่ทำงานได้จริงในหน้าจอเดียว
-st.subheader("🛰️ แผนที่ดาวเทียมสเกลใหญ่ (ระบบคำนวณและบันทึกประวัติจริงหน้างาน)")
-st.caption("💡 วิธีใช้งาน: เล็งเป้าแดงให้ตรงมุมแปลงนา กดปุ่มปักหมุดจนครบแปลง พิมพ์ชื่อเจ้าของแล้วกดบันทึก ข้อมูลจะแสดงในตารางประวัติด้านล่างทันที")
-
-default_lat = 15.9513057
-default_lng = 103.5796196
-
-map_html_code = f"""
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
-
-<style>
-    #map-container {{
-        position: relative;
-        width: 100%;
-    }}
-    #map {{
-        width: 100%;
-        height: 700px; 
-        border-radius: 16px;
-        border: 3px solid #00ffcc;
-        z-index: 1;
-        box-shadow: 0 0 25px rgba(0, 255, 204, 0.6);
-    }}
-    .crosshair {{
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 40px;
-        height: 40px;
-        margin-top: -20px;
-        margin-left: -20px;
-        z-index: 9999;
-        pointer-events: none;
-        display: none;
-    }}
-    .crosshair::before, .crosshair::after {{
-        content: '';
-        position: absolute;
-        background: #ff3333;
-        box-shadow: 0 0 12px #ff3333, 0 0 4px #ffffff;
-    }}
-    .crosshair::before {{ top: 19px; left: 0; width: 40px; height: 2px; }}
-    .crosshair::after {{ top: 0; left: 19px; width: 2px; height: 40px; }}
-    
-    .control-panel {{
-        margin-top: 20px;
-        margin-bottom: 20px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-    }}
-
-    .map-btn {{
-        background-color: #00ffcc;
-        color: #000000 !important;
-        border: 2px solid #00ffcc;
-        padding: 14px 24px;
-        font-size: 16px;
-        font-weight: bold;
-        border-radius: 10px;
-        cursor: pointer;
-        box-shadow: 0 0 10px #00ffcc;
-        transition: all 0.3s ease;
-        flex: 1;
-        min-width: 150px;
-        text-align: center;
-    }}
-    .map-btn:hover {{ background-color: #00cc99; box-shadow: 0 0 20px #00cc99; transform: translateY(-2px); }}
-    .map-btn-danger {{ background-color: #ff3333; border-color: #ff3333; color: white !important; box-shadow: 0 0 10px #ff3333;}}
-    .map-btn-danger:hover {{ background-color: #cc0000; box-shadow: 0 0 20px #cc0000; }}
-    .map-btn-success {{ background-color: #9d4edd; border-color: #9d4edd; color: white !important; box-shadow: 0 0 10px #9d4edd;}}
-    .map-btn-success:hover {{ background-color: #7b2cbf; box-shadow: 0 0 20px #7b2cbf; }}
-
-    .neon-result-box {{
-        background: #090d16;
-        padding: 20px;
-        border-radius: 12px;
-        color: white;
-        font-family: sans-serif;
-        border: 2px solid #9d4edd;
-        box-shadow: 0 0 15px rgba(157, 78, 221, 0.4);
-        margin-bottom: 20px;
-    }}
-
-    /* สไตล์ส่วนกล่องบันทึกข้อมูลของจริง */
-    .save-panel {{
-        background: rgba(26, 11, 46, 0.6);
-        border: 1px solid #9d4edd;
-        padding: 15px;
-        border-radius: 12px;
-        margin-bottom: 25px;
-        display: flex;
-        gap: 15px;
-        align-items: center;
-    }}
-    .save-input {{
-        background: #111424;
-        border: 1px solid #00ffcc;
-        color: white;
-        padding: 12px;
-        border-radius: 8px;
-        font-size: 16px;
-        flex: 2;
-    }}
-    .history-table {{
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 15px;
-        background: #111424;
-        color: white;
-        border-radius: 8px;
-        overflow: hidden;
-        font-family: sans-serif;
-    }}
-    .history-table th, .history-table td {{
-        padding: 12px;
-        text-align: left;
-        border-bottom: 1px solid #1a0b2e;
-    }}
-    .history-table th {{
-        background-color: #9d4edd;
-        color: white;
-    }}
-</style>
-
-<div id="map-container">
-    <div id="map"></div>
-    <div id="crosshair-target" class="crosshair"></div>
-</div>
-
-<div class="control-panel">
-    <button type="button" class="map-btn" onclick="toggleCrosshair()">🎯 เปิด/ปิด เป้าเล็ง</button>
-    <button type="button" class="map-btn map-btn-success" onclick="addPointFromCenter()">📌 ปักหมุดพิกัด</button>
-    <button type="button" class="map-btn map-btn-success" style="background:#00ffcc; border-color:#00ffcc; color:black !important; box-shadow: 0 0 10px #00ffcc;" onclick="calculateFromPoints()">📐 คำนวณพื้นที่นาแปลงนี้</button>
-    <button type="button" class="map-btn map-btn-danger" onclick="clearAllDrawings()">🗑️ ล้างค่าเริ่มใหม่</button>
-</div>
-
-<div class="neon-result-box">
-    <b style="color:#00ffcc; font-size:16px; text-shadow: 0 0 5px #00ffcc;">🛰️ ขนาดพื้นที่นาปัจจุบัน (วัดตามจริง):</b>
-    <p id="area-text" style="font-size:26px; margin:10px 0; font-weight:bold; color:#ff3333;">ยังไม่ได้ลากแปลงนา</p>
-</div>
-
-<div class="save-panel">
-    <input type="text" id="farmer-name" class="save-input" placeholder="พิมพ์ชื่อเจ้าของที่นาเพื่อบันทึกประวัติ...">
-    <button type="button" class="map-btn map-btn-success" style="margin:0; flex:1;" onclick="saveToHistoryTable()">💾 บันทึกประวัติแปลงนี้</button>
-</div>
-
-<div style="background: rgba(17, 20, 36, 0.9); padding:15px; border-radius:12px; border: 1px solid #9d4edd;">
-    <b style="color:#00ffcc; font-size:16px;">📊 ตารางประวัติการวัดที่นาสัจจะ (บันทึกแล้วกดดูได้ทันที):</b>
-    <table class="history-table">
-        <thead>
-            <tr>
-                <th>ลำดับ</th>
-                <th>ชื่อเจ้าของที่นา</th>
-                <th>ขนาดพื้นที่นาที่วัดได้จริง</th>
-                <th>ขนาดพื้นที่ (ตร.ม.)</th>
-            </tr>
-        </thead>
-        <tbody id="history-rows">
-            <tr>
-                <td colspan="4" style="text-align:center; color:#9ca3af;">ยังไม่มีประวัติการบันทึกในรอบนี้</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-<script>
-    var map = L.map('map').setView([{default_lat}, {default_lng}], 16);
-
-    var satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
-        maxZoom: 19
-    }}).addTo(map);
-
-    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
-    L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{{z}}/{{y}}/{{x}}').addTo(map);
-
-    if (navigator.geolocation) {{
-        navigator.geolocation.getCurrentPosition(function(position) {{
-            var lat = position.coords.latitude;
-            var lng = position.coords.longitude;
-            map.setView([lat, lng], 18);
-            L.marker([lat, lng]).addTo(map).bindPopup('🚜 หมุดปัจจุบันของคุณ').openPopup();
-        }}, function(err) {{
-            console.log("GPS กำลังค้นหา");
-        }}, {{enableHighAccuracy: true}});
-    }}
-
-    var drawnItems = new L.FeatureGroup();
-    map.addLayer(drawnItems);
-
-    var customPoints = [];
-    var customPolygon = null;
-    var crosshairMode = false;
-    
-    // ตัวแปรเก็บค่าผลลัพธ์ล่าสุดเพื่อเอาไปบันทึกลงตารางจริง
-    var currentCalculatedText = "";
-    var currentCalculatedSqM = 0;
-    var historyData = [];
-
-    function toggleCrosshair() {{
-        var ch = document.getElementById('crosshair-target');
-        crosshairMode = !crosshairMode;
-        ch.style.display = crosshairMode ? 'block' : 'none';
-    }}
-
-    function addPointFromCenter() {{
-        var center = map.getCenter();
-        customPoints.push([center.lat, center.lng]);
-
-        L.circleMarker(center, {{radius: 7, color: '#ff3333', fillColor: '#ffffff', weight: 3, fillOpacity: 1}}).addTo(drawnItems);
-
-        if (customPoints.length > 1) {{
-            if (customPolygon) {{ map.removeLayer(customPolygon); }}
-            customPolygon = L.polygon(customPoints, {{color: '#00ffcc', weight: 4, fillOpacity: 0.35}}).addTo(drawnItems);
+    btn.onclick = function() {{
+        if (!aCtx) {{
+            aCtx = new (window.AudioContext || window.webkitAudioContext)();
+            ans = aCtx.createAnalyser();
+            src = aCtx.createMediaElementSource(audio);
+            src.connect(ans); ans.connect(aCtx.destination);
+            ans.fftSize = 128; data = new Uint8Array(ans.frequencyBinCount);
+            draw();
+        }}
+        if (audio.paused) {{ audio.play(); btn.innerText = "[ SIGNAL ACTIVE ]"; mText.style.animationPlayState = 'running'; }}
+        else {{ audio.pause(); btn.innerText = "[ SIGNAL PAUSED ]"; mText.style.animationPlayState = 'paused'; }}
+    }};
+    function draw() {{
+        requestAnimationFrame(draw);
+        ans.getByteFrequencyData(data);
+        ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+        let x = 0; const bW = (canvas.width / data.length) * 2;
+        for(let i=0; i<data.length; i++) {{
+            let bH = data[i]*0.9; let h = (i/data.length)*360;
+            ctx.fillStyle = `hsl(${{h}}, 100%, 50%)`;
+            ctx.shadowBlur = 10; ctx.shadowColor = `hsl(${{h}}, 100%, 50%)`;
+            ctx.fillRect(x, canvas.height-bH, bW-2, bH); x += bW;
         }}
     }}
+    </script>
+    """
+    components.html(visualizer_html, height=420)
 
-    function calculateFromPoints() {{
-        if (customPoints.length < 3) {{
-            alert("⚠️ ต้องปักหมุดที่นาให้ได้อย่างน้อย 3 มุมแปลงขึ้นไปก่อนครับ!");
-            return;
-        }}
+def room_sensor():
+    st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center; font-family:Orbitron;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
+    
+    # รวม JS ทั้งหมดไว้ในตัวเดียวเพื่อประสิทธิภาพ
+    all_sensors_js = f"""
+    <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 20px; padding: 20px; font-family: 'Orbitron', monospace; color: white;">
         
-        var turfCoords = [];
-        customPoints.forEach(function(pt) {{
-            turfCoords.push([pt[1], pt[0]]);
-        }});
-        turfCoords.push([customPoints[0][1], customPoints[0][0]]);
+        <div style="overflow: hidden; white-space: nowrap; background: #0a0a0a; border: 1px solid {st.session_state.theme_color}55; border-radius: 5px; margin-bottom: 15px; padding: 5px;">
+            <p id="mText" style="display: inline-block; padding-left: 100%; font-size: 14px; color: {st.session_state.theme_color}; animation: marquee 15s linear infinite;">
+                SYSTEM ONLINE >>> MONITORING REAL-TIME DATA >>> SONIC & MOTION SCANNER ACTIVE...
+            </p>
+        </div>
 
-        var polygonGeoJSON = turf.polygon([turfCoords]);
-        var areaSqMeters = turf.area(polygonGeoJSON);
+        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+            <small style="color: {st.session_state.theme_color};">🔊 SONIC ANALYZER</small>
+            <canvas id="visualizer" style="width: 100%; height: 80px; background: #050505; border-radius: 5px; margin: 10px 0;"></canvas>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; text-align: center;">
+                <div><small>VOLUME</small><h2 id="vol_val" style="color: #0f0; margin:0;">0</h2></div>
+                <div><small>PITCH (Hz)</small><h2 id="freq_val" style="color: #00ffff; margin:0;">0</h2></div>
+            </div>
+        </div>
+
+        <div style="border: 1px solid {st.session_state.theme_color}33; padding: 15px; border-radius: 10px;">
+            <small style="color: {st.session_state.theme_color};">📳 MOTION DETECTOR</small>
+            <div style="text-align: center; margin-top: 10px;">
+                <small>MAGNITUDE (G)</small>
+                <h1 id="mag_val" style="font-size: 45px; color: #f0f; margin:0;">1.000</h1>
+            </div>
+            <div style="display: flex; justify-content: space-around; font-size: 12px; margin-top: 10px; color: #888;">
+                <span>X: <b id="x_v">0</b></span>
+                <span>Y: <b id="y_v">0</b></span>
+                <span>Z: <b id="z_v">0</b></span>
+            </div>
+        </div>
+
+        <button id="startBtn" style="width: 100%; margin-top: 15px; padding: 15px; background: transparent; border: 2px solid {st.session_state.theme_color}; border-radius: 10px; color: {st.session_state.theme_color}; font-family: Orbitron; cursor: pointer; font-weight: bold;">
+            [ INITIALIZE SENSOR ARRAY ]
+        </button>
+    </div>
+
+    <style>
+        @keyframes marquee {{ 0% {{ transform: translate(0, 0); }} 100% {{ transform: translate(-100%, 0); }} }}
+        h2, h1 {{ text-shadow: 0 0 10px currentColor; }}
+    </style>
+
+    <script>
+        const btn = document.getElementById('startBtn');
+        const v_canvas = document.getElementById('visualizer');
+        const v_ctx = v_canvas.getContext('2d');
         
-        showAreaResult(areaSqMeters);
-    }}
+        btn.onclick = async () => {{
+            btn.style.display = 'none';
+            
+            // --- AUDIO SYSTEM ---
+            try {{
+                const stream = await navigator.mediaDevices.getUserMedia({{ audio: true }});
+                const aCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const analyser = aCtx.createAnalyser();
+                const source = aCtx.createMediaStreamSource(stream);
+                analyser.fftSize = 128;
+                source.connect(analyser);
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-    function clearAllDrawings() {{
-        drawnItems.clearLayers();
-        customPoints = [];
-        customPolygon = null;
-        currentCalculatedText = "";
-        currentCalculatedSqM = 0;
-        document.getElementById('area-text').innerHTML = "ยังไม่ได้ลากแปลงนา";
-    }}
+                function updateAudio() {{
+                    requestAnimationFrame(updateAudio);
+                    analyser.getByteFrequencyData(dataArray);
+                    v_ctx.clearRect(0, 0, v_canvas.width, v_canvas.height);
+                    let sum = 0, maxV = 0, maxI = 0;
+                    for (let i = 0; i < dataArray.length; i++) {{
+                        let v = dataArray[i]; sum += v;
+                        if(v > maxV) {{ maxV = v; maxI = i; }}
+                        v_ctx.fillStyle = '{st.session_state.theme_color}';
+                        v_ctx.fillRect(i * (v_canvas.width / dataArray.length), v_canvas.height - v/2, 2, v/2);
+                    }}
+                    document.getElementById('vol_val').innerText = Math.round(sum/dataArray.length);
+                    document.getElementById('freq_val').innerText = (sum/dataArray.length > 5) ? Math.round(maxI * aCtx.sampleRate / analyser.fftSize) : 0;
+                }}
+                updateAudio();
+            }} catch(e) {{ alert("Audio Error: " + e); }}
 
-    function showAreaResult(areaSqMeters) {{
-        if (areaSqMeters > 0) {{
-            var totalWa = areaSqMeters / 4;
-            var rai = Math.floor(totalWa / 400);
-            var remainingWa = totalWa % 400;
-            var ngan = Math.floor(remainingWa / 100);
-            var wa = Math.round(remainingWa % 100);
+            // --- MOTION SYSTEM ---
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {{
+                await DeviceMotionEvent.requestPermission();
+            }}
+            window.addEventListener('devicemotion', (e) => {{
+                const acc = e.accelerationIncludingGravity;
+                if (!acc) return;
+                let x = acc.x || 0, y = acc.y || 0, z = acc.z || 0;
+                let mag = Math.sqrt(x*x + y*y + z*z) / 9.80665;
+                document.getElementById('x_v').innerText = x.toFixed(2);
+                document.getElementById('y_v').innerText = y.toFixed(2);
+                document.getElementById('z_v').innerText = z.toFixed(2);
+                document.getElementById('mag_val').innerText = mag.toFixed(3);
+                document.getElementById('mag_val').style.color = (mag > 1.1 || mag < 0.9) ? "#f00" : "#f0f";
+            }});
+        }};
+    </script>
+    """
+    components.html(all_sensors_js, height=550)
+    
+    st.markdown("---")
+    st.info("💡 เคล็ดลับ: วางมือถือนิ่งๆ เพื่อดูแรงโน้มถ่วงโลก (1.00G) หรือลองผิวปากใส่ไมค์เพื่อดูคลื่นความถี่ครับ")
+# ==========================================
+# 4. MAIN LAYOUT
+# ==========================================
+def main():
+    with st.sidebar:
+        st.title("⚙️ SYSTEM")
+        st.session_state.user = st.text_input("AGENT ID", st.session_state.user)
+        st.session_state.theme_color = st.color_picker("THEME", st.session_state.theme_color)
+        st.session_state.bg_color = st.color_picker("BACKGROUND", st.session_state.bg_color)
+        st.markdown("---")
+        st.caption("'อยู่นิ่งๆ ไม่เจ็บตัว'")
 
-            currentCalculatedSqM = Math.round(areaSqMeters);
-            currentCalculatedText = rai + " ไร่ " + ngan + " งาน " + wa + " ตารางวา";
+    tabs = st.tabs(["🚀 CORE", "🛰️ RADAR", "💬 COMMS", "🎧 MUSIC", "📟 SENSOR"])
+    rooms = [room_core, room_radar, room_comms, room_music, room_sensor]
+    for i, tab in enumerate(tabs):
+        with tab: rooms[i]()
 
-            document.getElementById('area-text').innerHTML = 
-                "🌾 วัดได้จริง: <span style='color:#00ffcc; text-shadow: 0 0 5px #00ffcc;'>" + rai + " ไร่ </span> " + 
-                "<span style='color:#9d4edd; text-shadow: 0 0 5px #9d4edd;'>" + ngan + " งาน </span> " + 
-                "<span style='color:#ff3333; text-shadow: 0 0 5px #ff3333;'>" + wa + " ตารางวา</span><br>" +
-                "<span style='font-size:14px; color:#9ca3af; font-weight:normal; display:block; margin-top:5px;'>สุทธิประมวลผลดาวเทียม: " + currentCalculatedSqM.toLocaleString() + " ตร.ม.</span>";
-        }}
-    }}
-
-    // ฟังก์ชันบันทึกข้อมูลและอัปเดตลงตารางประวัติให้เห็นทันที ไม่มีการหลอกตา
-    function saveToHistoryTable() {{
-        var nameInput = document.getElementById('farmer-name');
-        var name = nameInput.value.trim();
-        
-        if (name === "") {{
-            alert("⚠️ กรุณาพิมพ์ชื่อเจ้าของที่นาก่อนกดบันทึกครับเพื่อน!");
-            return;
-        }}
-        if (currentCalculatedSqM === 0 || currentCalculatedText === "") {{
-            alert("⚠️ แปลงนายังไม่มีการคำนวณพื้นที่เลย ปักหมุดแล้วกด 'คำนวณพื้นที่นาแปลงนี้' ก่อนบันทึกครับ!");
-            return;
-        }}
-
-        // บันทึกเข้า Array ของระบบหน้าบ้านจริง
-        historyData.push({{
-            name: name,
-            areaText: currentCalculatedText,
-            sqm: currentCalculatedSqM
-        }});
-
-        // ล้างช่องกรอกชื่อหลังจากบันทึกแล้ว
-        nameInput.value = "";
-
-        // วาดตารางใหม่ทันทีให้เห็นตรงหน้า
-        var tbody = document.getElementById('history-rows');
-        tbody.innerHTML = "";
-
-        historyData.forEach(function(item, index) {{
-            var row = document.createElement('tr');
-            row.innerHTML = 
-                "<td>" + (index + 1) + "</td>" +
-                "<td style='color:#00ffcc; font-weight:bold;'>" + item.name + "</td>" +
-                "<td style='color:#ffffff;'>" + item.areaText + "</td>" +
-                "<td style='color:#9ca3af;'>" + item.sqm.toLocaleString() + " ตร.ม.</td>";
-            tbody.appendChild(row);
-        }});
-        
-        alert("💾 บันทึกประวัติที่ดินของคุณ " + name + " ลงตารางเรียบร้อยแล้ว ดูข้อมูลด้านล่างได้ทันทีครับ!");
-    }}
-
-    var drawControl = new L.Control.Draw({{
-        draw: {{
-            polygon: {{ allowIntersection: false, shapeOptions: {{ color: '#00ffcc', weight: 4, fillOpacity: 0.35 }} }},
-            rectangle: {{ shapeOptions: {{ color: '#00ffcc' }} }},
-            polyline: false, circle: false, marker: false, circlemarker: false
-        }},
-        edit: {{ featureGroup: drawnItems }}
-    }});
-    map.addControl(drawControl);
-
-    map.on(L.Draw.Event.CREATED, function (event) {{
-        var layer = event.layer;
-        drawnItems.clearLayers();
-        drawnItems.addLayer(layer);
-        var geojson = layer.toGeoJSON();
-        var areaSqMeters = turf.area(geojson);
-        showAreaResult(areaSqMeters);
-    }});
-</script>
-"""
-
-# ใช้ความสูง 1250px เพื่อให้มีพื้นที่เหลือเฟือสำหรับแสดงตารางประวัติด้านล่างแบบเห็นชัดๆ ไม่ต้องซ้อนกันครับ
-st.components.v1.html(map_html_code, height=1250, scrolling=False)
+if __name__ == "__main__":
+    main()
