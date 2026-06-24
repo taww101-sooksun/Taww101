@@ -1,4 +1,3 @@
-```python id="cvn0z7"
 import streamlit as st
 from PIL import Image, ImageEnhance, ImageFilter
 
@@ -41,6 +40,4 @@ if uploaded:
 
     st.image(
         edited,
-        caption="แต่งแล้ว"
-    )
-```
+        caption="แaimport
