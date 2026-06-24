@@ -36,7 +36,7 @@ if uploaded:
     if blur > 0:
         edited = edited.filter(
             ImageFilter.GaussianBlur(blur)
-        )
+    )
 
     st.image(
         edited,
