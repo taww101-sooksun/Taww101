@@ -1,43 +1,47 @@
 import streamlit as st
-from PIL import Image, ImageEnhance, ImageFilter
 
-st.set_page_config(page_title="Synapse AI")
-
-st.title("🎨 Synapse AI Photo")
-
-uploaded = st.file_uploader(
-    "อัปโหลดรูป",
-    type=["jpg", "png", "jpeg"]
+st.set_page_config(
+page_title="อยู่นิ้งๆไม่เจ็บตัว",
+page_icon="🎵",
+layout="centered"
 )
 
-if uploaded:
+st.title("🎵 อยู่นิ้งๆไม่เจ็บตัว")
+st.caption("เพลง / ความคิด / เรื่องราว")
 
-    image = Image.open(uploaded)
+lyrics = """
+[Verse 1]
 
-    st.image(image, caption="รูปต้นฉบับ")
+ปล่อยวางความโกรธที่เผาใจ
+ไฟที่คุ้มคลั่งมันเผาเราก่อนใคร
 
-    brightness = st.slider(
-        "Brightness",
-        0.5,
-        2.0,
-        1.0
-    )
+ทิ้งความโลภที่ไม่มีวันพอ
+วิ่งตามเท่าไหร่ก็ว่างเปล่าอยู่ดี
 
-    blur = st.slider(
-        "Blur",
-        0,
-        10,
-        0
-    )
+อิจฉาไปก็มีแต่ท้อ
+ยิ่งมองคนอื่นยิ่งหลงทาง
 
-    enhancer = ImageEnhance.Brightness(image)
-    edited = enhancer.enhance(brightness)
+คำนินทาที่ลอยมากับลม
+อย่าเก็บเอามาขังใจให้งอ
 
-    if blur > 0:
-        edited = edited.filter(
-            ImageFilter.GaussianBlur(blur)
-    )
+[Hook]
 
-    st.image(
-        edited,
-        
+อยู่นิ้งๆ ไม่เจ็บตัว
+คำนี้มันจริงใช่ไหมหนอ
+
+แค่รู้เท่าทันแล้ววางลงตรงนี้
+แล้วใจจะเบา ไม่ต้องท้อ
+"""
+
+st.write(lyrics)
+
+st.divider()
+
+message = st.text_input("พิมพ์ความรู้สึกของคุณ")
+
+if message:
+st.success(f"คุณพิมพ์ว่า : {message}")
+
+st.divider()
+
+st.info("ไม่ต้องเก่งกว่าคนทั้งโลก แค่ไม่โกหกหัวใจตัวเอง 🙂")
