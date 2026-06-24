@@ -1,62 +1,46 @@
-[san Acoustic Guitar Intro]
-[Phin and Accordion Melody]
-​[Verse 1]
-[Male, Mid-Tone, Clear]
-เวลาสิหมุนผ่านไป... จักเดือนจักปีผ่านพ้น
-[Male, Emotional]
-แต่หัวใจผู้ชายคนจน... ยังบ่เคยคิดสิไปใส
-[Male, Warm, Sustain]
-ความฮักความรู้สึกดีๆ... ที่สองเฮาเคยร่วมสร้างไว้
-[Isan, Melisma]
-มันยังฝังลึกในใจ... บ่เคยลบเลือนตามกาลเวลา
-​[Verse 2]
-[Acoustic Guitar]
-[Male, Deep, Sad]
-ยอมรับว่ามื้อนี้... มันมีสิ่งกีดกันกั้นขวาง
-[Male, Rising]
-ทำให้อ้ายต้องออกเดินทาง... รอวันคลายล็อกปัญหา
-[Male, Determined]
-อ้ายกำลังเก็บ... อ้ายกำลังกำ... สร้างอนาคตคาดหวังไว้ข้างหน้า
-[Male, High-Pitch, Clear]
-อดทนอดกลั้นทุกหยาดเหงื่อไคล... เพื่อให้ได้มา... คำว่าลืมตาอ้าปาก
-[Isan, Melisma]
-ยอมเหนื่อยยอมยาก... ย้อนแฮงศรัทธาของสองเฮา
-​[Chorus]
-[Male, High-Pitch, Powerful]
-[Emotional Climax]
-อยากให้น้องเชื่อมั่น... ในความฮักความผูกพันของเฮา
-[Male, Passionate]
-สิ่งนี้สิเป็นแรงผลักดัน... ปลุกปลอบใจอ้ายในยามเหงา
-[Male, Belting]
-ให้อ้ายประสบความสำเร็จในเร็ววัน... บ่ปล่อยให้เจ้าต้องรอเก้อ
-[Isan, Melisma]
-สัญญาเด้อ... สิสร้างวันวานให้เป็นจริง
-​[Solo]
-[Electric Phin Solo]
-[Folk Rock Rhythm]
-​[Bridge]
-[Male, Mid-Tone, Soft]
-คำว่า "อยู่นิ่งๆ บ่เจ็บตัว"... มันใช้บ่ได้กับใจที่เปี่ยมหวัง
-[Male, Rising]
-ถ้าบ่สู้บ่ลุกขึ้นสร้าง... ความฝันของสองเฮาสิพังทลาย
-[Male, High-Pitch, Clear]
-ขอแรงใจจากน้อง... ส่งมาหล่อเลี้ยงใจผู้ชาย
-[Male, Sustain]
-บ่ดนเกินรอแน่นอน... อ้ายสิกลับไปหอบความสำเร็จมาฝากเธอ
-​[Chorus]
-[Male, High-Pitch, Powerful]
-[Maximum Emotion]
-อยากให้น้องเชื่อมั่น... ในความฮักความผูกพันของเฮา
-[Male, Passionate]
-สิ่งนี้สิเป็นแรงผลักดัน... ปลุกปลอบใจอ้ายในยามเหงา
-[Male, Belting]
-ให้อ้ายประสบความสำเร็จในเร็ววัน... บ่ปล่อยให้เจ้าต้องรอเก้อ
-[Isan, Melisma]
-สัญญาเด้อ... สิสร้างวันวานให้เป็นจริง
-​[Outro]
-[Acoustic Guitar Fade]
-[Accordion Trail]
-[Male, Gentle, Clear]
-เชื่อใจอ้ายเด้อ... ในเร็ววันนี้... อ้ายสิกลับมา
-[Fade Out]
-[End]
+```python id="cvn0z7"
+import streamlit as st
+from PIL import Image, ImageEnhance, ImageFilter
+
+st.set_page_config(page_title="Synapse AI")
+
+st.title("🎨 Synapse AI Photo")
+
+uploaded = st.file_uploader(
+    "อัปโหลดรูป",
+    type=["jpg", "png", "jpeg"]
+)
+
+if uploaded:
+
+    image = Image.open(uploaded)
+
+    st.image(image, caption="รูปต้นฉบับ")
+
+    brightness = st.slider(
+        "Brightness",
+        0.5,
+        2.0,
+        1.0
+    )
+
+    blur = st.slider(
+        "Blur",
+        0,
+        10,
+        0
+    )
+
+    enhancer = ImageEnhance.Brightness(image)
+    edited = enhancer.enhance(brightness)
+
+    if blur > 0:
+        edited = edited.filter(
+            ImageFilter.GaussianBlur(blur)
+        )
+
+    st.image(
+        edited,
+        caption="แต่งแล้ว"
+    )
+```
