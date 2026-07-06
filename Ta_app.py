@@ -285,17 +285,15 @@ Golden Ratio
 # ---------------------------------
 # FOOTER
 # ---------------------------------
-st.markdown(
-
+st.markdown("""
 <br><br>
 
-<div style=
+<div style="
 text-align:center;
 color:#777777;
+">
 
 NEON MOON SYSTEM • CYBER COSMIC ENERGY
 
 </div>
-
-""" unsafe_allow_html=True)
-
+""", unsafe_allow_html=True)
