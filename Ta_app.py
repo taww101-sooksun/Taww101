@@ -292,7 +292,7 @@ st.markdown(
 <div style=
 text-align:center;
 color:#777777;
-">
+
 
 NEON MOON SYSTEM • CYBER COSMIC ENERGY
 
