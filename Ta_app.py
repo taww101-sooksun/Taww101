@@ -1,137 +1,302 @@
+```python
 import streamlit as st
-from datetime import date, timedelta
+import base64
 
-# --- 1. ฟังก์ชันดึงเลขฐาน (ห้ามเอาออก โชว์ที่มาความจริง) ---
-def get_step_by_step_data(dt):
-    if dt is None: return None
-    day_val = {0:1, 1:2, 2:3, 3:4, 4:5, 5:6, 6:7}[dt.weekday()]
-    day_name = ["จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์", "อาทิตย์"][dt.weekday()]
-    date_val = dt.day
-    ref = date(1900, 1, 1)
-    diff = (dt - ref).days
-    lunar_pos = (diff - 0.5) % 29.530589
-    if lunar_pos <= 14.765:
-        moon_num = int(lunar_pos) + 1
-        l_logic = -7.5
-        l_type = f"ขึ้น {moon_num} ค่ำ"
-    else:
-        moon_num = int(lunar_pos - 14.765) + 1
-        l_logic = 7.5
-        l_type = f"แรม {moon_num} ค่ำ"
-    month_val = dt.month
-    z_names = ["วอก", "ระกา", "จอ", "กุน", "ชวด", "ฉลู", "ขาล", "เถาะ", "มะโรง", "มะเส็ง", "มะเมีย", "มะแม"]
-    z_map = {0:9, 1:10, 2:11, 3:12, 4:1, 5:2, 6:3, 7:4, 8:5, 9:6, 10:7, 11:8}
-    zv = z_map[dt.year % 12]
-    z_name = z_names[dt.year % 12]
-    m, d = dt.month, dt.day
-    if (m == 5 and d >= 14) or (m == 6 and d <= 14): ev, en = 1, "ดิน"
-    elif (m == 7 and d >= 16) or (m == 8 and d <= 16): ev, en = 2, "น้ำ"
-    elif (m == 4 and d >= 13) or (m == 5 and d <= 13): ev, en = 4, "ไฟ"
-    else: ev, en = 3, "ลม"
-    return {
-        "day": day_val, "day_n": day_name, "date": date_val, "moon": moon_num, 
-        "l_logic": l_logic, "l_type": l_type, "month": month_val, "zv": zv, 
-        "zn": z_name, "ev": ev, "en": en, "year": dt.year
-    }
+# ---------------------------------
+# PAGE CONFIG
+# ---------------------------------
+st.set_page_config(
+    page_title="NEON MOON FORMULA",
+    layout="centered"
+)
 
-def get_grade_info(val):
-    s_val = str(abs(val)).replace('.', '').lstrip('0')
-    digit = int(s_val[0]) if s_val else 0
-    if digit in [0, 5]: return digit, "⚖️ สมดุลคงที่ (ค่ากลาง)", "#00f3ff"
-    elif 1 <= digit <= 4: return digit, "⚠️ ไม่สู้ดี (ไม่ดีพอ)", "#ff4b4b"
-    else: return digit, "🔥 ดีถึงดีมาก (พัฒนาได้)", "#00ff00"
+# ---------------------------------
+# LOAD LOGO
+# ---------------------------------
+def get_base64(file_path):
+    with open(file_path, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
 
-# --- 2. หน้าจอแอป ---
-st.set_page_config(page_title="SYNAPSE STEP-BY-STEP", layout="wide")
-st.title("🔢 SYNAPSE STEP-BY-STEP (1960-2026)")
+logo_base64 = get_base64("logo1.png")
 
-tab1, tab2 = st.tabs(["👤 วิเคราะห์บุคคล", "👥 วิเคราะห์คู่ขนาน"])
+# ---------------------------------
+# MUSIC URL FROM GITHUB
+# ---------------------------------
+music_url = "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/song.mp3"
 
-# --- 👤 TAB 1: วิเคราะห์บุคคล ---
-with tab1:
-    u_birth = st.date_input("กรอกวันเกิดของคุณ", value=None, min_value=date(1960,1,1), max_value=date(2026,12,31), key="single")
-    if u_birth:
-        d = get_step_by_step_data(u_birth)
-        
-        st.markdown("### 🛠 กระดานแยกพิกัดตัวเลข")
-        st.write(f"1. วัน{d['day_n']}: `{d['day']}` | 2. วันที่: `{d['date']}` | 3. {d['l_type']}: `{d['moon']}`")
-        st.write(f"4. เดือน: `{d['month']}` | 5. ปี{d['zn']}: `{d['zv']}` | 6. ธาตุ{d['en']}: `{d['ev']}`")
-        
-        st.write("---")
-        base_sum = d['day'] + d['date'] + d['moon'] + d['month'] + d['zv'] + d['ev']
-        raw_code = (base_sum + d['l_logic']) * 1.618
-        days_alive = (date.today() - u_birth).days
-        final_val = (raw_code + days_alive) / 1.618
-        
-        st.write(f"**ขั้นตอนที่ 1 (บวกฐาน):** `{d['day']}+{d['date']}+{d['moon']}+{d['month']}+{d['zv']}+{d['ev']} = {base_sum}`")
-        st.write(f"**ขั้นตอนที่ 2 (คูณ 1.618):** `({base_sum} + {d['l_logic']}) x 1.618 = {round(raw_code, 2)}`")
-        st.write(f"**ขั้นตอนที่ 3 (บวกวันชีวิต/หาร):** `({round(raw_code, 2)} + {days_alive}) / 1.618 = {round(final_val, 4)}`")
+# ---------------------------------
+# CUSTOM CSS
+# ---------------------------------
+st.markdown("""
+<style>
 
-        digit, grade, color = get_grade_info(final_val)
-        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid {color}; border-radius:15px; text-align:center;">
-            <h1 style="color:{color}; font-size:60px;">{round(final_val, 4)}</h1>
-            <h2 style="color:{color};">เลขหน้าคือ {digit} : {grade}</h2>
-        </div>""", unsafe_allow_html=True)
+body {
+    background-color: #050505;
+}
 
-        # --- 🕒 สแกนไทม์ไลน์บุคคล ---
-        st.write("---")
-        st.subheader("🕒 รายงานการบรรจบของพิกัดบุคคล (730 วัน)")
-        t_past, t_future = st.tabs(["🗓️ อดีต 365 วัน", "🗓️ อนาคต 365 วัน"])
-        
-        with t_past:
-            past_results = []
-            for i in range(-365, 0):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit:
-                    past_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
-            st.table(past_results[:10] if past_results else "ไม่พบข้อมูล")
+.stApp {
+    background:
+    radial-gradient(circle at top,
+    #111111 0%,
+    #050505 60%);
+    color: white;
+}
 
-        with t_future:
-            future_results = []
-            for i in range(1, 366):
-                scan_date = date.today() + timedelta(days=i)
-                sd = get_step_by_step_data(scan_date)
-                s_sum = sd['day'] + sd['date'] + sd['moon'] + sd['month'] + sd['zv'] + sd['ev']
-                s_code = (s_sum + sd['l_logic']) * 1.618
-                s_digit, _, _ = get_grade_info(s_code)
-                if s_digit == digit:
-                    future_results.append({"วันที่": scan_date.strftime("%d/%m/%Y"), "รหัส": round(s_code, 2), "เลขหน้า": s_digit})
-            st.table(future_results[:10] if future_results else "ไม่พบข้อมูล")
+/* TITLE */
 
-# --- 👥 TAB 2: วิเคราะห์คู่ขนาน ---
-with tab2:
-    col1, col2 = st.columns(2)
-    with col1: birth_a = st.date_input("วันเกิดคนที่ 1", value=None, key="ba", min_value=date(1960,1,1))
-    with col2: birth_b = st.date_input("วันเกิดคนที่ 2", value=None, key="bb", min_value=date(1960,1,1))
-    
-    if birth_a and birth_b:
-        d1 = get_step_by_step_data(birth_a)
-        d2 = get_step_by_step_data(birth_b)
-        r1 = ((d1['day'] + d1['date'] + d1['moon'] + d1['month'] + d1['zv'] + d1['ev']) + d1['l_logic']) * 1.618
-        r2 = ((d2['day'] + d2['date'] + d2['moon'] + d2['month'] + d2['zv'] + d2['ev']) + d2['l_logic']) * 1.618
-        
-        resonance = (r1 + r2) / 1.618
-        digit_p, grade_p, color_p = get_grade_info(resonance)
-        
-        st.write(f"**ขั้นตอนการรวม:** `({round(r1, 2)} + {round(r2, 2)}) / 1.618 = {round(resonance, 4)}`")
-        st.markdown(f"""<div style="background:#000; padding:20px; border:4px solid gold; border-radius:15px; text-align:center;">
-            <h1 style="color:white; font-size:60px;">{round(resonance, 4)}</h1>
-            <h2 style="color:{color_p};">เลขหน้าคือ {digit_p} : {grade_p}</h2>
-        </div>""", unsafe_allow_html=True)
+.main-title{
+    text-align:center;
+    font-size:55px;
+    font-weight:bold;
 
-        # --- 🕒 สแกนไทม์ไลน์คู่ขนาน ---
-        st.write("---")
-        st.subheader("⏳ จุด Sync คู่ขนานในอนาคต (365 วัน)")
-        p_future = []
-        for i in range(1, 366):
-            target = date.today() + timedelta(days=i)
-            td = get_step_by_step_data(target)
-            t_code = ((td['day'] + td['date'] + td['moon'] + td['month'] + td['zv'] + td['ev']) + td['l_logic']) * 1.618
-            t_digit, _, _ = get_grade_info(t_code)
-            if t_digit == digit_p:
-                p_future.append({"วันที่": target.strftime("%d/%m/%Y"), "พิกัดวันนั้น": round(t_code, 2)})
-        st.table(p_future[:10] if p_future else "ไม่พบข้อมูล")
+    color:#ffffff;
+
+    text-shadow:
+    0 0 10px #00ccff,
+    0 0 20px #00ccff,
+    0 0 40px #cc00ff,
+    0 0 80px #00ff99;
+}
+
+/* SUBTITLE */
+
+.sub-title{
+    text-align:center;
+    color:#cccccc;
+    font-size:18px;
+    margin-bottom:30px;
+}
+
+/* BOX */
+
+.neon-box{
+
+    border:2px solid #00ccff;
+    border-radius:20px;
+
+    padding:25px;
+
+    background:rgba(0,0,0,0.4);
+
+    box-shadow:
+    0 0 10px #00ccff,
+    0 0 20px #cc00ff,
+    0 0 40px #00ff99;
+}
+
+/* RESULT */
+
+.result-text{
+
+    text-align:center;
+    font-size:60px;
+    font-weight:bold;
+
+    color:#00ff99;
+
+    text-shadow:
+    0 0 10px #00ff99,
+    0 0 20px #00ff99,
+    0 0 40px #00ff99;
+}
+
+/* LABEL */
+
+label{
+    color:#00ccff !important;
+    font-weight:bold;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------------------------
+# AUTO PLAY MUSIC
+# ---------------------------------
+st.markdown(f"""
+<audio autoplay loop controls>
+    <source src="{music_url}" type="audio/mp3">
+</audio>
+""", unsafe_allow_html=True)
+
+# ---------------------------------
+# LOGO
+# ---------------------------------
+st.markdown(f"""
+<div style="text-align:center;">
+
+<img src="data:image/png;base64,{logo_base64}"
+width="220"
+
+style="
+
+filter:
+drop-shadow(0 0 10px #00ccff)
+drop-shadow(0 0 20px #cc00ff)
+drop-shadow(0 0 40px #00ff99);
+
+animation:pulse 2s infinite;
+">
+
+</div>
+""", unsafe_allow_html=True)
+
+# ---------------------------------
+# TITLE
+# ---------------------------------
+st.markdown("""
+<div class="main-title">
+NEON MOON FORMULA
+</div>
+
+<div class="sub-title">
+Cosmic Lunar Energy System
+</div>
+""", unsafe_allow_html=True)
+
+# ---------------------------------
+# INPUT SECTION
+# ---------------------------------
+st.markdown('<div class="neon-box">', unsafe_allow_html=True)
+
+# DAY
+day = st.selectbox(
+    "DAY / วัน",
+    [
+        ("Sunday / อาทิตย์",1),
+        ("Monday / จันทร์",2),
+        ("Tuesday / อังคาร",3),
+        ("Wednesday / พุธ",4),
+        ("Thursday / พฤหัส",5),
+        ("Friday / ศุกร์",6),
+        ("Saturday / เสาร์",7)
+    ],
+    format_func=lambda x: x[0]
+)[1]
+
+# MONTH
+month = st.slider(
+    "MONTH / เดือน",
+    1,
+    12,
+    1
+)
+
+# MOON PHASE
+moon = st.slider(
+    "MOON PHASE / ข้างขึ้น-แรม",
+    1,
+    29,
+    1
+)
+
+# ZODIAC
+zodiac = st.slider(
+    "ZODIAC / นักษัตร",
+    1,
+    12,
+    1
+)
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+# ---------------------------------
+# CONSTANTS
+# ---------------------------------
+MOON_CYCLE = 29.530588
+GOLDEN_RATIO = 1.618033988
+
+# ---------------------------------
+# FORMULA
+# ---------------------------------
+day_energy = day / 7
+month_energy = month / 12
+moon_energy = moon / MOON_CYCLE
+zodiac_energy = zodiac / 12
+
+total_energy = (
+    day_energy
+    +
+    month_energy
+    +
+    moon_energy
+    +
+    zodiac_energy
+)
+
+final_result = total_energy * GOLDEN_RATIO
+
+# ---------------------------------
+# RESULT
+# ---------------------------------
+st.markdown("<br>", unsafe_allow_html=True)
+
+st.markdown(f"""
+<div class="neon-box">
+
+<h2 style="
+text-align:center;
+color:#cc00ff;
+
+text-shadow:
+0 0 10px #cc00ff,
+0 0 20px #cc00ff;
+">
+
+COSMIC ENERGY
+
+</h2>
+
+<div class="result-text">
+
+{final_result:.6f}
+
+</div>
+
+</div>
+""", unsafe_allow_html=True)
+
+# ---------------------------------
+# EXPLAIN SYSTEM
+# ---------------------------------
+st.markdown("<br><br>", unsafe_allow_html=True)
+
+st.markdown("""
+
+# ความหมายของตัวเลข
+
+## 7
+รอบวันของโลก
+
+## 12
+รอบเดือนของปี
+และ 12 นักษัตร
+
+## 29.530588
+รอบดวงจันทร์จริง
+
+## 1.618
+Golden Ratio
+สัดส่วนสมดุลธรรมชาติ
+
+""")
+
+# ---------------------------------
+# FOOTER
+# ---------------------------------
+st.markdown("""
+
+<br><br>
+
+<div style="
+text-align:center;
+color:#777777;
+">
+
+NEON MOON SYSTEM • CYBER COSMIC ENERGY
+
+</div>
+
+""", unsafe_allow_html=True)
+```
