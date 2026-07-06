@@ -1,35 +1,19 @@
 import streamlit as st
-import base64
+from datetime import date
+import math
 
-# =====================================
+# =========================================
 # PAGE CONFIG
-# =====================================
+# =========================================
 
 st.set_page_config(
-    page_title="NEON MOON FORMULA",
+    page_title="NEON MOON SYSTEM",
     layout="centered"
 )
 
-# =====================================
-# LOAD LOGO
-# =====================================
-
-def get_base64(file_path):
-    with open(file_path, "rb") as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
-
-logo_base64 = get_base64("logo1.png")
-
-# =====================================
-# MUSIC URL
-# =====================================
-
-music_url = "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/song.mp3"
-
-# =====================================
+# =========================================
 # CUSTOM CSS
-# =====================================
+# =========================================
 
 st.markdown("""
 <style>
@@ -39,16 +23,12 @@ body{
 }
 
 .stApp{
-
     background:
     radial-gradient(circle at top,
     #111111 0%,
     #050505 60%);
-
     color:white;
 }
-
-/* TITLE */
 
 .main-title{
 
@@ -57,7 +37,7 @@ body{
     font-size:58px;
     font-weight:bold;
 
-    color:#ffffff;
+    color:white;
 
     text-shadow:
     0 0 10px #00ccff,
@@ -66,20 +46,13 @@ body{
     0 0 80px #00ff99;
 }
 
-/* SUBTITLE */
-
 .sub-title{
 
     text-align:center;
-
     color:#cccccc;
-
     font-size:18px;
-
     margin-bottom:30px;
 }
-
-/* NEON BOX */
 
 .neon-box{
 
@@ -95,16 +68,15 @@ body{
     0 0 10px #00ccff,
     0 0 20px #cc00ff,
     0 0 40px #00ff99;
+
+    margin-top:20px;
 }
 
-/* RESULT */
-
-.result-text{
+.result{
 
     text-align:center;
 
-    font-size:60px;
-
+    font-size:65px;
     font-weight:bold;
 
     color:#00ff99;
@@ -115,152 +87,142 @@ body{
     0 0 40px #00ff99;
 }
 
-/* LABEL */
+.label{
 
-label{
-
-    color:#00ccff !important;
-
+    color:#00ccff;
+    font-size:22px;
     font-weight:bold;
 }
 
-/* LOGO */
+.info{
 
-.logo-wrap{
-
-    text-align:center;
+    font-size:20px;
+    color:white;
+    line-height:2;
 }
-
-/* FOOTER */
 
 .footer{
 
     text-align:center;
-
     color:#888888;
-
     margin-top:40px;
-
-    font-size:14px;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-# =====================================
-# AUTO PLAY MUSIC
-# =====================================
-
-st.markdown(f"""
-<audio autoplay loop controls>
-    <source src="{music_url}" type="audio/mp3">
-</audio>
-""", unsafe_allow_html=True)
-
-# =====================================
-# LOGO
-# =====================================
-
-st.markdown(f"""
-<div class="logo-wrap">
-
-<img
-src="data:image/png;base64,{logo_base64}"
-width="220"
-style="
-
-filter:
-drop-shadow(0 0 10px #00ccff)
-drop-shadow(0 0 20px #cc00ff)
-drop-shadow(0 0 40px #00ff99);
-
-border-radius:20px;
-
-">
-
-</div>
-""", unsafe_allow_html=True)
-
-# =====================================
+# =========================================
 # TITLE
-# =====================================
+# =========================================
 
 st.markdown("""
 <div class="main-title">
-NEON MOON FORMULA
+NEON MOON SYSTEM
 </div>
 
 <div class="sub-title">
-Cosmic Lunar Energy System
+Automatic Cosmic Lunar Calculator
 </div>
 """, unsafe_allow_html=True)
 
-# =====================================
-# INPUT SECTION
-# =====================================
+# =========================================
+# DATE INPUT
+# =========================================
 
-st.markdown('<div class="neon-box">', unsafe_allow_html=True)
-
-# DAY
-
-day = st.selectbox(
-    "DAY / วัน",
-    [
-        ("Sunday / อาทิตย์",1),
-        ("Monday / จันทร์",2),
-        ("Tuesday / อังคาร",3),
-        ("Wednesday / พุธ",4),
-        ("Thursday / พฤหัส",5),
-        ("Friday / ศุกร์",6),
-        ("Saturday / เสาร์",7)
-    ],
-    format_func=lambda x: x[0]
-)[1]
-
-# MONTH
-
-month = st.slider(
-    "MONTH / เดือน",
-    1,
-    12,
-    1
+birth_date = st.date_input(
+    "เลือกวันเดือนปี",
+    value=date.today()
 )
 
-# MOON PHASE
+# =========================================
+# AUTO CALCULATE
+# =========================================
 
-moon = st.slider(
-    "MOON PHASE / ข้างขึ้น-ข้างแรม",
-    1,
-    29,
-    1
-)
+year = birth_date.year
+month = birth_date.month
+day_num = birth_date.day
 
-# ZODIAC
+# -----------------------------------------
+# DAY OF WEEK
+# -----------------------------------------
 
-zodiac = st.slider(
-    "ZODIAC / นักษัตร",
-    1,
-    12,
-    1
-)
+weekday_index = birth_date.weekday()
 
-st.markdown('</div>', unsafe_allow_html=True)
+# Monday = 0
+# Convert to Sunday = 1
 
-# =====================================
-# CONSTANTS
-# =====================================
+day_value = ((weekday_index + 1) % 7) + 1
 
-MOON_CYCLE = 29.530588
+day_names = {
+    1:"อาทิตย์",
+    2:"จันทร์",
+    3:"อังคาร",
+    4:"พุธ",
+    5:"พฤหัส",
+    6:"ศุกร์",
+    7:"เสาร์"
+}
+
+# -----------------------------------------
+# CHINESE ZODIAC
+# -----------------------------------------
+
+zodiac_list = [
+    "ชวด",
+    "ฉลู",
+    "ขาล",
+    "เถาะ",
+    "มะโรง",
+    "มะเส็ง",
+    "มะเมีย",
+    "มะแม",
+    "วอก",
+    "ระกา",
+    "จอ",
+    "กุน"
+]
+
+zodiac_value = (year - 4) % 12
+zodiac_name = zodiac_list[zodiac_value]
+
+# ค่า 1-12
+zodiac_number = zodiac_value + 1
+
+# -----------------------------------------
+# MOON PHASE CALCULATION
+# -----------------------------------------
+
+# วันที่อ้างอิงดวงจันทร์ใหม่
+known_new_moon = date(2000, 1, 6)
+
+days_difference = (birth_date - known_new_moon).days
+
+moon_cycle = 29.530588
+
+moon_age = days_difference % moon_cycle
+
+moon_day = int(moon_age) + 1
+
+# -----------------------------------------
+# DETECT ข้างขึ้น / ข้างแรม
+# -----------------------------------------
+
+if moon_day <= 15:
+    moon_phase_text = f"ขึ้น {moon_day} ค่ำ"
+else:
+    waning_day = moon_day - 15
+    moon_phase_text = f"แรม {waning_day} ค่ำ"
+
+# -----------------------------------------
+# GOLDEN FORMULA
+# -----------------------------------------
+
 GOLDEN_RATIO = 1.618033988
 
-# =====================================
-# ENERGY FORMULA
-# =====================================
-
-day_energy = day / 7
+day_energy = day_value / 7
 month_energy = month / 12
-moon_energy = moon / MOON_CYCLE
-zodiac_energy = zodiac / 12
+moon_energy = moon_day / moon_cycle
+zodiac_energy = zodiac_number / 12
 
 total_energy = (
     day_energy
@@ -272,95 +234,97 @@ total_energy = (
     zodiac_energy
 )
 
-final_result = total_energy * GOLDEN_RATIO
+final_energy = total_energy * GOLDEN_RATIO
 
-# =====================================
-# RESULT BOX
-# =====================================
-
-st.markdown("<br>", unsafe_allow_html=True)
+# =========================================
+# RESULT
+# =========================================
 
 st.markdown(f"""
 <div class="neon-box">
 
-<h2 style='
-text-align:center;
-color:#cc00ff;
-text-shadow:
-0 0 10px #cc00ff,
-0 0 20px #cc00ff;
-'>
+<div class="info">
 
-COSMIC ENERGY
+🌌 วัน:
+<b>{day_names[day_value]}</b>
 
-</h2>
+<br>
 
-<div class="result-text">
+📅 เดือน:
+<b>{month}</b>
 
-{final_result:.6f}
+<br>
+
+🌙 จันทรคติ:
+<b>{moon_phase_text}</b>
+
+<br>
+
+🐉 นักษัตร:
+<b>{zodiac_name}</b>
 
 </div>
 
 </div>
 """, unsafe_allow_html=True)
 
-# =====================================
-# EXPLAIN SYSTEM
-# =====================================
+# =========================================
+# ENERGY RESULT
+# =========================================
 
-st.markdown("<br><br>", unsafe_allow_html=True)
+st.markdown(f"""
+<div class="neon-box">
+
+<div style='
+text-align:center;
+font-size:28px;
+color:#cc00ff;
+margin-bottom:20px;
+'>
+
+COSMIC ENERGY
+
+</div>
+
+<div class="result">
+
+{final_energy:.6f}
+
+</div>
+
+</div>
+""", unsafe_allow_html=True)
+
+# =========================================
+# EXPLAIN
+# =========================================
 
 st.markdown("""
+<div class="neon-box">
 
-# ความหมายของตัวเลข
+# ความหมายของระบบ
 
-## 7
+### 7
 รอบวันของโลก
-อาทิตย์ถึงเสาร์
 
----
+### 12
+รอบเดือน และ 12 นักษัตร
 
-## 12
-รอบเดือนของปี
-และ 12 นักษัตร
-
----
-
-## 29.530588
+### 29.530588
 รอบดวงจันทร์จริง
-จากพระจันทร์ใหม่ถึงพระจันทร์ใหม่
 
----
-
-## 1.618
+### 1.618
 Golden Ratio
 สัดส่วนสมดุลธรรมชาติ
 
----
+</div>
+""", unsafe_allow_html=True)
 
-# สูตรพลังงาน
-
-พลังรวม =
-(
-วัน / 7
-+
-เดือน / 12
-+
-ข้างขึ้นแรม / 29.530588
-+
-นักษัตร / 12
-)
-× 1.618
-
-""")
-
-# =====================================
+# =========================================
 # FOOTER
-# =====================================
+# =========================================
 
 st.markdown("""
-<br><br>
-
 <div class="footer">
 
 NEON MOON SYSTEM • CYBER COSMIC ENERGY
