@@ -196,56 +196,34 @@ Cosmic Lunar Energy System
 """, unsafe_allow_html=True)
 
 # =====================================
-# INPUT BOX
+# RESULT BOX
 # =====================================
 
-st.markdown('<div class="neon-box">', unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
 
-# DAY
+st.markdown(f"""
+<div class="neon-box">
 
-day = st.selectbox(
-    "DAY / วัน",
-    [
-        ("Sunday / อาทิตย์",1),
-        ("Monday / จันทร์",2),
-        ("Tuesday / อังคาร",3),
-        ("Wednesday / พุธ",4),
-        ("Thursday / พฤหัส",5),
-        ("Friday / ศุกร์",6),
-        ("Saturday / เสาร์",7)
-    ],
-    format_func=lambda x: x[0]
-)[1]
+<h2 style='
+text-align:center;
+color:#cc00ff;
+text-shadow:
+0 0 10px #cc00ff,
+0 0 20px #cc00ff;
+'>
 
-# MONTH
+COSMIC ENERGY
 
-month = st.slider(
-    "MONTH / เดือน",
-    1,
-    12,
-    1
-)
+</h2>
 
-# MOON PHASE
+<div class="result-text">
 
-moon = st.slider(
-    "MOON PHASE / ข้างขึ้น-ข้างแรม",
-    1,
-    29,
-    1
-)
+{final_result:.6f}
 
-# ZODIAC
+</div>
 
-zodiac = st.slider(
-    "ZODIAC / นักษัตร",
-    1,
-    12,
-    1
-)
-
-st.markdown('</div>', unsafe_allow_html=True)
-
+</div>
+""", unsafe_allow_html=True)
 # =====================================
 # CONSTANTS
 # =====================================
