@@ -1,18 +1,19 @@
-
 import streamlit as st
 import base64
 
-# ---------------------------------
+# =====================================
 # PAGE CONFIG
-# ---------------------------------
+# =====================================
+
 st.set_page_config(
     page_title="NEON MOON FORMULA",
     layout="centered"
 )
 
-# ---------------------------------
+# =====================================
 # LOAD LOGO
-# ---------------------------------
+# =====================================
+
 def get_base64(file_path):
     with open(file_path, "rb") as f:
         data = f.read()
@@ -20,34 +21,40 @@ def get_base64(file_path):
 
 logo_base64 = get_base64("logo1.png")
 
-# ---------------------------------
-# MUSIC URL FROM GITHUB
-# ---------------------------------
+# =====================================
+# MUSIC URL
+# =====================================
+
 music_url = "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/song.mp3"
 
-# ---------------------------------
+# =====================================
 # CUSTOM CSS
-# ---------------------------------
+# =====================================
+
 st.markdown("""
 <style>
 
-body {
-    background-color: #050505;
+body{
+    background-color:#050505;
 }
 
-.stApp {
+.stApp{
+
     background:
     radial-gradient(circle at top,
     #111111 0%,
     #050505 60%);
-    color: white;
+
+    color:white;
 }
 
 /* TITLE */
 
 .main-title{
+
     text-align:center;
-    font-size:55px;
+
+    font-size:58px;
     font-weight:bold;
 
     color:#ffffff;
@@ -62,22 +69,27 @@ body {
 /* SUBTITLE */
 
 .sub-title{
+
     text-align:center;
+
     color:#cccccc;
+
     font-size:18px;
+
     margin-bottom:30px;
 }
 
-/* BOX */
+/* NEON BOX */
 
 .neon-box{
 
     border:2px solid #00ccff;
+
     border-radius:20px;
 
     padding:25px;
 
-    background:rgba(0,0,0,0.4);
+    background:rgba(0,0,0,0.45);
 
     box-shadow:
     0 0 10px #00ccff,
@@ -90,7 +102,9 @@ body {
 .result-text{
 
     text-align:center;
+
     font-size:60px;
+
     font-weight:bold;
 
     color:#00ff99;
@@ -104,31 +118,55 @@ body {
 /* LABEL */
 
 label{
+
     color:#00ccff !important;
+
     font-weight:bold;
+}
+
+/* LOGO */
+
+.logo-wrap{
+
+    text-align:center;
+}
+
+/* FOOTER */
+
+.footer{
+
+    text-align:center;
+
+    color:#888888;
+
+    margin-top:40px;
+
+    font-size:14px;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------
+# =====================================
 # AUTO PLAY MUSIC
-# ---------------------------------
+# =====================================
+
 st.markdown(f"""
 <audio autoplay loop controls>
     <source src="{music_url}" type="audio/mp3">
 </audio>
 """, unsafe_allow_html=True)
 
-# ---------------------------------
+# =====================================
 # LOGO
-# ---------------------------------
+# =====================================
+
 st.markdown(f"""
-<div style="text-align:center;">
+<div class="logo-wrap">
 
-<img src="data:image/png;base64,{logo_base64}"
+<img
+src="data:image/png;base64,{logo_base64}"
 width="220"
-
 style="
 
 filter:
@@ -136,15 +174,17 @@ drop-shadow(0 0 10px #00ccff)
 drop-shadow(0 0 20px #cc00ff)
 drop-shadow(0 0 40px #00ff99);
 
-animation:pulse 2s infinite;
+border-radius:20px;
+
 ">
 
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------------------------
+# =====================================
 # TITLE
-# ---------------------------------
+# =====================================
+
 st.markdown("""
 <div class="main-title">
 NEON MOON FORMULA
@@ -155,12 +195,14 @@ Cosmic Lunar Energy System
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------------------------
-# INPUT SECTION
-# ---------------------------------
+# =====================================
+# INPUT BOX
+# =====================================
+
 st.markdown('<div class="neon-box">', unsafe_allow_html=True)
 
 # DAY
+
 day = st.selectbox(
     "DAY / วัน",
     [
@@ -176,6 +218,7 @@ day = st.selectbox(
 )[1]
 
 # MONTH
+
 month = st.slider(
     "MONTH / เดือน",
     1,
@@ -184,14 +227,16 @@ month = st.slider(
 )
 
 # MOON PHASE
+
 moon = st.slider(
-    "MOON PHASE / ข้างขึ้น-แรม",
+    "MOON PHASE / ข้างขึ้น-ข้างแรม",
     1,
     29,
     1
 )
 
 # ZODIAC
+
 zodiac = st.slider(
     "ZODIAC / นักษัตร",
     1,
@@ -201,15 +246,17 @@ zodiac = st.slider(
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# ---------------------------------
+# =====================================
 # CONSTANTS
-# ---------------------------------
+# =====================================
+
 MOON_CYCLE = 29.530588
 GOLDEN_RATIO = 1.618033988
 
-# ---------------------------------
-# FORMULA
-# ---------------------------------
+# =====================================
+# ENERGY FORMULA
+# =====================================
+
 day_energy = day / 7
 month_energy = month / 12
 moon_energy = moon / MOON_CYCLE
@@ -227,21 +274,25 @@ total_energy = (
 
 final_result = total_energy * GOLDEN_RATIO
 
-# ---------------------------------
-# RESULT
-# ---------------------------------
+# =====================================
+# RESULT BOX
+# =====================================
+
 st.markdown("<br>", unsafe_allow_html=True)
 
 st.markdown(f"""
 <div class="neon-box">
 
 <h2 style="
+
 text-align:center;
+
 color:#cc00ff;
 
 text-shadow:
 0 0 10px #cc00ff,
 0 0 20px #cc00ff;
+
 ">
 
 COSMIC ENERGY
@@ -257,9 +308,10 @@ COSMIC ENERGY
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------------------------
-# EXPLAIN SYSTEM
-# ---------------------------------
+# =====================================
+# EXPLAIN
+# =====================================
+
 st.markdown("<br><br>", unsafe_allow_html=True)
 
 st.markdown("""
@@ -268,30 +320,52 @@ st.markdown("""
 
 ## 7
 รอบวันของโลก
+อาทิตย์ถึงเสาร์
+
+---
 
 ## 12
 รอบเดือนของปี
 และ 12 นักษัตร
 
+---
+
 ## 29.530588
 รอบดวงจันทร์จริง
+จากพระจันทร์ใหม่ถึงพระจันทร์ใหม่
+
+---
 
 ## 1.618
 Golden Ratio
 สัดส่วนสมดุลธรรมชาติ
 
+---
+
+# สูตรพลังงาน
+
+พลังรวม =
+(
+วัน / 7
++
+เดือน / 12
++
+ข้างขึ้นแรม / 29.530588
++
+นักษัตร / 12
+)
+× 1.618
+
 """)
 
-# ---------------------------------
+# =====================================
 # FOOTER
-# ---------------------------------
+# =====================================
+
 st.markdown("""
 <br><br>
 
-<div style="
-text-align:center;
-color:#777777;
-">
+<div class="footer">
 
 NEON MOON SYSTEM • CYBER COSMIC ENERGY
 
