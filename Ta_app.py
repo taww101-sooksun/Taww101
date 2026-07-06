@@ -289,7 +289,7 @@ st.markdown(
 
 <br><br>
 
-<div style="
+<div style=
 text-align:center;
 color:#777777;
 ">
