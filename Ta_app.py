@@ -1,333 +1,124 @@
-import streamlit as st
-from datetime import date
-import math
+from math import floor
 
-# =========================================
-# PAGE CONFIG
-# =========================================
+GOLDEN = 1.61803398875
 
-st.set_page_config(
-    page_title="NEON MOON SYSTEM",
-    layout="centered"
-)
 
-# =========================================
-# CUSTOM CSS
-# =========================================
+# ----------------------------------
+# สร้างลำดับ
+# ----------------------------------
 
-st.markdown("""
-<style>
+def build_sequence(start, count=15):
 
-body{
-    background-color:#050505;
+    seq = [start, start]
+
+    while len(seq) < count:
+        seq.append(seq[-1] + seq[-2])
+
+    return seq
+
+
+# ----------------------------------
+# หา ratio ที่ใกล้ 1.618
+# ----------------------------------
+
+def best_ratio(seq):
+
+    best = None
+
+    for i in range(1, len(seq)):
+
+        ratio = seq[i] / seq[i-1]
+
+        diff = abs(ratio - GOLDEN)
+
+        if best is None or diff < best["diff"]:
+
+            best = {
+
+                "index": i,
+                "before": seq[i-1],
+                "after": seq[i],
+                "ratio": ratio,
+                "diff": diff
+
+            }
+
+    return best
+
+
+# ----------------------------------
+# วนรอบ
+# ----------------------------------
+
+def cycle(value, cycle):
+
+    remain = value % cycle
+
+    if remain == 0:
+        remain = cycle
+
+    rounds = floor((value-1)/cycle)+1
+
+    return remain, rounds
+
+
+# ===========================================
+# ทดลอง
+# ===========================================
+
+day = 6
+month = 5
+zodiac = 1
+moon = 18
+
+systems = {
+
+    "DAY":(day,7),
+
+    "MONTH":(month,12),
+
+    "ZODIAC":(zodiac,12),
+
+    "MOON":(moon,29.530588)
+
 }
 
-.stApp{
-    background:
-    radial-gradient(circle at top,
-    #111111 0%,
-    #050505 60%);
-    color:white;
-}
+for name,(start,cycle_length) in systems.items():
 
-.main-title{
+    print("="*60)
 
-    text-align:center;
+    print(name)
 
-    font-size:58px;
-    font-weight:bold;
+    seq = build_sequence(start)
 
-    color:white;
+    print(seq)
 
-    text-shadow:
-    0 0 10px #00ccff,
-    0 0 20px #00ccff,
-    0 0 40px #cc00ff,
-    0 0 80px #00ff99;
-}
+    best = best_ratio(seq)
 
-.sub-title{
+    print()
 
-    text-align:center;
-    color:#cccccc;
-    font-size:18px;
-    margin-bottom:30px;
-}
+    print("Closest Ratio")
 
-.neon-box{
+    print(best["before"],"/",best["after"])
 
-    border:2px solid #00ccff;
+    print(best["ratio"])
 
-    border-radius:20px;
+    print()
 
-    padding:25px;
+    print("Cycle")
 
-    background:rgba(0,0,0,0.45);
+    for n in seq:
 
-    box-shadow:
-    0 0 10px #00ccff,
-    0 0 20px #cc00ff,
-    0 0 40px #00ff99;
+        remain,rounds = cycle(n,cycle_length)
 
-    margin-top:20px;
-}
+        print(
 
-.result{
+            f"{n:8.3f}"
 
-    text-align:center;
+            f" -> "
 
-    font-size:65px;
-    font-weight:bold;
+            f"{remain:8.3f}"
 
-    color:#00ff99;
+            f" รอบ {rounds}"
 
-    text-shadow:
-    0 0 10px #00ff99,
-    0 0 20px #00ff99,
-    0 0 40px #00ff99;
-}
-
-.label{
-
-    color:#00ccff;
-    font-size:22px;
-    font-weight:bold;
-}
-
-.info{
-
-    font-size:20px;
-    color:white;
-    line-height:2;
-}
-
-.footer{
-
-    text-align:center;
-    color:#888888;
-    margin-top:40px;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# =========================================
-# TITLE
-# =========================================
-
-st.markdown("""
-<div class="main-title">
-NEON MOON SYSTEM
-</div>
-
-<div class="sub-title">
-Automatic Cosmic Lunar Calculator
-</div>
-""", unsafe_allow_html=True)
-
-# =========================================
-# DATE INPUT
-# =========================================
-
-birth_date = st.date_input(
-    "เลือกวันเดือนปี",
-    value=date.today()
-)
-
-# =========================================
-# AUTO CALCULATE
-# =========================================
-
-year = birth_date.year
-month = birth_date.month
-day_num = birth_date.day
-
-# -----------------------------------------
-# DAY OF WEEK
-# -----------------------------------------
-
-weekday_index = birth_date.weekday()
-
-# Monday = 0
-# Convert to Sunday = 1
-
-day_value = ((weekday_index + 1) % 7) + 1
-
-day_names = {
-    1:"อาทิตย์",
-    2:"จันทร์",
-    3:"อังคาร",
-    4:"พุธ",
-    5:"พฤหัส",
-    6:"ศุกร์",
-    7:"เสาร์"
-}
-
-# -----------------------------------------
-# CHINESE ZODIAC
-# -----------------------------------------
-
-zodiac_list = [
-    "ชวด",
-    "ฉลู",
-    "ขาล",
-    "เถาะ",
-    "มะโรง",
-    "มะเส็ง",
-    "มะเมีย",
-    "มะแม",
-    "วอก",
-    "ระกา",
-    "จอ",
-    "กุน"
-]
-
-zodiac_value = (year - 4) % 12
-zodiac_name = zodiac_list[zodiac_value]
-
-# ค่า 1-12
-zodiac_number = zodiac_value + 1
-
-# -----------------------------------------
-# MOON PHASE CALCULATION
-# -----------------------------------------
-
-# วันที่อ้างอิงดวงจันทร์ใหม่
-known_new_moon = date(2000, 1, 6)
-
-days_difference = (birth_date - known_new_moon).days
-
-moon_cycle = 29.530588
-
-moon_age = days_difference % moon_cycle
-
-moon_day = int(moon_age) + 1
-
-# -----------------------------------------
-# DETECT ข้างขึ้น / ข้างแรม
-# -----------------------------------------
-
-if moon_day <= 15:
-    moon_phase_text = f"ขึ้น {moon_day} ค่ำ"
-else:
-    waning_day = moon_day - 15
-    moon_phase_text = f"แรม {waning_day} ค่ำ"
-
-# -----------------------------------------
-# GOLDEN FORMULA
-# -----------------------------------------
-
-GOLDEN_RATIO = 1.618033988
-
-day_energy = day_value / 7
-month_energy = month / 12
-moon_energy = moon_day / moon_cycle
-zodiac_energy = zodiac_number / 12
-
-total_energy = (
-    day_energy
-    +
-    month_energy
-    +
-    moon_energy
-    +
-    zodiac_energy
-)
-
-final_energy = total_energy * GOLDEN_RATIO
-
-# =========================================
-# RESULT
-# =========================================
-
-st.markdown(f"""
-<div class="neon-box">
-
-<div class="info">
-
-🌌 วัน:
-<b>{day_names[day_value]}</b>
-
-<br>
-
-📅 เดือน:
-<b>{month}</b>
-
-<br>
-
-🌙 จันทรคติ:
-<b>{moon_phase_text}</b>
-
-<br>
-
-🐉 นักษัตร:
-<b>{zodiac_name}</b>
-
-</div>
-
-</div>
-""", unsafe_allow_html=True)
-
-# =========================================
-# ENERGY RESULT
-# =========================================
-
-st.markdown(f"""
-<div class="neon-box">
-
-<div style='
-text-align:center;
-font-size:28px;
-color:#cc00ff;
-margin-bottom:20px;
-'>
-
-COSMIC ENERGY
-
-</div>
-
-<div class="result">
-
-{final_energy:.6f}
-
-</div>
-
-</div>
-""", unsafe_allow_html=True)
-
-# =========================================
-# EXPLAIN
-# =========================================
-
-st.markdown("""
-<div class="neon-box">
-
-# ความหมายของระบบ
-
-### 7
-รอบวันของโลก
-
-### 12
-รอบเดือน และ 12 นักษัตร
-
-### 29.530588
-รอบดวงจันทร์จริง
-
-### 1.618
-Golden Ratio
-สัดส่วนสมดุลธรรมชาติ
-
-</div>
-""", unsafe_allow_html=True)
-
-# =========================================
-# FOOTER
-# =========================================
-
-st.markdown("""
-<div class="footer">
-
-NEON MOON SYSTEM • CYBER COSMIC ENERGY
-
-</div>
-""", unsafe_allow_html=True)
+    )
