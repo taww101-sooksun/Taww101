@@ -1,11 +1,12 @@
 from math import floor
 
+
 GOLDEN = 1.61803398875
 
 
-# ----------------------------------
-# สร้างลำดับ
-# ----------------------------------
+# ===========================================
+# สร้างลำดับ Fibonacci แบบเริ่มจากค่า
+# ===========================================
 
 def build_sequence(start, count=15):
 
@@ -17,15 +18,19 @@ def build_sequence(start, count=15):
     return seq
 
 
-# ----------------------------------
-# หา ratio ที่ใกล้ 1.618
-# ----------------------------------
+
+# ===========================================
+# หาอัตราส่วนที่ใกล้ Golden Ratio ที่สุด
+# ===========================================
 
 def best_ratio(seq):
 
     best = None
 
     for i in range(1, len(seq)):
+
+        if seq[i-1] == 0:
+            continue
 
         ratio = seq[i] / seq[i-1]
 
@@ -44,9 +49,10 @@ def best_ratio(seq):
     return best
 
 
-# ----------------------------------
-# วนรอบ
-# ----------------------------------
+
+# ===========================================
+# คำนวณรอบ
+# ===========================================
 
 def cycle(value, cycle_length):
 
@@ -60,14 +66,36 @@ def cycle(value, cycle_length):
     return remain, rounds
 
 
+
 # ===========================================
-# ทดลอง
+# รวมคะแนน Golden
+# ===========================================
+
+def golden_score(seq):
+
+    best = best_ratio(seq)
+
+    if best is None:
+        return 0
+
+    score = 1 - best["diff"]
+
+    if score < 0:
+        score = 0
+
+    return score
+
+
+
+# ===========================================
+# ค่าทดลอง
 # ===========================================
 
 day = 6
 month = 5
 zodiac = 1
 moon = 18
+
 
 
 systems = {
@@ -83,37 +111,99 @@ systems = {
 }
 
 
+
+# ===========================================
+# เริ่มวิเคราะห์
+# ===========================================
+
+total_score = 0
+
+
 for name, (start, cycle_length) in systems.items():
 
     print("=" * 60)
 
     print(name)
 
-    seq = build_sequence(start)
-
-    print(seq)
-
-    best = best_ratio(seq)
+    print("Start =", start)
 
     print()
 
-    print("Closest Ratio")
 
-    print(best["before"], "/", best["after"])
+    seq = build_sequence(start)
 
-    print(best["ratio"])
+
+    print("Sequence")
+
+    print(seq)
+
+
+    print()
+
+
+    best = best_ratio(seq)
+
+
+    print("Closest Golden Ratio")
+
+    print("--------------------")
+
+    print(
+        best["before"],
+        "/",
+        best["after"]
+    )
+
+    print(
+        "Ratio =",
+        best["ratio"]
+    )
+
+    print(
+        "Difference =",
+        best["diff"]
+    )
+
+
+    score = golden_score(seq)
+
+    total_score += score
+
+
+    print()
+
+    print("Golden Score =", score)
+
 
     print()
 
     print("Cycle")
 
+    print("--------------------")
+
+
     for n in seq:
 
-        remain, rounds = cycle(n, cycle_length)
+        remain, rounds = cycle(
+            n,
+            cycle_length
+        )
 
         print(
-            f"{n:8.3f}"
-            f" -> "
-            f"{remain:8.3f}"
-            f" รอบ {rounds}"
-            )
+            f"{n:10.3f}",
+            "->",
+            f"{remain:10.3f}",
+            "รอบ",
+            rounds
+        )
+
+
+print()
+
+print("=" * 60)
+
+print("TOTAL GOLDEN SCORE")
+
+print(total_score)
+
+print("=" * 60)
