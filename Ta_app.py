@@ -34,13 +34,11 @@ def best_ratio(seq):
         if best is None or diff < best["diff"]:
 
             best = {
-
                 "index": i,
                 "before": seq[i-1],
                 "after": seq[i],
                 "ratio": ratio,
                 "diff": diff
-
             }
 
     return best
@@ -50,14 +48,14 @@ def best_ratio(seq):
 # วนรอบ
 # ----------------------------------
 
-def cycle(value, cycle):
+def cycle(value, cycle_length):
 
-    remain = value % cycle
+    remain = value % cycle_length
 
     if remain == 0:
-        remain = cycle
+        remain = cycle_length
 
-    rounds = floor((value-1)/cycle)+1
+    rounds = floor((value - 1) / cycle_length) + 1
 
     return remain, rounds
 
@@ -71,21 +69,23 @@ month = 5
 zodiac = 1
 moon = 18
 
+
 systems = {
 
-    "DAY":(day,7),
+    "DAY": (day, 7),
 
-    "MONTH":(month,12),
+    "MONTH": (month, 12),
 
-    "ZODIAC":(zodiac,12),
+    "ZODIAC": (zodiac, 12),
 
-    "MOON":(moon,29.530588)
+    "MOON": (moon, 29.530588)
 
 }
 
-for name,(start,cycle_length) in systems.items():
 
-    print("="*60)
+for name, (start, cycle_length) in systems.items():
+
+    print("=" * 60)
 
     print(name)
 
@@ -99,7 +99,7 @@ for name,(start,cycle_length) in systems.items():
 
     print("Closest Ratio")
 
-    print(best["before"],"/",best["after"])
+    print(best["before"], "/", best["after"])
 
     print(best["ratio"])
 
@@ -109,16 +109,11 @@ for name,(start,cycle_length) in systems.items():
 
     for n in seq:
 
-        remain,rounds = cycle(n,cycle_length)
+        remain, rounds = cycle(n, cycle_length)
 
         print(
-
             f"{n:8.3f}"
-
             f" -> "
-
             f"{remain:8.3f}"
-
             f" รอบ {rounds}"
-
-    )
+            )
