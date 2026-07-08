@@ -56,3 +56,67 @@ if 'aircraft_df' not in st.session_state:
 
 # --- 5. ส่วนควบคุมการทำงาน (UI) ---
 col1, col2 = st.columns([3, 1])
+with col1:
+    st.info(f"📍 พิกัดของคุณ: {MY_LAT}, {MY_LON} | ค้นหาในรัศมี: {RADIUS_LIMIT} กม.")
+with col2:
+    # ปุ่มกดอัปเดตข้อมูลใหม่ (ปลอดภัย ไม่ทำหน้าเว็บพัง)
+    if st.button("🔄 กดสแกนพิกัดใหม่", use_container_width=True):
+        st.session_state.aircraft_df = generate_mock_data(MY_LAT, MY_LON)
+        st.rerun()
+
+# กรองข้อมูลเอาเฉพาะลำที่อยู่ในระยะ 2 กม.
+all_df = st.session_state.aircraft_df
+nearby_df = all_df[all_df['Distance_KM'] <= RADIUS_LIMIT]
+
+# --- 6. ส่วนการแสดงผลแผนที่ (จุดที่เคยบั๊ก บล็อกพื้นที่ไว้ตรงนี้) ---
+st.subheader("🗺️ แผนที่แสดงผลการตรวจจับ")
+
+map_placeholder = st.empty()
+
+with map_placeholder.container():
+    # สร้างแผนที่ Folium ตั้งต้นที่พิกัดของเรา
+    m = folium.Map(location=[MY_LAT, MY_LON], zoom_start=14, control_scale=True)
+    
+    # 🔵 ปักหมุดตัวเราเอง (จุดศูนย์กลาง)
+    folium.Marker(
+        [MY_LAT, MY_LON], 
+        popup="ตำแหน่งของคุณ", 
+        icon=folium.Icon(color="blue", icon="home")
+    ).add_to(m)
+    
+    # วาดวงกลมรัศมี 2 กิโลเมตรรอบตัว
+    folium.Circle(
+        location=[MY_LAT, MY_LON],
+        radius=RADIUS_LIMIT * 1000, # แปลงเป็นเมตร
+        color="red",
+        fill=True,
+        fill_opacity=0.1
+    ).add_to(m)
+    
+    # 🔴 ปักหมุดอากาศยานที่ตรวจเจอในรัศมี 2 กม.
+    for idx, row in nearby_df.iterrows():
+        icon_type = "plane" if row['Type'] == "Airplane" else "cloud"
+        color_type = "orange" if row['Type'] == "Airplane" else "red"
+        
+        folium.Marker(
+            [row['Latitude'], row['Longitude']],
+            popup=f"ID: {row['ID']}<br>ระยะ: {row['Distance_KM']} กม.<br>ความสูง: {row['Altitude_FT']} ฟุต",
+            icon=folium.Icon(color=color_type, icon=icon_type)
+        ).add_to(m)
+    
+    # แสดงผลแผนที่ใน Streamlit (ใส่ key ล็อกไว้ ป้องกันตัวลบ Node เอ๋อ)
+    st_folium(m, key="safe_radar_map", width=700, height=450, returned_objects=[])
+
+# --- 7. ตารางสรุปข้อมูลด้านล่าง ---
+st.subheader("📊 รายการอากาศยานรอบตัว")
+
+tab1, tab2 = st.tabs([f"🎯 ในรัศมี 2 กม. ({len(nearby_df)} ลำ)", f"🌐 ทั้งหมดที่ตรวจจับได้ ({len(all_df)} ลำ)"])
+
+with tab1:
+    if not nearby_df.empty:
+        st.dataframe(nearby_df[['ID', 'Type', 'Distance_KM', 'Altitude_FT']], use_container_width=True)
+    else:
+        st.success("🟢 เคลียร์! ไม่มีโดรนหรือเครื่องบินแปลกปลอมเข้ามาในระยะ 2 กิโลเมตร")
+
+with tab2:
+    st.dataframe(all_df[['ID', 'Type', 'Distance_KM', 'Altitude_FT']], use_container_width=True)
