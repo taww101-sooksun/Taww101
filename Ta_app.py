@@ -1,82 +1,58 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from bs4 import BeautifulSoup
-import math
-import time
+import streamlit as st
 import pandas as pd
+import math
+import random
+import folium
+from streamlit_folium import st_folium
 
+# --- 1. ตั้งค่าหน้าตาของแอป ---
+st.set_page_config(page_title="Radar Tracker", page_icon="✈️", layout="centered")
+
+st.title("📡 ระบบจำลองค้นหาอากาศยานและโดรน (รัศมี 2 กม.)")
+st.write("แอปพลิเคชันนี้คำนวณระยะทางจริงด้วยสูตร Haversine และแสดงผลบนแผนที่อย่างปลอดภัย")
+
+# --- 2. ฟังก์ชันคำนวณระยะทางตามหลักภูมิศาสตร์จริง ---
 def haversine(lat1, lon1, lat2, lon2):
-    # สูตรคำนวณระยะทางจริง (หน่วยกิโลเมตร)
+    # แปลงองศาเป็นเรเดียน
     lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
     dlat = lat2 - lat1 
     dlon = lon2 - lon1 
     a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-    return 2 * math.asin(math.sqrt(a)) * 6371
+    c = 2 * math.asin(math.sqrt(a)) 
+    r = 6371 # รัศมีโลก (กิโลเมตร)
+    return c * r
 
-def scrape_flightradar_nearby(my_lat, my_lon, radius_km=2.0):
-    # ตั้งค่า Chrome แบบซ่อนหน้าต่าง (Headless) จะได้รันเงียบๆ ไม่รบกวนสายตา
-    options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
-    options.add_argument('--disable-gpu')
-    options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
-
-    print("🌐 กำลังเปิดหน้าเว็บ FlightRadar24 ผ่านบราวเซอร์จำลอง (ไม่ใช้ API)...")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+# --- 3. ฟังก์ชันจำลองข้อมูลโดรน/เครื่องบินรอบตัว ---
+def generate_mock_data(center_lat, center_lon):
+    targets = []
+    names = ["DJI-Mavic3", "FPV-Drone-X", "THA-923", "NokAir-402", "Survey-Drone"]
+    types = ["Drone", "Drone", "Airplane", "Airplane", "Drone"]
     
-    # ดึงข้อมูลโซนประเทศไทยและพื้นที่ใกล้เคียงจากหน้าเว็บโดยตรง
-    # ปรับค่า bounds ให้ครอบคลุมจุดที่นายอยู่ได้
-    url = f"https://data-cloud.flightradar24.com/zones/fcgi/feed.js?bounds={my_lat+0.5},{my_lat-0.5},{my_lon-0.5},{my_lon+0.5}"
-    
-    try:
-        driver.get(url)
-        time.sleep(2) # รอให้หน้าเว็บโหลดข้อมูลดิบเสร็จ
+    for i in range(5):
+        # สุ่มให้อยู่ใกล้บ้าง ไกลบ้าง (บวกลบพิกัดสุ่ม)
+        mock_lat = center_lat + random.uniform(-0.03, 0.03)
+        mock_lon = center_lon + random.uniform(-0.03, 0.03)
+        distance = haversine(center_lat, center_lon, mock_lat, mock_lon)
         
-        # ดึงข้อความทั้งหมดจากหน้าเว็บมาแกะ
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-        raw_data = soup.find('body').text
-        
-        # แปลงข้อมูล text จากหน้าเว็บให้กลายเป็น Dictionary ของ Python
-        import json
-        data = json.loads(raw_data)
-        
-        aircraft_list = []
-        for key, value in data.items():
-            # คัดกรองเอาเฉพาะข้อมูลตัวเลขที่เป็นเครื่องบินจริงๆ (โค้ดของเว็บจะเป็น Array ข้อมูล)
-            if isinstance(value, list) and len(value) > 1:
-                flight_lat = value[1]
-                flight_lon = value[2]
-                callsign = value[16] if value[16] else "UNKNOWN"
-                altitude = value[4] # ความสูง (ฟุต)
-                speed = value[5]    # ความเร็ว (น็อต)
-                
-                # คำนวณระยะห่าง
-                distance = haversine(my_lat, my_lon, flight_lat, flight_lon)
-                
-                if distance <= radius_km:
-                    aircraft_list.append([callsign, flight_lat, flight_lon, altitude, speed, distance])
-        
-        driver.quit()
-        
-        # สร้างเป็นตารางออกมาดู
-        df = pd.DataFrame(aircraft_list, columns=['Callsign', 'Latitude', 'Longitude', 'Altitude(ft)', 'Speed(kts)', 'Distance(km)'])
-        return df
+        targets.append({
+            "ID": names[i],
+            "Type": types[i],
+            "Latitude": mock_lat,
+            "Longitude": mock_lon,
+            "Distance_KM": round(distance, 2),
+            "Altitude_FT": random.randint(100, 1500) if types[i] == "Drone" else random.randint(10000, 30000)
+        })
+    return pd.DataFrame(targets)
 
-    except Exception as e:
-        print(f"เกิดข้อผิดพลาดในการดึงข้อมูลหน้าเว็บ: {e}")
-        driver.quit()
-        return None
-
-# --- พิกัดของคุณ ---
+# --- 4. จัดการ State และพิกัดศูนย์กลาง (ตัวคุณ) ---
+# สมมติพิกัดเริ่มต้น (เปลี่ยนเป็นจุดที่นายอยู่ได้เลย)
 MY_LAT = 13.6900
 MY_LON = 100.7500
-RADIUS = 2.0
+RADIUS_LIMIT = 2.0  # รัศมี 2 กิโลเมตร
 
-result = scrape_flightradar_nearby(MY_LAT, MY_LON, radius_km=RADIUS)
+if 'aircraft_df' not in st.session_state:
+    # รันครั้งแรก ให้สร้างข้อมูลจำลองไว้ก่อน
+    st.session_state.aircraft_df = generate_mock_data(MY_LAT, MY_LON)
 
-if result is not None:
-    if not result.empty:
-        print(f"\n🎉 [เจอของจริงจากหน้าเว็บ] พบอากาศยานในรัศมี {RADIUS} กม. :")
-        print(result.to_string(index=False))
-    else:
-        print(f"\nสแกนหน้าเว็บเสร็จสิ้น: ไม่มีเครื่องบิน/โดรนลำไหนอยู่ในระยะ {RADIUS} กม. รอบตัวคุณ ณ วินาทีนี้")
+# --- 5. ส่วนควบคุมการทำงาน (UI) ---
+col1, col2 = st.columns([3, 1])
