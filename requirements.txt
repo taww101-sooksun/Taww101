@@ -32,3 +32,5 @@ streamlit-google-auth
 aiohttp
 
 pydantic
+ selenium pandas webdriver-manager BeautifulSoup4
+
