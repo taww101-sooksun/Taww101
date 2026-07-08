@@ -1,15 +1,13 @@
+import streamlit as st
 from math import floor
-
 
 GOLDEN = 1.61803398875
 
 
-# ===========================================
-# สร้างลำดับ Fibonacci แบบเริ่มจากค่า
-# ===========================================
-
+# ===============================
+# สร้างลำดับ
+# ===============================
 def build_sequence(start, count=15):
-
     seq = [start, start]
 
     while len(seq) < count:
@@ -18,42 +16,35 @@ def build_sequence(start, count=15):
     return seq
 
 
-
-# ===========================================
-# หาอัตราส่วนที่ใกล้ Golden Ratio ที่สุด
-# ===========================================
-
+# ===============================
+# หา Golden Ratio
+# ===============================
 def best_ratio(seq):
 
     best = None
 
     for i in range(1, len(seq)):
 
-        if seq[i-1] == 0:
+        if seq[i - 1] == 0:
             continue
 
-        ratio = seq[i] / seq[i-1]
-
+        ratio = seq[i] / seq[i - 1]
         diff = abs(ratio - GOLDEN)
 
         if best is None or diff < best["diff"]:
-
             best = {
-                "index": i,
-                "before": seq[i-1],
+                "before": seq[i - 1],
                 "after": seq[i],
                 "ratio": ratio,
-                "diff": diff
+                "diff": diff,
             }
 
     return best
 
 
-
-# ===========================================
-# คำนวณรอบ
-# ===========================================
-
+# ===============================
+# Cycle
+# ===============================
 def cycle(value, cycle_length):
 
     remain = value % cycle_length
@@ -66,11 +57,9 @@ def cycle(value, cycle_length):
     return remain, rounds
 
 
-
-# ===========================================
-# รวมคะแนน Golden
-# ===========================================
-
+# ===============================
+# Golden Score
+# ===============================
 def golden_score(seq):
 
     best = best_ratio(seq)
@@ -78,24 +67,33 @@ def golden_score(seq):
     if best is None:
         return 0
 
-    score = 1 - best["diff"]
-
-    if score < 0:
-        score = 0
+    score = max(0, 1 - best["diff"])
 
     return score
 
 
+# ===============================
+# หน้าเว็บ
+# ===============================
 
-# ===========================================
-# ค่าทดลอง
-# ===========================================
+st.set_page_config(page_title="Golden Ratio Analyzer", layout="wide")
 
-day = 6
-month = 5
-zodiac = 1
-moon = 18
+st.title("✨ Golden Ratio Analyzer")
 
+st.write("วิเคราะห์ลำดับ Fibonacci และ Golden Ratio")
+
+
+# ===============================
+# รับค่า
+# ===============================
+
+day = st.number_input("Day", 1, 31, 6)
+
+month = st.number_input("Month", 1, 12, 5)
+
+zodiac = st.number_input("Zodiac", 1, 12, 1)
+
+moon = st.number_input("Moon Age", 1.0, 30.0, 18.0)
 
 
 systems = {
@@ -111,99 +109,64 @@ systems = {
 }
 
 
+if st.button("วิเคราะห์"):
 
-# ===========================================
-# เริ่มวิเคราะห์
-# ===========================================
+    total_score = 0
 
-total_score = 0
+    for name, (start, cycle_length) in systems.items():
 
+        st.header(name)
 
-for name, (start, cycle_length) in systems.items():
+        seq = build_sequence(start)
 
-    print("=" * 60)
+        st.write("### Sequence")
 
-    print(name)
+        st.write(seq)
 
-    print("Start =", start)
+        best = best_ratio(seq)
 
-    print()
+        st.write("### Closest Golden Ratio")
 
-
-    seq = build_sequence(start)
-
-
-    print("Sequence")
-
-    print(seq)
-
-
-    print()
-
-
-    best = best_ratio(seq)
-
-
-    print("Closest Golden Ratio")
-
-    print("--------------------")
-
-    print(
-        best["before"],
-        "/",
-        best["after"]
-    )
-
-    print(
-        "Ratio =",
-        best["ratio"]
-    )
-
-    print(
-        "Difference =",
-        best["diff"]
-    )
-
-
-    score = golden_score(seq)
-
-    total_score += score
-
-
-    print()
-
-    print("Golden Score =", score)
-
-
-    print()
-
-    print("Cycle")
-
-    print("--------------------")
-
-
-    for n in seq:
-
-        remain, rounds = cycle(
-            n,
-            cycle_length
+        st.write(
+            f'{best["before"]} / {best["after"]}'
         )
 
-        print(
-            f"{n:10.3f}",
-            "->",
-            f"{remain:10.3f}",
-            "รอบ",
-            rounds
+        st.write(
+            f'Ratio : {best["ratio"]:.10f}'
         )
 
+        st.write(
+            f'Difference : {best["diff"]:.10f}'
+        )
 
-print()
+        score = golden_score(seq)
 
-print("=" * 60)
+        total_score += score
 
-print("TOTAL GOLDEN SCORE")
+        st.success(f"Golden Score : {score:.6f}")
 
-print(total_score)
+        rows = []
 
-print("=" * 60)
+        for n in seq:
+
+            remain, rounds = cycle(n, cycle_length)
+
+            rows.append({
+
+                "Value": round(n, 3),
+
+                "Remain": round(remain, 3),
+
+                "Rounds": rounds
+
+            })
+
+        st.write("### Cycle")
+
+        st.table(rows)
+
+        st.divider()
+
+    st.header("TOTAL GOLDEN SCORE")
+
+    st.success(round(total_score, 6))
