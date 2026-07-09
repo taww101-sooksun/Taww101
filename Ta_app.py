@@ -4,7 +4,6 @@ import base64
 import random
 import time
 from datetime import datetime, timedelta
-import firebase_admin
 from firebase_admin import credentials, db
 import streamlit.components.v1 as components
 import folium
