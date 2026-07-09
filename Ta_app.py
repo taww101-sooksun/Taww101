@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from datetime import datetime
+from datetime import datetime, date
 
 # ==========================================
 # 1. การตั้งค่าหน้าตาแอปและชุดสี (Theme Customization)
@@ -11,41 +11,63 @@ st.set_page_config(
     layout="centered"
 )
 
-# ลบติ่งและปุ่ม Streamlit ออกทั้งหมด คุมโทนสีเข้ม ขอบหนาชัดเจน
+# ปรับพื้นหลังดำเงา (Glossy Dark) คุมโทนเข้มสะท้อนแสง ตัดกับข้อความชัดเจน
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
-    .reportview-container {
-        background: #0B0F19;
+    /* ฉากหลังหลัก ดำเงาไล่เฉด */
+    .stApp {
+        background: linear-gradient(135deg, #050508 0%, #0B0F19 100%);
     }
-    h1, h2, h3 {
+    
+    /* ปรับแต่งข้อความหลัก */
+    h1, h2, h3, h4 {
         color: #00E5FF !important;
         font-weight: bold;
+        text-shadow: 0px 0px 10px rgba(0, 229, 255, 0.3);
     }
+    
+    /* ปุ่มกดสไตล์นีออนเด่นชัด */
     .stButton>button {
         background-color: #FF1744;
-        color: white;
+        color: white !important;
         border-radius: 8px;
         border: 2px solid #00E5FF;
         font-weight: bold;
         width: 100%;
+        box-shadow: 0px 4px 15px rgba(255, 23, 68, 0.4);
+        transition: all 0.3s ease;
     }
+    .stButton>button:hover {
+        background-color: #00E5FF;
+        color: #050508 !important;
+        border: 2px solid #FF1744;
+    }
+    
+    /* กล่องข้อความสไตล์ Glossy ดำเงา ขอบสว่างชัดเจน */
     .quantum-box {
-        border: 4px solid #00E5FF;
-        padding: 20px;
+        border: 2px solid #00E5FF;
+        padding: 22px;
         border-radius: 12px;
-        background-color: #121824;
+        background: rgba(18, 24, 36, 0.85);
+        box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.5);
         margin-bottom: 20px;
     }
     .daily-box {
-        border: 4px solid #FFD600;
-        padding: 20px;
+        border: 2px solid #FFD600;
+        padding: 22px;
         border-radius: 12px;
-        background-color: #1A1A10;
+        background: rgba(26, 26, 16, 0.85);
+        box-shadow: inset 0 0 10px rgba(255, 214, 0, 0.2), 0 8px 32px 0 rgba(0, 0, 0, 0.5);
         margin-bottom: 20px;
+    }
+    
+    /* ปรับสีตัวอักษรทั่วไปให้อ่านง่ายบนพื้นหลังดำ */
+    p, span, label {
+        color: #E0E6ED !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -66,7 +88,6 @@ st.write("---")
 # 3. ฟังก์ชันการบดเลข (ลดรูปเหลือหลักเดียว 1-9)
 # ==========================================
 def sum_digits(number):
-    # แปลงเป็นจำนวนเต็มบวกก่อนบดเลข
     number = abs(int(str(number).replace('.', '')))
     while number > 9:
         number = sum(int(digit) for digit in str(number))
@@ -78,12 +99,13 @@ def sum_digits(number):
 st.markdown("### 📅 1. กรอกข้อมูลวันเกิดของคุณ")
 col1, col2 = st.columns(2)
 with col1:
-    my_date = st.date_input("วันเดือนปีเกิดของคุณ", min_value=datetime(1950, 1, 1), key="my_bday")
+    # เปลี่ยนตัวแปรเริ่มต้นให้ปลอดภัย
+    my_date = st.date_input("วันเดือนปีเกิดของคุณ", value=date(2000, 1, 1), min_value=date(1950, 1, 1), key="my_bday")
 
 st.markdown("### 🔍 2. เลือกฟังก์ชันที่ต้องการคำนวณ")
 tab1, tab2, tab3 = st.tabs(["📆 เช็กคลื่นวันและแรงดึงดูดดวงจันทร์", "🧬 ถอดรหัสส่วนบุคคล (1.1618)", "💑 ตรวจสอบดวงสมพงษ์"])
 
-# --- แยกส่วนตัวเลขวันเกิดของบาสไว้ใช้ส่วนกลาง ---
+# --- แยกส่วนตัวเลขวันเกิดไว้ใช้ส่วนกลาง ---
 d = my_date.day
 m = my_date.month
 y = my_date.year
@@ -95,7 +117,7 @@ future_code = sum_digits(d + m + y)
 # ==========================================
 with tab1:
     st.markdown("#### ตรวจสอบคลื่นความถี่ของวัน ร่วมกับอิทธิพลรอบวงจรดวงจันทร์ `29.53` วัน")
-    target_date = st.date_input("เลือกวันที่ต้องการตรวจสอบ", datetime.now())
+    target_date = st.date_input("เลือกวันที่ต้องการตรวจสอบ", date.today())
     
     btn_daily = st.button("คำนวณพลังงานประจำวัน", key="btn_daily")
     
@@ -104,11 +126,11 @@ with tab1:
         tm = target_date.month
         ty = target_date.year
         
-        # 🌟 สูตรดวงจันทร์: คำนวณความแตกต่างของวันเพื่อหาเศษส่วนในรอบวงจรดวงจันทร์ 29.53 วัน
-        days_diff = abs((target_date - datetime(2026, 1, 1)).days)
+        # 🌟 แก้ไขจุด Error ตรงนี้: เปลี่ยนจาก datetime เป็น date เพื่อให้ลบกันได้จริง
+        days_diff = abs((target_date - date(2026, 1, 1)).days)
         lunar_position = round((days_diff % 29.53), 2)
         
-        # คำนวณรหัสวันผสมฐานอดีตของบาส
+        # คำนวณรหัสวันผสมฐานอดีต
         daily_sum = past_code + td + tm + ty + int(lunar_position)
         daily_code = sum_digits(daily_sum)
         
@@ -116,11 +138,15 @@ with tab1:
         st.markdown(f"### 📊 รหัสพลังงานประจำวันของคุณวันนี้คือเลข: **{daily_code}**")
         st.write(f"🌙 ตำแหน่งดวงจันทร์ในรอบวงจรเสี้ยวเวลาปัจจุบัน: **{lunar_position} / 29.53 วัน**")
         
-        # อธิบายสูตรคำนวณชัดเจนตามความจริง
+        # เพิ่มรายละเอียดการวิเคราะห์เชิงลึกตัวเลขความถี่สถิติ
+        st.markdown("#### 📈 บทวิเคราะห์มิติคลื่นความถี่พลังงานร่วม")
+        lunar_percentage = round((lunar_position / 29.53) * 100, 1)
+        st.write(f"- **ผลกระทบจากแรงดึงดูดดวงจันทร์:** ปัจจุบันอยู่ที่ {lunar_percentage}% ของรอบวงจร ซึ่งส่งผลโดยตรงต่อระดับน้ำในร่างกายและกระแสประสาท (มวลน้ำและแรงกดอากาศแปรผันตามแรงดึงดูด)")
+        
         st.markdown("**🔢 วิธีคำนวณและที่มาของตัวเลข:**")
-        st.write(f"1. คำนวณรอบวงจรดวงจันทร์อ้างอิงจากรอบวงโคจรสากล `29.53` วัน ได้ค่าตำแหน่งที่สะท้อนพลังงานน้ำขึ้นน้ำลงเท่ากับ `{lunar_position}`")
-        st.write(f"2. นำรหัสอดีตของคุณ ({past_code}) + วันที่เช็ก ({td}) + เดือน ({tm}) + ปี ค.ศ. ({ty}) + ปรับฐานเศษดวงจันทร์ ({int(lunar_position)}) "
-                 f"$\rightarrow$ สรุปสูตรคือ `({past_code} + {td} + {tm} + {ty} + {int(lunar_position)}) = {daily_sum}` บดตัวเลขเหลือหลักเดียวได้ **{daily_code}**")
+        st.write(f"1. คำนวณรอบวงจรดวงจันทร์อ้างอิงจากรอบวงโคจรสากล `29.53` วัน ได้ค่าตำแหน่งสะท้อนพลังงานเท่ากับ `{lunar_position}`")
+        st.write(f"2. นำรหัสอดีตของคุณ ({past_code}) + วันที่เช็ก ({td}) + เดือน ({tm}) + ปี ค.ศ. ({ty}) + ปรับฐานเศษดวงจันทร์ ({int(lunar_position)})")
+        st.write(f"สูตรประมวลผลจริง: `({past_code} + {td} + {tm} + {ty} + {int(lunar_position)}) = {daily_sum}` เมื่อบดเศษเหลือหลักเดียวได้ผลลัพธ์เป็นค่าความถี่ประจำวันตัวเลข **{daily_code}**")
         
         st.write("---")
         st.markdown("**🔔 คำแนะนำและการปฏิบัติตัวสำหรับวันนี้:**")
@@ -140,12 +166,12 @@ with tab2:
     btn_personal = st.button("ถอดรหัสควอนตัม 3 มิติ (ใช้ฐาน 1.1618)", key="btn_personal")
     
     if btn_personal:
-        # 🌟 สูตรสัดส่วนทองคำ: นำ (รหัสอดีต x รหัสอนาคต x ค่าสัดส่วนทองคำ 1.1618) + 7 เพื่อหาจุดตัดที่สมบูรณ์ที่สุดในมิติคู่ขนาน
+        # สูตรสัดส่วนทองคำ
         raw_parallel = (past_code * future_code * 1.1618) + 7
         parallel_code = sum_digits(raw_parallel)
         
         st.markdown("<div class='quantum-box'>", unsafe_allow_html=True)
-        st.markdown("## 🌌 รหัสควอนตัมส่วนบุคคลของคุณ")
+        st.markdown("<h2>🌌 รหัสควอนตัมส่วนบุคคลของคุณ</h2>", unsafe_allow_html=True)
         
         col_res1, col_res2, col_res3 = st.columns(3)
         with col_res1:
@@ -155,11 +181,15 @@ with tab2:
         with col_res3:
             st.metric(label="🌀 รหัสคู่ขนานทองคำ (Parallel)", value=parallel_code)
             
-        st.markdown("#### 📖 รายละเอียดและที่มาของสูตรคำนวณ")
+        st.markdown("#### 📖 รายละเอียดเชิงลึกและที่มาของสูตรคำนวณ")
         st.markdown(f"""
-        * **รหัสอดีต ({past_code}):** สูตรคือ `({d} + {m}) = {d+m}` สรุปเป็นเลขตัวเดียว คือฐานพลังงานจิตใต้สำนึกดั้งเดิมของคุณ
-        * **รหัสอนาคต ({future_code}):** สูตรคือ `({d} + {m} + {y}) = {d+m+y}` สรุปเป็นเลขตัวเดียว คือทิศทางและเป้าหมายชีวิตข้างหน้าที่คุณเลือกเดิน
-        * **รหัสควอนตัมคู่ขนานทองคำ ({parallel_code}):** คำนวณโดยดึงค่าคงที่รหัสสัดส่วนทองคำสากล **`1.1618`** มาร่วมคำนวณเพื่อหาความสมดุล $\rightarrow$ สูตรคือ `({past_code} \\times {future_code} \\times 1.1618) + 7 = {round(raw_parallel, 4)}` จากนั้นนำมาบดตัวเลขทั้งหมดรวมกันจนเหลือหลักเดียว ตัวเลขนี้คือคลื่นความถี่สมองซีกขวาที่จะทำงานได้ชัดเจนที่สุดเวลาที่คุณตั้งใจ **"อยู่นิ่ง ๆ"** เพื่อเยียวยาจิตใจและมองหาทางออกครับ
+        * **รหัสอดีต ({past_code}):** คำนวณจาก `({d} + {m}) = {d+m}` ย่อยจนเหลือเลขหลักเดียว สะท้อนโครงสร้างฐานข้อมูลทางกายภาพและจิตใต้สำนึกดั้งเดิม
+        * **รหัสอนาคต ({future_code}):** คำนวณจาก `({d} + {m} + {y}) = {d+m+y}` ย่อยเหลือเลขหลักเดียว สะท้อนแรงเหวี่ยงของเป้าหมายและวิถีการตัดสินใจเชิงตรรกะที่คุณเลือกเดิน
+        * **รหัสควอนตัมคู่ขนานทองคำ ({parallel_code}):** ประมวลผลร่วมกับค่าคงที่อัตราส่วนทองคำสากล **`1.1618`** ซึ่งเป็นตัวเลขที่พบในสถาปัตยกรรมธรรมชาติและการแตกตัวของโมเลกุล 
+        
+        **สมการวิเคราะห์:**  
+        $$\mu = (Past \\times Future \\times 1.1618) + 7$$
+        แทนค่าจริงลงในระบบ: `({past_code} × {future_code} × 1.1618) + 7 = {round(raw_parallel, 4)}` เมื่อย่อยเลขทั้งหมดรวมกันจนเหลือหลักเดียวจะได้ค่าคงที่ **{parallel_code}** ตัวเลขนี้บ่งบอกถึงระดับความถี่สมองที่ทำงานได้อย่างเต็มประสิทธิภาพที่สุดเมื่อเราปิดสวิตช์เรื่องกวนใจภายนอก แล้วเลือกที่จะตั้งมั่น **"อยู่นิ่ง ๆ"** เพื่อเซ็ตระบบความคิดใหม่ครับ
         """)
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -168,7 +198,7 @@ with tab2:
 # ==========================================
 with tab3:
     st.markdown("#### คำนวณรหัสความถี่ร่วมกับบุคคลอื่น")
-    partner_date = st.date_input("วันเดือนปีเกิดของคู่สมพงษ์", min_value=datetime(1950, 1, 1), key="partner_bday")
+    partner_date = st.date_input("วันเดือนปีเกิดของคู่สมพงษ์", value=date(2000, 1, 1), min_value=date(1950, 1, 1), key="partner_bday")
     btn_match = st.button("เริ่มต้นคำนวณรหัสสมพงษ์", key="btn_match")
     
     if btn_match:
@@ -180,18 +210,21 @@ with tab3:
         match_score = sum_digits(future_code + partner_future)
         
         st.markdown("<div class='quantum-box'>", unsafe_allow_html=True)
-        st.markdown("## 💑 ผลการวิเคราะห์โครงข่ายคู่ขนาน")
+        st.markdown("<h2>💑 ผลการวิเคราะห์โครงข่ายคู่ขนาน</h2>", unsafe_allow_html=True)
         st.write(f"### ค่าพลังงานความสมพงษ์ร่วมกัน: **{match_score}**")
         
-        st.markdown("**🔢 วิธีคำนวณ:**")
-        st.write(f"นำรหัสอนาคตของคุณ ({future_code}) + รหัสอนาคตของคู่ ({partner_future}) $\rightarrow$ สูตรคือ `({future_code} + {partner_future}) = {future_code + partner_future}` บดเหลือเลขตัวเดียว")
+        # เพิ่มรายละเอียดความหมายเชิงสถิติตัวเลขคู่สัมพันธ์
+        st.markdown("#### 🧬 รายละเอียดแมทริกซ์ความสัมพันธ์")
+        st.write(f"- **ฐานพลังงานส่วนบุคคล:** รหัสฝั่งคุณ ({future_code}) ทำปฏิกิริยากับรหัสฝั่งคู่ประสาน ({partner_future})")
+        st.write(f"- **สมการรวมเศษราก:** `({future_code} + {partner_future}) = {future_code + partner_future}` ลดรูปตัวเลขเหลือแกนหลักเดียวคือ **{match_score}**")
         
+        st.write("---")
         if match_score in [1, 3, 9]:
-            st.success("🔥 **ระดับความสมพงษ์: สูงมาก** พลังงานส่งเสริม พลักดันให้อนาคตรุ่งเรือง เป็นคู่คิดพากันก้าวหน้า")
+            st.success("🔥 **ระดับความสมพงษ์: สูงมาก** พลังงานเหนี่ยวนำไปในทิศทางเดียวกันอย่างรุนแรง ช่วยผลักดันในเรื่องการคิดวิเคราะห์ เป็นคู่คิดคู่ขนานที่พร้อมเติบโต")
         elif match_score in [2, 4, 6, 8]:
-            st.info("🤝 **ระดับความสมพงษ์: ปานกลาง** พลังงานเกื้อกูล อยู่ด้วยกันแบบเรื่อยๆ มั่นคง พึ่งพากันได้")
+            st.info("🤝 **ระดับความสมพงษ์: ปานกลาง** เป็นคลื่นความถี่แบบเกื้อกูลและรักษาสมดุลซึ่งกันและกัน ความสัมพันธ์เสถียร นิ่งสงบ พึ่งพาอาศัยกันได้ในระยะยาว")
         else:
-            st.warning("⚡ **ระดับความสมพงษ์: แรงสะท้อน** มีเส้นควอนตัมตัดกันบ่อย อาจขัดแย้งกันบ่อย ต้องใช้ความนิ่งเข้าสู้")
+            st.warning("⚡ **ระดับความสมพงษ์: แรงสะท้อน** เส้นความถี่ตัดกันบ่อยครั้ง มีโอกาสเกิดแรงต้านหรือความเห็นไม่ตรงกันได้ง่าย ในสถานการณ์นี้การใช้ความนิ่งและไม่ปะทะจะช่วยรักษาความสมดุลได้ดีที่สุด")
         st.markdown("</div>", unsafe_allow_html=True)
 
 # สโลแกนปิดท้ายแอป
