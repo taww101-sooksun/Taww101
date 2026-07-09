@@ -1,4 +1,4 @@
-import streamlit as st  # แก้ไขจาก Import เป็น import
+import streamlit as st
 import os 
 import base64
 import random
@@ -202,6 +202,7 @@ def room_music():
 def room_sensor():
     st.markdown(f"<h2 style='color:{st.session_state.theme_color}; text-shadow: 0 0 20px {st.session_state.theme_color}; text-align:center; font-family:Orbitron;'>📟 SYNAPSE SENSOR HUB</h2>", unsafe_allow_html=True)
     
+    # รวม JS ทั้งหมดไว้ในตัวเดียวเพื่อประสิทธิภาพ
     all_sensors_js = f"""
     <div style="background: #000; border: 2px solid {st.session_state.theme_color}; border-radius: 20px; padding: 20px; font-family: 'Orbitron', monospace; color: white;">
         
@@ -300,7 +301,6 @@ def room_sensor():
     
     st.markdown("---")
     st.info("💡 เคล็ดลับ: วางมือถือนิ่งๆ เพื่อดูแรงโน้มถ่วงโลก (1.00G) หรือลองผิวปากใส่ไมค์เพื่อดูคลื่นความถี่ครับ")
-
 # ==========================================
 # 4. MAIN LAYOUT
 # ==========================================
