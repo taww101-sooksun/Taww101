@@ -6,7 +6,7 @@ from datetime import datetime, date
 # 1. การตั้งค่าหน้าตาแอปและชุดสี (Theme Customization)
 # ==========================================
 st.set_page_config(
-    page_title="SYNAPSE QUANTUM SYSTEM",
+    page_title="SYNAPSE QUANTUM SYSTEM.บักมรๆๆ",
     page_icon="🔮",
     layout="centered"
 )
