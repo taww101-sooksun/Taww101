@@ -1,287 +1,963 @@
 import streamlit as st
-import streamlit.components.v1 as components
-import json
+import folium
+from folium.plugins import Draw, Fullscreen, LocateControl
+from streamlit_folium import st_folium
 
-# 1. ตั้งค่าหน้าเว็บ Streamlit
+import math
+import json
+import os
+import io
+from datetime import datetime
+
+# =========================================================
+# ตั้งค่าหน้าเว็บ
+# =========================================================
 st.set_page_config(
-    page_title="Taww101 Cyber DJ Music Studio",
-    page_icon="🎧",
+    page_title="อยู่นิ่งๆไม่เจ็บตัว",
+    page_icon="🌾",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed",
 )
 
-# 2. ปรับแต่งธีม Dark Cyberpunk ด้วย CSS
-st.markdown("""
-<style>
-    /* Dark Theme Cyberpunk */
-    .stApp {
-        background-color: #030712;
-        color: #f8fafc;
-    }
-    .main-title {
-        font-size: 2.4rem;
-        font-weight: 800;
-        background: linear-gradient(90deg, #06b6d4, #3b82f6, #a855f7);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-align: center;
-        margin-bottom: 0.2rem;
-    }
-    .sub-title {
-        text-align: center;
-        color: #94a3b8;
-        font-size: 0.95rem;
-        margin-bottom: 1.5rem;
-    }
-    .dj-card {
-        background: rgba(15, 23, 42, 0.75);
-        border: 1px solid rgba(56, 189, 248, 0.2);
-        border-radius: 12px;
-        padding: 1.2rem;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-        margin-bottom: 1rem;
-    }
-    .metric-value {
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #38bdf8;
-    }
-</style>
-""", unsafe_allow_html=True)
+# =========================================================
+# ค่าบริการ
+# =========================================================
+PLOW_RATE = 250.0       # ไถนา / ไร่
+TILL_RATE = 350.0       # ปั่นดิน / ไร่
 
-# หัวข้อแอป
-st.markdown('<div class="main-title">🎧 Taww101 Cyber DJ Studio</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">ระบบมิกเซอร์เพลงดีเจ, ซาวด์เอฟเฟกต์ FX & เครื่องมือสตูดิโอเสียง</div>', unsafe_allow_html=True)
+# =========================================================
+# ไฟล์บันทึก
+# =========================================================
+DATA_FILE = "rice_fields.json"
 
-# 3. ข้อมูลเพลงในคลัง (Playlist Vault)
-DEFAULT_TRACKS = [
-    {
-        "id": 1,
-        "title": "การเดินทางของฉัน",
-        "artist": "Taww101 (Cyber Synth)",
-        "genre": "เพลงไทย / สตริงเพื่อชีวิต",
-        "bpm": 110,
-        "url": "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=cyberpunk-2099-10701.mp3"
-    },
-    {
-        "id": 2,
-        "title": "ขอบคุณทุกคำที่ทำให้เจ็บ",
-        "artist": "Taww101 (Cyber Synth)",
-        "genre": "ลูกทุ่ง / เพื่อชีวิต",
-        "bpm": 95,
-        "url": "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=electronic-future-beats-117997.mp3"
-    },
-    {
-        "id": 3,
-        "title": "ความทรงจำระยะป่า",
-        "artist": "Taww101 (Cyber Synth)",
-        "genre": "เพื่อชีวิต / อะคูสติก",
-        "bpm": 90,
-        "url": "https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939f792cb.mp3?filename=synthwave-80s-110045.mp3"
-    },
-    {
-        "id": 4,
-        "title": "วงโคจร Hiphop",
-        "artist": "Taww101 (Cyber Synth)",
-        "genre": "แร็พ / ฮิปฮอป",
-        "bpm": 98,
-        "url": "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3?filename=electronic-rock-king-around-here-15045.mp3"
-    },
-    {
-        "id": 5,
-        "title": "Ta101 Special Audio",
-        "artist": "Taww101 (Cyber Synth)",
-        "genre": "DJ Remix / Dance",
-        "bpm": 128,
-        "url": "https://cdn.pixabay.com/download/audio/2022/03/10/audio_c3523e4216.mp3?filename=tuesday-glitch-12241.mp3"
-    },
-    {
-        "id": 6,
-        "title": "Song Original Mix",
-        "artist": "Taww101 (Cyber Synth)",
-        "genre": "T-Pop / EDM",
-        "bpm": 125,
-        "url": "https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=cyberpunk-2099-10701.mp3"
-    }
-]
-
-# Sidebar เมนูเลือกโหมด
-with st.sidebar:
-    st.header("🎛️ โหมดการทำงาน")
-    app_mode = st.radio(
-        "เลือกโหมดสตูดิโอ:",
-        ["🎧 DJ Mixer & คลังเพลง", "✍️ AI ห้องแต่งเนื้อเพลง (Songwriter)", "🔊 บันทึกเสียง & วอยซ์สตูดิโอ", "ℹ️ คู่มือการใช้งาน"]
-    )
-    
-    st.divider()
-    st.subheader("⚙️ การตั้งค่าระบบเสียง")
-    master_vol = st.slider("ระดับเสียงหลัก (Master Volume)", 0, 100, 85)
-    bass_boost = st.checkbox("เปิด Bass Boost ดักเบสหนัก", value=True)
-    st.caption("v2.5.0 Pro Studio Edition")
-
-# --- โหมดที่ 1: DJ Mixer & Playlist ---
-if app_mode == "🎧 DJ Mixer & คลังเพลง":
-    col_left, col_right = st.columns([1, 1], gap="medium")
-    
-    with col_left:
-        st.markdown('<div class="dj-card">', unsafe_allow_html=True)
-        st.subheader("🎵 คลังเพลง (Playlist Vault)")
-        
-        # เลือกเพลง
-        track_names = [f"{t['id']}. {t['title']} ({t['genre']}) - {t['bpm']} BPM" for t in DEFAULT_TRACKS]
-        selected_index = st.selectbox("เลือกเพลงจากคลัง:", range(len(track_names)), format_func=lambda x: track_names[x])
-        selected_track = DEFAULT_TRACKS[selected_index]
-        
-        st.write(f"**กำลังเล่น:** 🎶 `{selected_track['title']}`")
-        st.write(f"**ศิลปิน:** {selected_track['artist']} | **BPM:** {selected_track['bpm']}")
-        st.audio(selected_track['url'], format="audio/mp3")
-        
-        st.divider()
-        st.subheader("📥 อัปโหลดเพลงของคุณเอง")
-        uploaded_audio = st.file_uploader("ลากหรือเลือกไฟล์เสียง (.mp3, .wav, .m4a)", type=["mp3", "wav", "m4a"])
-        if uploaded_audio:
-            st.success(f"กำลังเล่นเพลงที่อัปโหลด: {uploaded_audio.name}")
-            st.audio(uploaded_audio)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with col_right:
-        st.markdown('<div class="dj-card">', unsafe_allow_html=True)
-        st.subheader("🎛️ แผงควบคุม DJ Mixer (Deck & EQ)")
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            tempo = st.slider("🎚️ สปีดจังหวะ (Tempo/Speed)", 0.5, 2.0, 1.0, 0.05)
-        with c2:
-            pitch_shift = st.slider("🎼 คีย์เสียง (Pitch / Key Shift)", -12, 12, 0, 1)
-            
-        st.write("🎛️ **7-Band Equalizer (EQ)**")
-        eq_cols = st.columns(3)
-        with eq_cols[0]:
-            st.slider("Low / Sub-Bass", -12, 12, 4 if bass_boost else 0, key="eq_low")
-        with eq_cols[1]:
-            st.slider("Mid / Vocals", -12, 12, 0, key="eq_mid")
-        with eq_cols[2]:
-            st.slider("High / Treble", -12, 12, 2, key="eq_high")
-            
-        st.write("💥 **DJ Sound FX Pads (16 สปีดซาวด์)**")
-        fx_c1, fx_c2, fx_c3, fx_c4 = st.columns(4)
-        with fx_c1:
-            if st.button("🚨 Airhorn", use_container_width=True):
-                st.toast("📢 แตรลม Airhorn ดังสนั่น!")
-        with fx_c2:
-            if st.button("⚡ Laser", use_container_width=True):
-                st.toast("⚡ ยิงเลเซอร์ตื๊ด!")
-        with fx_c3:
-            if st.button("💣 Drop Bass", use_container_width=True):
-                st.toast("💣 เบสกระแทกพื้นตู้ม!")
-        with fx_c4:
-            if st.button("👏 Cheer", use_container_width=True):
-                st.toast("👏 เสียงคนกรี๊ดเชียร์!")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    # กราฟิกคลื่นเสียง (Interactive Web Audio Visualizer Component)
-    st.subheader("📊 หน้าจอวิเคราะห์คลื่นเสียง (Realtime Audio Visualizer)")
-    visualizer_html = """
-    <div style="background: #020617; border-radius: 12px; padding: 20px; border: 1px solid #1e293b; text-align: center;">
-        <canvas id="visCanvas" width="900" height="150" style="width: 100%; height: 150px;"></canvas>
-    </div>
-    <script>
-        const canvas = document.getElementById('visCanvas');
-        const ctx = canvas.getContext('2d');
-        let phase = 0;
-        
-        function render() {
-            ctx.fillStyle = '#020617';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            const bars = 64;
-            const barWidth = canvas.width / bars;
-            
-            for (let i = 0; i < bars; i++) {
-                const height = (Math.sin(phase + i * 0.2) * 0.5 + 0.5) * 100 + 15;
-                const grad = ctx.createLinearGradient(0, canvas.height, 0, 0);
-                grad.addColorStop(0, '#06b6d4');
-                grad.addColorStop(0.5, '#3b82f6');
-                grad.addColorStop(1, '#a855f7');
-                
-                ctx.fillStyle = grad;
-                ctx.fillRect(i * barWidth, canvas.height - height, barWidth - 2, height);
-            }
-            phase += 0.08;
-            requestAnimationFrame(render);
-        }
-        render();
-    </script>
+# =========================================================
+# CSS
+# =========================================================
+st.markdown(
     """
-    components.html(visualizer_html, height=180)
+    <style>
 
-# --- โหมดที่ 2: AI ห้องแต่งเนื้อเพลง ---
-elif app_mode == "✍️ AI ห้องแต่งเนื้อเพลง (Songwriter)":
-    st.subheader("✍️ AI Songwriter & Lyrics Studio")
-    st.write("แต่งเนื้อเพลงตามสไตล์ที่คุณต้องการ พร้อมบอกคอร์ดกีตาร์/คีย์บอร์ด")
-    
-    col_in, col_out = st.columns([1, 1], gap="medium")
-    with col_in:
-        theme = st.text_input("หัวข้อหรืออารมณ์ของเพลง:", value="การเดินทางตามหาความฝันในเมืองใหญ่")
-        genre = st.selectbox("แนวเพลง:", ["สตริง / ป๊อปร็อค", "ลูกทุ่งเพื่อชีวิต", "ฮิปฮอป / แร็พ", "R&B / Soul", "EDM Dance"])
-        rhyme_level = st.select_slider("ความสัมผัสคล้องจอง:", options=["ทั่วไป", "สละสลวย", "แร็พไรม์จัด"])
-        
-        generate_btn = st.button("✨ สร้างเนื้อเพลงด้วยระบบอัจฉริยะ", use_container_width=True)
+    .block-container {
+        padding-top: 0.5rem;
+        padding-bottom: 2rem;
+        max-width: 1200px;
+    }
 
-    with col_out:
-        if generate_btn:
-            st.success("สร้างเนื้อเพลงสำเร็จ!")
-            sample_lyrics = f"""
-[Intro: C / Am / F / G]
-(บีทเริ่มเบาๆ พร้อมเสียงซินธ์อวกาศ)
+    .app-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
 
-[Verse 1]
-แบกกระเป๋าหนึ่งใบ ก้าวเดินไปในเมืองศิวิไลซ์
-กี่หยดเหงื่อที่รินไหล เพื่อเป้าหมายที่วาดฝัน
-มองขึ้นไปบนฟ้าไกล ยังมีดวงดาวคอยนำทางกัน
-แม้หนทางจะไกลชัน จะไม่ยอมถอยหลังกลับไป
+    .app-logo {
+        width: 75px;
+        height: 75px;
+        object-fit: contain;
+        border-radius: 15px;
+    }
 
-[Pre-Chorus]
-(Dm / Em / F / G)
-เสียงหัวใจยังคงเต้นบอก... อย่าหยุดก้าว
-ผ่านคืนเหน็บหนาว วันข้างหน้ายังรอเราอยู่!
+    .app-title {
+        font-size: 30px;
+        font-weight: 900;
+        line-height: 1.1;
+    }
 
-[Chorus]
-(C / G / Am / F)
-นี่คือการเดินทางของฉัน! ที่ไม่มีวันสิ้นสุด
-ก้าวข้ามทุกจุด ลุยฝ่าทุกบททดสอบที่เจอ
-เพื่อคำสัญญา ที่ฉันเคยให้ไว้กับเธอ
-ว่าสักวันจะเลอค่า... บนเส้นทางแห่งชัยชนะ!
-            """
-            st.text_area("เนื้อเพลงที่แต่งเสร็จ:", value=sample_lyrics, height=320)
-            st.download_button("💾 ดาวน์โหลดเนื้อเพลง (.txt)", sample_lyrics, file_name="lyrics_taww101.txt")
+    .app-subtitle {
+        font-size: 15px;
+        opacity: 0.7;
+        margin-top: 5px;
+    }
 
-# --- โหมดที่ 3: บันทึกเสียง & วอยซ์สตูดิโอ ---
-elif app_mode == "🔊 บันทึกเสียง & วอยซ์สตูดิโอ":
-    st.subheader("🎙️ Voice & Sound Recorder")
-    st.write("ห้องบันทึกเสียงร้องสด หรืออัดเสียงดนตรีเพื่อนำไปมิกซ์")
-    st.info("💡 สามารถใช้ไมโครโฟนจากเบราว์เซอร์เพื่อบันทึกเสียงได้")
-    
-    col_mic1, col_mic2 = st.columns([1, 1])
-    with col_mic1:
-        st.write("🎚️ **ตั้งค่าไมค์**")
-        mic_gain = st.slider("ความดังไมค์ (Gain)", 0, 100, 75)
-        reverb = st.slider("เอฟเฟกต์เสียงก้อง (Reverb)", 0, 100, 30)
-        st.button("🔴 เริ่มบันทึกเสียง (Record)", use_container_width=True)
-    with col_mic2:
-        st.write("📁 **เทคที่บันทึกไว้ (Recorded Takes)**")
-        st.caption("ยังไม่มีเทคล่าสุด กดปุ่มเพื่อเริ่มอัดเทคแรก")
+    .big-card {
+        border-radius: 20px;
+        padding: 18px;
+        text-align: center;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+        border: 2px solid rgba(0,0,0,0.08);
+    }
 
-# --- โหมดที่ 4: คู่มือการใช้งาน ---
-elif app_mode == "ℹ️ คู่มือการใช้งาน":
-    st.subheader("📖 คู่มือการใช้งาน Taww101 Cyber DJ Studio")
-    st.markdown("""
-    - **การเปิดเพลง**: เลือกเพลงที่ต้องการจากลิสต์คลังเพลง หรืออัปโหลดไฟล์เพลงของตัวเองในเครื่อง
-    - **การปรับแต่ง EQ**: ปรับเบส แหลม และความเร็วของเพลงได้แบบเรียลไทม์
-    - **ระบบแต่งเพลง AI**: ใส่คีย์เวิร์ดที่ต้องการ แล้วระบบจะช่วยคิดคำสัมผัสและท่อนฮุคให้ทันที
-    """)
+    .area-label {
+        font-size: 17px;
+        font-weight: 700;
+    }
 
+    .area-value {
+        font-size: 30px;
+        font-weight: 950;
+        margin-top: 5px;
+    }
+
+    .money-label {
+        font-size: 17px;
+        font-weight: 700;
+    }
+
+    .money-value {
+        font-size: 34px;
+        font-weight: 950;
+        margin-top: 5px;
+    }
+
+    .rate-box {
+        padding: 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,0.10);
+        margin-bottom: 8px;
+    }
+
+    .warning-box {
+        padding: 12px;
+        border-radius: 12px;
+        background: #fff3cd;
+        border: 1px solid #ffecb5;
+        color: #664d03;
+    }
+
+    @media(max-width:700px) {
+        .app-title {
+            font-size: 24px;
+        }
+
+        .area-value {
+            font-size: 23px;
+        }
+
+        .money-value {
+            font-size: 28px;
+        }
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# =========================================================
+# Session State
+# =========================================================
+if "saved_fields" not in st.session_state:
+    st.session_state.saved_fields = []
+
+if "last_points" not in st.session_state:
+    st.session_state.last_points = []
+
+if "last_gps" not in st.session_state:
+    st.session_state.last_gps = None
+
+if "field_name" not in st.session_state:
+    st.session_state.field_name = ""
+
+if "owner" not in st.session_state:
+    st.session_state.owner = ""
+
+if "note" not in st.session_state:
+    st.session_state.note = ""
+
+if "plow_enabled" not in st.session_state:
+    st.session_state.plow_enabled = True
+
+if "till_enabled" not in st.session_state:
+    st.session_state.till_enabled = True
+
+
+# =========================================================
+# ฟังก์ชันพื้นที่
+# =========================================================
+def polygon_area_m2(points):
+    """
+    คำนวณพื้นที่ polygon บนโลก
+    points = [(lat, lon), ...]
+    """
+
+    if len(points) < 3:
+        return 0.0
+
+    # ใช้ Local Equirectangular Projection
+    earth_radius = 6378137.0
+
+    avg_lat = sum(p[0] for p in points) / len(points)
+    avg_lat_rad = math.radians(avg_lat)
+
+    xy = []
+
+    for lat, lon in points:
+        x = (
+            earth_radius
+            * math.radians(lon)
+            * math.cos(avg_lat_rad)
+        )
+
+        y = earth_radius * math.radians(lat)
+
+        xy.append((x, y))
+
+    area = 0.0
+
+    for i in range(len(xy)):
+        x1, y1 = xy[i]
+        x2, y2 = xy[(i + 1) % len(xy)]
+
+        area += (x1 * y2) - (x2 * y1)
+
+    return abs(area) / 2.0
+
+
+def convert_thai_area(area_m2):
+    """
+    1 ไร่ = 1600 ตร.ม.
+    1 งาน = 400 ตร.ม.
+    1 ตารางวา = 4 ตร.ม.
+    """
+
+    rai = int(area_m2 // 1600)
+
+    remain = area_m2 - (rai * 1600)
+
+    ngan = int(remain // 400)
+
+    remain = remain - (ngan * 400)
+
+    square_wah = remain / 4
+
+    return rai, ngan, square_wah
+
+
+def area_to_rai(area_m2):
+    return area_m2 / 1600.0
+
+
+def calculate_money(area_m2, plow, till):
+
+    rai = area_to_rai(area_m2)
+
+    plow_money = 0.0
+    till_money = 0.0
+
+    if plow:
+        plow_money = rai * PLOW_RATE
+
+    if till:
+        till_money = rai * TILL_RATE
+
+    total = plow_money + till_money
+
+    return rai, plow_money, till_money, total
+
+
+def format_area(area_m2):
+
+    rai, ngan, wah = convert_thai_area(area_m2)
+
+    return (
+        f"{rai:,} ไร่ "
+        f"{ngan:,} งาน "
+        f"{wah:,.2f} ตร.วา"
+    )
+
+
+# =========================================================
+# JSON บันทึกข้อมูล
+# =========================================================
+def load_fields():
+
+    if not os.path.exists(DATA_FILE):
+        return []
+
+    try:
+
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    except Exception:
+
+        return []
+
+
+def save_fields(data):
+
+    with open(
+        DATA_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
+
+
+# โหลดข้อมูลเก่า
+if not st.session_state.saved_fields:
+
+    st.session_state.saved_fields = load_fields()
+
+
+# =========================================================
+# HEADER + LOGO
+# =========================================================
+logo_path = "logo1.png"
+
+if os.path.exists(logo_path):
+
+    st.markdown(
+        """
+        <div class="app-header">
+            <img class="app-logo"
+                 src="logo1.png">
+            <div>
+                <div class="app-title">
+                    🌾 อยู่นิ่งๆไม่เจ็บตัว
+                </div>
+                <div class="app-subtitle">
+                    ระบบวัดพื้นที่นา • GPS • คำนวณค่าจ้าง
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+else:
+
+    st.markdown(
+        """
+        <div class="app-title">
+            🌾 อยู่นิ่งๆไม่เจ็บตัว
+        </div>
+
+        <div class="app-subtitle">
+            ระบบวัดพื้นที่นา • GPS • คำนวณค่าจ้าง
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.warning(
+        "ไม่พบ logo1.png — กรุณาวาง logo1.png "
+        "ไว้ในโฟลเดอร์เดียวกับ app.py"
+    )
+
+
+# =========================================================
+# ข้อมูลเจ้าของนา
+# =========================================================
+st.subheader("👤 ข้อมูลแปลงนา")
+
+c1, c2 = st.columns(2)
+
+with c1:
+
+    owner = st.text_input(
+        "ชื่อเจ้าของนา / ผู้ว่าจ้าง",
+        value=st.session_state.owner,
+        placeholder="เช่น นายสมชาย",
+    )
+
+    field_name = st.text_input(
+        "ชื่อแปลงนา / สถานที่",
+        value=st.session_state.field_name,
+        placeholder="เช่น แปลงนาบ้านเหนือ",
+    )
+
+with c2:
+
+    note = st.text_area(
+        "📝 หมายเหตุ",
+        value=st.session_state.note,
+        placeholder="เช่น ไถ 1 รอบ ปั่น 1 รอบ",
+        height=105,
+    )
+
+
+st.session_state.owner = owner
+st.session_state.field_name = field_name
+st.session_state.note = note
+
+
+# =========================================================
+# เลือกบริการ
+# =========================================================
+st.subheader("💰 รายการคิดค่าจ้าง")
+
+r1, r2 = st.columns(2)
+
+with r1:
+
+    plow_enabled = st.checkbox(
+        f"🚜 ไถนา — {PLOW_RATE:,.0f} บาท/ไร่",
+        value=st.session_state.plow_enabled,
+    )
+
+with r2:
+
+    till_enabled = st.checkbox(
+        f"⚙️ ปั่นดิน — {TILL_RATE:,.0f} บาท/ไร่",
+        value=st.session_state.till_enabled,
+    )
+
+st.session_state.plow_enabled = plow_enabled
+st.session_state.till_enabled = till_enabled
+
+
+# =========================================================
+# ตำแหน่งเริ่มต้นแผนที่
+# =========================================================
+DEFAULT_LAT = 15.8700
+DEFAULT_LON = 100.9925
+
+if st.session_state.last_gps:
+
+    map_lat = st.session_state.last_gps[0]
+    map_lon = st.session_state.last_gps[1]
+
+elif st.session_state.last_points:
+
+    map_lat = sum(p[0] for p in st.session_state.last_points) / len(
+        st.session_state.last_points
+    )
+
+    map_lon = sum(p[1] for p in st.session_state.last_points) / len(
+        st.session_state.last_points
+    )
+
+else:
+
+    map_lat = DEFAULT_LAT
+    map_lon = DEFAULT_LON
+
+
+# =========================================================
+# สร้างแผนที่
+# =========================================================
+m = folium.Map(
+    location=[map_lat, map_lon],
+    zoom_start=17,
+    control_scale=True,
+    tiles="OpenStreetMap",
+)
+
+# ปุ่มเต็มจอ
+Fullscreen(
+    position="topright"
+).add_to(m)
+
+# ปุ่ม GPS
+try:
+
+    LocateControl(
+        auto_start=False,
+        flyTo=True,
+        keepCurrentZoomLevel=True,
+        showPopup=True,
+        strings={
+            "title": "หาตำแหน่ง GPS ของฉัน"
+        },
+    ).add_to(m)
+
+except Exception:
+
+    pass
+
+
+# =========================================================
+# วาด polygon
+# =========================================================
+Draw(
+    export=False,
+    position="topleft",
+    draw_options={
+        "polyline": False,
+        "polygon": {
+            "allowIntersection": False,
+            "showArea": True,
+            "shapeOptions": {
+                "color": "#e91e63",
+                "weight": 4,
+                "fillColor": "#ffeb3b",
+                "fillOpacity": 0.20,
+            },
+        },
+        "rectangle": False,
+        "circle": False,
+        "circlemarker": False,
+        "marker": False,
+    },
+    edit_options={
+        "edit": True,
+        "remove": True,
+    },
+).add_to(m)
+
+
+# =========================================================
+# ถ้ามี polygon เดิม แสดงบนแผนที่
+# =========================================================
+if len(st.session_state.last_points) >= 3:
+
+    folium.Polygon(
+        locations=st.session_state.last_points,
+        color="#e91e63",
+        weight=4,
+        fill=True,
+        fill_color="#ffeb3b",
+        fill_opacity=0.20,
+        tooltip="ลากจุดเพื่อปรับแนวคันนา",
+    ).add_to(m)
+
+
+# =========================================================
+# แสดง GPS ล่าสุด
+# =========================================================
+if st.session_state.last_gps:
+
+    folium.Marker(
+        location=st.session_state.last_gps,
+        popup="📍 ตำแหน่ง GPS ล่าสุด",
+        tooltip="GPS ปัจจุบัน",
+        icon=folium.Icon(
+            color="blue",
+            icon="location-arrow",
+            prefix="fa",
+        ),
+    ).add_to(m)
+
+
+# =========================================================
+# แผนที่
+# =========================================================
+st.subheader("🗺️ แผนที่วัดพื้นที่นา")
+
+st.info(
+    "📌 กดเครื่องมือรูปหลายเหลี่ยม แล้วแตะจุดรอบแปลงนา "
+    "ให้ครบ จากนั้นกดปิดรูปแปลง • สามารถเข้าโหมดแก้ไขแล้ว "
+    "ลากจุดไปตรงคันนาได้ • ใช้ปุ่ม + / − หรือสองนิ้วเพื่อซูม"
+)
+
+map_data = st_folium(
+    m,
+    width=None,
+    height=600,
+    returned_objects=[
+        "all_drawings",
+        "last_active_drawing",
+        "last_clicked",
+    ],
+    key="rice_map",
+)
+
+
+# =========================================================
+# อ่าน polygon จากแผนที่
+# =========================================================
+drawings = map_data.get("all_drawings", [])
+
+new_points = None
+
+if drawings:
+
+    # เอารูปล่าสุดที่เป็น Polygon
+    for drawing in reversed(drawings):
+
+        if drawing.get("geometry", {}).get("type") == "Polygon":
+
+            coords = drawing["geometry"]["coordinates"][0]
+
+            converted = []
+
+            for point in coords:
+
+                lon = point[0]
+                lat = point[1]
+
+                converted.append(
+                    [lat, lon]
+                )
+
+            # จุดสุดท้ายมักซ้ำกับจุดแรก
+            if len(converted) > 1:
+
+                if converted[0] == converted[-1]:
+
+                    converted = converted[:-1]
+
+            new_points = converted
+
+            break
+
+
+# =========================================================
+# ถ้าได้ polygon ใหม่
+# =========================================================
+if new_points and len(new_points) >= 3:
+
+    if new_points != st.session_state.last_points:
+
+        st.session_state.last_points = new_points
+
+        st.rerun()
+
+
+# =========================================================
+# ปุ่มล้างแปลง
+# =========================================================
+if st.button(
+    "🗑️ ล้างแปลงนี้ เริ่มวัดใหม่",
+    use_container_width=True
+):
+
+    st.session_state.last_points = []
+
+    st.rerun()
+
+
+# =========================================================
+# พื้นที่
+# =========================================================
+points = st.session_state.last_points
+
+area_m2 = polygon_area_m2(points)
+
+rai_exact, plow_money, till_money, total_money = calculate_money(
+    area_m2,
+    plow_enabled,
+    till_enabled,
+)
+
+
+# =========================================================
+# ผลการวัด
+# =========================================================
 st.divider()
-st.caption("⚡ พัฒนาด้วย Streamlit | Taww101 Audio Engine Pro")
+
+st.subheader("📐 ผลการวัดพื้นที่")
 
 
+if len(points) < 3:
+
+    st.markdown(
+        """
+        <div class="warning-box">
+        📌 ตอนนี้ยังไม่มีพื้นที่ที่วัดได้<br>
+        ให้กดเครื่องมือรูปหลายเหลี่ยมบนแผนที่
+        แล้วแตะรอบคันนาอย่างน้อย 3 จุด
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+else:
+
+    thai_area = format_area(area_m2)
+
+    a, b = st.columns(2)
+
+    with a:
+
+        st.markdown(
+            f"""
+            <div class="big-card">
+
+                <div class="area-label">
+                    🌾 พื้นที่นา
+                </div>
+
+                <div class="area-value">
+                    {thai_area}
+                </div>
+
+                <div>
+                    {area_m2:,.2f} ตารางเมตร
+                </div>
+
+                <div style="opacity:.65;font-size:13px;margin-top:5px;">
+                    {rai_exact:,.6f} ไร่
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with b:
+
+        st.markdown(
+            f"""
+            <div class="big-card">
+
+                <div class="money-label">
+                    💰 ยอดรวมค่าจ้าง
+                </div>
+
+                <div class="money-value">
+                    {total_money:,.2f} บาท
+                </div>
+
+                <div style="opacity:.65;font-size:13px;margin-top:5px;">
+                    คำนวณจากพื้นที่จริง
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+    # -----------------------------------------------------
+    # รายละเอียดเงิน
+    # -----------------------------------------------------
+    st.subheader("💵 รายละเอียดเงิน")
+
+    m1, m2, m3 = st.columns(3)
+
+    with m1:
+
+        st.metric(
+            "🚜 ค่าไถนา",
+            f"{plow_money:,.2f} บาท"
+        )
+
+    with m2:
+
+        st.metric(
+            "⚙️ ค่าปั่นดิน",
+            f"{till_money:,.2f} บาท"
+        )
+
+    with m3:
+
+        st.metric(
+            "💰 รวม",
+            f"{total_money:,.2f} บาท"
+        )
+
+
+    # -----------------------------------------------------
+    # สรุปเจ้าของ
+    # -----------------------------------------------------
+    st.markdown("---")
+
+    s1, s2 = st.columns(2)
+
+    with s1:
+
+        st.write(
+            f"👤 **เจ้าของนา:** "
+            f"{owner if owner else 'ไม่ได้ระบุ'}"
+        )
+
+        st.write(
+            f"🌾 **แปลง:** "
+            f"{field_name if field_name else 'ไม่ได้ระบุ'}"
+        )
+
+    with s2:
+
+        st.write(
+            f"📝 **หมายเหตุ:** "
+            f"{note if note else '-'}"
+        )
+
+        st.write(
+            f"📍 **จำนวนหมุด:** "
+            f"{len(points)} จุด"
+        )
+
+
+# =========================================================
+# บันทึกแปลง
+# =========================================================
+st.divider()
+
+st.subheader("💾 บันทึกข้อมูลแปลง")
+
+
+if st.button(
+    "💾 บันทึกแปลงนี้",
+    type="primary",
+    use_container_width=True
+):
+
+    if len(points) < 3:
+
+        st.error(
+            "กรุณาวัดพื้นที่ให้ครบอย่างน้อย 3 จุดก่อนครับ"
+        )
+
+    else:
+
+        record = {
+
+            "id": datetime.now().strftime(
+                "%Y%m%d%H%M%S"
+            ),
+
+            "saved_at": datetime.now().strftime(
+                "%d/%m/%Y %H:%M:%S"
+            ),
+
+            "owner": owner,
+
+            "field_name": field_name,
+
+            "note": note,
+
+            "points": points,
+
+            "area_m2": area_m2,
+
+            "rai_exact": rai_exact,
+
+            "thai_area": thai_area,
+
+            "plow_enabled": plow_enabled,
+
+            "till_enabled": till_enabled,
+
+            "plow_money": plow_money,
+
+            "till_money": till_money,
+
+            "total_money": total_money,
+        }
+
+        st.session_state.saved_fields.append(
+            record
+        )
+
+        save_fields(
+            st.session_state.saved_fields
+        )
+
+        st.success(
+            "✅ บันทึกข้อมูลแปลงเรียบร้อยแล้วครับ"
+        )
+
+
+# =========================================================
+# สร้างไฟล์ JSON สำหรับแปลงปัจจุบัน
+# =========================================================
+if len(points) >= 3:
+
+    current_data = {
+
+        "เจ้าของนา": owner,
+
+        "ชื่อแปลง": field_name,
+
+        "หมายเหตุ": note,
+
+        "พื้นที่ตารางเมตร": round(
+            area_m2,
+            2
+        ),
+
+        "พื้นที่ไทย": thai_area,
+
+        "พื้นที่ไร่จริง": round(
+            rai_exact,
+            6
+        ),
+
+        "ค่าไถ": round(
+            plow_money,
+            2
+        ),
+
+        "ค่าปั่นดิน": round(
+            till_money,
+            2
+        ),
+
+        "ยอดรวม": round(
+            total_money,
+            2
+        ),
+
+        "พิกัด": points,
+    }
+
+    json_bytes = json.dumps(
+        current_data,
+        ensure_ascii=False,
+        indent=2
+    ).encode("utf-8")
+
+    st.download_button(
+        "📥 ดาวน์โหลดข้อมูลแปลงนี้ (JSON)",
+        data=json_bytes,
+        file_name=(
+            f"แปลงนา_"
+            f"{field_name if field_name else 'ไม่ระบุ'}"
+            f".json"
+        ),
+        mime="application/json",
+        use_container_width=True,
+    )
+
+
+# =========================================================
+# รายการแปลงที่บันทึก
+# =========================================================
+st.divider()
+
+st.subheader("📋 แปลงนาที่บันทึกไว้")
+
+
+if not st.session_state.saved_fields:
+
+    st.caption(
+        "ยังไม่มีข้อมูลที่บันทึก"
+    )
+
+else:
+
+    for index, record in enumerate(
+        reversed(
+            st.session_state.saved_fields
+        )
+    ):
+
+        owner_text = (
+            record.get("owner")
+            or "ไม่ระบุเจ้าของ"
+        )
+
+        field_text = (
+            record.get("field_name")
+            or "ไม่ระบุชื่อแปลง"
+        )
+
+        total_text = (
+            record.get("total_money", 0)
+        )
+
+        title = (
+            f"🌾 {field_text} | "
+            f"👤 {owner_text} | "
+            f"💰 {total_text:,.2f} บาท"
+        )
+
+        with st.expander(title):
+
+            st.write(
+                "📐 พื้นที่:",
+                record.get(
+                    "thai_area",
+                    "-"
+                )
+            )
+
+            st.write(
+                "📏 ตารางเมตร:",
+                f"{record.get('area_m2', 0):,.2f}"
+            )
+
+            st.write(
+                "🚜 ค่าไถ:",
+               
