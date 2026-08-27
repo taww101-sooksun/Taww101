@@ -1,347 +1,963 @@
-# Ta_app.py โ€” เนเธเธฅเนเน€เธ”เธตเธขเธงเธชเธณเธซเธฃเธฑเธ GitHub + Streamlit
-# เธซเธกเธฒเธขเน€เธซเธ•เธธ: logo1.png เธ•เนเธญเธเธญเธขเธนเนเนเธ repository เน€เธ”เธตเธขเธงเธเธฑเธเน€เธเธทเนเธญเนเธชเธ”เธเนเธฅเนเธเนเธเธฃเธดเธ
-# เนเธญเธเธงเธฑเธ”เธเธทเนเธเธ—เธตเนเธเธฒ + เธเธฑเธเธซเธกเธธเธ” + เธเธณเธเธงเธ“เธเนเธฒเธเธฃเธดเธเธฒเธฃ
-# เธ•เนเธญเธเธกเธตเนเธเธฅเน logo1.png เธญเธขเธนเนเนเธเธฅเน€เธ”เธญเธฃเนเน€เธ”เธตเธขเธงเธเธฑเธเนเธเธฅเนเธเธตเน
-#
-# เธ•เธดเธ”เธ•เธฑเนเธ:
-#   pip install streamlit streamlit-folium folium shapely
-# เธฃเธฑเธ:
-#   streamlit run Ta_app.py
-
-import math
-from pathlib import Path
-
-import folium
 import streamlit as st
-from folium.plugins import LocateControl
-from shapely.geometry import Polygon
+import folium
+from folium.plugins import Draw, Fullscreen, LocateControl
 from streamlit_folium import st_folium
 
+import math
+import json
+import os
+import io
+from datetime import datetime
 
+# =========================================================
+# ตั้งค่าหน้าเว็บ
+# =========================================================
 st.set_page_config(
-    page_title="Ta App - เธงเธฑเธ”เธเธทเนเธเธ—เธตเนเธเธฒ",
-    page_icon="๐พ",
+    page_title="อยู่นิ่งๆไม่เจ็บตัว",
+    page_icon="🌾",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-# ----------------------------
-# เธ•เธฑเนเธเธเนเธฒเธเธทเนเธเธเธฒเธ
-# ----------------------------
-PLOW_RATE = 250.0
-MILL_RATE = 350.0
-RAI_M2 = 1600.0
-NGAN_M2 = 400.0
-WA_M2 = 4.0
+# =========================================================
+# ค่าบริการ
+# =========================================================
+PLOW_RATE = 250.0       # ไถนา / ไร่
+TILL_RATE = 350.0       # ปั่นดิน / ไร่
 
-LOGO_PATH = Path(__file__).parent / "logo1.png"
+# =========================================================
+# ไฟล์บันทึก
+# =========================================================
+DATA_FILE = "rice_fields.json"
+
+# =========================================================
+# CSS
+# =========================================================
+st.markdown(
+    """
+    <style>
+
+    .block-container {
+        padding-top: 0.5rem;
+        padding-bottom: 2rem;
+        max-width: 1200px;
+    }
+
+    .app-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .app-logo {
+        width: 75px;
+        height: 75px;
+        object-fit: contain;
+        border-radius: 15px;
+    }
+
+    .app-title {
+        font-size: 30px;
+        font-weight: 900;
+        line-height: 1.1;
+    }
+
+    .app-subtitle {
+        font-size: 15px;
+        opacity: 0.7;
+        margin-top: 5px;
+    }
+
+    .big-card {
+        border-radius: 20px;
+        padding: 18px;
+        text-align: center;
+        margin-top: 10px;
+        margin-bottom: 10px;
+        box-shadow: 0 3px 15px rgba(0,0,0,0.08);
+        border: 2px solid rgba(0,0,0,0.08);
+    }
+
+    .area-label {
+        font-size: 17px;
+        font-weight: 700;
+    }
+
+    .area-value {
+        font-size: 30px;
+        font-weight: 950;
+        margin-top: 5px;
+    }
+
+    .money-label {
+        font-size: 17px;
+        font-weight: 700;
+    }
+
+    .money-value {
+        font-size: 34px;
+        font-weight: 950;
+        margin-top: 5px;
+    }
+
+    .rate-box {
+        padding: 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,0.10);
+        margin-bottom: 8px;
+    }
+
+    .warning-box {
+        padding: 12px;
+        border-radius: 12px;
+        background: #fff3cd;
+        border: 1px solid #ffecb5;
+        color: #664d03;
+    }
+
+    @media(max-width:700px) {
+        .app-title {
+            font-size: 24px;
+        }
+
+        .area-value {
+            font-size: 23px;
+        }
+
+        .money-value {
+            font-size: 28px;
+        }
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# =========================================================
+# Session State
+# =========================================================
+if "saved_fields" not in st.session_state:
+    st.session_state.saved_fields = []
+
+if "last_points" not in st.session_state:
+    st.session_state.last_points = []
+
+if "last_gps" not in st.session_state:
+    st.session_state.last_gps = None
+
+if "field_name" not in st.session_state:
+    st.session_state.field_name = ""
+
+if "owner" not in st.session_state:
+    st.session_state.owner = ""
+
+if "note" not in st.session_state:
+    st.session_state.note = ""
+
+if "plow_enabled" not in st.session_state:
+    st.session_state.plow_enabled = True
+
+if "till_enabled" not in st.session_state:
+    st.session_state.till_enabled = True
 
 
-def thai_area(m2: float):
-    """เนเธเธฅเธ mยฒ -> เนเธฃเน เธเธฒเธ เธ•เธฒเธฃเธฒเธเธงเธฒ เนเธฅเธฐ mยฒ เธ—เธตเนเน€เธซเธฅเธทเธญ"""
-    if m2 < 0:
-        m2 = 0
-
-    rai = int(m2 // RAI_M2)
-    remain = m2 - rai * RAI_M2
-
-    ngan = int(remain // NGAN_M2)
-    remain -= ngan * NGAN_M2
-
-    wa = int(remain // WA_M2)
-    remain -= wa * WA_M2
-
-    return rai, ngan, wa, remain
-
-
+# =========================================================
+# ฟังก์ชันพื้นที่
+# =========================================================
 def polygon_area_m2(points):
-    """เธเธณเธเธงเธ“เธเธทเนเธเธ—เธตเนเธฃเธนเธเธซเธฅเธฒเธขเน€เธซเธฅเธตเนเธขเธกเธเธเนเธฅเธเธเธฒเธ lat/lon เนเธ”เธขเนเธเน local projection"""
+    """
+    คำนวณพื้นที่ polygon บนโลก
+    points = [(lat, lon), ...]
+    """
+
     if len(points) < 3:
         return 0.0
 
-    lat0 = math.radians(sum(p[0] for p in points) / len(points))
-    R = 6378137.0
+    # ใช้ Local Equirectangular Projection
+    earth_radius = 6378137.0
+
+    avg_lat = sum(p[0] for p in points) / len(points)
+    avg_lat_rad = math.radians(avg_lat)
 
     xy = []
+
     for lat, lon in points:
-        x = math.radians(lon) * R * math.cos(lat0)
-        y = math.radians(lat) * R
+        x = (
+            earth_radius
+            * math.radians(lon)
+            * math.cos(avg_lat_rad)
+        )
+
+        y = earth_radius * math.radians(lat)
+
         xy.append((x, y))
 
-    poly = Polygon(xy)
-    return abs(poly.area)
+    area = 0.0
+
+    for i in range(len(xy)):
+        x1, y1 = xy[i]
+        x2, y2 = xy[(i + 1) % len(xy)]
+
+        area += (x1 * y2) - (x2 * y1)
+
+    return abs(area) / 2.0
 
 
-def money(value):
-    return f"{value:,.2f}"
+def convert_thai_area(area_m2):
+    """
+    1 ไร่ = 1600 ตร.ม.
+    1 งาน = 400 ตร.ม.
+    1 ตารางวา = 4 ตร.ม.
+    """
+
+    rai = int(area_m2 // 1600)
+
+    remain = area_m2 - (rai * 1600)
+
+    ngan = int(remain // 400)
+
+    remain = remain - (ngan * 400)
+
+    square_wah = remain / 4
+
+    return rai, ngan, square_wah
 
 
-# ----------------------------
-# Session state
-# ----------------------------
-if "points" not in st.session_state:
-    st.session_state.points = []
-
-if "saved_plots" not in st.session_state:
-    st.session_state.saved_plots = []
-
-if "lat" not in st.session_state:
-    st.session_state.lat = 13.7563
-
-if "lon" not in st.session_state:
-    st.session_state.lon = 100.5018
+def area_to_rai(area_m2):
+    return area_m2 / 1600.0
 
 
-# ----------------------------
-# Header
-# ----------------------------
-header_left, header_right = st.columns([1, 5], vertical_alignment="center")
+def calculate_money(area_m2, plow, till):
 
-with header_left:
-    if LOGO_PATH.exists():
-        st.image(str(LOGO_PATH), width=115)
-    else:
-        st.markdown("## ๐พ")
+    rai = area_to_rai(area_m2)
 
-with header_right:
-    st.title("๐พ Ta App")
-    st.caption("เธงเธฑเธ”เธเธทเนเธเธ—เธตเนเธเธฒ โ€ข เธเธฑเธเธซเธกเธธเธ” โ€ข เธเธณเธเธงเธ“เธเนเธฒเธเธฃเธดเธเธฒเธฃเนเธ–/เธเธฑเนเธ")
+    plow_money = 0.0
+    till_money = 0.0
 
-st.divider()
+    if plow:
+        plow_money = rai * PLOW_RATE
 
-# ----------------------------
-# เธเนเธญเธกเธนเธฅเนเธเธฅเธ
-# ----------------------------
-c1, c2 = st.columns(2)
+    if till:
+        till_money = rai * TILL_RATE
 
-with c1:
-    owner = st.text_input(
-        "๐‘ค เธเธทเนเธญเน€เธเนเธฒเธเธญเธเธเธฒ",
-        placeholder="เน€เธเนเธ เธเธฒเธขเธชเธกเธเธฒเธข เนเธเธ”เธต",
-        key="owner",
+    total = plow_money + till_money
+
+    return rai, plow_money, till_money, total
+
+
+def format_area(area_m2):
+
+    rai, ngan, wah = convert_thai_area(area_m2)
+
+    return (
+        f"{rai:,} ไร่ "
+        f"{ngan:,} งาน "
+        f"{wah:,.2f} ตร.วา"
     )
 
-with c2:
-    note = st.text_input(
-        "๐“ เธซเธกเธฒเธขเน€เธซเธ•เธธ",
-        placeholder="เน€เธเนเธ เธเธฒเนเธเธฅเธเธซเธฅเธฑเธเธเนเธฒเธ / เธเธฑเธ”เนเธ–เธงเธฑเธเธเธฑเธเธ—เธฃเน",
-        key="note",
-    )
 
-# ----------------------------
-# เนเธเธเธ—เธตเน
-# ----------------------------
-st.subheader("๐—บ๏ธ เธเธณเธซเธเธ”เธเธญเธเน€เธเธ•เนเธเธฅเธเธเธฒ")
+# =========================================================
+# JSON บันทึกข้อมูล
+# =========================================================
+def load_fields():
 
-st.info(
-    "เนเธ•เธฐเธเธเนเธเธเธ—เธตเนเน€เธเธทเนเธญเน€เธเธดเนเธกเธซเธกเธธเธ”เธ—เธตเธฅเธฐเธเธธเธ” โ€ข เนเธเนเธเธธเนเธก GPS เน€เธเธทเนเธญเธซเธฒเธ•เธณเนเธซเธเนเธเธเธฑเธเธเธธเธเธฑเธ "
-    "โ€ข เธชเธฒเธกเธฒเธฃเธ–เธฅเธฒเธเธซเธกเธธเธ”เธ—เธตเนเธชเธฃเนเธฒเธเนเธงเนเน€เธเธทเนเธญเธเธฃเธฑเธเนเธเธงเธเธฑเธเธเธฒเนเธ”เน"
-)
+    if not os.path.exists(DATA_FILE):
+        return []
 
-map_center = [st.session_state.lat, st.session_state.lon]
+    try:
 
-m = folium.Map(
-    location=map_center,
-    zoom_start=17,
-    control_scale=True,
-    tiles="OpenStreetMap",
-)
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
 
-LocateControl(
-    auto_start=False,
-    flyTo=True,
-    keepCurrentZoomLevel=False,
-    showCompass=True,
-).add_to(m)
+    except Exception:
 
-# เธงเธฒเธ”เธเธธเธ”เนเธฅเธฐเน€เธชเนเธ
-for i, (lat, lon) in enumerate(st.session_state.points):
-    folium.Marker(
-        [lat, lon],
-        tooltip=f"เธซเธกเธธเธ” {i + 1} (เธฅเธฒเธเน€เธเธทเนเธญเธเธฃเธฑเธเธ•เธณเนเธซเธเนเธ)",
-        draggable=True,
-        icon=folium.Icon(color="green", icon="map-marker"),
-    ).add_to(m)
+        return []
 
-if len(st.session_state.points) >= 2:
-    folium.PolyLine(
-        st.session_state.points + (
-            [st.session_state.points[0]]
-            if len(st.session_state.points) >= 3
-            else []
-        ),
-        color="green",
-        weight=4,
-        opacity=0.85,
-    ).add_to(m)
 
-if len(st.session_state.points) >= 3:
-    folium.Polygon(
-        st.session_state.points,
-        color="green",
-        weight=2,
-        fill=True,
-        fill_opacity=0.20,
-    ).add_to(m)
+def save_fields(data):
 
-map_data = st_folium(
-    m,
-    width=None,
-    height=520,
-    returned_objects=["last_clicked", "last_object_clicked", "center"],
-    key="farm_map",
-)
+    with open(
+        DATA_FILE,
+        "w",
+        encoding="utf-8"
+    ) as f:
 
-# เนเธ•เธฐเนเธเธเธ—เธตเนเน€เธเธทเนเธญเน€เธเธดเนเธกเธซเธกเธธเธ”
-clicked = map_data.get("last_clicked")
-if clicked:
-    lat = float(clicked["lat"])
-    lon = float(clicked["lng"])
+        json.dump(
+            data,
+            f,
+            ensure_ascii=False,
+            indent=2
+        )
 
-    # เธเนเธญเธเธเธฑเธเธเธฒเธฃเน€เธเธดเนเธกเธเธธเธ”เน€เธ”เธดเธกเธเนเธณเธเธฒเธ rerun
-    last = st.session_state.points[-1] if st.session_state.points else None
-    if last is None or abs(last[0] - lat) > 0.000001 or abs(last[1] - lon) > 0.000001:
-        st.session_state.points.append((lat, lon))
-        st.rerun()
 
-# ----------------------------
-# เธเธธเนเธกเธเธฑเธ”เธเธฒเธฃเธซเธกเธธเธ”
-# ----------------------------
-b1, b2, b3, b4 = st.columns(4)
+# โหลดข้อมูลเก่า
+if not st.session_state.saved_fields:
 
-with b1:
-    if st.button("โฉ๏ธ เธฅเธเธซเธกเธธเธ”เธฅเนเธฒเธชเธธเธ”", use_container_width=True):
-        if st.session_state.points:
-            st.session_state.points.pop()
-            st.rerun()
+    st.session_state.saved_fields = load_fields()
 
-with b2:
-    if st.button("๐—‘๏ธ เธฅเนเธฒเธเธซเธกเธธเธ”เธ—เธฑเนเธเธซเธกเธ”", use_container_width=True):
-        st.session_state.points = []
-        st.rerun()
 
-with b3:
-    if st.button("๐“ เนเธเนเธ•เธณเนเธซเธเนเธเธ•เธฑเธงเธญเธขเนเธฒเธ", use_container_width=True):
-        st.session_state.points = [
-            (13.75630, 100.50180),
-            (13.75630, 100.50300),
-            (13.75530, 100.50300),
-            (13.75530, 100.50180),
-        ]
-        st.rerun()
+# =========================================================
+# HEADER + LOGO
+# =========================================================
+logo_path = "logo1.png"
 
-with b4:
-    if st.button("๐” เธฃเธตเน€เธเธฃเธเนเธเธเธ—เธตเน", use_container_width=True):
-        st.rerun()
+if os.path.exists(logo_path):
 
-# ----------------------------
-# เธเธณเธเธงเธ“เธเธทเนเธเธ—เธตเน
-# ----------------------------
-area_m2 = polygon_area_m2(st.session_state.points)
-
-rai, ngan, wa, remain_m2 = thai_area(area_m2)
-
-# เธฃเธฒเธเธฒเธเนเธฒเธเธฃเธดเธเธฒเธฃ
-plow_cost = rai * PLOW_RATE + (ngan / 4) * PLOW_RATE + (wa / 400) * PLOW_RATE + (remain_m2 / RAI_M2) * PLOW_RATE
-mill_cost = rai * MILL_RATE + (ngan / 4) * MILL_RATE + (wa / 400) * MILL_RATE + (remain_m2 / RAI_M2) * MILL_RATE
-total_cost = plow_cost + mill_cost
-
-st.divider()
-st.subheader("๐“ เธเธฅเธเธฒเธฃเธงเธฑเธ”เธเธทเนเธเธ—เธตเน")
-
-if len(st.session_state.points) < 3:
-    st.warning("เธเธฃเธธเธ“เธฒเธเธฑเธเธซเธกเธธเธ”เธญเธขเนเธฒเธเธเนเธญเธข 3 เธเธธเธ”เน€เธเธทเนเธญเธเธณเธเธงเธ“เธเธทเนเธเธ—เธตเน")
-else:
-    a1, a2, a3, a4 = st.columns(4)
-
-    a1.metric("เธเธทเนเธเธ—เธตเนเธฃเธงเธก", f"{area_m2:,.2f} เธ•เธฃ.เธก.")
-    a2.metric("เนเธฃเน", f"{rai:,}")
-    a3.metric("เธเธฒเธ", f"{ngan:,}")
-    a4.metric("เธ•เธฒเธฃเธฒเธเธงเธฒ", f"{wa:,}")
-
-    st.success(
-        f"เธเธทเนเธเธ—เธตเนเนเธ”เธขเธเธฃเธฐเธกเธฒเธ“ **{rai} เนเธฃเน {ngan} เธเธฒเธ {wa} เธ•เธฒเธฃเธฒเธเธงเธฒ "
-        f"{remain_m2:.2f} เธ•เธฃ.เธก.**"
-    )
-
-    st.divider()
-    st.subheader("๐’ฐ เธเนเธฒเธเธฃเธดเธเธฒเธฃ")
-
-    s1, s2 = st.columns(2)
-
-    with s1:
-        st.markdown("### ๐ เนเธ–")
-        st.markdown(f"**{money(PLOW_RATE)} เธเธฒเธ— / เนเธฃเน**")
-        st.metric("เธเนเธฒเนเธ–", f"{money(plow_cost)} เธเธฒเธ—")
-
-    with s2:
-        st.markdown("### โ๏ธ เธเธฑเนเธ")
-        st.markdown(f"**{money(MILL_RATE)} เธเธฒเธ— / เนเธฃเน**")
-        st.metric("เธเนเธฒเธเธฑเนเธ", f"{money(mill_cost)} เธเธฒเธ—")
-
-    st.markdown("---")
     st.markdown(
-        f"""
-        <div style="
-            padding:24px;
-            border-radius:18px;
-            background:rgba(46,125,50,.12);
-            border:2px solid rgba(46,125,50,.35);
-            text-align:center;
-            margin-top:10px;
-        ">
-            <div style="font-size:20px;">๐’ฐ เธขเธญเธ”เธฃเธงเธกเธ—เธฑเนเธเธซเธกเธ”</div>
-            <div style="font-size:44px;font-weight:800;">
-                {money(total_cost)} เธเธฒเธ—
-            </div>
-            <div style="font-size:15px;">
-                เนเธ– {money(plow_cost)} + เธเธฑเนเธ {money(mill_cost)}
+        """
+        <div class="app-header">
+            <img class="app-logo"
+                 src="logo1.png">
+            <div>
+                <div class="app-title">
+                    🌾 อยู่นิ่งๆไม่เจ็บตัว
+                </div>
+                <div class="app-subtitle">
+                    ระบบวัดพื้นที่นา • GPS • คำนวณค่าจ้าง
+                </div>
             </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.divider()
+else:
 
-    if st.button("๐’พ เธเธฑเธเธ—เธถเธเนเธเธฅเธเธเธตเน", type="primary", use_container_width=True):
-        record = {
-            "เน€เธเนเธฒเธเธญเธเธเธฒ": owner or "-",
-            "เธเธทเนเธเธ—เธตเน เธ•เธฃ.เธก.": round(area_m2, 2),
-            "เธเธทเนเธเธ—เธตเน": f"{rai} เนเธฃเน {ngan} เธเธฒเธ {wa} เธ•เธฒเธฃเธฒเธเธงเธฒ {remain_m2:.2f} เธ•เธฃ.เธก.",
-            "เธเนเธฒเนเธ–": round(plow_cost, 2),
-            "เธเนเธฒเธเธฑเนเธ": round(mill_cost, 2),
-            "เธขเธญเธ”เธฃเธงเธก": round(total_cost, 2),
-            "เธซเธกเธฒเธขเน€เธซเธ•เธธ": note or "-",
-            "เธซเธกเธธเธ”": list(st.session_state.points),
-        }
-        st.session_state.saved_plots.append(record)
-        st.success("เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅเนเธเธฅเธเธเธฒเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธงเธเธฃเธฑเธ ๐พ")
+    st.markdown(
+        """
+        <div class="app-title">
+            🌾 อยู่นิ่งๆไม่เจ็บตัว
+        </div>
 
-# ----------------------------
-# เธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธเธฑเธเธ—เธถเธ
-# ----------------------------
-if st.session_state.saved_plots:
-    st.divider()
-    st.subheader("๐“ เนเธเธฅเธเธเธฒเธ—เธตเนเธเธฑเธเธ—เธถเธเนเธงเน")
-
-    for idx, item in enumerate(reversed(st.session_state.saved_plots), 1):
-        with st.expander(
-            f"เนเธเธฅเธเธ—เธตเน {len(st.session_state.saved_plots) - idx + 1} โ€ข "
-            f"{item['เน€เธเนเธฒเธเธญเธเธเธฒ']} โ€ข {money(item['เธขเธญเธ”เธฃเธงเธก'])} เธเธฒเธ—"
-        ):
-            st.write(f"**เน€เธเนเธฒเธเธญเธเธเธฒ:** {item['เน€เธเนเธฒเธเธญเธเธเธฒ']}")
-            st.write(f"**เธเธทเนเธเธ—เธตเน:** {item['เธเธทเนเธเธ—เธตเน']}")
-            st.write(f"**เธเนเธฒเนเธ–:** {money(item['เธเนเธฒเนเธ–'])} เธเธฒเธ—")
-            st.write(f"**เธเนเธฒเธเธฑเนเธ:** {money(item['เธเนเธฒเธเธฑเนเธ'])} เธเธฒเธ—")
-            st.write(f"**เธขเธญเธ”เธฃเธงเธก:** {money(item['เธขเธญเธ”เธฃเธงเธก'])} เธเธฒเธ—")
-            st.write(f"**เธซเธกเธฒเธขเน€เธซเธ•เธธ:** {item['เธซเธกเธฒเธขเน€เธซเธ•เธธ']}")
-
-# ----------------------------
-# Footer
-# ----------------------------
-st.divider()
-st.caption(
-    "Ta App โ€ข เธฃเธฐเธเธเธเธณเธเธงเธ“เธเธทเนเธเธ—เธตเนเธเธฒเธเธเธดเธเธฑเธ” GPS เนเธ”เธขเธเธฃเธฐเธกเธฒเธ“ "
-    "เธเธงเธฃเธ•เธฃเธงเธเธชเธญเธเนเธเธงเน€เธเธ•เธเธฃเธดเธเธเนเธญเธเนเธเนเน€เธเนเธเธเนเธญเธกเธนเธฅเธ—เธฒเธเธเธเธซเธกเธฒเธข"
+        <div class="app-subtitle">
+            ระบบวัดพื้นที่นา • GPS • คำนวณค่าจ้าง
+        </div>
+        """,
+        unsafe_allow_html=True
     )
+
+    st.warning(
+        "ไม่พบ logo1.png — กรุณาวาง logo1.png "
+        "ไว้ในโฟลเดอร์เดียวกับ app.py"
+    )
+
+
+# =========================================================
+# ข้อมูลเจ้าของนา
+# =========================================================
+st.subheader("👤 ข้อมูลแปลงนา")
+
+c1, c2 = st.columns(2)
+
+with c1:
+
+    owner = st.text_input(
+        "ชื่อเจ้าของนา / ผู้ว่าจ้าง",
+        value=st.session_state.owner,
+        placeholder="เช่น นายสมชาย",
+    )
+
+    field_name = st.text_input(
+        "ชื่อแปลงนา / สถานที่",
+        value=st.session_state.field_name,
+        placeholder="เช่น แปลงนาบ้านเหนือ",
+    )
+
+with c2:
+
+    note = st.text_area(
+        "📝 หมายเหตุ",
+        value=st.session_state.note,
+        placeholder="เช่น ไถ 1 รอบ ปั่น 1 รอบ",
+        height=105,
+    )
+
+
+st.session_state.owner = owner
+st.session_state.field_name = field_name
+st.session_state.note = note
+
+
+# =========================================================
+# เลือกบริการ
+# =========================================================
+st.subheader("💰 รายการคิดค่าจ้าง")
+
+r1, r2 = st.columns(2)
+
+with r1:
+
+    plow_enabled = st.checkbox(
+        f"🚜 ไถนา — {PLOW_RATE:,.0f} บาท/ไร่",
+        value=st.session_state.plow_enabled,
+    )
+
+with r2:
+
+    till_enabled = st.checkbox(
+        f"⚙️ ปั่นดิน — {TILL_RATE:,.0f} บาท/ไร่",
+        value=st.session_state.till_enabled,
+    )
+
+st.session_state.plow_enabled = plow_enabled
+st.session_state.till_enabled = till_enabled
+
+
+# =========================================================
+# ตำแหน่งเริ่มต้นแผนที่
+# =========================================================
+DEFAULT_LAT = 15.8700
+DEFAULT_LON = 100.9925
+
+if st.session_state.last_gps:
+
+    map_lat = st.session_state.last_gps[0]
+    map_lon = st.session_state.last_gps[1]
+
+elif st.session_state.last_points:
+
+    map_lat = sum(p[0] for p in st.session_state.last_points) / len(
+        st.session_state.last_points
+    )
+
+    map_lon = sum(p[1] for p in st.session_state.last_points) / len(
+        st.session_state.last_points
+    )
+
+else:
+
+    map_lat = DEFAULT_LAT
+    map_lon = DEFAULT_LON
+
+
+# =========================================================
+# สร้างแผนที่
+# =========================================================
+m = folium.Map(
+    location=[map_lat, map_lon],
+    zoom_start=17,
+    control_scale=True,
+    tiles="OpenStreetMap",
+)
+
+# ปุ่มเต็มจอ
+Fullscreen(
+    position="topright"
+).add_to(m)
+
+# ปุ่ม GPS
+try:
+
+    LocateControl(
+        auto_start=False,
+        flyTo=True,
+        keepCurrentZoomLevel=True,
+        showPopup=True,
+        strings={
+            "title": "หาตำแหน่ง GPS ของฉัน"
+        },
+    ).add_to(m)
+
+except Exception:
+
+    pass
+
+
+# =========================================================
+# วาด polygon
+# =========================================================
+Draw(
+    export=False,
+    position="topleft",
+    draw_options={
+        "polyline": False,
+        "polygon": {
+            "allowIntersection": False,
+            "showArea": True,
+            "shapeOptions": {
+                "color": "#e91e63",
+                "weight": 4,
+                "fillColor": "#ffeb3b",
+                "fillOpacity": 0.20,
+            },
+        },
+        "rectangle": False,
+        "circle": False,
+        "circlemarker": False,
+        "marker": False,
+    },
+    edit_options={
+        "edit": True,
+        "remove": True,
+    },
+).add_to(m)
+
+
+# =========================================================
+# ถ้ามี polygon เดิม แสดงบนแผนที่
+# =========================================================
+if len(st.session_state.last_points) >= 3:
+
+    folium.Polygon(
+        locations=st.session_state.last_points,
+        color="#e91e63",
+        weight=4,
+        fill=True,
+        fill_color="#ffeb3b",
+        fill_opacity=0.20,
+        tooltip="ลากจุดเพื่อปรับแนวคันนา",
+    ).add_to(m)
+
+
+# =========================================================
+# แสดง GPS ล่าสุด
+# =========================================================
+if st.session_state.last_gps:
+
+    folium.Marker(
+        location=st.session_state.last_gps,
+        popup="📍 ตำแหน่ง GPS ล่าสุด",
+        tooltip="GPS ปัจจุบัน",
+        icon=folium.Icon(
+            color="blue",
+            icon="location-arrow",
+            prefix="fa",
+        ),
+    ).add_to(m)
+
+
+# =========================================================
+# แผนที่
+# =========================================================
+st.subheader("🗺️ แผนที่วัดพื้นที่นา")
+
+st.info(
+    "📌 กดเครื่องมือรูปหลายเหลี่ยม แล้วแตะจุดรอบแปลงนา "
+    "ให้ครบ จากนั้นกดปิดรูปแปลง • สามารถเข้าโหมดแก้ไขแล้ว "
+    "ลากจุดไปตรงคันนาได้ • ใช้ปุ่ม + / − หรือสองนิ้วเพื่อซูม"
+)
+
+map_data = st_folium(
+    m,
+    width=None,
+    height=600,
+    returned_objects=[
+        "all_drawings",
+        "last_active_drawing",
+        "last_clicked",
+    ],
+    key="rice_map",
+)
+
+
+# =========================================================
+# อ่าน polygon จากแผนที่
+# =========================================================
+drawings = map_data.get("all_drawings", [])
+
+new_points = None
+
+if drawings:
+
+    # เอารูปล่าสุดที่เป็น Polygon
+    for drawing in reversed(drawings):
+
+        if drawing.get("geometry", {}).get("type") == "Polygon":
+
+            coords = drawing["geometry"]["coordinates"][0]
+
+            converted = []
+
+            for point in coords:
+
+                lon = point[0]
+                lat = point[1]
+
+                converted.append(
+                    [lat, lon]
+                )
+
+            # จุดสุดท้ายมักซ้ำกับจุดแรก
+            if len(converted) > 1:
+
+                if converted[0] == converted[-1]:
+
+                    converted = converted[:-1]
+
+            new_points = converted
+
+            break
+
+
+# =========================================================
+# ถ้าได้ polygon ใหม่
+# =========================================================
+if new_points and len(new_points) >= 3:
+
+    if new_points != st.session_state.last_points:
+
+        st.session_state.last_points = new_points
+
+        st.rerun()
+
+
+# =========================================================
+# ปุ่มล้างแปลง
+# =========================================================
+if st.button(
+    "🗑️ ล้างแปลงนี้ เริ่มวัดใหม่",
+    use_container_width=True
+):
+
+    st.session_state.last_points = []
+
+    st.rerun()
+
+
+# =========================================================
+# พื้นที่
+# =========================================================
+points = st.session_state.last_points
+
+area_m2 = polygon_area_m2(points)
+
+rai_exact, plow_money, till_money, total_money = calculate_money(
+    area_m2,
+    plow_enabled,
+    till_enabled,
+)
+
+
+# =========================================================
+# ผลการวัด
+# =========================================================
+st.divider()
+
+st.subheader("📐 ผลการวัดพื้นที่")
+
+
+if len(points) < 3:
+
+    st.markdown(
+        """
+        <div class="warning-box">
+        📌 ตอนนี้ยังไม่มีพื้นที่ที่วัดได้<br>
+        ให้กดเครื่องมือรูปหลายเหลี่ยมบนแผนที่
+        แล้วแตะรอบคันนาอย่างน้อย 3 จุด
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+else:
+
+    thai_area = format_area(area_m2)
+
+    a, b = st.columns(2)
+
+    with a:
+
+        st.markdown(
+            f"""
+            <div class="big-card">
+
+                <div class="area-label">
+                    🌾 พื้นที่นา
+                </div>
+
+                <div class="area-value">
+                    {thai_area}
+                </div>
+
+                <div>
+                    {area_m2:,.2f} ตารางเมตร
+                </div>
+
+                <div style="opacity:.65;font-size:13px;margin-top:5px;">
+                    {rai_exact:,.6f} ไร่
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with b:
+
+        st.markdown(
+            f"""
+            <div class="big-card">
+
+                <div class="money-label">
+                    💰 ยอดรวมค่าจ้าง
+                </div>
+
+                <div class="money-value">
+                    {total_money:,.2f} บาท
+                </div>
+
+                <div style="opacity:.65;font-size:13px;margin-top:5px;">
+                    คำนวณจากพื้นที่จริง
+                </div>
+
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+    # -----------------------------------------------------
+    # รายละเอียดเงิน
+    # -----------------------------------------------------
+    st.subheader("💵 รายละเอียดเงิน")
+
+    m1, m2, m3 = st.columns(3)
+
+    with m1:
+
+        st.metric(
+            "🚜 ค่าไถนา",
+            f"{plow_money:,.2f} บาท"
+        )
+
+    with m2:
+
+        st.metric(
+            "⚙️ ค่าปั่นดิน",
+            f"{till_money:,.2f} บาท"
+        )
+
+    with m3:
+
+        st.metric(
+            "💰 รวม",
+            f"{total_money:,.2f} บาท"
+        )
+
+
+    # -----------------------------------------------------
+    # สรุปเจ้าของ
+    # -----------------------------------------------------
+    st.markdown("---")
+
+    s1, s2 = st.columns(2)
+
+    with s1:
+
+        st.write(
+            f"👤 **เจ้าของนา:** "
+            f"{owner if owner else 'ไม่ได้ระบุ'}"
+        )
+
+        st.write(
+            f"🌾 **แปลง:** "
+            f"{field_name if field_name else 'ไม่ได้ระบุ'}"
+        )
+
+    with s2:
+
+        st.write(
+            f"📝 **หมายเหตุ:** "
+            f"{note if note else '-'}"
+        )
+
+        st.write(
+            f"📍 **จำนวนหมุด:** "
+            f"{len(points)} จุด"
+        )
+
+
+# =========================================================
+# บันทึกแปลง
+# =========================================================
+st.divider()
+
+st.subheader("💾 บันทึกข้อมูลแปลง")
+
+
+if st.button(
+    "💾 บันทึกแปลงนี้",
+    type="primary",
+    use_container_width=True
+):
+
+    if len(points) < 3:
+
+        st.error(
+            "กรุณาวัดพื้นที่ให้ครบอย่างน้อย 3 จุดก่อนครับ"
+        )
+
+    else:
+
+        record = {
+
+            "id": datetime.now().strftime(
+                "%Y%m%d%H%M%S"
+            ),
+
+            "saved_at": datetime.now().strftime(
+                "%d/%m/%Y %H:%M:%S"
+            ),
+
+            "owner": owner,
+
+            "field_name": field_name,
+
+            "note": note,
+
+            "points": points,
+
+            "area_m2": area_m2,
+
+            "rai_exact": rai_exact,
+
+            "thai_area": thai_area,
+
+            "plow_enabled": plow_enabled,
+
+            "till_enabled": till_enabled,
+
+            "plow_money": plow_money,
+
+            "till_money": till_money,
+
+            "total_money": total_money,
+        }
+
+        st.session_state.saved_fields.append(
+            record
+        )
+
+        save_fields(
+            st.session_state.saved_fields
+        )
+
+        st.success(
+            "✅ บันทึกข้อมูลแปลงเรียบร้อยแล้วครับ"
+        )
+
+
+# =========================================================
+# สร้างไฟล์ JSON สำหรับแปลงปัจจุบัน
+# =========================================================
+if len(points) >= 3:
+
+    current_data = {
+
+        "เจ้าของนา": owner,
+
+        "ชื่อแปลง": field_name,
+
+        "หมายเหตุ": note,
+
+        "พื้นที่ตารางเมตร": round(
+            area_m2,
+            2
+        ),
+
+        "พื้นที่ไทย": thai_area,
+
+        "พื้นที่ไร่จริง": round(
+            rai_exact,
+            6
+        ),
+
+        "ค่าไถ": round(
+            plow_money,
+            2
+        ),
+
+        "ค่าปั่นดิน": round(
+            till_money,
+            2
+        ),
+
+        "ยอดรวม": round(
+            total_money,
+            2
+        ),
+
+        "พิกัด": points,
+    }
+
+    json_bytes = json.dumps(
+        current_data,
+        ensure_ascii=False,
+        indent=2
+    ).encode("utf-8")
+
+    st.download_button(
+        "📥 ดาวน์โหลดข้อมูลแปลงนี้ (JSON)",
+        data=json_bytes,
+        file_name=(
+            f"แปลงนา_"
+            f"{field_name if field_name else 'ไม่ระบุ'}"
+            f".json"
+        ),
+        mime="application/json",
+        use_container_width=True,
+    )
+
+
+# =========================================================
+# รายการแปลงที่บันทึก
+# =========================================================
+st.divider()
+
+st.subheader("📋 แปลงนาที่บันทึกไว้")
+
+
+if not st.session_state.saved_fields:
+
+    st.caption(
+        "ยังไม่มีข้อมูลที่บันทึก"
+    )
+
+else:
+
+    for index, record in enumerate(
+        reversed(
+            st.session_state.saved_fields
+        )
+    ):
+
+        owner_text = (
+            record.get("owner")
+            or "ไม่ระบุเจ้าของ"
+        )
+
+        field_text = (
+            record.get("field_name")
+            or "ไม่ระบุชื่อแปลง"
+        )
+
+        total_text = (
+            record.get("total_money", 0)
+        )
+
+        title = (
+            f"🌾 {field_text} | "
+            f"👤 {owner_text} | "
+            f"💰 {total_text:,.2f} บาท"
+        )
+
+        with st.expander(title):
+
+            st.write(
+                "📐 พื้นที่:",
+                record.get(
+                    "thai_area",
+                    "-"
+                )
+            )
+
+            st.write(
+                "📏 ตารางเมตร:",
+                f"{record.get('area_m2', 0):,.2f}"
+            )
+
+            st.write(
+                "🚜 ค่าไถ:",
+               
