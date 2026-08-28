@@ -20,7 +20,6 @@ button, input, textarea, select {
 font-family: Tahoma, Arial, sans-serif !important;
 }
 
-```
 .total-box {
     padding: 24px;
     border-radius: 18px;
@@ -41,7 +40,6 @@ font-family: Tahoma, Arial, sans-serif !important;
 </style>
 """,
 unsafe_allow_html=True,
-```
 
 )
 
@@ -58,7 +56,6 @@ def thai_area(m2):
 if m2 < 0:
 m2 = 0
 
-```
 rai = int(m2 // RAI_M2)
 remain = m2 - rai * RAI_M2
 
@@ -69,13 +66,11 @@ wa = int(remain // WA_M2)
 remain = remain - wa * WA_M2
 
 return rai, ngan, wa, remain
-```
 
 def polygon_area_m2(points):
 if len(points) < 3:
 return 0.0
 
-```
 average_lat = sum(
     p[0] for p in points
 ) / len(points)
@@ -119,7 +114,6 @@ for i in range(len(xy)):
     )
 
 return abs(area) / 2.0
-```
 
 def money(value):
 return f"{value:,.2f}"
