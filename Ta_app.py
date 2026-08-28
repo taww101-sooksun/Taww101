@@ -12,7 +12,7 @@ import requests
 from PIL import Image, ImageDraw
 
 st.set_page_config(
-    page_title="Ta App - วัดพื้นที่นา",
+    page_title="Ta App None- วัดพื้นที่นา",
     page_icon="🌾",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -229,7 +229,7 @@ Draw(
 map_data = st_folium(
     m,
     width=None,
-    height=650,
+    height=500,
     returned_objects=["all_drawings"],
     key="ta_map",
 )
