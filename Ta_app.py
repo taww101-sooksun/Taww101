@@ -178,7 +178,7 @@ if "lat" not in st.session_state:
 if "lon" not in st.session_state:
     st.session_state.lon = None
 
-st.title("🌾 Ta App")
+st.title("🌾 ถาวร Ta App")
 st.caption("วัดพื้นที่นา • ปรับแนวเขต • คำนวณค่าไถ/ปั่นดิน • บันทึกพร้อมภาพ")
 
 # ขอ GPS ของเครื่องที่เปิดแอป
@@ -202,7 +202,7 @@ c1, c2 = st.columns(2)
 with c1:
     owner = st.text_input(
         "👤 ชื่อเจ้าของนา",
-        placeholder="เช่น นายสมชาย ใจดี",
+        placeholder="เช่น นาแม่ใหญ่นาง",
     )
 with c2:
     note = st.text_input(
@@ -279,7 +279,7 @@ if len(st.session_state.points) >= 3:
 map_data = st_folium(
     m,
     width=None,
-    height=650,
+    height=550,
     returned_objects=["all_drawings"],
     key="ta_map",
 )
