@@ -229,7 +229,7 @@ Draw(
 map_data = st_folium(
     m,
     width=None,
-    height=550,
+    height=600,
     returned_objects=["all_drawings"],
     key="ta_map",
 )
