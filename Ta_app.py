@@ -1,4 +1,4 @@
-import math
+def math
 import os
 
 import folium
@@ -128,4 +128,3 @@ st.session_state.lat = 13.7563
 
 if "lon" not in st.session_state:
 st.session_state.lon = 100.5018
-    
