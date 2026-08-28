@@ -1,25 +1,16 @@
 import math
-import os
+import io
 import json
 from datetime import datetime
-from io import BytesIO
 
 import folium
+import requests
 import streamlit as st
 from folium.plugins import Draw, LocateControl
 from streamlit_folium import st_folium
+from streamlit_geolocation import streamlit_geolocation
+from PIL import Image, ImageDraw
 
-try:
-    import requests
-    from PIL import Image, ImageDraw
-    PIL_AVAILABLE = True
-except ImportError:
-    PIL_AVAILABLE = False
-
-
-# =========================================================
-# ตั้งค่าหน้าแอป
-# =========================================================
 
 st.set_page_config(
     page_title="Ta App - วัดพื้นที่นา",
@@ -28,10 +19,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-
-# =========================================================
-# CSS
-# =========================================================
 
 st.markdown(
     """
@@ -58,12 +45,6 @@ st.markdown(
         font-size: 42px;
         font-weight: 800;
     }
-
-    .saved-box {
-        padding: 15px;
-        border-radius: 15px;
-        border: 1px solid rgba(128, 128, 128, 0.35);
-    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -71,7 +52,7 @@ st.markdown(
 
 
 # =========================================================
-# ค่าคงที่
+# ตั้งค่าราคา
 # =========================================================
 
 PLOW_RATE = 250.0
@@ -84,48 +65,45 @@ WA_M2 = 4.0
 DEFAULT_LAT = 13.7563
 DEFAULT_LON = 100.5018
 
-DATA_FILE = "saved_plots.json"
-IMAGE_DIR = "saved_maps"
-
 
 # =========================================================
-# ฟังก์ชันพื้นที่
+# ฟังก์ชันแปลงพื้นที่
 # =========================================================
 
 def thai_area(m2):
-    """
-    แปลงตารางเมตรเป็น
-    ไร่ / งาน / ตารางวา / ตารางเมตรที่เหลือ
-    """
-
     m2 = max(float(m2), 0.0)
 
     rai = int(m2 // RAI_M2)
-    remain = m2 - (rai * RAI_M2)
+
+    remain = m2 - rai * RAI_M2
 
     ngan = int(remain // NGAN_M2)
-    remain = remain - (ngan * NGAN_M2)
+
+    remain -= ngan * NGAN_M2
 
     wa = int(remain // WA_M2)
-    remain = remain - (wa * WA_M2)
+
+    remain -= wa * WA_M2
 
     return rai, ngan, wa, remain
 
 
+# =========================================================
+# คำนวณพื้นที่จากพิกัด GPS
+# =========================================================
+
 def polygon_area_m2(points):
-    """
-    คำนวณพื้นที่จากพิกัดละติจูด/ลองจิจูด
-    โดยแปลงเป็นระนาบเมตรบริเวณพื้นที่นั้น
-    """
 
     if len(points) < 3:
         return 0.0
 
     average_lat = sum(
-        point[0] for point in points
+        p[0] for p in points
     ) / len(points)
 
-    latitude_radians = math.radians(average_lat)
+    lat_radians = math.radians(
+        average_lat
+    )
 
     earth_radius = 6378137.0
 
@@ -136,7 +114,7 @@ def polygon_area_m2(points):
         x = (
             math.radians(lon)
             * earth_radius
-            * math.cos(latitude_radians)
+            * math.cos(lat_radians)
         )
 
         y = (
@@ -164,732 +142,330 @@ def polygon_area_m2(points):
     return abs(area) / 2.0
 
 
+# =========================================================
+# เงิน
+# =========================================================
+
 def money(value):
-    return f"{float(value):,.2f}"
-
-
-def area_text(m2):
-    rai, ngan, wa, remain = thai_area(m2)
-
-    return (
-        f"{rai} ไร่ "
-        f"{ngan} งาน "
-        f"{wa} ตารางวา "
-        f"เหลือ {remain:.2f} ตร.ม."
-    )
+    return f"{value:,.2f}"
 
 
 # =========================================================
-# ฟังก์ชันบันทึกข้อมูล
+# อ่านรูปหลายเหลี่ยมจาก Draw
 # =========================================================
 
-def load_saved_plots():
-    if not os.path.exists(DATA_FILE):
+def normalize_points_from_drawings(drawings):
+
+    if not drawings:
         return []
 
-    try:
-        with open(
-            DATA_FILE,
-            "r",
-            encoding="utf-8"
-        ) as file:
-            data = json.load(file)
+    for feature in reversed(drawings):
 
-        if isinstance(data, list):
-            return data
+        geometry = feature.get(
+            "geometry",
+            {}
+        )
 
-    except Exception:
-        pass
+        if geometry.get(
+            "type"
+        ) != "Polygon":
+            continue
+
+        coords = geometry.get(
+            "coordinates",
+            []
+        )
+
+        if not coords:
+            continue
+
+        ring = coords[0]
+
+        points = []
+
+        for pair in ring:
+
+            if len(pair) >= 2:
+
+                lon = pair[0]
+                lat = pair[1]
+
+                points.append(
+                    (
+                        float(lat),
+                        float(lon)
+                    )
+                )
+
+        if (
+            len(points) >= 2
+            and points[0] == points[-1]
+        ):
+            points.pop()
+
+        if len(points) >= 3:
+            return points
 
     return []
 
 
-def save_saved_plots():
-    try:
-        with open(
-            DATA_FILE,
-            "w",
-            encoding="utf-8"
-        ) as file:
-
-            json.dump(
-                st.session_state.saved_plots,
-                file,
-                ensure_ascii=False,
-                indent=2,
-            )
-
-        return True
-
-    except Exception:
-        return False
-
-
 # =========================================================
-# ฟังก์ชันแผนที่ดาวเทียม
+# สร้างภาพดาวเทียมพร้อมเส้นแปลงนา
 # =========================================================
 
-def latlon_to_tile(lat, lon, zoom):
-    """
-    แปลงพิกัด GPS เป็นตำแหน่ง tile ของ Web Mercator
-    """
-
-    lat = max(
-        min(lat, 85.05112878),
-        -85.05112878
-    )
-
-    n = 2.0 ** zoom
-
-    x = (
-        (lon + 180.0)
-        / 360.0
-        * n
-    )
-
-    lat_radians = math.radians(lat)
-
-    y = (
-        (
-            1.0
-            - (
-                math.asinh(
-                    math.tan(lat_radians)
-                )
-                / math.pi
-            )
-        )
-        / 2.0
-        * n
-    )
-
-    return x, y
-
-
-def create_satellite_image(points, filename):
-    """
-    สร้างภาพดาวเทียมของแปลงนา
-    แล้ววาดเส้นขอบเขตสีเขียวทับลงไป
-    """
-
-    if not PIL_AVAILABLE:
-        return False
+def make_satellite_snapshot(
+    points,
+    width=900,
+    height=600
+):
 
     if len(points) < 3:
-        return False
+        return None
+
+    lats = [
+        p[0]
+        for p in points
+    ]
+
+    lons = [
+        p[1]
+        for p in points
+    ]
+
+    lat_pad = max(
+        (max(lats) - min(lats))
+        * 0.18,
+        0.00025
+    )
+
+    lon_pad = max(
+        (max(lons) - min(lons))
+        * 0.18,
+        0.00025
+    )
+
+    south = min(lats) - lat_pad
+    north = max(lats) + lat_pad
+
+    west = min(lons) - lon_pad
+    east = max(lons) + lon_pad
+
+    url = (
+        "https://server.arcgisonline.com/"
+        "ArcGIS/rest/services/"
+        "World_Imagery/MapServer/export"
+    )
+
+    params = {
+        "bbox": (
+            f"{west},{south},"
+            f"{east},{north}"
+        ),
+        "bboxSR": "4326",
+        "imageSR": "4326",
+        "size": f"{width},{height}",
+        "format": "png",
+        "f": "image",
+        "transparent": "false",
+    }
 
     try:
 
-        min_lat = min(
-            p[0] for p in points
+        response = requests.get(
+            url,
+            params=params,
+            timeout=20
         )
 
-        max_lat = max(
-            p[0] for p in points
-        )
+        response.raise_for_status()
 
-        min_lon = min(
-            p[1] for p in points
-        )
-
-        max_lon = max(
-            p[1] for p in points
-        )
-
-        center_lat = (
-            min_lat + max_lat
-        ) / 2.0
-
-        center_lon = (
-            min_lon + max_lon
-        ) / 2.0
-
-        lat_span = max_lat - min_lat
-        lon_span = max_lon - min_lon
-
-        largest_span = max(
-            lat_span,
-            lon_span
-        )
-
-        if largest_span > 0.02:
-            zoom = 14
-
-        elif largest_span > 0.01:
-            zoom = 15
-
-        elif largest_span > 0.005:
-            zoom = 16
-
-        elif largest_span > 0.002:
-            zoom = 17
-
-        else:
-            zoom = 18
-
-        center_x, center_y = latlon_to_tile(
-            center_lat,
-            center_lon,
-            zoom
-        )
-
-        tile_size = 256
-
-        center_tile_x = int(
-            math.floor(center_x)
-        )
-
-        center_tile_y = int(
-            math.floor(center_y)
-        )
-
-        canvas = Image.new(
-            "RGB",
-            (
-                tile_size * 3,
-                tile_size * 3
-            ),
-            "white",
-        )
-
-        session = requests.Session()
-
-        session.headers.update(
-            {
-                "User-Agent":
-                    "Ta-App/1.0"
-            }
-        )
-
-        for dx in range(-1, 2):
-
-            for dy in range(-1, 2):
-
-                tile_x = (
-                    center_tile_x
-                    + dx
-                )
-
-                tile_y = (
-                    center_tile_y
-                    + dy
-                )
-
-                url = (
-                    "https://server.arcgisonline.com/"
-                    "ArcGIS/rest/services/"
-                    "World_Imagery/"
-                    "MapServer/tile/"
-                    f"{zoom}/"
-                    f"{tile_y}/"
-                    f"{tile_x}"
-                )
-
-                response = session.get(
-                    url,
-                    timeout=10
-                )
-
-                response.raise_for_status()
-
-                tile_image = Image.open(
-                    BytesIO(
-                        response.content
-                    )
-                ).convert("RGB")
-
-                paste_x = (
-                    (dx + 1)
-                    * tile_size
-                )
-
-                paste_y = (
-                    (dy + 1)
-                    * tile_size
-                )
-
-                canvas.paste(
-                    tile_image,
-                    (
-                        paste_x,
-                        paste_y
-                    )
-                )
-
-        def gps_to_pixel(lat, lon):
-
-            tile_x, tile_y = (
-                latlon_to_tile(
-                    lat,
-                    lon,
-                    zoom
-                )
+        image = Image.open(
+            io.BytesIO(
+                response.content
             )
-
-            pixel_x = (
-                tile_x
-                - (center_tile_x - 1)
-            ) * tile_size
-
-            pixel_y = (
-                tile_y
-                - (center_tile_y - 1)
-            ) * tile_size
-
-            return (
-                int(pixel_x),
-                int(pixel_y)
-            )
-
-        image_draw = ImageDraw.Draw(
-            canvas,
-            "RGBA"
-        )
-
-        pixel_points = [
-            gps_to_pixel(
-                lat,
-                lon
-            )
-            for lat, lon in points
-        ]
-
-        # พื้นที่สีเขียวโปร่งใส
-        image_draw.polygon(
-            pixel_points,
-            fill=(
-                0,
-                180,
-                70,
-                65
-            ),
-        )
-
-        # เส้นขอบ
-        closed_points = (
-            pixel_points
-            + [pixel_points[0]]
-        )
-
-        image_draw.line(
-            closed_points,
-            fill=(
-                0,
-                180,
-                70,
-                255
-            ),
-            width=6,
-            joint="curve",
-        )
-
-        # จุดแต่ละจุด
-        for x, y in pixel_points:
-
-            radius = 6
-
-            image_draw.ellipse(
-                (
-                    x - radius,
-                    y - radius,
-                    x + radius,
-                    y + radius,
-                ),
-                fill=(
-                    255,
-                    255,
-                    255,
-                    255
-                ),
-                outline=(
-                    0,
-                    130,
-                    60,
-                    255
-                ),
-                width=2,
-            )
-
-        os.makedirs(
-            IMAGE_DIR,
-            exist_ok=True
-        )
-
-        canvas.save(
-            filename,
-            "PNG",
-            optimize=True
-        )
-
-        return True
-
-    except Exception:
-        return False
-
-
-def create_fallback_image(points, filename):
-    """
-    ถ้าดาวเทียมโหลดไม่ได้
-    จะสร้างภาพแปลงนาแบบสำรอง
-    """
-
-    if not PIL_AVAILABLE:
-        return False
-
-    if len(points) < 3:
-        return False
-
-    try:
-
-        width = 900
-        height = 650
-        margin = 70
-
-        image = Image.new(
-            "RGB",
-            (
-                width,
-                height
-            ),
-            "white",
-        )
+        ).convert("RGB")
 
         draw = ImageDraw.Draw(
-            image,
-            "RGBA"
+            image
         )
 
-        min_lat = min(
-            p[0] for p in points
-        )
+        pixel_points = []
 
-        max_lat = max(
-            p[0] for p in points
-        )
-
-        min_lon = min(
-            p[1] for p in points
-        )
-
-        max_lon = max(
-            p[1] for p in points
-        )
-
-        lat_span = max(
-            max_lat - min_lat,
-            0.000001
-        )
-
-        lon_span = max(
-            max_lon - min_lon,
-            0.000001
-        )
-
-        def convert(
-            lat,
-            lon
-        ):
+        for lat, lon in points:
 
             x = (
-                margin
-                + (
-                    (lon - min_lon)
-                    / lon_span
-                )
-                * (
-                    width
-                    - 2 * margin
-                )
+                (lon - west)
+                / (east - west)
+                * (width - 1)
             )
 
             y = (
-                height
-                - margin
-                - (
-                    (lat - min_lat)
-                    / lat_span
-                )
-                * (
-                    height
-                    - 2 * margin
-                )
+                (north - lat)
+                / (north - south)
+                * (height - 1)
             )
 
-            return (
-                int(x),
-                int(y)
-            )
-
-        polygon_points = [
-            convert(lat, lon)
-            for lat, lon in points
-        ]
-
-        draw.polygon(
-            polygon_points,
-            fill=(
-                46,
-                180,
-                75,
-                70
-            ),
-        )
-
-        draw.line(
-            polygon_points
-            + [polygon_points[0]],
-            fill=(
-                0,
-                150,
-                70,
-                255
-            ),
-            width=6,
-        )
-
-        for x, y in polygon_points:
-
-            radius = 6
-
-            draw.ellipse(
+            pixel_points.append(
                 (
-                    x - radius,
-                    y - radius,
-                    x + radius,
-                    y + radius,
-                ),
-                fill="white",
-                outline=(
-                    0,
-                    120,
-                    60,
-                    255
-                ),
-                width=2,
+                    int(x),
+                    int(y)
+                )
             )
 
-        os.makedirs(
-            IMAGE_DIR,
-            exist_ok=True
-        )
+        if len(pixel_points) >= 3:
 
-        image.save(
-            filename,
-            "PNG"
-        )
+            draw.line(
+                pixel_points
+                + [pixel_points[0]],
+                fill=(0, 190, 80),
+                width=7
+            )
 
-        return True
+            draw.polygon(
+                pixel_points,
+                outline=(0, 190, 80),
+                width=7
+            )
+
+        return image
 
     except Exception:
-        return False
+
+        return None
 
 
 # =========================================================
-# สร้างแผนที่
+# แปลงภาพเป็น bytes
 # =========================================================
 
-def create_map(
-    center_lat,
-    center_lon,
-    points
-):
+def image_to_bytes(image):
 
-    map_object = folium.Map(
-        location=[
-            center_lat,
-            center_lon
-        ],
-        zoom_start=19,
-        control_scale=True,
-        tiles=None,
+    if image is None:
+        return None
+
+    buffer = io.BytesIO()
+
+    image.save(
+        buffer,
+        format="PNG"
     )
 
-    # แผนที่ถนน
-    folium.TileLayer(
-        tiles="OpenStreetMap",
-        name="🗺️ แผนที่",
-        control=True,
-    ).add_to(map_object)
-
-    # ดาวเทียม
-    folium.TileLayer(
-        tiles=(
-            "https://server.arcgisonline.com/"
-            "ArcGIS/rest/services/"
-            "World_Imagery/"
-            "MapServer/tile/"
-            "{z}/{y}/{x}"
-        ),
-        attr="Esri World Imagery",
-        name="🛰️ ดาวเทียม",
-        overlay=False,
-        control=True,
-    ).add_to(map_object)
-
-    # GPS
-    LocateControl(
-        auto_start=True,
-        flyTo=True,
-        keepCurrentZoomLevel=False,
-        showCompass=True,
-        strings={
-            "title":
-                "ไปยังตำแหน่งปัจจุบัน",
-            "popup":
-                "ตำแหน่งปัจจุบัน",
-        },
-    ).add_to(map_object)
-
-    # เครื่องมือวาด
-    Draw(
-        export=False,
-        position="topleft",
-        draw_options={
-            "polyline": False,
-            "rectangle": False,
-            "circle": False,
-            "circlemarker": False,
-            "marker": False,
-
-            "polygon": {
-                "allowIntersection": False,
-                "showArea": True,
-
-                "shapeOptions": {
-                    "color": "#00a651",
-                    "weight": 4,
-                    "fillColor": "#00a651",
-                    "fillOpacity": 0.20,
-                },
-            },
-        },
-
-        edit_options={
-            "edit": True,
-            "remove": True,
-        },
-    ).add_to(map_object)
-
-    # วาดพื้นที่เดิม
-    if len(points) >= 3:
-
-        folium.Polygon(
-            locations=points,
-            color="#00a651",
-            weight=4,
-            fill=True,
-            fill_color="#00a651",
-            fill_opacity=0.20,
-            tooltip="ขอบเขตแปลงนา",
-        ).add_to(map_object)
-
-        # จุด
-        for index, point in enumerate(
-            points,
-            start=1
-        ):
-
-            folium.CircleMarker(
-                location=[
-                    point[0],
-                    point[1]
-                ],
-                radius=5,
-                color="white",
-                weight=2,
-                fill=True,
-                fill_color="#00a651",
-                fill_opacity=1,
-                tooltip=(
-                    f"จุดที่ {index}"
-                ),
-            ).add_to(map_object)
-
-    folium.LayerControl(
-        collapsed=False
-    ).add_to(map_object)
-
-    return map_object
+    return buffer.getvalue()
 
 
 # =========================================================
-# SESSION STATE
+# Session State
 # =========================================================
 
 if "points" not in st.session_state:
     st.session_state.points = []
 
+
 if "saved_plots" not in st.session_state:
-    st.session_state.saved_plots = (
-        load_saved_plots()
-    )
+    st.session_state.saved_plots = []
+
 
 if "lat" not in st.session_state:
     st.session_state.lat = DEFAULT_LAT
 
+
 if "lon" not in st.session_state:
     st.session_state.lon = DEFAULT_LON
 
-if "map_version" not in st.session_state:
-    st.session_state.map_version = 0
+
+if "location_loaded" not in st.session_state:
+    st.session_state.location_loaded = False
 
 
 # =========================================================
-# HEADER
+# หัวแอป
 # =========================================================
 
-header_left, header_right = st.columns(
-    [1, 5]
+st.title("🌾 Ta App")
+
+st.caption(
+    "วัดพื้นที่นา • "
+    "ลาก/แก้ไขแนวเขต • "
+    "คำนวณค่าไถนาและปั่นดิน • "
+    "บันทึกข้อมูลพร้อมภาพแปลง"
 )
 
-with header_left:
 
-    if os.path.exists(
-        "logo1.png"
+# =========================================================
+# GPS มือถือ
+# =========================================================
+
+gps = streamlit_geolocation()
+
+
+if (
+    gps
+    and isinstance(gps, dict)
+    and gps.get("latitude") is not None
+):
+
+    new_lat = float(
+        gps["latitude"]
+    )
+
+    new_lon = float(
+        gps["longitude"]
+    )
+
+    if (
+        not st.session_state.location_loaded
+        or abs(
+            st.session_state.lat
+            - new_lat
+        ) > 0.000001
+        or abs(
+            st.session_state.lon
+            - new_lon
+        ) > 0.000001
     ):
-        st.image(
-            "logo1.png",
-            width=110
-        )
-    else:
-        st.markdown(
-            "## 🌾"
-        )
 
-with header_right:
+        st.session_state.lat = new_lat
 
-    st.title(
-        "🌾 Ta App - วัดพื้นที่นา"
+        st.session_state.lon = new_lon
+
+        st.session_state.location_loaded = True
+
+        st.rerun()
+
+
+if (
+    gps
+    and isinstance(gps, dict)
+    and gps.get("error")
+):
+
+    st.warning(
+        "เบราว์เซอร์ไม่อนุญาตให้ใช้ GPS "
+        "หรือหาตำแหน่งไม่ได้ "
+        "กรุณาอนุญาตตำแหน่งให้เว็บไซต์"
     )
-
-    st.caption(
-        "GPS • ดาวเทียม • วาดขอบเขตแปลงนา "
-        "• แก้ไขจุด • คำนวณพื้นที่ "
-        "• คำนวณค่าบริการ • บันทึกภาพแปลง"
-    )
-
-
-st.divider()
 
 
 # =========================================================
-# ข้อมูลเจ้าของนา
+# ข้อมูลเจ้าของ
 # =========================================================
 
-info1, info2 = st.columns(2)
+c1, c2 = st.columns(2)
 
-with info1:
+
+with c1:
 
     owner = st.text_input(
         "👤 ชื่อเจ้าของนา",
-        placeholder="เช่น แม่ใหญ่...",
+        placeholder="เช่น แม่ใหญ่บุญมี",
         key="owner",
     )
 
-with info2:
+
+with c2:
 
     note = st.text_input(
-        "📝 หมายเหตุ",
+        "📝 บันทึก / หมายเหตุ",
         placeholder="เช่น ไถนา + ปั่นดิน",
         key="note",
     )
@@ -900,127 +476,632 @@ with info2:
 # =========================================================
 
 st.subheader(
-    "🗺️ กำหนดขอบเขตแปลงนา"
+    "🗺️ วัดพื้นที่นา"
 )
+
 
 st.info(
-    "📍 เมื่อเปิดแอป ระบบจะพยายามหาตำแหน่งปัจจุบัน "
-    "และซูมเข้าใกล้ให้ • "
-    "เลือก 🛰️ ดาวเทียม • "
-    "ใช้เครื่องมือรูปหลายเหลี่ยมเพื่อวาดพื้นที่ "
-    "• สามารถแก้ไข/ขยับจุดให้ตรงแนวแปลงได้"
+    "📍 กดปุ่ม GPS เพื่อใช้ตำแหน่งปัจจุบัน • "
+    "เลือกเครื่องมือรูปหลายเหลี่ยมบนแผนที่ "
+    "แล้วลากจุดรอบแปลงนา • "
+    "สามารถลากจุดเพื่อแก้แนวเขตได้"
 )
 
-farm_map = create_map(
-    st.session_state.lat,
-    st.session_state.lon,
-    st.session_state.points,
+
+m = folium.Map(
+    location=[
+        st.session_state.lat,
+        st.session_state.lon
+    ],
+    zoom_start=19,
+    control_scale=True,
+    tiles=None,
 )
+
+
+# =========================================================
+# แผนที่ถนน
+# =========================================================
+
+folium.TileLayer(
+    tiles="OpenStreetMap",
+    name="แผนที่ถนน",
+    control=True,
+).add_to(m)
+
+
+# =========================================================
+# ภาพดาวเทียม
+# =========================================================
+
+folium.TileLayer(
+    tiles=(
+        "https://server.arcgisonline.com/"
+        "ArcGIS/rest/services/"
+        "World_Imagery/MapServer/"
+        "tile/{z}/{y}/{x}"
+    ),
+    attr="Tiles © Esri",
+    name="ภาพดาวเทียม",
+    overlay=False,
+    control=True,
+).add_to(m)
+
+
+folium.LayerControl(
+    collapsed=False
+).add_to(m)
+
+
+# =========================================================
+# ปุ่มตำแหน่งปัจจุบันบนแผนที่
+# =========================================================
+
+LocateControl(
+    auto_start=False,
+    flyTo=True,
+    keepCurrentZoomLevel=False,
+    showCompass=True,
+    strings={
+        "title": "ตำแหน่งปัจจุบัน"
+    },
+).add_to(m)
+
+
+# =========================================================
+# แสดงแปลงเดิม
+# =========================================================
+
+if len(
+    st.session_state.points
+) >= 3:
+
+    folium.Polygon(
+        locations=st.session_state.points,
+        color="#00b950",
+        weight=5,
+        fill=True,
+        fill_color="#00b950",
+        fill_opacity=0.18,
+        tooltip="แปลงนาที่วัด",
+    ).add_to(m)
+
+
+# =========================================================
+# เครื่องมือวาด
+# =========================================================
+
+draw_options = {
+
+    "polyline": False,
+
+    "rectangle": False,
+
+    "circle": False,
+
+    "circlemarker": False,
+
+    "marker": False,
+
+    "polygon": {
+        "allowIntersection": False,
+        "showArea": True,
+        "shapeOptions": {
+            "color": "#00b950",
+            "weight": 4,
+            "fillColor": "#00b950",
+            "fillOpacity": 0.18,
+        },
+    },
+}
+
+
+edit_options = {
+    "edit": True,
+    "remove": True,
+}
+
+
+Draw(
+    export=False,
+    position="topleft",
+    draw_options=draw_options,
+    edit_options=edit_options,
+).add_to(m)
+
+
+# =========================================================
+# แสดงแผนที่
+# =========================================================
 
 map_data = st_folium(
-    farm_map,
+    m,
     width=None,
-    height=620,
-
+    height=650,
     returned_objects=[
-        "last_clicked",
-        "center",
         "all_drawings",
+        "last_active_drawing",
     ],
-
-    key=(
-        f"farm_map_"
-        f"{st.session_state.map_version}"
-    ),
+    key="ta_map",
 )
 
 
 # =========================================================
-# อ่านข้อมูลจากแผนที่
+# รับพื้นที่จากการวาด
 # =========================================================
+
+drawings = None
 
 if map_data:
 
-    center = map_data.get(
-        "center"
+    drawings = map_data.get(
+        "all_drawings"
     )
 
-    if center:
 
-        try:
+new_points = (
+    normalize_points_from_drawings(
+        drawings
+    )
+)
 
-            st.session_state.lat = (
-                float(center["lat"])
-            )
 
-            st.session_state.lon = (
-                float(center["lng"])
-            )
+if drawings is not None:
 
-        except Exception:
-            pass
+    old_points = (
+        st.session_state.points
+    )
 
-    drawings = (
-        map_data.get(
-            "all_drawings"
+    if new_points != old_points:
+
+        st.session_state.points = (
+            new_points
         )
-        or []
+
+        st.rerun()
+
+
+# =========================================================
+# ปุ่มจัดการ
+# =========================================================
+
+b1, b2, b3 = st.columns(3)
+
+
+with b1:
+
+    if st.button(
+        "🗑️ ล้างแปลงที่กำลังวัด",
+        use_container_width=True
+    ):
+
+        st.session_state.points = []
+
+        st.rerun()
+
+
+with b2:
+
+    if st.button(
+        "📍 ใช้จุดตัวอย่าง",
+        use_container_width=True
+    ):
+
+        lat = st.session_state.lat
+        lon = st.session_state.lon
+
+        step = 0.001
+
+        st.session_state.points = [
+
+            (
+                lat + step,
+                lon - step
+            ),
+
+            (
+                lat + step,
+                lon + step
+            ),
+
+            (
+                lat - step,
+                lon + step
+            ),
+
+            (
+                lat - step,
+                lon - step
+            ),
+
+        ]
+
+        st.rerun()
+
+
+with b3:
+
+    if st.button(
+        "🔄 รีเฟรชแผนที่",
+        use_container_width=True
+    ):
+
+        st.rerun()
+
+
+# =========================================================
+# คำนวณ
+# =========================================================
+
+area_m2 = polygon_area_m2(
+    st.session_state.points
+)
+
+
+rai, ngan, wa, remain_m2 = (
+    thai_area(area_m2)
+)
+
+
+# =========================================================
+# คำนวณราคา
+# =========================================================
+
+plow_cost = (
+    area_m2 / RAI_M2
+) * PLOW_RATE
+
+
+mill_cost = (
+    area_m2 / RAI_M2
+) * MILL_RATE
+
+
+total_cost = (
+    plow_cost
+    + mill_cost
+)
+
+
+# =========================================================
+# ผลการวัด
+# =========================================================
+
+st.divider()
+
+st.subheader(
+    "📐 ผลการวัด"
+)
+
+
+if len(
+    st.session_state.points
+) < 3:
+
+    st.warning(
+        "กรุณาวาดขอบเขตแปลงนา "
+        "อย่างน้อย 3 จุด"
     )
 
-    if drawings:
 
-        latest_polygon = None
+else:
 
-        for drawing in drawings:
+    r1, r2, r3, r4 = (
+        st.columns(4)
+    )
 
-            geometry = drawing.get(
-                "geometry",
-                {}
+
+    r1.metric(
+        "พื้นที่รวม",
+        f"{area_m2:,.2f} ตร.ม."
+    )
+
+
+    r2.metric(
+        "ไร่",
+        f"{rai:,}"
+    )
+
+
+    r3.metric(
+        "งาน",
+        f"{ngan:,}"
+    )
+
+
+    r4.metric(
+        "ตารางวา",
+        f"{wa:,}"
+    )
+
+
+    st.success(
+        f"พื้นที่ประมาณ "
+        f"**{rai} ไร่ "
+        f"{ngan} งาน "
+        f"{wa} ตารางวา "
+        f"{remain_m2:.2f} ตร.ม.**"
+    )
+
+
+    # =====================================================
+    # ราคา
+    # =====================================================
+
+    st.subheader(
+        "💰 ยอดค่าใช้จ่าย"
+    )
+
+
+    p1, p2, p3 = (
+        st.columns(3)
+    )
+
+
+    p1.metric(
+        "1️⃣ ค่าไถนา",
+        f"{money(plow_cost)} บาท"
+    )
+
+
+    p2.metric(
+        "2️⃣ ค่าปั่นดิน",
+        f"{money(mill_cost)} บาท"
+    )
+
+
+    p3.metric(
+        "3️⃣ รวมไถนา + ปั่นดิน",
+        f"{money(total_cost)} บาท"
+    )
+
+
+    st.caption(
+        f"อัตราที่กำหนด: "
+        f"ไถนา {money(PLOW_RATE)} บาท/ไร่ • "
+        f"ปั่นดิน {money(MILL_RATE)} บาท/ไร่"
+    )
+
+
+    st.markdown(
+        f"""
+        <div class="total-box">
+
+            <div class="total-title">
+                💰 ยอดรวมที่ต้องจ่าย
+            </div>
+
+            <div class="total-money">
+                {money(total_cost)} บาท
+            </div>
+
+            <div>
+                ไถนา {money(plow_cost)}
+                +
+                ปั่นดิน {money(mill_cost)}
+            </div>
+
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+    # =====================================================
+    # บันทึก
+    # =====================================================
+
+    st.subheader(
+        "💾 บันทึกแปลงนา"
+    )
+
+
+    if st.button(
+        "💾 บันทึกแปลงนี้ พร้อมภาพพื้นที่",
+        type="primary",
+        use_container_width=True,
+    ):
+
+        snapshot = (
+            make_satellite_snapshot(
+                st.session_state.points
+            )
+        )
+
+
+        snapshot_bytes = (
+            image_to_bytes(snapshot)
+        )
+
+
+        record = {
+
+            "ลำดับ":
+                len(
+                    st.session_state.saved_plots
+                ) + 1,
+
+            "วันที่บันทึก":
+                datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+
+            "เจ้าของนา":
+                owner.strip()
+                or "-",
+
+            "หมายเหตุ":
+                note.strip()
+                or "-",
+
+            "พื้นที่_ตรม":
+                round(
+                    area_m2,
+                    2
+                ),
+
+            "ไร่":
+                rai,
+
+            "งาน":
+                ngan,
+
+            "ตารางวา":
+                wa,
+
+            "เหลือ_ตรม":
+                round(
+                    remain_m2,
+                    2
+                ),
+
+            "ค่าไถนา":
+                round(
+                    plow_cost,
+                    2
+                ),
+
+            "ค่าปั่นดิน":
+                round(
+                    mill_cost,
+                    2
+                ),
+
+            "รวม":
+                round(
+                    total_cost,
+                    2
+                ),
+
+            "พิกัด":
+                [
+                    [
+                        round(
+                            lat,
+                            7
+                        ),
+                        round(
+                            lon,
+                            7
+                        )
+                    ]
+                    for lat, lon
+                    in st.session_state.points
+                ],
+
+            "ภาพพื้นที่":
+                snapshot_bytes,
+        }
+
+
+        st.session_state.saved_plots.append(
+            record
+        )
+
+
+        st.success(
+            "บันทึกข้อมูลแปลงนา "
+            "เรียบร้อยแล้วครับ 🌾"
+        )
+
+
+# =========================================================
+# รายการบันทึก
+# =========================================================
+
+st.divider()
+
+st.subheader(
+    "📋 ข้อมูลแปลงที่บันทึกไว้"
+)
+
+
+if not st.session_state.saved_plots:
+
+    st.info(
+        "ยังไม่มีข้อมูลที่บันทึก"
+    )
+
+
+else:
+
+    for idx, item in enumerate(
+        reversed(
+            st.session_state.saved_plots
+        ),
+        1
+    ):
+
+        title = (
+            f"แปลงที่ {item['ลำดับ']} • "
+            f"{item['เจ้าของนา']} • "
+            f"{money(item['รวม'])} บาท"
+        )
+
+
+        with st.expander(
+            title
+        ):
+
+            left, right = (
+                st.columns(
+                    [1.15, 1]
+                )
             )
 
-            if (
-                geometry.get("type")
-                == "Polygon"
-            ):
-                latest_polygon = drawing
 
-        if latest_polygon:
+            with left:
 
-            coordinates = (
-                latest_polygon[
-                    "geometry"
-                ][
-                    "coordinates"
-                ][0]
-            )
-
-            new_points = []
-
-            for coordinate in coordinates:
-
-                if len(coordinate) >= 2:
-
-                    longitude = float(
-                        coordinate[0]
+                image_bytes = (
+                    item.get(
+                        "ภาพพื้นที่"
                     )
+                )
 
-                    latitude = float(
-                        coordinate[1]
-                    )
 
-                    new_points.append(
-                        (
-                            latitude,
-                            longitude
+                if image_bytes:
+
+                    st.image(
+                        image_bytes,
+                        caption=(
+                            "ภาพดาวเทียม "
+                            "พร้อมขอบเขตแปลง"
                         )
                     )
 
-            # จุดสุดท้ายของ GeoJSON
-            # จะซ้ำกับจุดแรก
-            if len(new_points) >= 2:
+                else:
 
-                first = new_points[0]
-                last = new_points[-1]
+                    st.info(
+                        "ไม่สามารถสร้าง "
+                        "ภาพดาวเทียมของ "
+                        "รายการนี้ได้"
+                    )
 
-                if (
-                    abs(first[0] - las
+
+            with right:
+
+                st.write(
+                    f"**เจ้าของนา:** "
+                    f"{item['เจ้าของนา']}"
+                )
+
+
+                st.write(
+                    f"**วันที่บันทึก:** "
+                    f"{item['วันที่บันทึก']}"
+                )
+
+
+                st.write(
+                    f"**หมายเหตุ:** "
+                    f"{item['หมายเหตุ']}"
+                )
+
+
+                st.write(
+                    f"**พื้นที่:** "
+                    f"{item['ไร่']} ไร่ "
+                    f"{item['งาน']} งาน "
+                    f"{item['ตารางวา']} ตารางวา "
+                    f"{item['เหลือ_ตรม']:.2f} ตร.ม."
+   
