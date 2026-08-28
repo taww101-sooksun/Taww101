@@ -56,6 +56,7 @@ def thai_area(m2):
 if m2 < 0:
 m2 = 0
 
+```
 rai = int(m2 // RAI_M2)
 remain = m2 - rai * RAI_M2
 
@@ -66,11 +67,13 @@ wa = int(remain // WA_M2)
 remain = remain - wa * WA_M2
 
 return rai, ngan, wa, remain
+```
 
 def polygon_area_m2(points):
 if len(points) < 3:
 return 0.0
 
+```
 average_lat = sum(
     p[0] for p in points
 ) / len(points)
@@ -84,7 +87,6 @@ earth_radius = 6378137.0
 xy = []
 
 for lat, lon in points:
-
     x = (
         math.radians(lon)
         * earth_radius
@@ -101,12 +103,8 @@ for lat, lon in points:
 area = 0.0
 
 for i in range(len(xy)):
-
     x1, y1 = xy[i]
-
-    x2, y2 = xy[
-        (i + 1) % len(xy)
-    ]
+    x2, y2 = xy[(i + 1) % len(xy)]
 
     area += (
         x1 * y2
@@ -114,6 +112,7 @@ for i in range(len(xy)):
     )
 
 return abs(area) / 2.0
+```
 
 def money(value):
 return f"{value:,.2f}"
@@ -129,3 +128,4 @@ st.session_state.lat = 13.7563
 
 if "lon" not in st.session_state:
 st.session_state.lon = 100.5018
+    
