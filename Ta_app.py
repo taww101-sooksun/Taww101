@@ -1,18 +1,19 @@
 import math
 import io
 import json
+from pathlib import Path
 from datetime import datetime
 
 import folium
 import streamlit as st
-from folium.plugins import Draw, LocateControl
+from folium.plugins import LocateControl, Draw
 from streamlit_folium import st_folium
 from streamlit_geolocation import streamlit_geolocation
 import requests
 from PIL import Image, ImageDraw
 
 st.set_page_config(
-    page_title="Ta App None- วัดพื้นที่นา",
+    page_title="Ta App - วัดพื้นที่นา",
     page_icon="🌾",
     layout="wide",
     initial_sidebar_state="collapsed",
@@ -41,16 +42,23 @@ RAI_M2 = 1600.0
 NGAN_M2 = 400.0
 WA_M2 = 4.0
 
-if "points" not in st.session_state:
-    st.session_state.points = []
-if "saved_plots" not in st.session_state:
-    st.session_state.saved_plots = []
-if "lat" not in st.session_state:
-    st.session_state.lat = 13.7563
-if "lon" not in st.session_state:
-    st.session_state.lon = 100.5018
-if "gps_loaded" not in st.session_state:
-    st.session_state.gps_loaded = False
+BASE_DIR = Path(__file__).resolve().parent
+DATA_FILE = BASE_DIR / "ta_data.json"
+
+def load_saved():
+    if not DATA_FILE.exists():
+        return []
+    try:
+        data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except Exception:
+        return []
+
+def save_saved(data):
+    DATA_FILE.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
 def thai_area(m2):
     m2 = max(float(m2), 0.0)
@@ -66,11 +74,11 @@ def polygon_area_m2(points):
     if len(points) < 3:
         return 0.0
     lat0 = math.radians(sum(p[0] for p in points) / len(points))
-    r = 6378137.0
+    radius = 6378137.0
     xy = []
     for lat, lon in points:
-        x = math.radians(lon) * r * math.cos(lat0)
-        y = math.radians(lat) * r
+        x = math.radians(lon) * radius * math.cos(lat0)
+        y = math.radians(lat) * radius
         xy.append((x, y))
     area = 0.0
     for i in range(len(xy)):
@@ -105,11 +113,17 @@ def make_snapshot(points):
         return None
     lats = [p[0] for p in points]
     lons = [p[1] for p in points]
-    lat_pad = max((max(lats)-min(lats))*0.2, 0.0003)
-    lon_pad = max((max(lons)-min(lons))*0.2, 0.0003)
-    south, north = min(lats)-lat_pad, max(lats)+lat_pad
-    west, east = min(lons)-lon_pad, max(lons)+lon_pad
-    url = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/export"
+    lat_pad = max((max(lats) - min(lats)) * 0.20, 0.0003)
+    lon_pad = max((max(lons) - min(lons)) * 0.20, 0.0003)
+    south = min(lats) - lat_pad
+    north = max(lats) + lat_pad
+    west = min(lons) - lon_pad
+    east = max(lons) + lon_pad
+
+    url = (
+        "https://server.arcgisonline.com/ArcGIS/rest/services/"
+        "World_Imagery/MapServer/export"
+    )
     params = {
         "bbox": f"{west},{south},{east},{north}",
         "bboxSR": "4326",
@@ -123,61 +137,99 @@ def make_snapshot(points):
         response.raise_for_status()
         image = Image.open(io.BytesIO(response.content)).convert("RGB")
         draw = ImageDraw.Draw(image)
-        w, h = image.size
-        pix = []
+        width, height = image.size
+        pixel_points = []
         for lat, lon in points:
-            x = (lon-west)/(east-west)*(w-1)
-            y = (north-lat)/(north-south)*(h-1)
-            pix.append((int(x), int(y)))
-        draw.line(pix + [pix[0]], fill=(0,190,80), width=7)
+            x = (lon - west) / (east - west) * (width - 1)
+            y = (north - lat) / (north - south) * (height - 1)
+            pixel_points.append((int(x), int(y)))
+        draw.line(
+            pixel_points + [pixel_points[0]],
+            fill=(0, 190, 80),
+            width=7,
+        )
         return image
     except Exception:
         return None
 
-def image_bytes(image):
+def image_to_base64(image):
     if image is None:
         return None
+    import base64
     buf = io.BytesIO()
     image.save(buf, format="PNG")
-    return buf.getvalue()
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+def base64_to_image(value):
+    if not value:
+        return None
+    import base64
+    try:
+        return Image.open(io.BytesIO(base64.b64decode(value)))
+    except Exception:
+        return None
+
+if "points" not in st.session_state:
+    st.session_state.points = []
+if "saved_plots" not in st.session_state:
+    st.session_state.saved_plots = load_saved()
+if "lat" not in st.session_state:
+    st.session_state.lat = None
+if "lon" not in st.session_state:
+    st.session_state.lon = None
 
 st.title("🌾 Ta App")
-st.caption("วัดพื้นที่นา • แก้ไขแนวเขต • คำนวณค่าไถ/ปั่นดิน • บันทึกพร้อมภาพพื้นที่")
+st.caption("วัดพื้นที่นา • ปรับแนวเขต • คำนวณค่าไถ/ปั่นดิน • บันทึกพร้อมภาพ")
 
-gps = streamlit_geolocation()
-if isinstance(gps, dict) and gps.get("latitude") is not None:
-    lat = float(gps["latitude"])
-    lon = float(gps["longitude"])
-    if not st.session_state.gps_loaded:
-        st.session_state.lat = lat
-        st.session_state.lon = lon
-        st.session_state.gps_loaded = True
-        st.rerun()
+# ขอ GPS ของเครื่องที่เปิดแอป
+location = streamlit_geolocation()
+
+if isinstance(location, dict):
+    gps_lat = location.get("latitude")
+    gps_lon = location.get("longitude")
+    if gps_lat is not None and gps_lon is not None:
+        new_lat = float(gps_lat)
+        new_lon = float(gps_lon)
+        if (
+            st.session_state.lat != new_lat
+            or st.session_state.lon != new_lon
+        ):
+            st.session_state.lat = new_lat
+            st.session_state.lon = new_lon
+            st.rerun()
 
 c1, c2 = st.columns(2)
 with c1:
-    owner = st.text_input("👤 ชื่อเจ้าของนา", placeholder="เช่น นายสมชาย ใจดี")
+    owner = st.text_input(
+        "👤 ชื่อเจ้าของนา",
+        placeholder="เช่น นายสมชาย ใจดี",
+    )
 with c2:
-    note = st.text_input("📝 บันทึก / หมายเหตุ", placeholder="เช่น นัดไถวันจันทร์")
+    note = st.text_input(
+        "📝 บันทึก / หมายเหตุ",
+        placeholder="เช่น นัดไถวันจันทร์",
+    )
 
-st.subheader("🗺️ วัดพื้นที่นา")
-st.info("กดปุ่ม GPS เพื่อหาตำแหน่งปัจจุบัน แล้วเลือกเครื่องมือรูปหลายเหลี่ยมเพื่อวาดรอบแปลงนา สามารถแก้ไขจุดได้")
+st.subheader("🗺️ แผนที่วัดพื้นที่นา")
+
+if st.session_state.lat is None:
+    st.info("กดปุ่มตำแหน่งบนแผนที่ เพื่อให้เบราว์เซอร์อนุญาต GPS ของเครื่อง")
+
+center = [
+    st.session_state.lat if st.session_state.lat is not None else 13.7563,
+    st.session_state.lon if st.session_state.lon is not None else 100.5018,
+]
 
 m = folium.Map(
-    location=[st.session_state.lat, st.session_state.lon],
+    location=center,
     zoom_start=19,
     control_scale=True,
-    tiles=None,
+    tiles="OpenStreetMap",
 )
 
 folium.TileLayer(
-    "OpenStreetMap",
-    name="แผนที่ถนน",
-    control=True,
-).add_to(m)
-
-folium.TileLayer(
-    tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    tiles="https://server.arcgisonline.com/ArcGIS/rest/services/"
+          "World_Imagery/MapServer/tile/{z}/{y}/{x}",
     attr="Tiles © Esri",
     name="ภาพดาวเทียม",
     overlay=False,
@@ -190,18 +242,6 @@ LocateControl(
     keepCurrentZoomLevel=False,
     showCompass=True,
 ).add_to(m)
-
-folium.LayerControl(collapsed=False).add_to(m)
-
-if len(st.session_state.points) >= 3:
-    folium.Polygon(
-        locations=st.session_state.points,
-        color="#00b950",
-        weight=5,
-        fill=True,
-        fill_color="#00b950",
-        fill_opacity=0.18,
-    ).add_to(m)
 
 Draw(
     export=False,
@@ -226,36 +266,37 @@ Draw(
     edit_options={"edit": True, "remove": True},
 ).add_to(m)
 
+if len(st.session_state.points) >= 3:
+    folium.Polygon(
+        locations=st.session_state.points,
+        color="#00b950",
+        weight=5,
+        fill=True,
+        fill_color="#00b950",
+        fill_opacity=0.18,
+    ).add_to(m)
+
 map_data = st_folium(
     m,
     width=None,
-    height=600,
+    height=650,
     returned_objects=["all_drawings"],
     key="ta_map",
 )
 
-if map_data is not None and map_data.get("all_drawings") is not None:
-    new_points = get_polygon(map_data.get("all_drawings"))
+if map_data and map_data.get("all_drawings") is not None:
+    new_points = get_polygon(map_data["all_drawings"])
     if new_points != st.session_state.points:
         st.session_state.points = new_points
         st.rerun()
 
-b1, b2, b3 = st.columns(3)
+b1, b2 = st.columns(2)
 with b1:
-    if st.button("🗑️ ล้างแปลง", use_container_width=True):
+    if st.button("🗑️ ล้างแนวเขต", use_container_width=True):
         st.session_state.points = []
         st.rerun()
 with b2:
-    if st.button("📍 ใช้ตำแหน่งตัวอย่าง", use_container_width=True):
-        lat, lon = st.session_state.lat, st.session_state.lon
-        d = 0.001
-        st.session_state.points = [
-            (lat+d, lon-d), (lat+d, lon+d),
-            (lat-d, lon+d), (lat-d, lon-d)
-        ]
-        st.rerun()
-with b3:
-    if st.button("🔄 รีเฟรช", use_container_width=True):
+    if st.button("🔄 รีเฟรชแผนที่", use_container_width=True):
         st.rerun()
 
 area_m2 = polygon_area_m2(st.session_state.points)
@@ -275,25 +316,37 @@ else:
     a2.metric("ไร่", f"{rai:,}")
     a3.metric("งาน", f"{ngan:,}")
     a4.metric("ตารางวา", f"{wa:,}")
-    st.success(f"พื้นที่ประมาณ {rai} ไร่ {ngan} งาน {wa} ตารางวา {remain_m2:.2f} ตร.ม.")
 
-    st.subheader("💰 ยอดค่าใช้จ่าย")
+    st.success(
+        f"พื้นที่ประมาณ {rai} ไร่ {ngan} งาน {wa} ตารางวา "
+        f"{remain_m2:.2f} ตร.ม."
+    )
+
+    st.subheader("💰 ยอดที่ต้องจ่าย")
     p1, p2, p3 = st.columns(3)
     p1.metric("1️⃣ ค่าไถนา", f"{money(plow_cost)} บาท")
     p2.metric("2️⃣ ค่าปั่นดิน", f"{money(mill_cost)} บาท")
     p3.metric("3️⃣ รวมไถนา + ปั่นดิน", f"{money(total_cost)} บาท")
 
-    st.caption("อัตรา: ไถนา 250 บาท/ไร่ • ปั่นดิน 350 บาท/ไร่")
+    st.caption("อัตราค่าบริการ: ไถนา 250 บาท/ไร่ • ปั่นดิน 350 บาท/ไร่")
 
     st.markdown(
-        f'<div class="total-box"><div>💰 ยอดรวมที่ต้องจ่าย</div>'
-        f'<div class="total-money">{money(total_cost)} บาท</div></div>',
+        f"""
+        <div class="total-box">
+            <div>💰 ยอดรวมทั้งหมด</div>
+            <div class="total-money">{money(total_cost)} บาท</div>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
-    st.subheader("💾 บันทึกแปลงนา")
-    if st.button("💾 บันทึกข้อมูลพร้อมภาพพื้นที่", type="primary", use_container_width=True):
-        snap = make_snapshot(st.session_state.points)
+    if st.button(
+        "💾 บันทึกข้อมูล + ภาพพื้นที่",
+        type="primary",
+        use_container_width=True,
+    ):
+        snapshot = make_snapshot(st.session_state.points)
+
         record = {
             "ลำดับ": len(st.session_state.saved_plots) + 1,
             "วันที่บันทึก": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -307,55 +360,95 @@ else:
             "ค่าไถนา": round(plow_cost, 2),
             "ค่าปั่นดิน": round(mill_cost, 2),
             "รวม": round(total_cost, 2),
-            "พิกัด": [[round(a, 7), round(b, 7)] for a, b in st.session_state.points],
-            "ภาพพื้นที่": image_bytes(snap),
+            "พิกัด": [
+                [round(lat, 7), round(lon, 7)]
+                for lat, lon in st.session_state.points
+            ],
+            "ภาพพื้นที่_base64": image_to_base64(snapshot),
         }
+
         st.session_state.saved_plots.append(record)
-        st.success("บันทึกข้อมูลเรียบร้อยแล้วครับ 🌾")
+        save_saved(st.session_state.saved_plots)
+        st.success("บันทึกเรียบร้อยแล้วครับ ข้อมูลจะยังอยู่เมื่อปิดและเปิดแอปใหม่ 🌾")
 
 st.divider()
-st.subheader("📋 แปลงนาที่บันทึกไว้")
+st.subheader("📋 ข้อมูลแปลงนาที่บันทึกไว้")
 
 if not st.session_state.saved_plots:
     st.info("ยังไม่มีข้อมูลที่บันทึก")
 else:
     for item in reversed(st.session_state.saved_plots):
-        with st.expander(f"แปลงที่ {item['ลำดับ']} • {item['เจ้าของนา']} • {money(item['รวม'])} บาท"):
+        title = (
+            f"แปลงที่ {item['ลำดับ']} • "
+            f"{item['เจ้าของนา']} • "
+            f"{money(item['รวม'])} บาท"
+        )
+        with st.expander(title):
             left, right = st.columns([1.2, 1])
+
             with left:
-                if item.get("ภาพพื้นที่"):
-                    st.image(item["ภาพพื้นที่"], caption="ภาพดาวเทียมพร้อมขอบเขตแปลง")
+                saved_image = base64_to_image(
+                    item.get("ภาพพื้นที่_base64")
+                )
+                if saved_image is not None:
+                    st.image(
+                        saved_image,
+                        caption="ภาพพื้นที่แปลงนาที่บันทึกไว้",
+                        use_container_width=True,
+                    )
                 else:
-                    st.warning("ไม่มีภาพพื้นที่")
+                    st.warning("ไม่พบภาพของแปลงนี้")
+
             with right:
                 st.write(f"**เจ้าของนา:** {item['เจ้าของนา']}")
-                st.write(f"**วันที่:** {item['วันที่บันทึก']}")
+                st.write(f"**วันที่บันทึก:** {item['วันที่บันทึก']}")
                 st.write(f"**หมายเหตุ:** {item['หมายเหตุ']}")
-                st.write(f"**พื้นที่:** {item['ไร่']} ไร่ {item['งาน']} งาน {item['ตารางวา']} ตารางวา {item['เหลือ_ตรม']:.2f} ตร.ม.")
+                st.write(
+                    f"**พื้นที่:** {item['ไร่']} ไร่ "
+                    f"{item['งาน']} งาน {item['ตารางวา']} ตารางวา "
+                    f"{item['เหลือ_ตรม']:.2f} ตร.ม."
+                )
                 st.write(f"**ค่าไถนา:** {money(item['ค่าไถนา'])} บาท")
                 st.write(f"**ค่าปั่นดิน:** {money(item['ค่าปั่นดิน'])} บาท")
                 st.write(f"**รวม:** {money(item['รวม'])} บาท")
-                data = {k: v for k, v in item.items() if k != "ภาพพื้นที่"}
+
+                export_item = dict(item)
+                export_item.pop("ภาพพื้นที่_base64", None)
+
                 st.download_button(
                     "⬇️ ดาวน์โหลดข้อมูลแปลงนี้",
-                    data=json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"),
+                    data=json.dumps(
+                        export_item,
+                        ensure_ascii=False,
+                        indent=2,
+                    ).encode("utf-8"),
                     file_name=f"ta_plot_{item['ลำดับ']}.json",
                     mime="application/json",
                     use_container_width=True,
                     key=f"download_{item['ลำดับ']}",
                 )
 
-    export_data = [
-        {k: v for k, v in item.items() if k != "ภาพพื้นที่"}
-        for item in st.session_state.saved_plots
-    ]
+    export_all = []
+    for item in st.session_state.saved_plots:
+        row = dict(item)
+        row.pop("ภาพพื้นที่_base64", None)
+        export_all.append(row)
+
     st.download_button(
         "⬇️ ดาวน์โหลดข้อมูลทั้งหมด",
-        data=json.dumps(export_data, ensure_ascii=False, indent=2).encode("utf-8"),
+        data=json.dumps(
+            export_all,
+            ensure_ascii=False,
+            indent=2,
+        ).encode("utf-8"),
         file_name="ta_plots.json",
         mime="application/json",
         use_container_width=True,
     )
 
 st.divider()
-st.caption("Ta App • การคำนวณพื้นที่จากพิกัด GPS เป็นค่าประมาณ ควรตรวจสอบแนวเขตจริงก่อนใช้เป็นเอกสารทางกฎหมาย")
+st.caption(
+    "Ta App • เปิดใช้งานหน้างานด้วย GPS ของเครื่องที่เปิดแอป "
+    "• ข้อมูลที่บันทึกเก็บใน ta_data.json บนเครื่อง/เซิร์ฟเวอร์ที่รันแอป "
+    "• ค่าพื้นที่เป็นค่าประมาณจากพิกัด GPS"
+        )
