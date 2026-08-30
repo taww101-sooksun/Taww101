@@ -16,7 +16,8 @@ opencv-python-headless
 numpy
 gTTS
 pytz
-
+streamlit
+edge-tts
 geopy
 timezonefinder
 streamlit-geolocation
