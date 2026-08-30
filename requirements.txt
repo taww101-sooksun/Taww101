@@ -11,7 +11,9 @@ firebase-admin==6.5.0
 streamlit-player
 streamlit-js-eval
 streamlit-autorefresh
-
+streamlit
+opencv-python-headless
+numpy
 gTTS
 pytz
 
