@@ -1,84 +1,82 @@
-
-import itertools
-from pathlib import Path
 from datetime import date
-
+from pathlib import Path
+from itertools import permutations
 import streamlit as st
 
-# -------------------------------
-# PAGE CONFIG
-# -------------------------------
+# ==================================================
+# PAGE CONFIGURATION
+# ==================================================
 st.set_page_config(
-    page_title="แอปคำนวณตัวเลขประจำวัน",
+    page_title="Ta App | คำนวณตัวเลขประจำวัน",
     page_icon="🌙",
     layout="centered",
     initial_sidebar_state="collapsed",
 )
 
-# -------------------------------
-# CUSTOM STYLE
-# -------------------------------
+BASE_DIR = Path(__file__).parent
+LOGO_PATH = BASE_DIR / "logo1.jpg"
+
+# ==================================================
+# STYLE
+# ==================================================
 st.markdown("""
 <style>
 .stApp {
-    background: linear-gradient(180deg, #10291f 0%, #173c2b 45%, #f5f0df 100%);
+    background: linear-gradient(180deg, #102b20, #1c4932 50%, #f6f1e4 50%);
 }
 .block-container {
     max-width: 850px;
-    padding-top: 1.5rem;
+    padding-top: 1.2rem;
     padding-bottom: 3rem;
 }
 .hero {
-    background: linear-gradient(135deg, #173c2b, #285b3c);
-    padding: 24px;
+    background: linear-gradient(135deg, #163b29, #285c3c);
+    border: 1px solid #d9b966;
     border-radius: 22px;
+    padding: 24px 16px;
     text-align: center;
-    border: 1px solid #c9a85b;
-    color: #fff7dc;
+    color: #fff8e5;
     margin-bottom: 20px;
 }
 .hero h1 {
-    color: #f5d889;
+    color: #f3d58a;
     font-size: 1.8rem;
 }
 .hero p {
-    color: #f8f1d8;
+    margin-bottom: 0;
 }
-.result-card {
-    background: #fffdf5;
-    border: 1px solid #d7bd79;
-    padding: 16px;
+.card {
+    background: #fffdf7;
+    border: 1px solid #d9c58d;
     border-radius: 16px;
-    color: #193b2a;
-    margin: 8px 0;
+    padding: 16px;
+    margin: 10px 0;
+    color: #183d2a;
 }
-.number-box {
-    background: #fffdf5;
-    border: 1px solid #d7bd79;
-    border-radius: 14px;
-    text-align: center;
-    padding: 14px 4px;
-    color: #173c2b;
-}
-.number-box strong {
-    font-size: 1.8rem;
-}
-div.stButton > button {
+.number-card {
+    background: #fffdf7;
+    border: 1px solid #d9c58d;
     border-radius: 12px;
-    font-weight: 700;
-    min-height: 46px;
+    padding: 12px 4px;
+    text-align: center;
+    color: #183d2a;
 }
-h2, h3 {
-    color: #f5d889;
+.number-card strong {
+    font-size: 1.6rem;
+}
+.stButton button {
+    border-radius: 12px;
+    font-weight: bold;
+    min-height: 44px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# -------------------------------
-# WEEKDAY NUMBERS
-# Monday = 1 ... Sunday = 7
-# -------------------------------
-WEEKDAY_NUMBERS = {
+# ==================================================
+# WEEKDAY NUMBER
+# Monday = 1, Tuesday = 2, ... Sunday = 7
+# ==================================================
+WEEKDAYS = {
     0: ("วันจันทร์", 1),
     1: ("วันอังคาร", 2),
     2: ("วันพุธ", 3),
@@ -88,62 +86,55 @@ WEEKDAY_NUMBERS = {
     6: ("วันอาทิตย์", 7),
 }
 
-# -------------------------------
-# LOGO
-# Put logo1.jpg in the same folder
-# -------------------------------
-logo_path = Path(__file__).parent / "logo1.jpg"
-
-if logo_path.exists():
-    st.image(str(logo_path), width=150)
+# ==================================================
+# HEADER AND LOGO
+# ==================================================
+if LOGO_PATH.exists():
+    st.image(str(LOGO_PATH), width=150)
 
 st.markdown("""
 <div class="hero">
-    <h1>🌙 แอปคำนวณตัวเลขประจำวัน</h1>
-    <p>วันประจำสัปดาห์ • ข้างขึ้น • ข้างแรม • สูตรตัวเลข</p>
+    <h1>🌙 Ta App</h1>
+    <p>ปฏิทิน • ข้างขึ้นข้างแรม • คำนวณชุดตัวเลข</p>
 </div>
 """, unsafe_allow_html=True)
 
-# -------------------------------
-# DATE INPUT
-# -------------------------------
-st.subheader("📅 เลือกวันที่")
+# ==================================================
+# DATE SELECTION
+# ==================================================
+st.subheader("📅 เลือกวันที่ต้องการตรวจสอบ")
 
 selected_date = st.date_input(
-    "วัน เดือน ปี",
+    "วัน / เดือน / ปี",
     value=date.today(),
     format="DD/MM/YYYY",
 )
 
-weekday_name, weekday_number = WEEKDAY_NUMBERS[
-    selected_date.weekday()
-]
+weekday_name, weekday_number = WEEKDAYS[selected_date.weekday()]
 
-st.markdown(
-    f"""
-    <div class="result-card">
-        <div>วันที่เลือก</div>
-        <h2 style="color:#173c2b">
-            {selected_date.strftime("%d/%m/%Y")}
-        </h2>
-        <div>วันในสัปดาห์: <b>{weekday_name}</b></div>
-        <div>เลขประจำวัน: <b>{weekday_number}</b></div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown(f"""
+<div class="card">
+    <h3 style="color:#183d2a;">ข้อมูลวันที่เลือก</h3>
+    <p>วันที่: <b>{selected_date.strftime("%d/%m/%Y")}</b></p>
+    <p>วันประจำสัปดาห์: <b>{weekday_name}</b></p>
+    <p>เลขประจำวัน: <b>{weekday_number}</b></p>
+</div>
+""", unsafe_allow_html=True)
 
-# -------------------------------
-# LUNAR DATE INPUT
-# Manual entry until a verified
-# Thai lunar calendar is connected.
-# -------------------------------
-st.subheader("🌗 ข้อมูลจันทรคติ")
+# ==================================================
+# LUNAR DATE
+#
+# IMPORTANT:
+# This version requires the lunar date to be entered
+# from a verified Thai lunar calendar.
+# It does NOT guess the lunar date.
+# ==================================================
+st.subheader("🌗 ข้อมูลปฏิทินจันทรคติไทย")
 
-st.info(
-    "กรอกข้อมูลข้างขึ้นหรือข้างแรมจากปฏิทินจันทรคติ "
-    "เพื่อให้สูตรตัวเลขใช้ข้อมูลที่ถูกต้อง "
-    "โค้ดรุ่นนี้ยังไม่ได้คำนวณวันจันทรคติอัตโนมัติ"
+st.warning(
+    "โปรดตรวจสอบข้างขึ้น–ข้างแรมจากปฏิทินไทยที่เชื่อถือได้ "
+    "แอปเวอร์ชันนี้ยังไม่มีระบบเชื่อมต่อข้อมูลจันทรคติอัตโนมัติ "
+    "จึงไม่ควรถือว่าข้อมูลที่กรอกเป็นข้อมูลที่แอปตรวจสอบแล้ว"
 )
 
 phase = st.radio(
@@ -153,134 +144,235 @@ phase = st.radio(
 )
 
 lunar_day = st.selectbox(
-    "วันที่จันทรคติ",
-    list(range(1, 16)),
-    index=8,
+    "เลือกวันที่จันทรคติ",
+    range(1, 16),
     format_func=lambda n: f"{n} ค่ำ",
+    index=8,
 )
 
-# -------------------------------
+st.caption(
+    "เลขวันจันทรคติเป็นข้อมูลที่ผู้ใช้กรอก "
+    "ไม่ใช่ผลการตรวจสอบอัตโนมัติจากปฏิทิน"
+)
+
+# ==================================================
 # USER FORMULA
-# -------------------------------
-st.subheader("🧮 คำนวณตามสูตร")
+# ==================================================
+st.subheader("🧮 ผลคำนวณตามสูตร")
 
 last_digit = lunar_day % 10
 
-if phase == "ข้างขึ้น" and lunar_day > 9:
-    operation = "หาร"
+if lunar_day > 9 and phase == "ข้างขึ้น":
+    formula = f"{weekday_number} ÷ {last_digit}"
     result = (
         weekday_number / last_digit
         if last_digit != 0
         else None
     )
-    formula = (
-        f"{weekday_number} ÷ {last_digit}"
-        if result is not None
-        else "ไม่สามารถหารด้วยศูนย์ได้"
-    )
+    operation = "หาร"
 
-elif phase == "ข้างแรม" and lunar_day > 9:
-    operation = "คูณ"
-    result = weekday_number * last_digit
+elif lunar_day > 9 and phase == "ข้างแรม":
     formula = f"{weekday_number} × {last_digit}"
+    result = weekday_number * last_digit
+    operation = "คูณ"
 
 else:
-    operation = "บวกและลบ"
-    add_result = weekday_number + lunar_day
-    subtract_result = abs(weekday_number - lunar_day)
-    result = None
+    sum_value = weekday_number + lunar_day
+    difference = abs(weekday_number - lunar_day)
+
     formula = (
-        f"{weekday_number} + {lunar_day} = {add_result}\n\n"
-        f"{lunar_day} - {weekday_number} = {subtract_result}"
+        f"{weekday_number} + {lunar_day} = {sum_value}\n"
+        f"{lunar_day} - {weekday_number} = {difference}"
     )
+    result = None
+    operation = "บวกและลบ"
 
-st.markdown(
-    f"""
-    <div class="result-card">
-        <div>วัน: <b>{weekday_name}</b></div>
-        <div>ข้าง: <b>{phase} {lunar_day} ค่ำ</b></div>
-        <div>เครื่องหมาย: <b>{operation}</b></div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown(f"""
+<div class="card">
+    <p>วัน: <b>{weekday_name}</b></p>
+    <p>ข้าง: <b>{phase} {lunar_day} ค่ำ</b></p>
+    <p>วิธีคำนวณ: <b>{operation}</b></p>
+</div>
+""", unsafe_allow_html=True)
 
-st.markdown("### ผลการคำนวณ")
+st.code(formula, language=None)
 
 if result is not None:
-    st.code(formula, language=None)
     st.metric("ผลลัพธ์ตามจริง", f"{result:.10g}")
-else:
-    st.code(formula, language=None)
 
-# -------------------------------
-# FOUR DIGIT SET
-# Example follows Tuesday 2,
-# waxing 9 => 2, 9, 7, 1.
-# For other cases, review the
-# rule before interpreting digits.
-# -------------------------------
-st.subheader("🔢 ชุดตัวเลข")
+# ==================================================
+# FOUR CORE DIGITS
+#
+# For waxing/waning days 1-9:
+# weekday number, lunar day,
+# absolute difference, last digit of sum.
+#
+# Other cases require the user's complete
+# digit-generation rule before automatic generation.
+# ==================================================
+st.subheader("🔢 เลขหลัก 4 ตัว")
 
-if phase == "ข้างขึ้น" and lunar_day <= 9:
-    add_result = weekday_number + lunar_day
-    subtract_result = abs(weekday_number - lunar_day)
+core_digits = None
 
-    digits = [
+if lunar_day <= 9:
+    sum_value = weekday_number + lunar_day
+    difference = abs(weekday_number - lunar_day)
+
+    core_digits = [
         str(weekday_number),
         str(lunar_day),
-        str(subtract_result),
-        str(add_result % 10),
+        str(difference),
+        str(sum_value % 10),
     ]
 
-    st.caption(
-        "ชุดตัวอย่างนี้ใช้เลขวัน เลขจันทรคติ "
-        "ผลต่าง และเลขท้ายของผลบวก"
-    )
-
     cols = st.columns(4)
-    for col, digit in zip(cols, digits):
+
+    for col, digit in zip(cols, core_digits):
         with col:
             st.markdown(
-                f'<div class="number-box">'
+                f'<div class="number-card">'
                 f'<strong>{digit}</strong></div>',
                 unsafe_allow_html=True,
             )
 
-    # 24 permutations when all four digits differ.
-    permutations = sorted(
-        set(itertools.permutations(digits))
-    )
-
-    st.markdown("### ชุดเรียงสลับ")
     st.caption(
-        f"ชุดเรียงที่ไม่ซ้ำกัน: {len(permutations)} ชุด "
-        f"(หากมีเลขซ้ำ จำนวนชุดจะน้อยกว่า 24)"
+        "ใช้เลขประจำวัน, เลขจันทรคติ, "
+        "ผลต่าง และเลขท้ายของผลบวก"
+    )
+else:
+    st.info(
+        "กรณีข้างขึ้นหรือข้างแรมเกิน 9 "
+        "แอปแสดงผลคำนวณด้านบนแล้ว "
+        "แต่ยังไม่สร้างเลขหลัก 4 ตัวอัตโนมัติ "
+        "จนกว่าจะยืนยันวิธีแปลงผลหารหรือผลคูณ "
+        "เป็นเลขหลักตามสูตรของคุณ"
     )
 
-    pairs = [
+# ==================================================
+# GENERATE 3-DIGIT NUMBERS
+# ==================================================
+st.subheader("📌 เลข 3 ตัว")
+
+if core_digits is not None and len(set(core_digits)) == 4:
+    three_digit_numbers = [
         "".join(p)
-        for p in permutations
+        for p in permutations(core_digits, 3)
     ]
 
-    for start in range(0, len(pairs), 4):
-        st.write("　".join(pairs[start:start + 4]))
+    st.success(f"ทั้งหมด {len(three_digit_numbers)} ชุด")
 
-    st.info(
-        "จำนวน 48 ตำแหน่งต้องกำหนดกติกาการกลับบน–ล่าง "
-        "เพิ่มเติม เพื่อไม่ให้เกิดชุดซ้ำโดยไม่ตั้งใจ"
+    # Show 4 numbers per row
+    for start in range(0, len(three_digit_numbers), 4):
+        row = three_digit_numbers[start:start + 4]
+        cols = st.columns(4)
+
+        for col, number in zip(cols, row):
+            with col:
+                st.markdown(
+                    f'<div class="number-card">'
+                    f'<strong style="font-size:1.05rem;">'
+                    f'{number}</strong></div>',
+                    unsafe_allow_html=True,
+                )
+
+    st.download_button(
+        "📥 ดาวน์โหลดเลข 3 ตัว",
+        data="\n".join(three_digit_numbers),
+        file_name="three_digit_numbers.txt",
+        mime="text/plain",
+        use_container_width=True,
+    )
+
+    # ==================================================
+    # GENERATE 2-DIGIT PAIRS
+    # 12 unordered pairs, each with a reverse.
+    # ==================================================
+    st.subheader("📌 เลข 2 ตัวบน–ล่าง")
+
+    unique_pairs = []
+
+    for i in range(len(core_digits)):
+        for j in range(i + 1, len(core_digits)):
+            a = core_digits[i]
+            b = core_digits[j]
+            unique_pairs.append((a + b, b + a))
+
+    st.success(
+        f"{len(unique_pairs)} คู่กลับ "
+        f"({len(unique_pairs) * 2} ตำแหน่ง)"
+    )
+
+    lines = []
+
+    for top, bottom in unique_pairs:
+        st.markdown(
+            f'<div class="card" style="padding:10px 16px;">'
+            f'<b>{top}</b>'
+            f'<span style="float:right;">'
+            f'<b>{bottom}</b></span></div>',
+            unsafe_allow_html=True,
+        )
+        lines.append(f"{top} - {bottom}")
+
+    st.download_button(
+        "📥 ดาวน์โหลดเลข 2 ตัวบน–ล่าง",
+        data="\n".join(lines),
+        file_name="two_digit_pairs.txt",
+        mime="text/plain",
+        use_container_width=True,
+    )
+
+    # ==================================================
+    # COST ESTIMATE
+    # ==================================================
+    st.subheader("💰 คำนวณเงิน")
+
+    price_three = st.number_input(
+        "ราคาต่อชุดเลข 3 ตัว (บาท)",
+        min_value=0.0,
+        value=1.0,
+        step=1.0,
+    )
+
+    price_two = st.number_input(
+        "ราคาต่อตำแหน่งเลข 2 ตัว (บาท)",
+        min_value=0.0,
+        value=1.0,
+        step=1.0,
+    )
+
+    total_three = len(three_digit_numbers) * price_three
+    total_two = len(unique_pairs) * 2 * price_two
+    total_cost = total_three + total_two
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.metric("เลข 3 ตัว", f"{total_three:,.2f} บาท")
+
+    with col2:
+        st.metric("เลข 2 ตัว", f"{total_two:,.2f} บาท")
+
+    st.markdown(
+        f"""
+        <div class="hero">
+            <p>รวมค่าใช้จ่ายตามจำนวนชุด</p>
+            <h1>{total_cost:,.2f} บาท</h1>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
 else:
     st.warning(
-        "ส่วนสร้างชุดตัวเลข 4 ตัวสำหรับกรณีคูณหรือหาร "
-        "ยังต้องกำหนดกติกาจัดชุดตามสูตรของคุณให้ครบก่อน"
+        "ระบบจะสร้างชุดเลขอัตโนมัติเมื่อเลขหลัก 4 ตัว "
+        "ไม่ซ้ำกัน เพื่อให้ได้ 24 ชุดสำหรับเลข 3 ตัว "
+        "และ 24 ตำแหน่งสำหรับเลข 2 ตัว"
     )
 
 st.divider()
 
 st.caption(
-    "หมายเหตุ: วันในสัปดาห์คำนวณจากวันที่สากล "
-    "ส่วนวันจันทรคติให้กรอกตรวจสอบจากปฏิทินที่เชื่อถือได้ "
-    "ผลลัพธ์ชุดตัวเลขเป็นไปตามสูตรที่กำหนด ไม่ใช่การรับประกันผลใด ๆ"
+    "Ta App — ตรวจสอบวันที่และสูตรก่อนนำผลลัพธ์ไปใช้ "
+    "ข้างขึ้น–ข้างแรมยังต้องตรวจสอบจากปฏิทินอ้างอิง"
 )
