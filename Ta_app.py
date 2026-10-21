@@ -787,7 +787,38 @@ if selected_date:
 # ----------------------- MUSIC PLAYER --------------------
 
 st.divider()
-render_music_player()
+st.subheader("🎵 ทดสอบระบบเสียง")
+music_files = list_music_files()
+
+if music_files:
+    if "music_index" not in st.session_state:
+        st.session_state.music_index = random.randrange(len(music_files))
+
+    current_index = st.session_state.music_index
+    current_file = music_files[current_index]
+
+    st.write(f"กำลังเลือกเพลง: {current_file.name}")
+
+    try:
+        with open(current_file, "rb") as audio_file:
+            st.audio(audio_file.read(), format=current_file.suffix[1:])
+
+    except Exception as e:
+        st.error(f"เปิดไฟล์เพลงไม่สำเร็จ: {e}")
+
+    if st.button("🎲 สุ่มเพลงถัดไป"):
+        if len(music_files) > 1:
+            choices = [
+                i for i in range(len(music_files))
+                if i != current_index
+            ]
+            st.session_state.music_index = random.choice(choices)
+        else:
+            st.session_state.music_index = 0
+
+        st.rerun()
+else:
+    st.info("ยังไม่พบไฟล์เพลงในโฟลเดอร์เดียวกับ Ta_app.py")
 
 
 # -------------------------- FOOTER -------------------------
