@@ -1,765 +1,766 @@
-นำเข้า base64
-นำเข้าปฏิทิน
-นำเข้า itertools
-นำเข้า json
-นำเข้า mimetypes
-นำเข้าแบบสุ่ม
-นำเข้าคณิตศาสตร์
-จากการนำเข้า datetime, date, datetime
-จาก pathlib นำเข้า Path
+import math
+import sqlite3
+from pathlib import Path
+from datetime import date, datetime
+from itertools import combinations
 
+import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 
-# ========================================================
-# หมายเลขลึกลับของ SYNAPSE
-# ========================================================
+# =========================================================
+# SYNAPSE MYSTIC NUMBER
+# Version 1.0
+# =========================================================
 
-APP_DIR = Path(__file__).resolve().parent
-นามสกุลไฟล์เพลง = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"}
+APP_TITLE = "SYNAPSE MYSTIC NUMBER"
+DB_PATH = Path("synapse_mystic.db")
 
-เดือนไทย = [
-    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน",
-    "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม",
-    "กันยายน", "ที่นี่", "พฤศจิกายน", "ธันวาคม"
+PLANETS = [
+    "Sun",
+    "Moon",
+    "Mercury",
+    "Venus",
+    "Mars",
+    "Jupiter",
+    "Saturn",
+    "Uranus",
+    "Neptune",
 ]
 
-#ตามกติกาที่กำหนด: วันจันทร์ = 1
-หมายเลขวัน = {
-    0: 1, # วันจันทร์
-    1:2, #วันอังคาร
-    2: 3, # วันพุธ
-    3: 4, # วันพฤหัสบดี
-    4:5, #วันศุกร์
-    5: 6, # วันเสาร์
-    6:7, #วันอาทิตย์
+PLANET_TH = {
+    "Sun": "ดวงอาทิตย์",
+    "Moon": "ดวงจันทร์",
+    "Mercury": "ดาวพุธ",
+    "Venus": "ดาวศุกร์",
+    "Mars": "ดาวอังคาร",
+    "Jupiter": "ดาวพฤหัสบดี",
+    "Saturn": "ดาวเสาร์",
+    "Uranus": "ดาวยูเรนัส",
+    "Neptune": "ดาวเนปจูน",
 }
 
-THAI_WEEKDAYS = [
-    "วันจันทร์", "อังคาร", "พุธ"
-    "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์", "วันอาทิตย์"
-]
+
+# =========================================================
+# PAGE CONFIGURATION
+# =========================================================
 
 st.set_page_config(
-    page_title="SYNAPSE MYSTIC NUMBER",
-    page_icon="🔮",
-    เลย์เอาต์="กว้าง"
-    initial_sidebar_state="ยุบ"
+    page_title=APP_TITLE,
+    page_icon="🌌",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 
-# ========================================================
-# สไตล์นีออน
-# ========================================================
+# =========================================================
+# COSMIC THEME
+# =========================================================
 
-st.markdown("""
-<style>
-:root {
-    --syn-bg: #050814;
-    --syn-panel: #0b1428;
-    --syn-blue: #63f4ff;
-    --syn-gold: #ffe66d;
-    --syn-red: #d94a5a;
-    --syn-silver: #e8edf5;
-    --syn-muted: #a8b7d9;
-}
-.stApp {
-    พื้นหลัง:
-      radial-gradient(ellipse at 10% 0%, #102c45 0%, transparent 36%),
-      radial-gradient(ellipse at 90% 15%, #351522 0%, transparent 32%),
-      linear-gradient(145deg, #050814, #080d1b 55%, #120b16);
-    สี: var(--syn-silver);
-}
-ส่วนหัว [data-testid = "stHeader"] { พื้นหลัง: rgba (0,0,0,0); }
-h1, h2, h3 {
-    สี: var(--syn-blue) !important;
-    เงาข้อความ: 0 0 10px #63f4ff55;
-}
-p, label, .stMarkdown { color: #e1eaff; }
-.hero {
-    จัดแนวข้อความ: กึ่งกลาง;
-    padding: 24px 10px;
-    ขอบโค้งมน: 22px;
-    เส้นขอบ: var ทึบ 1px (--syn-gold);
-    พื้นหลัง: การไล่ระดับสีเชิงเส้น (130 องศา, #091629, #21121c, #0a1728);
-    box-shadow: 0 0 18px #63f4ff20, inset 0 0 20px #ffe66d10;
-    ระยะขอบล่าง: 18px;
-}
-.hero-title {
-    ขนาดตัวอักษร: แคลมป์(24px, 5vw, 40px);
-    น้ำหนักตัวอักษร: 900;
-    ระยะห่างระหว่างตัวอักษร: 2px;
-    สี: var(--syn-gold);
-    text-shadow: 0 0 8px #ffe66d66, 0 0 22px #63f4ff55;
-}
-.hero-sub {
-    ขนาดตัวอักษร: 12px;
-    ระยะห่างระหว่างตัวอักษร: 2px;
-    สี: var(--syn-blue);
-    ระยะขอบบน: 8px;
-}
-.neon-card {
-    พื้นหลัง: การไล่ระดับสีเชิงเส้น (135 องศา, #0a1426, #17131d);
-    ขอบ: 1px ทึบ #63f4ff80;
-    ขอบโค้งมน: 16px;
-    ระยะห่าง: 14px;
-    ระยะขอบ: 8px 0;
-    เงาของกล่อง: 0 0 10px #63f4ff18;
-}
-.neon-number {
-    ขนาดตัวอักษร: 27px;
-    น้ำหนักตัวอักษร: 900;
-    สี: var(--syn-gold);
-    เงาข้อความ: 0 0 10px #ffe66d66;
-    จัดแนวข้อความ: กึ่งกลาง;
-}
-.neon-label { color: var(--syn-blue); font-size: 13px; text-align: center; }
-[data-testid="stMetric"] {
-    พื้นหลัง: การไล่ระดับสีเชิงเส้น (135 องศา, #0b1830, #20151e);
-    ขอบ: 1px ทึบ #ffe66d70;
-    ขอบโค้งมน: 14px;
-    ระยะห่าง: 14px;
-    เงาของกล่อง: 0 0 12px #63f4ff15;
-}
-[data-testid="stMetricValue"] { สี: var(--syn-gold) !สำคัญ; }
-[data-testid="stMetricLabel"] { สี: var(--syn-blue) !สำคัญ; }
-div.stButton > ปุ่ม, div.stDownloadButton > ปุ่ม {
-    สี: #f5f7ff;
-    พื้นหลัง: การไล่ระดับสีเชิงเส้น (110 องศา, #102d43, #38202a);
-    เส้นขอบ: var ทึบ 1px (--syn-blue);
-    ขอบโค้งมน: 12px;
-    เงาของกล่อง: 0 0 8px #63f4ff25;
-    การเปลี่ยนผ่าน: ทั้งหมด 0.2 วินาทีอย่างราบรื่น;
-}
-div.stButton > button:hover, div.stDownloadButton > button:hover {
-    สีขอบ: var(--syn-gold);
-    สี: #ffffff;
-    เงาของกล่อง: 0 0 14px #ffe66d40;
-}
-input, textarea, [data-baseweb="select"] > div {
-    สีขอบ: #63f4ff70 !สำคัญ;
-}
-hr { border-color: #34465b; }
-.small-note { color: var(--syn-muted); font-size: 12px; }
-</style>
-<div class="hero">
-  <div class="hero-title">✦ หมายเลขลึกลับของ SYNAPSE ✦</div>
-  <div class="hero-sub">วันที่ • ข้างขึ้นข้างแรม • เมทริกซ์ตัวเลข • เพลงนีออน</div>
-</div>
-""", unsafe_allow_html=True)
-
-
-# ========================================================
-# ฟังก์ชันการคำนวณ
-# ========================================================
-
-def last_digit(n):
-    """ใช้มูลค่า ยกเว้นองค์ประกอบ"""
-    คืนค่า abs(int(n)) % 10
-
-
-def lunar_estimate(d):
+st.markdown(
     """
-    กระดานดำจันทร์จากกระดานดำ
-    การค้นหาข้อมูลทางโทรศัพท์ไทย
+    <style>
+    .stApp {
+        background:
+            radial-gradient(
+                circle at top right,
+                #18295b 0%,
+                #090f26 45%,
+                #030711 100%
+            );
+        color: #f5f0dc;
+    }
+
+    [data-testid="stSidebar"] {
+        background: #080d20;
+        border-right: 1px solid #c9a85c;
+    }
+
+    h1, h2, h3 {
+        color: #f1cf78 !important;
+    }
+
+    p, label, span {
+        color: #e9e8f5;
+    }
+
+    .cosmic-card {
+        background: rgba(19, 29, 62, 0.88);
+        border: 1px solid #a88c4d;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 14px;
+        box-shadow: 0 0 18px rgba(201, 168, 92, 0.08);
+    }
+
+    .gold-text {
+        color: #f1cf78;
+        font-weight: bold;
+    }
+
+    .big-number {
+        color: #f1cf78;
+        font-size: 56px;
+        font-weight: 800;
+        text-align: center;
+        letter-spacing: 8px;
+    }
+
+    .muted {
+        color: #b8bfd8;
+        font-size: 13px;
+    }
+
+    div.stButton > button {
+        background: linear-gradient(90deg, #b08b3d, #e8cd7c);
+        color: #11162b;
+        border: none;
+        border-radius: 10px;
+        font-weight: bold;
+        min-height: 42px;
+    }
+
+    div.stButton > button:hover {
+        background: #f7df97;
+        color: #11162b;
+        border: 1px solid #fff0b5;
+    }
+
+    div[data-testid="stMetric"] {
+        background: rgba(22, 33, 69, 0.85);
+        border: 1px solid #75643e;
+        padding: 14px;
+        border-radius: 12px;
+    }
+
+    hr {
+        border-color: #665b43;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# =========================================================
+# DATABASE
+# =========================================================
+
+def get_connection():
+    return sqlite3.connect(DB_PATH)
+
+
+def initialize_database():
+    with get_connection() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS calculations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                created_at TEXT NOT NULL,
+                target_date TEXT NOT NULL,
+                weekday TEXT NOT NULL,
+                result_number TEXT NOT NULL,
+                date_value INTEGER,
+                weekday_value INTEGER,
+                planet_value INTEGER,
+                angle_value INTEGER,
+                moon_value INTEGER,
+                astronomy_status TEXT
+            )
+            """
+        )
+
+
+def save_calculation(record):
+    with get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO calculations (
+                created_at,
+                target_date,
+                weekday,
+                result_number,
+                date_value,
+                weekday_value,
+                planet_value,
+                angle_value,
+                moon_value,
+                astronomy_status
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                record["created_at"],
+                record["target_date"],
+                record["weekday"],
+                record["result_number"],
+                record["date_value"],
+                record["weekday_value"],
+                record["planet_value"],
+                record["angle_value"],
+                record["moon_value"],
+                record["astronomy_status"],
+            ),
+        )
+
+
+def load_history():
+    with get_connection() as conn:
+        return pd.read_sql_query(
+            """
+            SELECT *
+            FROM calculations
+            ORDER BY id DESC
+            """,
+            conn,
+        )
+
+
+initialize_database()
+
+
+# =========================================================
+# CALENDAR
+# =========================================================
+
+THAI_WEEKDAYS = [
+    "วันจันทร์",
+    "วันอังคาร",
+    "วันพุธ",
+    "วันพฤหัสบดี",
+    "วันศุกร์",
+    "วันเสาร์",
+    "วันอาทิตย์",
+]
+
+
+def weekday_name(target_date):
+    return THAI_WEEKDAYS[target_date.weekday()]
+
+
+def date_digit_sum(target_date):
+    digits = target_date.strftime("%Y%m%d")
+    return sum(int(ch) for ch in digits)
+
+
+def digital_root(number):
+    if number == 0:
+        return 0
+
+    while number > 9:
+        number = sum(int(ch) for ch in str(number))
+
+    return number
+
+
+# =========================================================
+# ASTRONOMY
+# =========================================================
+
+@st.cache_resource(show_spinner=False)
+def load_ephemeris():
     """
-    อ้างอิง = datetime(2000, 1, 6, 18, 14)
-    target = datetime(d.year, d.month, d.day, 12, 0)
-    รอบ = 29.530588853
-    อายุ = ((เป้าหมาย - อ้างอิง).จำนวนวินาทีทั้งหมด() / 86400) % รอบ
+    Load Skyfield's DE421 ephemeris.
+    The first successful load may require internet access.
+    """
+    from skyfield.api import load
 
-    #เด็กจันทร์ 0-14.999 = เวลาที่เหลือขึ้นโดยประมาณ
-    ถ้าอายุ < รอบ / 2:
-        side = "ด้านข้างขึ้น"
-        วันจันทร์ = min(15, max(1, int(อายุ) + 1))
-    อื่นๆ:
-        side = "ข้างแรม"
-        อายุที่ลดลง = อายุ - รอบ / 2
-        lunar_day = min(15, max(1, int(waning_age) + 1))
+    eph = load("de421.bsp")
+    timescale = load.timescale()
 
-    ความสว่าง = (1 - math.cos(2 * math.pi * อายุ / รอบ)) / 2 * 100
+    return eph, timescale
 
-    ถ้าอายุ < 1.85 หรืออายุ >= 27.68:
-        phase = "เดือนดับ"
-    ถ้าอายุ < 7.38:
-        phase = "จันทร์เสี้ยวข้างขึ้น"
-    ถ้าอายุ < 11.07:
-        phase = "เฟสลูดวงข้างขึ้น"
-    ถ้าอายุ < 14.77 ปี:
-        phase = "เฟสวันเพ็ญ"
-    ถ้าอายุ < 18.46 ปี:
-        phase = "จันทร์เกือบเต็มดวงข้างแรม"
-    ถ้าอายุ < 22.15:
-        phase = "เฟสลูดวงข้างแรม"
-    อื่นๆ:
-        phase = "จันทร์เสี้ยวข้างแรม"
 
-    ส่งคืน {
-        "อายุ": ปัดเศษ(อายุ, 2),
-        "ด้าน": ด้านข้าง
-        "day": lunar_day,
-        "phase": phase,
-        "illumination": round(illumination, 1),
+def calculate_planet_positions(target_date):
+    """
+    Calculate approximate geocentric apparent ecliptic longitudes.
+
+    Results are returned in degrees from 0 to less than 360.
+    This calculation requires Skyfield and a downloaded ephemeris.
+    """
+    from skyfield.api import load
+
+    eph, timescale = load_ephemeris()
+
+    year = target_date.year
+    month = target_date.month
+    day = target_date.day
+
+    # Use noon UTC to represent the selected calendar date.
+    t = timescale.utc(year, month, day, 12, 0, 0)
+
+    earth = eph["earth"]
+
+    body_keys = {
+        "Sun": "sun",
+        "Moon": "moon",
+        "Mercury": "mercury",
+        "Venus": "venus",
+        "Mars": "mars",
+        "Jupiter": "jupiter barycenter",
+        "Saturn": "saturn barycenter",
+        "Uranus": "uranus barycenter",
+        "Neptune": "neptune barycenter",
+    }
+
+    positions = {}
+
+    for planet in PLANETS:
+        body = eph[body_keys[planet]]
+        apparent = earth.at(t).observe(body).apparent()
+
+        # Ecliptic longitude, measured in degrees.
+        _, longitude, _ = apparent.ecliptic_latlon(epoch="date")
+
+        positions[planet] = float(longitude.degrees) % 360.0
+
+    return positions
+
+
+def angular_separation(longitude_a, longitude_b):
+    """
+    Smallest separation between two ecliptic longitudes.
+    Result ranges from 0 to 180 degrees.
+    """
+    difference = abs(longitude_a - longitude_b) % 360.0
+    return min(difference, 360.0 - difference)
+
+
+def calculate_angular_table(positions):
+    rows = []
+
+    for first, second in combinations(positions.keys(), 2):
+        separation = angular_separation(
+            positions[first],
+            positions[second],
+        )
+
+        rows.append(
+            {
+                "ดาวดวงที่ 1": PLANET_TH[first],
+                "ดาวดวงที่ 2": PLANET_TH[second],
+                "ระยะห่างเชิงมุม (องศา)": round(separation, 4),
+            }
+        )
+
+    return pd.DataFrame(rows)
+
+
+# =========================================================
+# EXPERIMENTAL NUMBER FORMULA
+# =========================================================
+
+def calculate_number(target_date, positions):
+    """
+    Fixed experimental formula.
+
+    D = digital root of YYYYMMDD
+    W = weekday code, Monday=1 through Sunday=7
+    P = weighted sum of planetary longitudes, scaled by 100
+    A = sum of pairwise longitude separations, scaled by 100
+    M = Moon longitude, scaled by 100
+
+    Final result = (3D + 2W + P + A + M) mod 100
+
+    This is an experimental number transformation.
+    It is not a scientifically validated lottery prediction.
+    """
+
+    date_value = digital_root(date_digit_sum(target_date))
+    weekday_value = target_date.weekday() + 1
+
+    if not positions:
+        return None
+
+    weighted_longitudes = sum(
+        (index + 1) * positions[planet]
+        for index, planet in enumerate(PLANETS)
+    )
+
+    planet_value = round(weighted_longitudes * 100) % 100
+
+    all_separations = [
+        angular_separation(
+            positions[first],
+            positions[second],
+        )
+        for first, second in combinations(PLANETS, 2)
+    ]
+
+    angle_value = round(sum(all_separations) * 100) % 100
+
+    moon_value = round(positions["Moon"] * 100) % 100
+
+    result = (
+        3 * date_value
+        + 2 * weekday_value
+        + planet_value
+        + angle_value
+        + moon_value
+    ) % 100
+
+    return {
+        "result_number": f"{result:02d}",
+        "date_value": date_value,
+        "weekday_value": weekday_value,
+        "planet_value": planet_value,
+        "angle_value": angle_value,
+        "moon_value": moon_value,
     }
 
 
-def create_four_numbers(day_number, lunar_number):
+# =========================================================
+# LOTTERY HISTORY CSV
+# =========================================================
+
+def normalize_number(value):
     """
-    การจัดองค์ประกอบชั้น 4 ตัวอย่าง:
-    1. เรียงใหม่
-    2. การกำหนดตำแหน่งข้างขึ้น/ข้างแรม
-    3. ผลบวกองค์ประกอบ
-    4. ผลต่างองค์ประกอบ มูลค่า มูลค่า มูลค่า มูลค่า
+    Keep lottery numbers as text to preserve leading zeroes.
     """
-    การบวก = หลักสุดท้ายของ (หมายเลขวัน + หมายเลขจันทรคติ)
-    การลบ = หลักสุดท้ายของ (เลขจันทรคติ - เลขวัน)
+    if pd.isna(value):
+        return None
 
-    ส่งคืน [
-        หมายเลขวัน
-        เลขจันทรคติ
-        นอกจากนี้
-        การลบ
-    ]
+    text_value = str(value).strip()
 
+    if text_value.endswith(".0"):
+        text_value = text_value[:-2]
 
-def create_48_doors(numbers):
-    """
-    3 คน: การเรียงสับเปลี่ยนของเลข 4 คนที่ชื่อ 3 ตำแหน่ง = 24 ชุด
-    2 คนที่: เลือกคู่โดยไม่ซ้ำแล้วสร้างเลขตรงและเลขกลับ
-    """
-    ตัวเลขสามหลัก = [
-        "".join(map(str, p))
-        สำหรับ p ใน itertools.permutations(numbers, 3)
-    ]
+    if not text_value.isdigit():
+        return None
 
-    pairs = list(itertools.combinations(numbers, 2))
-    two_digit_top = [
-        "".join(map(str, pair))
-        สำหรับคู่ในคู่
-    ]
-    two_digit_bottom = [
-        ค่า[::-1] สำหรับค่าในสองหลักบนสุด
-    ]
-
-    ส่งคืนค่าสามหลัก, ตัวเลขสองหลักด้านบน, ตัวเลขสองหลักด้านล่าง
+    return text_value
 
 
-def find_music_files():
-    ถ้า APP_DIR ไม่มีอยู่:
-        ส่งคืน []
-    ส่งคืนเรียงลำดับ (
-        [
-            p สำหรับ p ใน APP_DIR.iterdir()
-            ถ้า p.is_file() และ p.suffix.lower() อยู่ใน MUSIC_EXTENSIONS
-        ],
-        key=lambda p: p.name.lower()
+def analyze_lottery_csv(uploaded_file):
+    df = pd.read_csv(
+        uploaded_file,
+        dtype=str,
+        keep_default_na=False,
     )
 
+    df.columns = [column.strip().lower() for column in df.columns]
 
-# ========================================================
-# ช่องป้อนวันที่
-# ========================================================
+    required = {"date", "lottery", "category", "number"}
+    missing = required - set(df.columns)
 
-st.header("📅 รับวันเพื่อทำอาหาร")
-
-วันนี้ = date.today()
-current_be = today.year + 543
-
-c1, c2, c3 = st.columns(3)
-
-ด้วย c1:
-    day_value = st.selectbox(
-        "องค์ประกอบ",
-        ช่วง (1, 32)
-        index=today.day - 1
-    )
-
-ด้วย c2:
-    ค่าเดือน = st.selectbox(
-        "เดือน"
-        ช่วง (1, 13)
-        index=today.month - 1,
-        format_func=lambda x: THAI_MONTHS[x - 1]
-    )
-
-ด้วย c3:
-    year_options = list(range(current_be - 100, current_be + 11))
-    year_be = st.selectbox(
-        "ปี พ.ศ.",
-        ตัวเลือกปี
-        index=year_options.index(current_be)
-    )
-
-ปีหลัง = ปีเกิด - 543
-max_day = calendar.monthrange(year_ad, month_value)[1]
-
-ถ้า day_value > max_day:
-    st.error(f"เดือนนี้มีเพียง {max_day} วันที่วันที่ใหม่")
-    chosen_date = None
-อื่นๆ:
-    chosen_date = date(year_ad, month_value, day_value)
-
-
-# ========================================================
-# ป้อนเลขจันทรคติ
-# ========================================================
-
-ถ้า chosen_date:
-    d = chosen_date
-    weekday_name = THAI_WEEKDAYS[d.weekday()]
-    day_number = DAY_NUMBERS[d.weekday()]
-    ดวงจันทร์ = ประมาณการดวงจันทร์(d)
-
-    st.divider()
-    st.header("🌙 เลื่อนไปทางขวาใกล้ด้านบน– ใกล้แรม")
-
-    st.caption(
-        "ระบบจัดการข้อมูลให้ถูกต้อง"
-        "องค์ประกอบและองค์ประกอบนี้เองที่มันทำงาน"
-    )
-
-    l1, l2 = st.columns(2)
-
-    ด้วย l1:
-        lunar_side = st.selectbox(
-            "องค์ประกอบเว็บเพจ",
-            [" ข้างขึ้น", " ข้างแรม"],
-            index=0 ถ้า lunar["side"] == "ข้างขึ้น" else 1
+    if missing:
+        return None, (
+            "ไฟล์ CSV ต้องมีคอลัมน์: date, lottery, category, number "
+            f"โดยยังขาด: {', '.join(sorted(missing))}"
         )
 
-    ด้วย l2:
-        lunar_number = st.selectbox(
-            "องค์ประกอบเว็บเพจ (1–15)",
-            ช่วง (1, 16)
-            index=lunar["day"] - 1
-        )
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["number"] = df["number"].apply(normalize_number)
 
-    st.markdown(
-        f"""
-        <div class="neon-card">
-          <div class="neon-label">ป้ายไฟ</div>
-          <div class="neon-number">{weekday_name}</div>
-          <div class="neon-label">
-            {d.day} {THAI_MONTHS[d.month - 1]} พ.ศ. {วันปี + 543}
-          </div>
+    df = df.dropna(subset=["date", "number"]).copy()
+
+    df["lottery"] = df["lottery"].astype(str).str.strip()
+    df["category"] = df["category"].astype(str).str.strip()
+
+    df = df[
+        (df["lottery"] != "")
+        & (df["category"] != "")
+        & (df["number"] != "")
+    ].copy()
+
+    if df.empty:
+        return None, "ไม่พบแถวข้อมูลที่ใช้งานได้ในไฟล์ CSV"
+
+    df["date"] = df["date"].dt.strftime("%Y-%m-%d")
+
+    df["last_two_digits"] = df["number"].apply(
+        lambda value: value[-2:].zfill(2)
+    )
+
+    return df, None
+
+
+# =========================================================
+# SIDEBAR
+# =========================================================
+
+st.sidebar.markdown("# 🌌 SYNAPSE")
+st.sidebar.markdown("### MYSTIC NUMBER")
+st.sidebar.markdown("---")
+
+page = st.sidebar.radio(
+    "เลือกเมนู",
+    [
+        "หน้าหลัก",
+        "คำนวณดวงดาว",
+        "วิเคราะห์ผลย้อนหลัง",
+        "ประวัติการคำนวณ",
+        "เกี่ยวกับระบบ",
+    ],
+)
+
+st.sidebar.markdown("---")
+st.sidebar.caption("COSMIC NUMEROLOGY LAB")
+st.sidebar.caption("Experimental • Transparent • Reproducible")
+
+
+# =========================================================
+# HEADER
+# =========================================================
+
+st.markdown(
+    """
+    <div class="cosmic-card">
+        <div style="font-size:14px; color:#c9b77d;">
+            COSMIC DATA • ASTRONOMY • NUMBER ANALYSIS
         </div>
-        """,
-        unsafe_allow_html=True
-    )
-
-    a, b, c = st.columns(3)
-    a.metric("จำนวนวัน", day_number)
-    b.metric("ตัวเลขข้างขึ้น/ข้างแรม", lunar_number)
-    c.metric("ดวงจันทร์สว่าง", f'{lunar["illumination"]}%')
-
-    st.caption(
-        f" อายุจันทร์ตามปกติ {lunar['age']} วัน · {lunar['phase']}. "
-        "การเลื่อนนี้ไม่ใช่การเลื่อนตามการเลื่อนไทย"
-    )
-
-    # ------------------------------------------------------
-    # หมายเลขเมล็ดพันธุ์ทั้งสี่
-    # ------------------------------------------------------
-
-    st.divider()
-    st.header("🔢 สูตรคำนวณเลขตั้งต้น 4 คน")
-
-    four_numbers = create_four_numbers(day_number, lunar_number)
-
-    plus_result = หมายเลขวัน + หมายเลขจันทรคติ
-    ผลลัพธ์ลบ = เลขจันทรคติ - เลขวัน
-
-    st.markdown(
-        f"""
-        <div class="neon-card">
-          <div class="neon-label">ป้ายไฟ</div>
-          <div class="neon-number">{day_number}</div>
-          <div class="neon-label"> ด้านข้าง {lunar_side}</div>
-          <div class="neon-number">{lunar_number}</div>
+        <h1 style="font-size:34px;">
+            🌌 SYNAPSE MYSTIC NUMBER
+        </h1>
+        <div style="color:#c5cbe1;">
+            สำรวจความสัมพันธ์ระหว่างวันที่ ตำแหน่งดาว
+            และการแปลงข้อมูลเป็นตัวเลข
         </div>
-        """,
-        unsafe_allow_html=True
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+# =========================================================
+# PAGE: HOME
+# =========================================================
+
+if page == "หน้าหลัก":
+
+    st.subheader("📅 เลือกวันที่สำหรับคำนวณ")
+
+    selected_date = st.date_input(
+        "วันที่ต้องการวิเคราะห์",
+        value=date.today(),
+        min_value=date(1900, 1, 1),
+        max_value=date(2100, 12, 31),
     )
 
-    f1, f2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
-    ด้วย f1:
-        st.markdown("### ➕ สูตรบวก")
-        st.write(f"{day_number} + {lunar_number} = {plus_result}")
-        st.write(f"ลำดับหลัก: **{last_digit(plus_result)}**")
+    with col1:
+        st.metric("วันที่", selected_date.strftime("%d/%m/%Y"))
 
-    ด้วย f2:
-        st.markdown("### ➖ สูตรลบ")
-        st.write(f"{lunar_number} − {day_number} = {minus_result}")
-        st.write(f" ค่าสุดท้าย ตัวเลขหลัก: **{last_digit(minus_result)}**")
+    with col2:
+        st.metric("วันในสัปดาห์", weekday_name(selected_date))
 
-    st.markdown("### ✨เลขตั้งต้น 4 คน")
+    with col3:
+        st.metric("ผลรวมตัวเลขวันที่", date_digit_sum(selected_date))
 
-    seed_cols = st.columns(4)
-    สำหรับคอลัมน์ ตัวเลข ป้ายกำกับในรหัสไปรษณีย์(
-        seed_cols,
-        ตัวเลขสี่ตัว
-        ["เลขวัน", "เลขหน่วยความจำ", "เลขบวก", "เลขลบ"]
+    st.info(
+        "ระบบจะใช้เวลา 12:00 UTC เป็นเวลาอ้างอิงของวันที่เลือก "
+        "เพื่อให้การคำนวณแต่ละครั้งมีหลักเกณฑ์เดียวกัน"
+    )
+
+    if st.button("🪐 คำนวณวันที่และตำแหน่งดาว", use_container_width=True):
+
+        with st.spinner("กำลังคำนวณข้อมูลดาราศาสตร์..."):
+            try:
+                positions = calculate_planet_positions(selected_date)
+
+                formula = calculate_number(
+                    selected_date,
+                    positions,
+                )
+
+                st.session_state["last_positions"] = positions
+                st.session_state["last_formula"] = formula
+                st.session_state["last_date"] = selected_date.isoformat()
+                st.session_state["last_astronomy_status"] = "สำเร็จ"
+
+                st.success("คำนวณตำแหน่งดาวเรียบร้อยแล้ว")
+
+            except Exception as exc:
+                st.session_state["last_positions"] = None
+                st.session_state["last_formula"] = None
+                st.session_state["last_date"] = selected_date.isoformat()
+                st.session_state["last_astronomy_status"] = "ไม่สำเร็จ"
+
+                st.error(
+                    "ยังคำนวณตำแหน่งดาวไม่ได้ "
+                    "ตรวจสอบการติดตั้งไลบรารีและการเชื่อมต่ออินเทอร์เน็ต"
+                )
+
+                st.caption(f"รายละเอียดสำหรับตรวจสอบ: {exc}")
+
+    if (
+        st.session_state.get("last_date") == selected_date.isoformat()
+        and st.session_state.get("last_formula")
     ):
-        ด้วย col:
-            st.markdown(
-                f"""
-                <div class="neon-card">
-                  <div class="neon-label">{label}</div>
-                  <div class="neon-number">{number}</div>
+        formula = st.session_state["last_formula"]
+
+        st.markdown("---")
+        st.subheader("🔢 ผลลัพธ์จากสูตรทดลอง")
+
+        st.markdown(
+            f"""
+            <div class="cosmic-card">
+                <div style="text-align:center;">
+                    <div style="color:#c9b77d;">
+                        EXPERIMENTAL TWO-DIGIT OUTPUT
+                    </div>
+                    <div class="big-number">
+                        {formula["result_number"]}
+                    </div>
+                    <div class="muted">
+                        ไม่ใช่คำรับประกันผลสลาก
+                    </div>
                 </div>
-                """,
-                unsafe_allow_html=True
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        a, b, c = st.columns(3)
+
+        a.metric("ค่า D: วันที่", formula["date_value"])
+        b.metric("ค่า W: วันในสัปดาห์", formula["weekday_value"])
+        c.metric("ค่า P: ตำแหน่งดาว", formula["planet_value"])
+
+        d, e = st.columns(2)
+
+        d.metric("ค่า A: ระยะห่างเชิงมุม", formula["angle_value"])
+        e.metric("ค่า M: ตำแหน่งดวงจันทร์", formula["moon_value"])
+
+        with st.expander("ดูสูตรที่ใช้คำนวณ"):
+            st.code(
+                "ผลลัพธ์ = "
+                "(3D + 2W + P + A + M) % 100"
             )
 
-    ถ้าความยาวของชุดตัวเลขสี่ตัวไม่เท่ากับ 4:
-        st.warning(
-            "องค์ประกอบต้นมีองค์ประกอบกัน ระบบกราฟิกชุดที่บล็อกทั้งหมด"
-            "แต่บางชุดบางชุดบางชุดบางชุด"
-        )
+            st.write(
+                "D = ผลรวมตัวเลขวันที่ที่ย่อเป็นเลขหลักเดียว"
+            )
+            st.write(
+                "W = รหัสวัน ตั้งแต่วันจันทร์ 1 ถึงวันอาทิตย์ 7"
+            )
+            st.write(
+                "P = ผลรวมลองจิจูดของดาวที่ถ่วงน้ำหนัก "
+                "คูณ 100 แล้วหาเศษจาก 100"
+            )
+            st.write(
+                "A = ผลรวมระยะห่างเชิงมุมของดาวทุกคู่ "
+                "คูณ 100 แล้วหาเศษจาก 100"
+            )
+            st.write(
+                "M = ลองจิจูดดวงจันทร์คูณ 100 "
+                "แล้วหาเศษจาก 100"
+            )
 
-    # ------------------------------------------------------
-    # 48 ประตู
-    # ------------------------------------------------------
+        if st.button("💾 บันทึกผลการคำนวณ"):
+            record = {
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+                "target_date": selected_date.isoformat(),
+                "weekday": weekday_name(selected_date),
+                "result_number": formula["result_number"],
+                "date_value": formula["date_value"],
+                "weekday_value": formula["weekday_value"],
+                "planet_value": formula["planet_value"],
+                "angle_value": formula["angle_value"],
+                "moon_value": formula["moon_value"],
+                "astronomy_status": "สำเร็จ",
+            }
 
-    three_numbers, two_top, two_bottom = create_48_doors(four_numbers)
+            save_calculation(record)
+            st.success("บันทึกผลลงฐานข้อมูลแล้ว")
 
-    st.divider()
-    st.header("🚪 ธีมชุด")
 
-    st.markdown(
-        "### 🔷 3 คนบน — 24 ชุด"
+# =========================================================
+# PAGE: ASTRONOMY
+# =========================================================
+
+elif page == "คำนวณดวงดาว":
+
+    st.subheader("🪐 ตำแหน่งดาวและระยะห่างเชิงมุม")
+
+    astro_date = st.date_input(
+        "เลือกวันที่สำหรับดูตำแหน่งดาว",
+        value=date.today(),
+        key="astro_date",
+        min_value=date(1900, 1, 1),
+        max_value=date(2100, 12, 31),
     )
-    st.caption("เรียงตามลำดับเลขตั้งต้น 4 ตัวอักษรในส่วนที่ 3 ตำแหน่ง")
 
-    สำหรับการเริ่มต้นในช่วง (0, ความยาวของตัวเลขสามตัว) 6:
-        cols = st.columns(6)
-        สำหรับ col, value ใน zip(cols, three_numbers[start:start + 6]):
-            ด้วย col:
-                st.markdown(
-                    f"""
-                    <div class="neon-card">
-                      <div class="neon-number">{value}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
+    if st.button("ตรวจสอบตำแหน่งดาว", use_container_width=True):
+
+        with st.spinner("กำลังโหลดข้อมูลดาราศาสตร์..."):
+            try:
+                positions = calculate_planet_positions(astro_date)
+
+                st.session_state["astro_positions"] = positions
+                st.session_state["astro_date_saved"] = astro_date.isoformat()
+
+                st.success("คำนวณสำเร็จ")
+
+            except Exception as exc:
+                st.error(
+                    "คำนวณไม่สำเร็จ ตรวจสอบการติดตั้ง Skyfield "
+                    "และการดาวน์โหลด ephemeris"
                 )
+                st.caption(f"รายละเอียด: {exc}")
 
-    st.markdown("### 🟣 2 คนบน–ล่าง — 12 รายการ")
+    if st.session_state.get("astro_date_saved") == astro_date.isoformat():
+        positions = st.session_state.get("astro_positions")
 
-    pair_rows = list(zip(two_top, two_bottom))
-    สำหรับการเริ่มต้นในช่วง (0, ความยาวของคู่แถว), 3:
-        cols = st.columns(3)
-        สำหรับคอลัมน์ (บนสุด, ล่างสุด) ใน zip(คอลัมน์, pair_rows[start:start + 3]):
-            ด้วย col:
-                st.markdown(
-                    f"""
-                    <div class="neon-card">
-                      <div class="neon-label">บน ↔ ล่าง</div>
-                      <div class="neon-number">{top} ↔ {bottom}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+        if positions:
+            planet_df = pd.DataFrame(
+                [
+                    {
+                        "ดาว": PLANET_TH[name],
+                        "ลองจิจูดสุริยวิถี (องศา)": round(value, 5),
+                    }
+                    for name, value in positions.items()
+                ]
+            )
 
-    st.divider()
-    st.header("💠 ส่วนหัวของหน้าเว็บ")
+            st.markdown("### ตำแหน่งดาว")
+            st.dataframe(
+                planet_df,
+                use_container_width=True,
+                hide_index=True,
+            )
 
-    s1, s2, s3 = st.columns(3)
-    s1.metric("3 คนบน", f"{len(three_numbers)} ชุด")
-    s2.metric("2 คนบน", f"{len(two_top)} ชุด")
-    s3.metric("2 ตัวล่าง", f"{len(two_bottom)} ชุด")
+            st.markdown("### ระยะห่างเชิงมุมระหว่างดาว")
 
-    total_doors = len(three_numbers) + len(two_top) + len(two_bottom)
-    st.metric("รวมทั้งหมด", f"{total_doors} รายการ")
+            angle_df = calculate_angular_table(positions)
 
-    st.caption(
-        "หากคิดรายการละ 1 บาทจะเป็นยอดสมมติ "
-        f"{total_doors} ประตูทั้งหมดมีผล"
+            st.caption(
+                "แสดงระยะห่างของลองจิจูดบนสุริยวิถี "
+                "ไม่ใช่ระยะห่างจริงระหว่างดาวในอวกาศ"
+            )
+
+            st.dataframe(
+                angle_df,
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            csv_data = angle_df.to_csv(
+                index=False
+            ).encode("utf-8-sig")
+
+            st.download_button(
+                "ดาวน์โหลดตารางระยะห่างเป็น CSV",
+                data=csv_data,
+                file_name=f"planet_angles_{astro_date.isoformat()}.csv",
+                mime="text/csv",
+            )
+
+
+# =========================================================
+# PAGE: HISTORICAL ANALYSIS
+# =========================================================
+
+elif page == "วิเคราะห์ผลย้อนหลัง":
+
+    st.subheader("🎟️ เปรียบเทียบกับผลสลากย้อนหลัง")
+
+    st.write(
+        "นำเข้าไฟล์ CSV ที่มีผลสลากจริง "
+        "ระบบจะเปรียบเทียบเลขที่คำนวณไว้กับเลขสองหลักท้าย"
     )
 
-    # ------------------------------------------------------
-    # ส่งออก CSV
-    # ------------------------------------------------------
-
-    export_rows = [
-        ["หน้าเว็บ", "หน้าเว็บ"],
-    ]
-    Export_rows += [["3 คนบน", n] สำหรับ n ใน three_numbers]
-    Export_rows += [["2 คนบน", n] สำหรับ n ใน two_top]
-    Export_rows += [["2 คนล่าง", n] สำหรับ n ใน two_bottom]
-
-    csv_text = "\ufeff" + "\n".join(
-        f'"{row[0]}","{row[1]}"' สำหรับแถวใน export_rows
-    )
-
-    st.download_button(
-        "⬇️ ดาวน์โหลดชุดไฟล์ CSV",
-        data=csv_text.encode("utf-8"),
-        file_name=f"numbers_{d.strftime('%Y%m%d')}.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
-
-
-# ========================================================
-# เครื่องเล่นเพลงนีออน
-# ========================================================
-
-st.divider()
-st.header("🎧 เครื่องเล่นเพลง SYNAPSE NEON")
-
-music_files = find_music_files()
-
-st.caption(
-    " ฝังไฟล์เพลง อัปโหลดไฟล์ Ta_app.py "
-    "รองรับ MP3, WAV, OGG, M4A, AAC และ FLAC"
-)
-
-ถ้าไม่ใช่ไฟล์เพลง:
     st.warning(
-        "ยังไม่พบไฟล์เพลงเพิ่มไฟล์เพลงใน GitHub "
-        "องค์ประกอบ Ta_app.py"
-    )
-อื่นๆ:
-    st.success(f" โหลดเพลง {len(music_files)} เพลง")
-
-    ด้วย st.expander("📜 รายการเพลงทั้งหมด", Extended=True):
-        สำหรับ index, music_file ใน enumerate(music_files, start=1):
-            st.write(f"{index}. 🎵 {music_file.name}")
-
-    # ฝังแทร็กไว้ใน iframe เดียว วิธีนี้ช่วยหลีกเลี่ยงการแทนที่โหนด DOM
-    # ในหน้า Streamlit หลัก
-    แทร็ก = []
-
-    สำหรับไฟล์เพลงแต่ละไฟล์ในโฟลเดอร์ music_files:
-        ลองดู:
-            mime, _ = mimetypes.guess_type(music_file.name)
-            ถ้าไม่ใช่ mime หรือไม่ใช่ mime.startswith("audio/"):
-                mime = "audio/mpeg"
-
-            เข้ารหัส = base64.b64encode(
-                music_file.read_bytes()
-            ).decode("ascii")
-
-            tracks.append({
-                "name": music_file.name,
-                "mime": mime,
-                "ข้อมูล": เข้ารหัส
-            })
-        ยกเว้น OSError:
-            st.warning(f" อ่านไฟล์ไม่จริง: {music_file.name}")
-
-    ถ้าติดตาม:
-        tracks_json = json.dumps(tracks, ensure_ascii=True)
-
-        player_html = r"""
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-เนื้อหา {
-  ระยะขอบ: 0;
-  ระยะห่าง: 8px;
-  สี: #e8edf5;
-  พื้นหลัง: โปร่งใส;
-  ตระกูลฟอนต์: Arial, sans-serif;
-}
-.player {
-  ขอบ: 1px ทึบ #ffe66d;
-  ขอบโค้งมน: 18px;
-  ระยะห่าง: 16px;
-  พื้นหลัง: linear-gradient(135deg,#091629,#21121c,#101b2b);
-  เงาของกล่อง: 0 0 16px #63f4ff22;
-}
-.title {
-  สี: #63f4ff;
-  ขนาดตัวอักษร: 18px;
-  น้ำหนักตัวอักษร: 900;
-  เงาข้อความ: 0 0 10px #63f4ff;
-}
-.track {
-  สี: #ffe66d;
-  ระยะขอบ: 10px 0;
-  overflow-wrap: anywhere;
-}
-.status {
-  สี: #a8b7d9;
-  ขนาดตัวอักษร: 12px;
-  ระยะขอบ: 8px 0;
-}
-เสียง { ความกว้าง: 100%; ระยะขอบ: 8px 0; }
-ปุ่ม {
-  สี: #fff;
-  พื้นหลัง: #102d43;
-  ขอบ: 1px ทึบ #63f4ff;
-  ขอบโค้งมน: 10px;
-  padding: 10px 12px;
-  ระยะขอบ: 3px;
-}
-ปุ่ม:เมื่อวางเมาส์เหนือปุ่ม { พื้นหลัง: #38202a; }
-.list {
-  ระยะขอบบน: 12px;
-  ความสูงสูงสุด: 155px;
-  overflow-y: auto;
-  ขอบบน: 1px ทึบ #34465b;
-  padding-top: 8px;
-}
-.item {
-  ขนาดตัวอักษร: 12px;
-  ระยะห่าง: 7px;
-  สี: #e8edf5;
-  ขอบโค้งมน: 7px;
-  overflow-wrap: anywhere;
-}
-.item.active {
-  สี: #ffe66d;
-  พื้นหลัง: #20151e;
-  ขอบ: 1px ทึบ #ffe66d;
-}
-.note {
-  สี: #a8b7d9;
-  ขนาดตัวอักษร: 11px;
-  line-height: 1.5;
-}
-</style>
-</head>
-<body>
-<div class="player">
-  <div class="title">✦ NEON MUSIC ✦</div>
-  <div id="track" class="track">เล่นเพลง...</div>
-  <audio id="audio" controls playsinline></audio>
-  <div>
-    <button id="play">▶ เล่น</button>
-    <button id="pause">⏸ห</button>
-    <button id="next">⏭ เพลงถัดไป</button>
-    <button id="shuffle">🔀 สับเปลี่ยนใหม่</button>
-  </div>
-  <div id="status" class="status"></div>
-  <div id="list" class="list"></div>
-  <p class="note">
-    เพลงจะเล่นและเล่นเพลงเมื่อเพลงจบ
-    ถ้าบล็อกการเล่นอัตโนมัติให้แตะปุ่ม ▶ เล่นก่อนแสดง
-  </p>
-</div>
-<script>
-const tracks = TRACKS_PLACEHOLDER;
-const audio = document.getElementById("audio");
-const trackLabel = document.getElementById("track");
-const statusLabel = document.getElementById("status");
-const list = document.getElementById("list");
-
-ให้ลำดับ = [];
-กำหนดให้ตำแหน่งเท่ากับ 0;
-ให้ค่าปัจจุบันเท่ากับ -1;
-let userStarted = false;
-
-ฟังก์ชัน shuffleArray(array) {
-  const result = array.slice();
-  สำหรับ (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  ส่งคืนผลลัพธ์;
-}
-
-ฟังก์ชัน makeOrder() {
-  ลำดับ = สุ่มสลับอาร์เรย์แทร็ก (tracks.map((_, i) => i));
-  ถ้า (ความยาวลำดับ > 1 และ ลำดับที่ 0 === ปัจจุบัน) {
-    [order[0], order[1]] = [order[1], order[0]];
-  }
-  ตำแหน่ง = 0;
-}
-
-ฟังก์ชัน renderList() {
-  list.replaceChildren();
-  tracks.forEach((item, i) => {
-    const row = document.createElement("div");
-    row.className = "item" + (i === current ? " active" : "");
-    row.textContent = (i + 1) + ". " + item.name;
-    row.addEventListener("click", () => {
-      userStarted = true;
-      playIndex(i, true);
-    });
-    list.appendChild(row);
-  });
-}
-
-ฟังก์ชันอะซิงโครนัส playIndex(index, attemptPlay) {
-  ถ้า (!tracks.length) ให้คืนค่า;
-  ปัจจุบัน = ดัชนี;
-  const item = tracks[index];
-
-  trackLabel.textContent =
-    "กำลังเลือก: " + item.name + " (" + (index + 1) + "/" +tracks.length + ")";
-
-  audio.src = "data:" + item.mime + ";base64," + item.data;
-  audio.load();
-  renderList();
-
-  ถ้า (attemptPlay) {
-    ลอง {
-      await audio.play();
-      statusLabel.textContent = "เล่นเพลง";
-    } catch (error) {
-      statusLabel.textContent =
-        "องค์ประกอบเล่นได้ ยกเว้นองค์ประกอบเล่นได้";
-    }
-  }
-}
-
-ฟังก์ชัน nextTrack() {
-  ถ้า (!tracks.length) ให้คืนค่า;
-  ถ้า (position >= order.length) ให้สร้างคำสั่งซื้อ (makeOrder())
-
-  ดัชนีคงที่ = ลำดับ[ตำแหน่ง];
-  ตำแหน่ง += 1;
-  playIndex(index, userStarted);
-}
-
-document.getElementById("play").addEventListener("click", async () => {
-  userStarted = true;
-  ลอง {
-    ถ้า (current < 0) {
-      nextTrack();
-    } มิฉะนั้น {
-      await audio.play();
-      statusLabel.textContent = "เล่นเพลง";
-    }
-  } catch (error) {
-    statusLabel.textContent = "เล่นไม่ได้โปรดลองเลือกเพลงจากรายชื่อ";
-  }
-});
-
-document.getElementById("pause").addEventListener("click", () => {
-  audio.pause();
-  statusLabel.textContent = "สถานะ";
-});
-
-document.getElementById("next").addEventListener("click", () => {
-  userStarted = true;
-  nextTrack();
-});
-
-document.getElementById("shuffle").addEventListener("click", () => {
-  makeOrder();
-  userStarted = true;
-  nextTrack();
-});
-
-audio.addEventListener("ended", () => {
-  nextTrack();
-});
-
-audio.addEventListener("ข้อผิดพลาด", () => {
-  statusLabel.textContent =
-    "ไฟล์นี้เล่นไม่ได้ ไฟล์ MP3 หรือ WAV ได้ตรวจสอบไฟล์อีกครั้ง";
-});
-
-makeOrder();
-renderList();
-
-// ลอง
+        "การตรงกันในอดีตไม่ได้รับประกันผลในอนาคต "
+    
