@@ -160,46 +160,30 @@ st.caption(
 # ==================================================
 st.subheader("🧮 ผลคำนวณตามสูตร")
 
+
+# เก็บตัวเลขผลลัพธ์ทั้งหมด ไม่ตัดทศนิยมทิ้ง
 last_digit = lunar_day % 10
 
 if lunar_day > 9 and phase == "ข้างขึ้น":
-    formula = f"{weekday_number} ÷ {last_digit}"
-    result = (
-        weekday_number / last_digit
-        if last_digit != 0
-        else None
-    )
-    operation = "หาร"
+    result = weekday_number / last_digit
+    result_text = f"{result:.10f}".rstrip("0").rstrip(".")
 
 elif lunar_day > 9 and phase == "ข้างแรม":
-    formula = f"{weekday_number} × {last_digit}"
     result = weekday_number * last_digit
-    operation = "คูณ"
+    result_text = str(result)
 
 else:
-    sum_value = weekday_number + lunar_day
-    difference = abs(weekday_number - lunar_day)
+    addition = weekday_number + lunar_day
+    subtraction = abs(weekday_number - lunar_day)
+    result_text = f"{subtraction}{addition}"
 
-    formula = (
-        f"{weekday_number} + {lunar_day} = {sum_value}\n"
-        f"{lunar_day} - {weekday_number} = {difference}"
-    )
-    result = None
-    operation = "บวกและลบ"
+# นำตัวเลขทุกหลักจากผลลัพธ์มาใช้
+result_digits = [
+    digit for digit in result_text if digit.isdigit()
+]
 
-st.markdown(f"""
-<div class="card">
-    <p>วัน: <b>{weekday_name}</b></p>
-    <p>ข้าง: <b>{phase} {lunar_day} ค่ำ</b></p>
-    <p>วิธีคำนวณ: <b>{operation}</b></p>
-</div>
-""", unsafe_allow_html=True)
-
-st.code(formula, language=None)
-
-if result is not None:
-    st.metric("ผลลัพธ์ตามจริง", f"{result:.10g}")
-
+st.write("ผลลัพธ์ทั้งหมด:", result_text)
+st.write("ตัวเลขที่นำไปใช้:", result_digits)
 # ==================================================
 # FOUR CORE DIGITS
 #
