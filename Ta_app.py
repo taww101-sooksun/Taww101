@@ -1,58 +1,57 @@
-ฃ
-import base64
-import calendar
-import itertools
-import json
-import mimetypes
-import random
-import math
-from datetime import date, datetime
-from pathlib import Path
+นำเข้า base64
+นำเข้าปฏิทิน
+นำเข้า itertools
+นำเข้า json
+นำเข้า mimetypes
+นำเข้าแบบสุ่ม
+นำเข้าคณิตศาสตร์
+จากการนำเข้า datetime, date, datetime
+จาก pathlib นำเข้า Path
 
 import streamlit as st
 import streamlit.components.v1 as components
 
 
-# ==========================================================
-# SYNAPSE MYSTIC NUMBER
-# ==========================================================
+# ========================================================
+# หมายเลขลึกลับของ SYNAPSE
+# ========================================================
 
 APP_DIR = Path(__file__).resolve().parent
-MUSIC_EXTENSIONS = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"}
+นามสกุลไฟล์เพลง = {".mp3", ".wav", ".ogg", ".m4a", ".aac", ".flac"}
 
-THAI_MONTHS = [
+เดือนไทย = [
     "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน",
     "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม",
-    "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+    "กันยายน", "ที่นี่", "พฤศจิกายน", "ธันวาคม"
 ]
 
-# ตามกติกาที่กำหนด: วันจันทร์ = 1
-DAY_NUMBERS = {
-    0: 1,  # Monday
-    1: 2,  # Tuesday
-    2: 3,  # Wednesday
-    3: 4,  # Thursday
-    4: 5,  # Friday
-    5: 6,  # Saturday
-    6: 7,  # Sunday
+#ตามกติกาที่กำหนด: วันจันทร์ = 1
+หมายเลขวัน = {
+    0: 1, # วันจันทร์
+    1:2, #วันอังคาร
+    2: 3, # วันพุธ
+    3: 4, # วันพฤหัสบดี
+    4:5, #วันศุกร์
+    5: 6, # วันเสาร์
+    6:7, #วันอาทิตย์
 }
 
 THAI_WEEKDAYS = [
-    "วันจันทร์", "วันอังคาร", "วันพุธ",
+    "วันจันทร์", "อังคาร", "พุธ"
     "วันพฤหัสบดี", "วันศุกร์", "วันเสาร์", "วันอาทิตย์"
 ]
 
 st.set_page_config(
     page_title="SYNAPSE MYSTIC NUMBER",
     page_icon="🔮",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    เลย์เอาต์="กว้าง"
+    initial_sidebar_state="ยุบ"
 )
 
 
-# ==========================================================
-# NEON STYLE
-# ==========================================================
+# ========================================================
+# สไตล์นีออน
+# ========================================================
 
 st.markdown("""
 <style>
@@ -66,139 +65,139 @@ st.markdown("""
     --syn-muted: #a8b7d9;
 }
 .stApp {
-    background:
+    พื้นหลัง:
       radial-gradient(ellipse at 10% 0%, #102c45 0%, transparent 36%),
       radial-gradient(ellipse at 90% 15%, #351522 0%, transparent 32%),
       linear-gradient(145deg, #050814, #080d1b 55%, #120b16);
-    color: var(--syn-silver);
+    สี: var(--syn-silver);
 }
-header[data-testid="stHeader"] { background: rgba(0,0,0,0); }
+ส่วนหัว [data-testid = "stHeader"] { พื้นหลัง: rgba (0,0,0,0); }
 h1, h2, h3 {
-    color: var(--syn-blue) !important;
-    text-shadow: 0 0 10px #63f4ff55;
+    สี: var(--syn-blue) !important;
+    เงาข้อความ: 0 0 10px #63f4ff55;
 }
 p, label, .stMarkdown { color: #e1eaff; }
 .hero {
-    text-align: center;
+    จัดแนวข้อความ: กึ่งกลาง;
     padding: 24px 10px;
-    border-radius: 22px;
-    border: 1px solid var(--syn-gold);
-    background: linear-gradient(130deg, #091629, #21121c, #0a1728);
+    ขอบโค้งมน: 22px;
+    เส้นขอบ: var ทึบ 1px (--syn-gold);
+    พื้นหลัง: การไล่ระดับสีเชิงเส้น (130 องศา, #091629, #21121c, #0a1728);
     box-shadow: 0 0 18px #63f4ff20, inset 0 0 20px #ffe66d10;
-    margin-bottom: 18px;
+    ระยะขอบล่าง: 18px;
 }
 .hero-title {
-    font-size: clamp(24px, 5vw, 40px);
-    font-weight: 900;
-    letter-spacing: 2px;
-    color: var(--syn-gold);
+    ขนาดตัวอักษร: แคลมป์(24px, 5vw, 40px);
+    น้ำหนักตัวอักษร: 900;
+    ระยะห่างระหว่างตัวอักษร: 2px;
+    สี: var(--syn-gold);
     text-shadow: 0 0 8px #ffe66d66, 0 0 22px #63f4ff55;
 }
 .hero-sub {
-    font-size: 12px;
-    letter-spacing: 2px;
-    color: var(--syn-blue);
-    margin-top: 8px;
+    ขนาดตัวอักษร: 12px;
+    ระยะห่างระหว่างตัวอักษร: 2px;
+    สี: var(--syn-blue);
+    ระยะขอบบน: 8px;
 }
 .neon-card {
-    background: linear-gradient(135deg, #0a1426, #17131d);
-    border: 1px solid #63f4ff80;
-    border-radius: 16px;
-    padding: 14px;
-    margin: 8px 0;
-    box-shadow: 0 0 10px #63f4ff18;
+    พื้นหลัง: การไล่ระดับสีเชิงเส้น (135 องศา, #0a1426, #17131d);
+    ขอบ: 1px ทึบ #63f4ff80;
+    ขอบโค้งมน: 16px;
+    ระยะห่าง: 14px;
+    ระยะขอบ: 8px 0;
+    เงาของกล่อง: 0 0 10px #63f4ff18;
 }
 .neon-number {
-    font-size: 27px;
-    font-weight: 900;
-    color: var(--syn-gold);
-    text-shadow: 0 0 10px #ffe66d66;
-    text-align: center;
+    ขนาดตัวอักษร: 27px;
+    น้ำหนักตัวอักษร: 900;
+    สี: var(--syn-gold);
+    เงาข้อความ: 0 0 10px #ffe66d66;
+    จัดแนวข้อความ: กึ่งกลาง;
 }
 .neon-label { color: var(--syn-blue); font-size: 13px; text-align: center; }
 [data-testid="stMetric"] {
-    background: linear-gradient(135deg, #0b1830, #20151e);
-    border: 1px solid #ffe66d70;
-    border-radius: 14px;
-    padding: 14px;
-    box-shadow: 0 0 12px #63f4ff15;
+    พื้นหลัง: การไล่ระดับสีเชิงเส้น (135 องศา, #0b1830, #20151e);
+    ขอบ: 1px ทึบ #ffe66d70;
+    ขอบโค้งมน: 14px;
+    ระยะห่าง: 14px;
+    เงาของกล่อง: 0 0 12px #63f4ff15;
 }
-[data-testid="stMetricValue"] { color: var(--syn-gold) !important; }
-[data-testid="stMetricLabel"] { color: var(--syn-blue) !important; }
-div.stButton > button, div.stDownloadButton > button {
-    color: #f5f7ff;
-    background: linear-gradient(110deg, #102d43, #38202a);
-    border: 1px solid var(--syn-blue);
-    border-radius: 12px;
-    box-shadow: 0 0 8px #63f4ff25;
-    transition: all .2s ease;
+[data-testid="stMetricValue"] { สี: var(--syn-gold) !สำคัญ; }
+[data-testid="stMetricLabel"] { สี: var(--syn-blue) !สำคัญ; }
+div.stButton > ปุ่ม, div.stDownloadButton > ปุ่ม {
+    สี: #f5f7ff;
+    พื้นหลัง: การไล่ระดับสีเชิงเส้น (110 องศา, #102d43, #38202a);
+    เส้นขอบ: var ทึบ 1px (--syn-blue);
+    ขอบโค้งมน: 12px;
+    เงาของกล่อง: 0 0 8px #63f4ff25;
+    การเปลี่ยนผ่าน: ทั้งหมด 0.2 วินาทีอย่างราบรื่น;
 }
 div.stButton > button:hover, div.stDownloadButton > button:hover {
-    border-color: var(--syn-gold);
-    color: #ffffff;
-    box-shadow: 0 0 14px #ffe66d40;
+    สีขอบ: var(--syn-gold);
+    สี: #ffffff;
+    เงาของกล่อง: 0 0 14px #ffe66d40;
 }
 input, textarea, [data-baseweb="select"] > div {
-    border-color: #63f4ff70 !important;
+    สีขอบ: #63f4ff70 !สำคัญ;
 }
 hr { border-color: #34465b; }
 .small-note { color: var(--syn-muted); font-size: 12px; }
 </style>
 <div class="hero">
-  <div class="hero-title">✦ SYNAPSE MYSTIC NUMBER ✦</div>
-  <div class="hero-sub">DATE • LUNAR PHASE • NUMBER MATRIX • NEON MUSIC</div>
+  <div class="hero-title">✦ หมายเลขลึกลับของ SYNAPSE ✦</div>
+  <div class="hero-sub">วันที่ • ข้างขึ้นข้างแรม • เมทริกซ์ตัวเลข • เพลงนีออน</div>
 </div>
 """, unsafe_allow_html=True)
 
 
-# ==========================================================
-# CALCULATION FUNCTIONS
-# ==========================================================
+# ========================================================
+# ฟังก์ชันการคำนวณ
+# ========================================================
 
 def last_digit(n):
-    """ใช้ค่าสัมบูรณ์ แล้วเก็บเฉพาะหลักหน่วย"""
-    return abs(int(n)) % 10
+    """ใช้มูลค่า ยกเว้นองค์ประกอบ"""
+    คืนค่า abs(int(n)) % 10
 
 
 def lunar_estimate(d):
     """
-    ประมาณอายุจันทร์จากรอบดวงจันทร์
-    ไม่ใช่ปฏิทินจันทรคติไทยอย่างเป็นทางการ
+    กระดานดำจันทร์จากกระดานดำ
+    การค้นหาข้อมูลทางโทรศัพท์ไทย
     """
-    reference = datetime(2000, 1, 6, 18, 14)
+    อ้างอิง = datetime(2000, 1, 6, 18, 14)
     target = datetime(d.year, d.month, d.day, 12, 0)
-    cycle = 29.530588853
-    age = ((target - reference).total_seconds() / 86400) % cycle
+    รอบ = 29.530588853
+    อายุ = ((เป้าหมาย - อ้างอิง).จำนวนวินาทีทั้งหมด() / 86400) % รอบ
 
-    # อายุจันทร์ 0-14.999 = ช่วงข้างขึ้นโดยประมาณ
-    if age < cycle / 2:
-        side = "ข้างขึ้น"
-        lunar_day = min(15, max(1, int(age) + 1))
-    else:
+    #เด็กจันทร์ 0-14.999 = เวลาที่เหลือขึ้นโดยประมาณ
+    ถ้าอายุ < รอบ / 2:
+        side = "ด้านข้างขึ้น"
+        วันจันทร์ = min(15, max(1, int(อายุ) + 1))
+    อื่นๆ:
         side = "ข้างแรม"
-        waning_age = age - cycle / 2
+        อายุที่ลดลง = อายุ - รอบ / 2
         lunar_day = min(15, max(1, int(waning_age) + 1))
 
-    illumination = (1 - math.cos(2 * math.pi * age / cycle)) / 2 * 100
+    ความสว่าง = (1 - math.cos(2 * math.pi * อายุ / รอบ)) / 2 * 100
 
-    if age < 1.85 or age >= 27.68:
-        phase = "ใกล้เดือนดับ"
-    elif age < 7.38:
+    ถ้าอายุ < 1.85 หรืออายุ >= 27.68:
+        phase = "เดือนดับ"
+    ถ้าอายุ < 7.38:
         phase = "จันทร์เสี้ยวข้างขึ้น"
-    elif age < 11.07:
-        phase = "ใกล้ครึ่งดวงข้างขึ้น"
-    elif age < 14.77:
-        phase = "ใกล้วันเพ็ญ"
-    elif age < 18.46:
+    ถ้าอายุ < 11.07:
+        phase = "เฟสลูดวงข้างขึ้น"
+    ถ้าอายุ < 14.77 ปี:
+        phase = "เฟสวันเพ็ญ"
+    ถ้าอายุ < 18.46 ปี:
         phase = "จันทร์เกือบเต็มดวงข้างแรม"
-    elif age < 22.15:
-        phase = "ใกล้ครึ่งดวงข้างแรม"
-    else:
+    ถ้าอายุ < 22.15:
+        phase = "เฟสลูดวงข้างแรม"
+    อื่นๆ:
         phase = "จันทร์เสี้ยวข้างแรม"
 
-    return {
-        "age": round(age, 2),
-        "side": side,
+    ส่งคืน {
+        "อายุ": ปัดเศษ(อายุ, 2),
+        "ด้าน": ด้านข้าง
         "day": lunar_day,
         "phase": phase,
         "illumination": round(illumination, 1),
@@ -207,142 +206,142 @@ def lunar_estimate(d):
 
 def create_four_numbers(day_number, lunar_number):
     """
-    เลขตั้งต้น 4 ตัว:
-    1. เลขประจำวัน
-    2. เลขประจำข้างขึ้น/ข้างแรม
-    3. ผลบวกหลักหน่วย
-    4. ผลต่างหลักหน่วย โดยใช้ค่าสัมบูรณ์
+    การจัดองค์ประกอบชั้น 4 ตัวอย่าง:
+    1. เรียงใหม่
+    2. การกำหนดตำแหน่งข้างขึ้น/ข้างแรม
+    3. ผลบวกองค์ประกอบ
+    4. ผลต่างองค์ประกอบ มูลค่า มูลค่า มูลค่า มูลค่า
     """
-    addition = last_digit(day_number + lunar_number)
-    subtraction = last_digit(lunar_number - day_number)
+    การบวก = หลักสุดท้ายของ (หมายเลขวัน + หมายเลขจันทรคติ)
+    การลบ = หลักสุดท้ายของ (เลขจันทรคติ - เลขวัน)
 
-    return [
-        day_number,
-        lunar_number,
-        addition,
-        subtraction,
+    ส่งคืน [
+        หมายเลขวัน
+        เลขจันทรคติ
+        นอกจากนี้
+        การลบ
     ]
 
 
 def create_48_doors(numbers):
     """
-    3 ตัว: permutation ของเลข 4 ตัว เลือก 3 ตำแหน่ง = 24 ชุด
-    2 ตัว: เลือกคู่แบบไม่ซ้ำ แล้วสร้างเลขตรงและเลขกลับ
+    3 คน: การเรียงสับเปลี่ยนของเลข 4 คนที่ชื่อ 3 ตำแหน่ง = 24 ชุด
+    2 คนที่: เลือกคู่โดยไม่ซ้ำแล้วสร้างเลขตรงและเลขกลับ
     """
-    three_digit = [
+    ตัวเลขสามหลัก = [
         "".join(map(str, p))
-        for p in itertools.permutations(numbers, 3)
+        สำหรับ p ใน itertools.permutations(numbers, 3)
     ]
 
     pairs = list(itertools.combinations(numbers, 2))
     two_digit_top = [
         "".join(map(str, pair))
-        for pair in pairs
+        สำหรับคู่ในคู่
     ]
     two_digit_bottom = [
-        value[::-1] for value in two_digit_top
+        ค่า[::-1] สำหรับค่าในสองหลักบนสุด
     ]
 
-    return three_digit, two_digit_top, two_digit_bottom
+    ส่งคืนค่าสามหลัก, ตัวเลขสองหลักด้านบน, ตัวเลขสองหลักด้านล่าง
 
 
 def find_music_files():
-    if not APP_DIR.exists():
-        return []
-    return sorted(
+    ถ้า APP_DIR ไม่มีอยู่:
+        ส่งคืน []
+    ส่งคืนเรียงลำดับ (
         [
-            p for p in APP_DIR.iterdir()
-            if p.is_file() and p.suffix.lower() in MUSIC_EXTENSIONS
+            p สำหรับ p ใน APP_DIR.iterdir()
+            ถ้า p.is_file() และ p.suffix.lower() อยู่ใน MUSIC_EXTENSIONS
         ],
         key=lambda p: p.name.lower()
     )
 
 
-# ==========================================================
-# DATE INPUT
-# ==========================================================
+# ========================================================
+# ช่องป้อนวันที่
+# ========================================================
 
-st.header("📅 เลือกวันเพื่อคำนวณ")
+st.header("📅 รับวันเพื่อทำอาหาร")
 
-today = date.today()
+วันนี้ = date.today()
 current_be = today.year + 543
 
 c1, c2, c3 = st.columns(3)
 
-with c1:
+ด้วย c1:
     day_value = st.selectbox(
-        "วันที่",
-        range(1, 32),
+        "องค์ประกอบ",
+        ช่วง (1, 32)
         index=today.day - 1
     )
 
-with c2:
-    month_value = st.selectbox(
-        "เดือน",
-        range(1, 13),
+ด้วย c2:
+    ค่าเดือน = st.selectbox(
+        "เดือน"
+        ช่วง (1, 13)
         index=today.month - 1,
         format_func=lambda x: THAI_MONTHS[x - 1]
     )
 
-with c3:
+ด้วย c3:
     year_options = list(range(current_be - 100, current_be + 11))
     year_be = st.selectbox(
         "ปี พ.ศ.",
-        year_options,
+        ตัวเลือกปี
         index=year_options.index(current_be)
     )
 
-year_ad = year_be - 543
+ปีหลัง = ปีเกิด - 543
 max_day = calendar.monthrange(year_ad, month_value)[1]
 
-if day_value > max_day:
-    st.error(f"เดือนนี้มีเพียง {max_day} วัน กรุณาเลือกวันที่ใหม่")
+ถ้า day_value > max_day:
+    st.error(f"เดือนนี้มีเพียง {max_day} วันที่วันที่ใหม่")
     chosen_date = None
-else:
+อื่นๆ:
     chosen_date = date(year_ad, month_value, day_value)
 
 
-# ==========================================================
-# LUNAR NUMBER INPUT
-# ==========================================================
+# ========================================================
+# ป้อนเลขจันทรคติ
+# ========================================================
 
-if chosen_date:
+ถ้า chosen_date:
     d = chosen_date
     weekday_name = THAI_WEEKDAYS[d.weekday()]
     day_number = DAY_NUMBERS[d.weekday()]
-    lunar = lunar_estimate(d)
+    ดวงจันทร์ = ประมาณการดวงจันทร์(d)
 
     st.divider()
-    st.header("🌙 กำหนดเลขข้างขึ้น–ข้างแรม")
+    st.header("🌙 เลื่อนไปทางขวาใกล้ด้านบน– ใกล้แรม")
 
     st.caption(
-        "ระบบเสนอค่าเริ่มต้นจากการประมาณดวงจันทร์ "
-        "คุณสามารถเลือกช่วงและเลขค่ำเองเพื่อให้ตรงกับกติกาที่ใช้"
+        "ระบบจัดการข้อมูลให้ถูกต้อง"
+        "องค์ประกอบและองค์ประกอบนี้เองที่มันทำงาน"
     )
 
     l1, l2 = st.columns(2)
 
-    with l1:
+    ด้วย l1:
         lunar_side = st.selectbox(
-            "ช่วงจันทรคติ",
-            ["ข้างขึ้น", "ข้างแรม"],
-            index=0 if lunar["side"] == "ข้างขึ้น" else 1
+            "องค์ประกอบเว็บเพจ",
+            [" ข้างขึ้น", " ข้างแรม"],
+            index=0 ถ้า lunar["side"] == "ข้างขึ้น" else 1
         )
 
-    with l2:
+    ด้วย l2:
         lunar_number = st.selectbox(
-            "เลขค่ำที่ใช้คำนวณ (1–15)",
-            range(1, 16),
+            "องค์ประกอบเว็บเพจ (1–15)",
+            ช่วง (1, 16)
             index=lunar["day"] - 1
         )
 
     st.markdown(
         f"""
         <div class="neon-card">
-          <div class="neon-label">วันที่เลือก</div>
+          <div class="neon-label">ป้ายไฟ</div>
           <div class="neon-number">{weekday_name}</div>
           <div class="neon-label">
-            {d.day} {THAI_MONTHS[d.month - 1]} พ.ศ. {d.year + 543}
+            {d.day} {THAI_MONTHS[d.month - 1]} พ.ศ. {วันปี + 543}
           </div>
         </div>
         """,
@@ -350,33 +349,33 @@ if chosen_date:
     )
 
     a, b, c = st.columns(3)
-    a.metric("เลขประจำวัน", day_number)
-    b.metric("เลขข้างขึ้น/ข้างแรม", lunar_number)
-    c.metric("ความสว่างจันทร์โดยประมาณ", f'{lunar["illumination"]}%')
+    a.metric("จำนวนวัน", day_number)
+    b.metric("ตัวเลขข้างขึ้น/ข้างแรม", lunar_number)
+    c.metric("ดวงจันทร์สว่าง", f'{lunar["illumination"]}%')
 
     st.caption(
-        f"อายุจันทร์โดยประมาณ {lunar['age']} วัน · {lunar['phase']}. "
-        "การประมาณนี้ไม่ใช่การยืนยันวันค่ำตามปฏิทินไทยอย่างเป็นทางการ"
+        f" อายุจันทร์ตามปกติ {lunar['age']} วัน · {lunar['phase']}. "
+        "การเลื่อนนี้ไม่ใช่การเลื่อนตามการเลื่อนไทย"
     )
 
     # ------------------------------------------------------
-    # FOUR SEED NUMBERS
+    # หมายเลขเมล็ดพันธุ์ทั้งสี่
     # ------------------------------------------------------
 
     st.divider()
-    st.header("🔢 สูตรคำนวณเลขตั้งต้น 4 ตัว")
+    st.header("🔢 สูตรคำนวณเลขตั้งต้น 4 คน")
 
     four_numbers = create_four_numbers(day_number, lunar_number)
 
-    plus_result = day_number + lunar_number
-    minus_result = lunar_number - day_number
+    plus_result = หมายเลขวัน + หมายเลขจันทรคติ
+    ผลลัพธ์ลบ = เลขจันทรคติ - เลขวัน
 
     st.markdown(
         f"""
         <div class="neon-card">
-          <div class="neon-label">เลขประจำวัน</div>
+          <div class="neon-label">ป้ายไฟ</div>
           <div class="neon-number">{day_number}</div>
-          <div class="neon-label">เลข {lunar_side}</div>
+          <div class="neon-label"> ด้านข้าง {lunar_side}</div>
           <div class="neon-number">{lunar_number}</div>
         </div>
         """,
@@ -385,25 +384,25 @@ if chosen_date:
 
     f1, f2 = st.columns(2)
 
-    with f1:
+    ด้วย f1:
         st.markdown("### ➕ สูตรบวก")
         st.write(f"{day_number} + {lunar_number} = {plus_result}")
-        st.write(f"เก็บหลักหน่วย: **{last_digit(plus_result)}**")
+        st.write(f"ลำดับหลัก: **{last_digit(plus_result)}**")
 
-    with f2:
+    ด้วย f2:
         st.markdown("### ➖ สูตรลบ")
         st.write(f"{lunar_number} − {day_number} = {minus_result}")
-        st.write(f"ค่าสัมบูรณ์หลักหน่วย: **{last_digit(minus_result)}**")
+        st.write(f" ค่าสุดท้าย ตัวเลขหลัก: **{last_digit(minus_result)}**")
 
-    st.markdown("### ✨ เลขตั้งต้น 4 ตัว")
+    st.markdown("### ✨เลขตั้งต้น 4 คน")
 
     seed_cols = st.columns(4)
-    for col, number, label in zip(
+    สำหรับคอลัมน์ ตัวเลข ป้ายกำกับในรหัสไปรษณีย์(
         seed_cols,
-        four_numbers,
-        ["เลขวัน", "เลขค่ำ", "เลขบวก", "เลขลบ"]
+        ตัวเลขสี่ตัว
+        ["เลขวัน", "เลขหน่วยความจำ", "เลขบวก", "เลขลบ"]
     ):
-        with col:
+        ด้วย col:
             st.markdown(
                 f"""
                 <div class="neon-card">
@@ -414,30 +413,30 @@ if chosen_date:
                 unsafe_allow_html=True
             )
 
-    if len(set(four_numbers)) != 4:
+    ถ้าความยาวของชุดตัวเลขสี่ตัวไม่เท่ากับ 4:
         st.warning(
-            "เลขตั้งต้นมีเลขซ้ำกัน ระบบจะแสดงชุดที่เกิดจากตำแหน่งทั้งหมด "
-            "แต่บางชุดอาจมีตัวเลขซ้ำกัน"
+            "องค์ประกอบต้นมีองค์ประกอบกัน ระบบกราฟิกชุดที่บล็อกทั้งหมด"
+            "แต่บางชุดบางชุดบางชุดบางชุด"
         )
 
     # ------------------------------------------------------
-    # 48 DOORS
+    # 48 ประตู
     # ------------------------------------------------------
 
     three_numbers, two_top, two_bottom = create_48_doors(four_numbers)
 
     st.divider()
-    st.header("🚪 ผลลัพธ์ชุดตัวเลข")
+    st.header("🚪 ธีมชุด")
 
     st.markdown(
-        "### 🔷 3 ตัวบน — 24 ชุด"
+        "### 🔷 3 คนบน — 24 ชุด"
     )
-    st.caption("เรียงสลับตำแหน่งเลขตั้งต้น 4 ตัว เลือกครั้งละ 3 ตำแหน่ง")
+    st.caption("เรียงตามลำดับเลขตั้งต้น 4 ตัวอักษรในส่วนที่ 3 ตำแหน่ง")
 
-    for start in range(0, len(three_numbers), 6):
+    สำหรับการเริ่มต้นในช่วง (0, ความยาวของตัวเลขสามตัว) 6:
         cols = st.columns(6)
-        for col, value in zip(cols, three_numbers[start:start + 6]):
-            with col:
+        สำหรับ col, value ใน zip(cols, three_numbers[start:start + 6]):
+            ด้วย col:
                 st.markdown(
                     f"""
                     <div class="neon-card">
@@ -447,13 +446,13 @@ if chosen_date:
                     unsafe_allow_html=True
                 )
 
-    st.markdown("### 🟣 2 ตัวบน–ล่าง — 12 รายการ")
+    st.markdown("### 🟣 2 คนบน–ล่าง — 12 รายการ")
 
     pair_rows = list(zip(two_top, two_bottom))
-    for start in range(0, len(pair_rows), 3):
+    สำหรับการเริ่มต้นในช่วง (0, ความยาวของคู่แถว), 3:
         cols = st.columns(3)
-        for col, (top, bottom) in zip(cols, pair_rows[start:start + 3]):
-            with col:
+        สำหรับคอลัมน์ (บนสุด, ล่างสุด) ใน zip(คอลัมน์, pair_rows[start:start + 3]):
+            ด้วย col:
                 st.markdown(
                     f"""
                     <div class="neon-card">
@@ -465,38 +464,38 @@ if chosen_date:
                 )
 
     st.divider()
-    st.header("💠 สรุปจำนวนประตู")
+    st.header("💠 ส่วนหัวของหน้าเว็บ")
 
     s1, s2, s3 = st.columns(3)
-    s1.metric("3 ตัวบน", f"{len(three_numbers)} ชุด")
-    s2.metric("2 ตัวบน", f"{len(two_top)} ชุด")
+    s1.metric("3 คนบน", f"{len(three_numbers)} ชุด")
+    s2.metric("2 คนบน", f"{len(two_top)} ชุด")
     s3.metric("2 ตัวล่าง", f"{len(two_bottom)} ชุด")
 
     total_doors = len(three_numbers) + len(two_top) + len(two_bottom)
     st.metric("รวมทั้งหมด", f"{total_doors} รายการ")
 
     st.caption(
-        "หากคิดรายการละ 1 บาท จะเป็นยอดสมมติ "
-        f"{total_doors} บาท ไม่ใช่การรับประกันผลรางวัล"
+        "หากคิดรายการละ 1 บาทจะเป็นยอดสมมติ "
+        f"{total_doors} ประตูทั้งหมดมีผล"
     )
 
     # ------------------------------------------------------
-    # EXPORT CSV
+    # ส่งออก CSV
     # ------------------------------------------------------
 
     export_rows = [
-        ["ประเภท", "เลข"],
+        ["หน้าเว็บ", "หน้าเว็บ"],
     ]
-    export_rows += [["3 ตัวบน", n] for n in three_numbers]
-    export_rows += [["2 ตัวบน", n] for n in two_top]
-    export_rows += [["2 ตัวล่าง", n] for n in two_bottom]
+    Export_rows += [["3 คนบน", n] สำหรับ n ใน three_numbers]
+    Export_rows += [["2 คนบน", n] สำหรับ n ใน two_top]
+    Export_rows += [["2 คนล่าง", n] สำหรับ n ใน two_bottom]
 
     csv_text = "\ufeff" + "\n".join(
-        f'"{row[0]}","{row[1]}"' for row in export_rows
+        f'"{row[0]}","{row[1]}"' สำหรับแถวใน export_rows
     )
 
     st.download_button(
-        "⬇️ ดาวน์โหลดชุดตัวเลข CSV",
+        "⬇️ ดาวน์โหลดชุดไฟล์ CSV",
         data=csv_text.encode("utf-8"),
         file_name=f"numbers_{d.strftime('%Y%m%d')}.csv",
         mime="text/csv",
@@ -504,55 +503,55 @@ if chosen_date:
     )
 
 
-# ==========================================================
-# NEON MUSIC PLAYER
-# ==========================================================
+# ========================================================
+# เครื่องเล่นเพลงนีออน
+# ========================================================
 
 st.divider()
-st.header("🎧 SYNAPSE NEON MUSIC PLAYER")
+st.header("🎧 เครื่องเล่นเพลง SYNAPSE NEON")
 
 music_files = find_music_files()
 
 st.caption(
-    "ใส่ไฟล์เพลงไว้ในโฟลเดอร์เดียวกับ Ta_app.py "
+    " ฝังไฟล์เพลง อัปโหลดไฟล์ Ta_app.py "
     "รองรับ MP3, WAV, OGG, M4A, AAC และ FLAC"
 )
 
-if not music_files:
+ถ้าไม่ใช่ไฟล์เพลง:
     st.warning(
-        "ยังไม่พบไฟล์เพลง กรุณาเพิ่มไฟล์เพลงใน GitHub "
-        "ไว้ในโฟลเดอร์เดียวกับ Ta_app.py"
+        "ยังไม่พบไฟล์เพลงเพิ่มไฟล์เพลงใน GitHub "
+        "องค์ประกอบ Ta_app.py"
     )
-else:
-    st.success(f"พบไฟล์เพลง {len(music_files)} ไฟล์")
+อื่นๆ:
+    st.success(f" โหลดเพลง {len(music_files)} เพลง")
 
-    with st.expander("📜 รายชื่อเพลงทั้งหมด", expanded=True):
-        for index, music_file in enumerate(music_files, start=1):
+    ด้วย st.expander("📜 รายการเพลงทั้งหมด", Extended=True):
+        สำหรับ index, music_file ใน enumerate(music_files, start=1):
             st.write(f"{index}. 🎵 {music_file.name}")
 
-    # Embed tracks in one iframe. This avoids replacing DOM nodes
-    # in the parent Streamlit page.
-    tracks = []
+    # ฝังแทร็กไว้ใน iframe เดียว วิธีนี้ช่วยหลีกเลี่ยงการแทนที่โหนด DOM
+    # ในหน้า Streamlit หลัก
+    แทร็ก = []
 
-    for music_file in music_files:
-        try:
+    สำหรับไฟล์เพลงแต่ละไฟล์ในโฟลเดอร์ music_files:
+        ลองดู:
             mime, _ = mimetypes.guess_type(music_file.name)
-            if not mime or not mime.startswith("audio/"):
+            ถ้าไม่ใช่ mime หรือไม่ใช่ mime.startswith("audio/"):
                 mime = "audio/mpeg"
 
-            encoded = base64.b64encode(
+            เข้ารหัส = base64.b64encode(
                 music_file.read_bytes()
             ).decode("ascii")
 
             tracks.append({
                 "name": music_file.name,
                 "mime": mime,
-                "data": encoded,
+                "ข้อมูล": เข้ารหัส
             })
-        except OSError:
-            st.warning(f"อ่านไฟล์ไม่สำเร็จ: {music_file.name}")
+        ยกเว้น OSError:
+            st.warning(f" อ่านไฟล์ไม่จริง: {music_file.name}")
 
-    if tracks:
+    ถ้าติดตาม:
         tracks_json = json.dumps(tracks, ensure_ascii=True)
 
         player_html = r"""
@@ -562,68 +561,68 @@ else:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-body {
-  margin: 0;
-  padding: 8px;
-  color: #e8edf5;
-  background: transparent;
-  font-family: Arial, sans-serif;
+เนื้อหา {
+  ระยะขอบ: 0;
+  ระยะห่าง: 8px;
+  สี: #e8edf5;
+  พื้นหลัง: โปร่งใส;
+  ตระกูลฟอนต์: Arial, sans-serif;
 }
 .player {
-  border: 1px solid #ffe66d;
-  border-radius: 18px;
-  padding: 16px;
-  background: linear-gradient(135deg,#091629,#21121c,#101b2b);
-  box-shadow: 0 0 16px #63f4ff22;
+  ขอบ: 1px ทึบ #ffe66d;
+  ขอบโค้งมน: 18px;
+  ระยะห่าง: 16px;
+  พื้นหลัง: linear-gradient(135deg,#091629,#21121c,#101b2b);
+  เงาของกล่อง: 0 0 16px #63f4ff22;
 }
 .title {
-  color: #63f4ff;
-  font-size: 18px;
-  font-weight: 900;
-  text-shadow: 0 0 10px #63f4ff;
+  สี: #63f4ff;
+  ขนาดตัวอักษร: 18px;
+  น้ำหนักตัวอักษร: 900;
+  เงาข้อความ: 0 0 10px #63f4ff;
 }
 .track {
-  color: #ffe66d;
-  margin: 10px 0;
+  สี: #ffe66d;
+  ระยะขอบ: 10px 0;
   overflow-wrap: anywhere;
 }
 .status {
-  color: #a8b7d9;
-  font-size: 12px;
-  margin: 8px 0;
+  สี: #a8b7d9;
+  ขนาดตัวอักษร: 12px;
+  ระยะขอบ: 8px 0;
 }
-audio { width: 100%; margin: 8px 0; }
-button {
-  color: #fff;
-  background: #102d43;
-  border: 1px solid #63f4ff;
-  border-radius: 10px;
+เสียง { ความกว้าง: 100%; ระยะขอบ: 8px 0; }
+ปุ่ม {
+  สี: #fff;
+  พื้นหลัง: #102d43;
+  ขอบ: 1px ทึบ #63f4ff;
+  ขอบโค้งมน: 10px;
   padding: 10px 12px;
-  margin: 3px;
+  ระยะขอบ: 3px;
 }
-button:hover { background: #38202a; }
+ปุ่ม:เมื่อวางเมาส์เหนือปุ่ม { พื้นหลัง: #38202a; }
 .list {
-  margin-top: 12px;
-  max-height: 155px;
+  ระยะขอบบน: 12px;
+  ความสูงสูงสุด: 155px;
   overflow-y: auto;
-  border-top: 1px solid #34465b;
+  ขอบบน: 1px ทึบ #34465b;
   padding-top: 8px;
 }
 .item {
-  font-size: 12px;
-  padding: 7px;
-  color: #e8edf5;
-  border-radius: 7px;
+  ขนาดตัวอักษร: 12px;
+  ระยะห่าง: 7px;
+  สี: #e8edf5;
+  ขอบโค้งมน: 7px;
   overflow-wrap: anywhere;
 }
 .item.active {
-  color: #ffe66d;
-  background: #20151e;
-  border: 1px solid #ffe66d;
+  สี: #ffe66d;
+  พื้นหลัง: #20151e;
+  ขอบ: 1px ทึบ #ffe66d;
 }
 .note {
-  color: #a8b7d9;
-  font-size: 11px;
+  สี: #a8b7d9;
+  ขนาดตัวอักษร: 11px;
   line-height: 1.5;
 }
 </style>
@@ -631,19 +630,19 @@ button:hover { background: #38202a; }
 <body>
 <div class="player">
   <div class="title">✦ NEON MUSIC ✦</div>
-  <div id="track" class="track">กำลังเตรียมเพลง...</div>
+  <div id="track" class="track">เล่นเพลง...</div>
   <audio id="audio" controls playsinline></audio>
   <div>
     <button id="play">▶ เล่น</button>
-    <button id="pause">⏸ หยุด</button>
+    <button id="pause">⏸ห</button>
     <button id="next">⏭ เพลงถัดไป</button>
-    <button id="shuffle">🔀 สุ่มใหม่</button>
+    <button id="shuffle">🔀 สับเปลี่ยนใหม่</button>
   </div>
   <div id="status" class="status"></div>
   <div id="list" class="list"></div>
   <p class="note">
-    เพลงจะสุ่มลำดับและเล่นเพลงถัดไปเมื่อเพลงจบ
-    หากเบราว์เซอร์บล็อกการเล่นอัตโนมัติ ให้แตะปุ่ม ▶ เล่นก่อนหนึ่งครั้ง
+    เพลงจะเล่นและเล่นเพลงเมื่อเพลงจบ
+    ถ้าบล็อกการเล่นอัตโนมัติให้แตะปุ่ม ▶ เล่นก่อนแสดง
   </p>
 </div>
 <script>
@@ -653,29 +652,29 @@ const trackLabel = document.getElementById("track");
 const statusLabel = document.getElementById("status");
 const list = document.getElementById("list");
 
-let order = [];
-let position = 0;
-let current = -1;
+ให้ลำดับ = [];
+กำหนดให้ตำแหน่งเท่ากับ 0;
+ให้ค่าปัจจุบันเท่ากับ -1;
 let userStarted = false;
 
-function shuffleArray(array) {
+ฟังก์ชัน shuffleArray(array) {
   const result = array.slice();
-  for (let i = result.length - 1; i > 0; i--) {
+  สำหรับ (let i = result.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [result[i], result[j]] = [result[j], result[i]];
   }
-  return result;
+  ส่งคืนผลลัพธ์;
 }
 
-function makeOrder() {
-  order = shuffleArray(tracks.map((_, i) => i));
-  if (order.length > 1 && order[0] === current) {
+ฟังก์ชัน makeOrder() {
+  ลำดับ = สุ่มสลับอาร์เรย์แทร็ก (tracks.map((_, i) => i));
+  ถ้า (ความยาวลำดับ > 1 และ ลำดับที่ 0 === ปัจจุบัน) {
     [order[0], order[1]] = [order[1], order[0]];
   }
-  position = 0;
+  ตำแหน่ง = 0;
 }
 
-function renderList() {
+ฟังก์ชัน renderList() {
   list.replaceChildren();
   tracks.forEach((item, i) => {
     const row = document.createElement("div");
@@ -689,55 +688,55 @@ function renderList() {
   });
 }
 
-async function playIndex(index, attemptPlay) {
-  if (!tracks.length) return;
-  current = index;
+ฟังก์ชันอะซิงโครนัส playIndex(index, attemptPlay) {
+  ถ้า (!tracks.length) ให้คืนค่า;
+  ปัจจุบัน = ดัชนี;
   const item = tracks[index];
 
   trackLabel.textContent =
-    "กำลังเลือก: " + item.name + " (" + (index + 1) + "/" + tracks.length + ")";
+    "กำลังเลือก: " + item.name + " (" + (index + 1) + "/" +tracks.length + ")";
 
   audio.src = "data:" + item.mime + ";base64," + item.data;
   audio.load();
   renderList();
 
-  if (attemptPlay) {
-    try {
+  ถ้า (attemptPlay) {
+    ลอง {
       await audio.play();
-      statusLabel.textContent = "กำลังเล่นเพลง";
+      statusLabel.textContent = "เล่นเพลง";
     } catch (error) {
       statusLabel.textContent =
-        "เบราว์เซอร์ไม่อนุญาตให้เล่นอัตโนมัติ แตะปุ่มเล่น";
+        "องค์ประกอบเล่นได้ ยกเว้นองค์ประกอบเล่นได้";
     }
   }
 }
 
-function nextTrack() {
-  if (!tracks.length) return;
-  if (position >= order.length) makeOrder();
+ฟังก์ชัน nextTrack() {
+  ถ้า (!tracks.length) ให้คืนค่า;
+  ถ้า (position >= order.length) ให้สร้างคำสั่งซื้อ (makeOrder())
 
-  const index = order[position];
-  position += 1;
+  ดัชนีคงที่ = ลำดับ[ตำแหน่ง];
+  ตำแหน่ง += 1;
   playIndex(index, userStarted);
 }
 
 document.getElementById("play").addEventListener("click", async () => {
   userStarted = true;
-  try {
-    if (current < 0) {
+  ลอง {
+    ถ้า (current < 0) {
       nextTrack();
-    } else {
+    } มิฉะนั้น {
       await audio.play();
-      statusLabel.textContent = "กำลังเล่นเพลง";
+      statusLabel.textContent = "เล่นเพลง";
     }
   } catch (error) {
-    statusLabel.textContent = "เล่นไม่ได้ โปรดลองเลือกเพลงจากรายชื่อ";
+    statusLabel.textContent = "เล่นไม่ได้โปรดลองเลือกเพลงจากรายชื่อ";
   }
 });
 
 document.getElementById("pause").addEventListener("click", () => {
   audio.pause();
-  statusLabel.textContent = "หยุดชั่วคราว";
+  statusLabel.textContent = "สถานะ";
 });
 
 document.getElementById("next").addEventListener("click", () => {
@@ -755,10 +754,12 @@ audio.addEventListener("ended", () => {
   nextTrack();
 });
 
-audio.addEventListener("error", () => {
+audio.addEventListener("ข้อผิดพลาด", () => {
   statusLabel.textContent =
-    "ไฟล์นี้เล่นไม่ได้ ลองใช้ MP3 หรือ WAV แล้วตรวจสอบไฟล์อีกครั้ง";
+    "ไฟล์นี้เล่นไม่ได้ ไฟล์ MP3 หรือ WAV ได้ตรวจสอบไฟล์อีกครั้ง";
 });
 
 makeOrder();
-renderList(
+renderList();
+
+// ลอง
