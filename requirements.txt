@@ -25,3 +25,6 @@ streamlit-google-auth
 aiohttp
 pydantic
 shapely
+streamlit
+pandas
+skyfield
