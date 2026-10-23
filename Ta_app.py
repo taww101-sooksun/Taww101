@@ -526,29 +526,46 @@ elif page == " คำนวณการเงิน":
                     "ดาว": PLANET_TH[ชื่อ],
                     "ลองจิจูดสุริยวิถี (องศา)": รอบ(ค่า, 5),
                 }
-                สำหรับชื่อและค่าใน positions.items()
-            ])
+                
+# สร้างตารางตำแหน่งดาว
+planet_df = pd.DataFrame([
+    {"ชื่อดาว": name, "ตำแหน่ง": value}
+    for name, value in positions.items()
+])
 
-            st.markdown("### ตำแหน่งดาว")
-            st.dataframe(planet_df, use_container_width=True, hide_index=True)
+st.markdown("### ตำแหน่งดาว")
+st.dataframe(
+    planet_df,
+    use_container_width=True,
+    hide_index=True
+)
 
-            st.markdown("###" เรียงองค์ประกอบบนดาว)
-            st.caption(
-                " มูลค่าขององค์ประกอบคือองค์ประกอบที่เชื่อมโยงกันโดยจินาดบนสุริยศ "
-                "ความจริงแท้ ...
-            )
+# ตารางองค์ประกอบและมุมสัมพันธ์ระหว่างดาว
+st.markdown("### เรียงองค์ประกอบบนดาว")
+st.caption(
+    "ตารางนี้แสดงมุมสัมพันธ์ระหว่างตำแหน่งดาว "
+    "ที่คำนวณจากข้อมูลตำแหน่งดาวในวันที่เลือก "
+    "ผลลัพธ์เป็นค่าที่คำนวณตามสูตรทางดาราศาสตร์ "
+    "ไม่ใช่การยืนยันเหตุการณ์หรือผลลัพธ์ในชีวิตจริง"
+)
 
-            angle_df = calculate_angular_table(positions)
-            st.dataframe(angle_df, use_container_width=True, hide_index=True)
+angle_df = calculate_angular_table(positions)
 
-            csv_data = angle_df.to_csv(index=False).encode("utf-8-sig")
-            st.download_button(
-                "ดาวน์โหลดภาพหน้าจอเป็น CSV"
-                data=csv_data,
-                file_name=f"planet_angles_{astro_date.isoformat()}.csv",
-                mime="text/csv",
-            )
+st.dataframe(
+    angle_df,
+    use_container_width=True,
+    hide_index=True
+)
 
+# ดาวน์โหลดตารางมุมสัมพันธ์เป็น CSV
+csv_data = angle_df.to_csv(index=False).encode("utf-8-sig")
+
+st.download_button(
+    "ดาวน์โหลดตารางมุมดาวเป็น CSV",
+    data=csv_data,
+    file_name=f"planet_angles_{astro_date.isoformat()}.csv",
+    mime="text/csv",
+)
 
 # ------------------------- หน้าวิเคราะห์ประวัติศาสตร์ -------------------------
 
