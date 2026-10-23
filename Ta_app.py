@@ -1,31 +1,24 @@
-import math
-import sqlite3
-from pathlib import Path
-from datetime import date, datetime
-from itertools import combinations
+# =======================================================
+# หมายเลขลึกลับของ SYNAPSE
+# ตอนที่ 1 จาก 2
+# บันทึกไฟล์นี้เป็น Ta_app.py จากนั้นเพิ่มส่วนที่ 2 ต่อท้าย
+# =======================================================
+
+นำเข้าคณิตศาสตร์
+นำเข้า sqlite3
+จากการนำเข้า datetime, date, datetime
+จาก itertools นำเข้า combinations
+จาก pathlib นำเข้า Path
 
 import pandas as pd
 import streamlit as st
 
-
-# =========================================================
-# SYNAPSE MYSTIC NUMBER
-# Version 1.0
-# =========================================================
-
 APP_TITLE = "SYNAPSE MYSTIC NUMBER"
 DB_PATH = Path("synapse_mystic.db")
 
-PLANETS = [
-    "Sun",
-    "Moon",
-    "Mercury",
-    "Venus",
-    "Mars",
-    "Jupiter",
-    "Saturn",
-    "Uranus",
-    "Neptune",
+ดาวเคราะห์ = [
+    "ดวงอาทิตย์", "ดวงจันทร์", "ดาวพุธ", "ดาวศุกร์", "ดาวอังคาร"
+    "ดาวพฤหัสบดี", "ดาวเสาร์", "ดาวยูเรนัส", "ดาวเนปจูน"
 ]
 
 PLANET_TH = {
@@ -40,262 +33,180 @@ PLANET_TH = {
     "Neptune": "ดาวเนปจูน",
 }
 
-
-# =========================================================
-# PAGE CONFIGURATION
-# =========================================================
+THAI_WEEKDAYS = [
+    "วันจันทร์", "วันอังคาร", "วันพุธ", "วันพฤหัสบดี",
+    "วันศุกร์", "วัน", "sunday",
+]
 
 st.set_page_config(
     page_title=APP_TITLE,
     page_icon="🌌",
-    layout="wide",
+    เลย์เอาต์="กว้าง"
     initial_sidebar_state="expanded",
 )
-
-
-# =========================================================
-# COSMIC THEME
-# =========================================================
 
 st.markdown(
     """
     <style>
     .stApp {
-        background:
-            radial-gradient(
-                circle at top right,
-                #18295b 0%,
-                #090f26 45%,
-                #030711 100%
-            );
-        color: #f5f0dc;
+        พื้นหลัง: การไล่ระดับสีแบบรัศมี (วงกลมที่มุมบนขวา)
+        #18295b 0%, #090f26 45%, #030711 100%);
+        สี: #f5f0dc;
     }
-
     [data-testid="stSidebar"] {
-        background: #080d20;
-        border-right: 1px solid #c9a85c;
+        พื้นหลัง: #080d20;
+        ขอบขวา: 1px solid #c9a85c;
     }
-
-    h1, h2, h3 {
-        color: #f1cf78 !important;
-    }
-
-    p, label, span {
-        color: #e9e8f5;
-    }
-
+    h1, h2, h3 { color: #f1cf78 !important; }
+    p, label, span { color: #e9e8f5; }
     .cosmic-card {
-        background: rgba(19, 29, 62, 0.88);
-        border: 1px solid #a88c4d;
-        border-radius: 16px;
+        พื้นหลัง: rgba(19, 29, 62, 0.88);
+        ขอบ: 1px ทึบ #a88c4d;
+        ขอบโค้งมน: 16px;
         padding: 20px;
-        margin-bottom: 14px;
+        ระยะขอบล่าง: 14px;
         box-shadow: 0 0 18px rgba(201, 168, 92, 0.08);
     }
-
-    .gold-text {
-        color: #f1cf78;
-        font-weight: bold;
-    }
-
     .big-number {
-        color: #f1cf78;
-        font-size: 56px;
-        font-weight: 800;
-        text-align: center;
-        letter-spacing: 8px;
+        สี: #f1cf78;
+        ขนาดตัวอักษร: 56px;
+        น้ำหนักตัวอักษร: 800;
+        จัดแนวข้อความ: กึ่งกลาง;
+        ระยะห่างระหว่างตัวอักษร: 8px;
     }
-
-    .muted {
-        color: #b8bfd8;
-        font-size: 13px;
-    }
-
-    div.stButton > button {
-        background: linear-gradient(90deg, #b08b3d, #e8cd7c);
-        color: #11162b;
-        border: none;
-        border-radius: 10px;
+    .muted { color: #b8bfd8; font-size: 13px; }
+    div.stButton > ปุ่ม {
+        พื้นหลัง: การไล่ระดับสีเชิงเส้น (90 องศา, #b08b3d, #e8cd7c);
+        สี: #11162b;
+        ขอบ: ไม่มี;
+        ขอบโค้งมน: 10px;
         font-weight: bold;
-        min-height: 42px;
+        ความสูงขั้นต่ำ: 42px;
     }
-
-    div.stButton > button:hover {
-        background: #f7df97;
-        color: #11162b;
-        border: 1px solid #fff0b5;
+    div.stButton > ปุ่ม:hover {
+        พื้นหลัง: #f7df97;
+        สี: #11162b;
+        ขอบ: 1px ทึบ #fff0b5;
     }
-
     div[data-testid="stMetric"] {
-        background: rgba(22, 33, 69, 0.85);
-        border: 1px solid #75643e;
-        padding: 14px;
-        border-radius: 12px;
+        พื้นหลัง: rgba(22, 33, 69, 0.85);
+        ขอบ: 1px ทึบ #75643e;
+        ระยะห่าง: 14px;
+        ขอบโค้งมน: 12px;
     }
-
-    hr {
-        border-color: #665b43;
-    }
+    hr { border-color: #665b43; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 
-# =========================================================
-# DATABASE
-# =========================================================
+# ------------------------- ฐานข้อมูล -------------------------
 
 def get_connection():
-    return sqlite3.connect(DB_PATH)
+    ส่งคืน sqlite3.connect(DB_PATH)
 
 
 def initialize_database():
-    with get_connection() as conn:
+    ด้วย get_connection() เป็น conn:
         conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS calculations (
+            สร้างตาราง IF NOT EXISTS calculations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 created_at TEXT NOT NULL,
                 target_date TEXT NOT NULL,
-                weekday TEXT NOT NULL,
+                วันธรรมดา ข้อความไม่ว่างเปล่า
                 result_number TEXT NOT NULL,
-                date_value INTEGER,
-                weekday_value INTEGER,
-                planet_value INTEGER,
-                angle_value INTEGER,
-                moon_value INTEGER,
-                astronomy_status TEXT
+                ค่าวันที่ จำนวนเต็ม ไม่เป็นค่าว่าง
+                ค่าวันในสัปดาห์ จำนวนเต็ม ไม่เป็นค่าว่าง
+                planet_value INTEGER NOT NULL,
+                ค่ามุม จำนวนเต็ม ไม่เป็นค่าว่าง
+                moon_value INTEGER NOT NULL,
+                สถานะดาราศาสตร์ ข้อความ ห้ามเป็นค่าว่าง
             )
             """
         )
 
 
 def save_calculation(record):
-    with get_connection() as conn:
+    ด้วย get_connection() เป็น conn:
         conn.execute(
             """
-            INSERT INTO calculations (
-                created_at,
-                target_date,
-                weekday,
-                result_number,
-                date_value,
-                weekday_value,
-                planet_value,
-                angle_value,
-                moon_value,
-                astronomy_status
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            แทรกเข้าไปในการคำนวณ (
+                สร้างเมื่อ, วันที่เป้าหมาย, วันในสัปดาห์, หมายเลขผลลัพธ์
+                ค่าวันที่, ค่าวันในสัปดาห์, ค่าดาวเคราะห์, ค่ามุม
+                ค่าดวงจันทร์ สถานะทางดาราศาสตร์
+            ) ค่า (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                record["created_at"],
-                record["target_date"],
-                record["weekday"],
-                record["result_number"],
-                record["date_value"],
-                record["weekday_value"],
-                record["planet_value"],
-                record["angle_value"],
-                record["moon_value"],
-                record["astronomy_status"],
+                บันทึก["created_at"],
+                บันทึก["target_date"],
+                บันทึก["weekday"],
+                บันทึก["result_number"],
+                บันทึก["date_value"],
+                บันทึก["weekday_value"],
+                บันทึก["planet_value"],
+                บันทึก["ค่ามุม"],
+                บันทึก["moon_value"],
+                บันทึก["astronomy_status"],
             ),
         )
 
 
 def load_history():
-    with get_connection() as conn:
-        return pd.read_sql_query(
-            """
-            SELECT *
-            FROM calculations
-            ORDER BY id DESC
-            """,
-            conn,
+    ด้วย get_connection() เป็น conn:
+        ส่งคืน pd.read_sql_query(
+            "SELECT * FROM calculations ORDER BY id DESC",
+            เชื่อมต่อ
         )
 
 
 initialize_database()
 
 
-# =========================================================
-# CALENDAR
-# =========================================================
-
-THAI_WEEKDAYS = [
-    "วันจันทร์",
-    "วันอังคาร",
-    "วันพุธ",
-    "วันพฤหัสบดี",
-    "วันศุกร์",
-    "วันเสาร์",
-    "วันอาทิตย์",
-]
-
+# ------------------------- ปฏิทิน -------------------------
 
 def weekday_name(target_date):
-    return THAI_WEEKDAYS[target_date.weekday()]
+    คืนค่า THAI_WEEKDAYS[target_date.weekday()]
 
 
 def date_digit_sum(target_date):
-    digits = target_date.strftime("%Y%m%d")
-    return sum(int(ch) for ch in digits)
+    คืนค่าผลรวมของจำนวนเต็ม (ch) สำหรับ ch ใน target_date.strftime("%Y%m%d"))
 
 
 def digital_root(number):
-    if number == 0:
-        return 0
-
-    while number > 9:
+    ในขณะที่หมายเลข > 9:
         number = sum(int(ch) for ch in str(number))
+    หมายเลขส่งคืน
 
-    return number
 
-
-# =========================================================
-# ASTRONOMY
-# =========================================================
+# ------------------------- ดาราศาสตร์ -------------------------
 
 @st.cache_resource(show_spinner=False)
 def load_ephemeris():
-    """
-    Load Skyfield's DE421 ephemeris.
-    The first successful load may require internet access.
-    """
-    from skyfield.api import load
-
-    eph = load("de421.bsp")
-    timescale = load.timescale()
-
-    return eph, timescale
+    จาก skyfield.api นำเข้า load
+    ephemeris = load("de421.bsp")
+    ไทม์สเกล = โหลดไทม์สเกล()
+    ส่งคืนปฏิทินดาราศาสตร์, มาตราเวลา
 
 
 def calculate_planet_positions(target_date):
     """
-    Calculate approximate geocentric apparent ecliptic longitudes.
-
-    Results are returned in degrees from 0 to less than 360.
-    This calculation requires Skyfield and a downloaded ephemeris.
+    คำนวณลองจิจูดสุริยวิถีแบบปรากฏ ณ จุดศูนย์กลางโลก สำหรับวันที่เลือก
+    ใช้เวลาเที่ยงวันตามเวลา UTC และข้อมูลวงโคจร DE421 ของ Skyfield
+    การใช้งานครั้งแรกอาจต้องเชื่อมต่ออินเทอร์เน็ตเพื่อดาวน์โหลดข้อมูลวงโคจรของดวงจันทร์
     """
-    from skyfield.api import load
-
-    eph, timescale = load_ephemeris()
-
-    year = target_date.year
-    month = target_date.month
-    day = target_date.day
-
-    # Use noon UTC to represent the selected calendar date.
-    t = timescale.utc(year, month, day, 12, 0, 0)
-
-    earth = eph["earth"]
+    ปฏิทินดาราศาสตร์, มาตราส่วนเวลา = โหลดปฏิทินดาราศาสตร์()
+    t = timescale.utc(
+        ปีของวันที่เป้าหมาย, เดือนของวันที่เป้าหมาย, วันของวันที่เป้าหมาย, 12, 0, 0
+    )
+    โลก = ปฏิทินดาราศาสตร์["โลก"]
 
     body_keys = {
-        "Sun": "sun",
+        "ดวงอาทิตย์": "sun",
         "Moon": "moon",
-        "Mercury": "mercury",
-        "Venus": "venus",
+        "ปรอท": "ปรอท"
+        "วีนัส": "วีนัส"
         "Mars": "mars",
         "Jupiter": "jupiter barycenter",
         "Saturn": "saturn barycenter",
@@ -303,103 +214,71 @@ def calculate_planet_positions(target_date):
         "Neptune": "neptune barycenter",
     }
 
-    positions = {}
-
-    for planet in PLANETS:
-        body = eph[body_keys[planet]]
-        apparent = earth.at(t).observe(body).apparent()
-
-        # Ecliptic longitude, measured in degrees.
-        _, longitude, _ = apparent.ecliptic_latlon(epoch="date")
-
+    ตำแหน่ง = {}
+    สำหรับดาวเคราะห์, body_key ใน body_keys.items():
+        apparent = earth.at(t).observe(ephemeris[body_key]).apparent()
+        _, ลองจิจูด, _ = apparent.ecliptic_latlon(epoch="date")
         positions[planet] = float(longitude.degrees) % 360.0
 
-    return positions
+    ตำแหน่งการส่งคืน
 
 
 def angular_separation(longitude_a, longitude_b):
-    """
-    Smallest separation between two ecliptic longitudes.
-    Result ranges from 0 to 180 degrees.
-    """
-    difference = abs(longitude_a - longitude_b) % 360.0
-    return min(difference, 360.0 - difference)
+    ความแตกต่าง = ค่าสัมบูรณ์ของลองจิจูด a - ลองจิจูด b % 360.0
+    ส่งคืนค่าต่ำสุดของผลต่าง (360.0 - ผลต่าง)
 
 
 def calculate_angular_table(positions):
-    rows = []
-
-    for first, second in combinations(positions.keys(), 2):
-        separation = angular_separation(
-            positions[first],
-            positions[second],
-        )
-
-        rows.append(
-            {
-                "ดาวดวงที่ 1": PLANET_TH[first],
-                "ดาวดวงที่ 2": PLANET_TH[second],
-                "ระยะห่างเชิงมุม (องศา)": round(separation, 4),
-            }
-        )
-
-    return pd.DataFrame(rows)
+    แถว = []
+    สำหรับลำดับที่หนึ่งและลำดับที่สองใน combinations(positions.keys(), 2):
+        separation = angular_separation(positions[first], positions[second])
+        rows.append({
+            "ดาวดวงที่ 1": PLANET_TH[first],
+            "ดาวดวงที่ 2": PLANET_TH[second],
+            " ระยะทางเชิงมุม (องศา)": กลม(แยก, 4),
+        })
+    ส่งคืน pd.DataFrame(rows)
 
 
-# =========================================================
-# EXPERIMENTAL NUMBER FORMULA
-# =========================================================
+# ------------------------- สูตรตัวเลข -------------------------
 
 def calculate_number(target_date, positions):
     """
-    Fixed experimental formula.
+    สูตรคงที่แบบทดลอง:
+    D = รากที่สองของตัวเลข YYYYMMDD
+    W = รหัสวันในสัปดาห์ (วันจันทร์=1 ... วันอาทิตย์=7)
+    P = ผลรวมถ่วงน้ำหนักของลองจิจูดของดาวเคราะห์ * 100, มอดูล 100
+    A = ผลรวมของระยะห่างเชิงมุมระหว่างคู่ทั้งหมด * 100, มอดูล 100
+    M = ลองจิจูดของดวงจันทร์ * 100, มอดูล 100
+    ผลลัพธ์ = (3D + 2W + P + A + M) มอดูล 100
 
-    D = digital root of YYYYMMDD
-    W = weekday code, Monday=1 through Sunday=7
-    P = weighted sum of planetary longitudes, scaled by 100
-    A = sum of pairwise longitude separations, scaled by 100
-    M = Moon longitude, scaled by 100
-
-    Final result = (3D + 2W + P + A + M) mod 100
-
-    This is an experimental number transformation.
-    It is not a scientifically validated lottery prediction.
+    นี่เป็นการเปลี่ยนแปลงเชิงทดลอง ไม่ใช่การทำนายที่ได้รับการตรวจสอบแล้ว
     """
-
-    date_value = digital_root(date_digit_sum(target_date))
-    weekday_value = target_date.weekday() + 1
-
-    if not positions:
-        return None
+    ค่าวันที่ = รากดิจิทัล(ผลรวมตัวเลขวันที่(วันที่เป้าหมาย))
+    ค่าวันในสัปดาห์ = วันในสัปดาห์ของวันที่เป้าหมาย + 1
 
     weighted_longitudes = sum(
-        (index + 1) * positions[planet]
-        for index, planet in enumerate(PLANETS)
+        (ดัชนี + 1) * ตำแหน่ง[ดาวเคราะห์]
+        สำหรับดัชนี ดาวเคราะห์ ในการแจงนับ (PLANETS)
     )
+    ค่าดาวเคราะห์ = ปัดเศษ (ลองจิจูดถ่วงน้ำหนัก * 100) % 100
 
-    planet_value = round(weighted_longitudes * 100) % 100
-
-    all_separations = [
-        angular_separation(
-            positions[first],
-            positions[second],
-        )
-        for first, second in combinations(PLANETS, 2)
+    การแยก = [
+        angular_separation(positions[first], positions[second])
+        สำหรับอันดับแรก อันดับที่สองในการรวมกัน (ดาวเคราะห์, 2)
     ]
+    ค่ามุม = ปัดเศษ (ผลรวมของระยะห่าง) * 100 % 100
+    ค่าดวงจันทร์ = ปัดเศษ (positions["ดวงจันทร์"] * 100) % 100
 
-    angle_value = round(sum(all_separations) * 100) % 100
-
-    moon_value = round(positions["Moon"] * 100) % 100
-
-    result = (
-        3 * date_value
-        + 2 * weekday_value
+    ผลลัพธ์ = (
+        3 * ค่าวันที่
+        + 2 * ค่าวันในสัปดาห์
         + planet_value
-        + angle_value
+        + ค่ามุม
         + moon_value
     ) % 100
 
-    return {
+    ส่งคืน {
         "result_number": f"{result:02d}",
         "date_value": date_value,
         "weekday_value": weekday_value,
@@ -409,112 +288,95 @@ def calculate_number(target_date, positions):
     }
 
 
-# =========================================================
-# LOTTERY HISTORY CSV
-# =========================================================
+# ------------------------- ตัวช่วยในการนำเข้าไฟล์ CSV -------------------------
 
 def normalize_number(value):
-    """
-    Keep lottery numbers as text to preserve leading zeroes.
-    """
-    if pd.isna(value):
-        return None
+    ถ้า pd.isna(value):
+        ส่งคืนค่าไม่มี
 
-    text_value = str(value).strip()
+    ค่าข้อความ = str(ค่า).strip()
+    ถ้าค่าข้อความลงท้ายด้วย ".0":
+        ค่าข้อความ = ค่าข้อความ[:-2]
+    ถ้าค่าข้อความไม่ใช่ตัวเลข:
+        ส่งคืนค่าไม่มี
 
-    if text_value.endswith(".0"):
-        text_value = text_value[:-2]
-
-    if not text_value.isdigit():
-        return None
-
-    return text_value
+    ส่งคืนค่าข้อความ
 
 
 def analyze_lottery_csv(uploaded_file):
     df = pd.read_csv(
-        uploaded_file,
+        ไฟล์ที่อัปโหลด
         dtype=str,
         keep_default_na=False,
     )
-
     df.columns = [column.strip().lower() for column in df.columns]
 
     required = {"date", "lottery", "category", "number"}
-    missing = required - set(df.columns)
-
-    if missing:
-        return None, (
-            "ไฟล์ CSV ต้องมีคอลัมน์: date, lottery, category, number "
-            f"โดยยังขาด: {', '.join(sorted(missing))}"
+    ขาดหายไป = จำเป็น - ตั้งค่า (df.columns)
+    หากหายไป:
+        คืนค่า None, (
+            " ไฟล์ CSV จะต้องมีวันที่, ลอตเตอรี, หมวดหมู่, หมายเลข "
+            f" โดยยัง หายไป: {', '.join(sorted(missing))}"
         )
 
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df["number"] = df["number"].apply(normalize_number)
-
     df = df.dropna(subset=["date", "number"]).copy()
-
     df["lottery"] = df["lottery"].astype(str).str.strip()
     df["category"] = df["category"].astype(str).str.strip()
-
     df = df[
         (df["lottery"] != "")
         & (df["category"] != "")
         & (df["number"] != "")
     ].copy()
 
-    if df.empty:
-        return None, "ไม่พบแถวข้อมูลที่ใช้งานได้ในไฟล์ CSV"
+    ถ้า df ว่างเปล่า:
+        return ไม่มี, "ไม่พบแถวนั้นสามารถใช้งานได้ในไฟล์ CSV"
 
     df["date"] = df["date"].dt.strftime("%Y-%m-%d")
-
     df["last_two_digits"] = df["number"].apply(
-        lambda value: value[-2:].zfill(2)
+        ค่าแลมบ์ดา: value[-2:].zfill(2)
     )
+    คืนค่า df, ไม่มี
+# =======================================================
+# หมายเลขลึกลับของ SYNAPSE
+# ตอนที่ 2 จาก 2
+# เพิ่มส่วนนี้ทั้งหมดต่อจากส่วนที่ 1 โดยตรง
+# =======================================================
 
-    return df, None
-
-
-# =========================================================
-# SIDEBAR
-# =========================================================
+# ------------------------- แถบด้านข้าง -------------------------
 
 st.sidebar.markdown("# 🌌 SYNAPSE")
 st.sidebar.markdown("### MYSTIC NUMBER")
 st.sidebar.markdown("---")
 
 page = st.sidebar.radio(
-    "เลือกเมนู",
+    "องค์ประกอบ",
     [
         "หน้าหลัก",
-        "คำนวณดวงดาว",
-        "วิเคราะห์ผลย้อนหลัง",
-        "ประวัติการคำนวณ",
-        "เกี่ยวกับระบบ",
+        "องค์ประกอบเว็บเพจ",
+        "วิเคราะห์ผลการวิเคราะห์",
+        "องค์ประกอบเว็บเพจ",
+        "ระบบ"
     ],
 )
 
 st.sidebar.markdown("---")
-st.sidebar.caption("COSMIC NUMEROLOGY LAB")
-st.sidebar.caption("Experimental • Transparent • Reproducible")
+st.sidebar.caption("ข้อมูลจักรวาล • ดาราศาสตร์ • การวิเคราะห์ตัวเลข")
+st.sidebar.caption("ทดลอง • โปร่งใส • สามารถทำซ้ำได้")
 
 
-# =========================================================
-# HEADER
-# =========================================================
+# ------------------------- ส่วนหัว -------------------------
 
 st.markdown(
     """
     <div class="cosmic-card">
         <div style="font-size:14px; color:#c9b77d;">
-            COSMIC DATA • ASTRONOMY • NUMBER ANALYSIS
+            ข้อมูลจักรวาล • ดาราศาสตร์ • การวิเคราะห์ตัวเลข
         </div>
-        <h1 style="font-size:34px;">
-            🌌 SYNAPSE MYSTIC NUMBER
-        </h1>
+        <h1 style="font-size:34px;">🌌 หมายเลขลึกลับของ SYNAPSE</h1>
         <div style="color:#c5cbe1;">
-            สำรวจความสัมพันธ์ระหว่างวันที่ ตำแหน่งดาว
-            และการแปลงข้อมูลเป็นตัวเลข
+            ข้อมูลตำแหน่งดาวและสูตรข้อมูลเป็น
         </div>
     </div>
     """,
@@ -522,89 +384,70 @@ st.markdown(
 )
 
 
-# =========================================================
-# PAGE: HOME
-# =========================================================
+# ------------------------- หน้าหลัก -------------------------
 
-if page == "หน้าหลัก":
-
-    st.subheader("📅 เลือกวันที่สำหรับคำนวณ")
+ถ้าเพจ == "หน้าหลัก":
+    st.subheader("📅 เลือกสิ่งที่จะเขียนลงในหน้าเว็บ")
 
     selected_date = st.date_input(
-        "วันที่ต้องการวิเคราะห์",
-        value=date.today(),
+        "ต้องเลือก",
+        ค่า = วันที่วันนี้(),
         min_value=date(1900, 1, 1),
         max_value=date(2100, 12, 31),
     )
 
     col1, col2, col3 = st.columns(3)
-
-    with col1:
-        st.metric("วันที่", selected_date.strftime("%d/%m/%Y"))
-
-    with col2:
-        st.metric("วันในสัปดาห์", weekday_name(selected_date))
-
-    with col3:
-        st.metric("ผลรวมตัวเลขวันที่", date_digit_sum(selected_date))
+    col1.metric("วันที่", selected_date.strftime("%d/%m/%Y"))
+    col2.metric("วันในสัปดาห์", weekday_name(selected_date))
+    col3.metric("ผลรวมตัวเลขวันที่", date_digit_sum(selected_date))
 
     st.info(
-        "ระบบจะใช้เวลา 12:00 UTC เป็นเวลาอ้างอิงของวันที่เลือก "
-        "เพื่อให้การคำนวณแต่ละครั้งมีหลักเกณฑ์เดียวกัน"
+        "ระบบใช้เวลา 12:00 UTC วันที่อ้างอิงของวันที่เลือก "
+        "องค์ประกอบที่ควบคุมได้และควบคุมได้"
     )
 
-    if st.button("🪐 คำนวณวันที่และตำแหน่งดาว", use_container_width=True):
-
-        with st.spinner("กำลังคำนวณข้อมูลดาราศาสตร์..."):
-            try:
+    ถ้า st.button("🪐 คำนวณวันที่และตำแหน่งดาว", use_container_width=True):
+        with st.spinner("กำลังประมวลผลข้อมูลการป้อน..."):
+            ลองดู:
                 positions = calculate_planet_positions(selected_date)
-
-                formula = calculate_number(
-                    selected_date,
-                    positions,
-                )
+                สูตร = calculate_number(selected_date, positions)
 
                 st.session_state["last_positions"] = positions
-                st.session_state["last_formula"] = formula
+                st.session_state["last_formula"] = สูตร
                 st.session_state["last_date"] = selected_date.isoformat()
-                st.session_state["last_astronomy_status"] = "สำเร็จ"
+                st.session_state["last_astronomy_status"] = "สถานะ"
+                st.success(" จัดการดาว")
 
-                st.success("คำนวณตำแหน่งดาวเรียบร้อยแล้ว")
-
-            except Exception as exc:
+            ยกเว้นข้อยกเว้นตาม exc:
                 st.session_state["last_positions"] = None
                 st.session_state["last_formula"] = None
                 st.session_state["last_date"] = selected_date.isoformat()
-                st.session_state["last_astronomy_status"] = "ไม่สำเร็จ"
-
+                st.session_state["last_astronomy_status"] = " ไม่สำเร็จ"
                 st.error(
-                    "ยังคำนวณตำแหน่งดาวไม่ได้ "
-                    "ตรวจสอบการติดตั้งไลบรารีและการเชื่อมต่ออินเทอร์เน็ต"
+                    ยังแสดงดาวไม่ เรท เรท "
+                    "Skyfield และ Skyfield"
                 )
+                st.caption(f"รายละเอียดสำหรับหน้าเว็บ: {exc}")
 
-                st.caption(f"รายละเอียดสำหรับตรวจสอบ: {exc}")
-
-    if (
+    ถ้า (
         st.session_state.get("last_date") == selected_date.isoformat()
-        and st.session_state.get("last_formula")
+        และ st.session_state.get("last_formula")
     ):
-        formula = st.session_state["last_formula"]
+        สูตร = st.session_state["last_formula"]
 
         st.markdown("---")
-        st.subheader("🔢 ผลลัพธ์จากสูตรทดลอง")
+        st.subheader("🔢 ส่วนหัวจากสูตรทดลอง")
 
         st.markdown(
             f"""
             <div class="cosmic-card">
                 <div style="text-align:center;">
                     <div style="color:#c9b77d;">
-                        EXPERIMENTAL TWO-DIGIT OUTPUT
+                        ผลลัพธ์สองหลักแบบทดลอง
                     </div>
-                    <div class="big-number">
-                        {formula["result_number"]}
-                    </div>
+                    <div class="big-number">{formula["result_number"]}</div>
                     <div class="muted">
-                        ไม่ใช่คำรับประกันผลสลาก
+                        ผลจากสูตรทดสอบผลรวมของผลรวม
                     </div>
                 </div>
             </div>
@@ -613,43 +456,24 @@ if page == "หน้าหลัก":
         )
 
         a, b, c = st.columns(3)
-
-        a.metric("ค่า D: วันที่", formula["date_value"])
-        b.metric("ค่า W: วันในสัปดาห์", formula["weekday_value"])
-        c.metric("ค่า P: ตำแหน่งดาว", formula["planet_value"])
+        a.metric("D: วันที่", formula["date_value"])
+        b.metric("W: วันในสัปดาห์", formula["weekday_value"])
+        c.metric("P: ดาวเคราะห์ดาว", formula["planet_value"])
 
         d, e = st.columns(2)
+        d.metric("A: ระยะทางเชิงมุม", สูตร["angle_value"])
+        e.metric("M: ตำแหน่งตัวเลข", formula["moon_value"])
 
-        d.metric("ค่า A: ระยะห่างเชิงมุม", formula["angle_value"])
-        e.metric("ค่า M: ตำแหน่งดวงจันทร์", formula["moon_value"])
+        with st.expander("ดูสูตรและองค์ประกอบ"):
+            st.code("ผลลัพธ์ = (3D + 2W + P + A + M) % 100")
+            st.write("D = ผลรวมขององค์ประกอบที่เป็นตัวหลักเดียว")
+            st.write("W = รหัสวันวันจันทร์ 1 ถึงวันอาทิตย์ 7")
+            st.write("P = ผลรวมลองจิจูดดาวแบบน้ำหนักคูณ 100 แล้ว mod 100")
+            st.write("A = ผลรวมระยะห่างเชิงมุมของดาวทุกคู่ คูณ 100 แล้ว mod 100")
+            st.write("M = ลองดูจิจูดของคูณ 100 แล้ว mod 100")
 
-        with st.expander("ดูสูตรที่ใช้คำนวณ"):
-            st.code(
-                "ผลลัพธ์ = "
-                "(3D + 2W + P + A + M) % 100"
-            )
-
-            st.write(
-                "D = ผลรวมตัวเลขวันที่ที่ย่อเป็นเลขหลักเดียว"
-            )
-            st.write(
-                "W = รหัสวัน ตั้งแต่วันจันทร์ 1 ถึงวันอาทิตย์ 7"
-            )
-            st.write(
-                "P = ผลรวมลองจิจูดของดาวที่ถ่วงน้ำหนัก "
-                "คูณ 100 แล้วหาเศษจาก 100"
-            )
-            st.write(
-                "A = ผลรวมระยะห่างเชิงมุมของดาวทุกคู่ "
-                "คูณ 100 แล้วหาเศษจาก 100"
-            )
-            st.write(
-                "M = ลองจิจูดดวงจันทร์คูณ 100 "
-                "แล้วหาเศษจาก 100"
-            )
-
-        if st.button("💾 บันทึกผลการคำนวณ"):
-            record = {
+        if st.button("💾 แสดงผลบน"):
+            บันทึก = {
                 "created_at": datetime.now().isoformat(timespec="seconds"),
                 "target_date": selected_date.isoformat(),
                 "weekday": weekday_name(selected_date),
@@ -659,108 +483,254 @@ if page == "หน้าหลัก":
                 "planet_value": formula["planet_value"],
                 "angle_value": formula["angle_value"],
                 "moon_value": formula["moon_value"],
-                "astronomy_status": "สำเร็จ",
+                "astronomy_status": "สถานะ",
             }
+            บันทึกการคำนวณ (บันทึก)
+            st.success("ความสำเร็จลงบล็อกแล้ว")
 
-            save_calculation(record)
-            st.success("บันทึกผลลงฐานข้อมูลแล้ว")
 
+# ------------------------- หน้าดาราศาสตร์ -------------------------
 
-# =========================================================
-# PAGE: ASTRONOMY
-# =========================================================
-
-elif page == "คำนวณดวงดาว":
-
-    st.subheader("🪐 ตำแหน่งดาวและระยะห่างเชิงมุม")
+elif page == " คำนวณการเงิน":
+    st.subheader("🪐 ตำแหน่งดาวและหัวเรื่องย่อย")
 
     astro_date = st.date_input(
-        "เลือกวันที่สำหรับดูตำแหน่งดาว",
-        value=date.today(),
+        "องค์ประกอบสำหรับดูดาว",
+        ค่า = วันที่วันนี้(),
         key="astro_date",
         min_value=date(1900, 1, 1),
         max_value=date(2100, 12, 31),
     )
 
-    if st.button("ตรวจสอบตำแหน่งดาว", use_container_width=True):
-
-        with st.spinner("กำลังโหลดข้อมูลดาราศาสตร์..."):
-            try:
+    if st.button("ปุ่มดาว", use_container_width=True):
+        with st.spinner("กำลังโหลดข้อมูลการป้อนข้อมูล..."):
+            ลองดู:
                 positions = calculate_planet_positions(astro_date)
-
                 st.session_state["astro_positions"] = positions
                 st.session_state["astro_date_saved"] = astro_date.isoformat()
-
-                st.success("คำนวณสำเร็จ")
-
-            except Exception as exc:
+                st.success(" ประเมินความสำเร็จ")
+            ยกเว้นข้อยกเว้นตาม exc:
                 st.error(
-                    "คำนวณไม่สำเร็จ ตรวจสอบการติดตั้ง Skyfield "
-                    "และการดาวน์โหลด ephemeris"
+                    " คำนวณไม่สำเร็จการตัดสกายฟิลด์ "
+                    "และปฏิทินดาราศาสตร์"
                 )
-                st.caption(f"รายละเอียด: {exc}")
+                st.caption(f" รายละเอียด: {exc}")
 
-    if st.session_state.get("astro_date_saved") == astro_date.isoformat():
+    ถ้า st.session_state.get("astro_date_saved") == astro_date.isoformat():
         positions = st.session_state.get("astro_positions")
 
-        if positions:
-            planet_df = pd.DataFrame(
-                [
-                    {
-                        "ดาว": PLANET_TH[name],
-                        "ลองจิจูดสุริยวิถี (องศา)": round(value, 5),
-                    }
-                    for name, value in positions.items()
-                ]
-            )
+        ถ้าตำแหน่ง:
+            planet_df = pd.DataFrame([
+                {
+                    "ดาว": PLANET_TH[ชื่อ],
+                    "ลองจิจูดสุริยวิถี (องศา)": รอบ(ค่า, 5),
+                }
+                สำหรับชื่อและค่าใน positions.items()
+            ])
 
             st.markdown("### ตำแหน่งดาว")
-            st.dataframe(
-                planet_df,
-                use_container_width=True,
-                hide_index=True,
-            )
+            st.dataframe(planet_df, use_container_width=True, hide_index=True)
 
-            st.markdown("### ระยะห่างเชิงมุมระหว่างดาว")
+            st.markdown("###" เรียงองค์ประกอบบนดาว)
+            st.caption(
+                " มูลค่าขององค์ประกอบคือองค์ประกอบที่เชื่อมโยงกันโดยจินาดบนสุริยศ "
+                "ความจริงแท้ ...
+            )
 
             angle_df = calculate_angular_table(positions)
+            st.dataframe(angle_df, use_container_width=True, hide_index=True)
 
-            st.caption(
-                "แสดงระยะห่างของลองจิจูดบนสุริยวิถี "
-                "ไม่ใช่ระยะห่างจริงระหว่างดาวในอวกาศ"
-            )
-
-            st.dataframe(
-                angle_df,
-                use_container_width=True,
-                hide_index=True,
-            )
-
-            csv_data = angle_df.to_csv(
-                index=False
-            ).encode("utf-8-sig")
-
+            csv_data = angle_df.to_csv(index=False).encode("utf-8-sig")
             st.download_button(
-                "ดาวน์โหลดตารางระยะห่างเป็น CSV",
+                "ดาวน์โหลดภาพหน้าจอเป็น CSV"
                 data=csv_data,
                 file_name=f"planet_angles_{astro_date.isoformat()}.csv",
                 mime="text/csv",
             )
 
 
-# =========================================================
-# PAGE: HISTORICAL ANALYSIS
-# =========================================================
+# ------------------------- หน้าวิเคราะห์ประวัติศาสตร์ -------------------------
 
-elif page == "วิเคราะห์ผลย้อนหลัง":
-
-    st.subheader("🎟️ เปรียบเทียบกับผลสลากย้อนหลัง")
+elif page == " วิเคราะห์ผลย้อนหลัง":
+    st.subheader("🎟️ เอฟเฟกต์สลาก")
 
     st.write(
-        "นำเข้าไฟล์ CSV ที่มีผลสลากจริง "
-        "ระบบจะเปรียบเทียบเลขที่คำนวณไว้กับเลขสองหลักท้าย"
+        "รายละเอียดของไฟล์ CSV ที่สลากจริง ระบบจะวิเคราะห์เลขสองหลักท้าย "
+        "กับ จัดการและจัดการองค์ประกอบ"
+    )
+    st.warning(
+        "ผลรวมของผลไม่แสดงผลรวมของผล"
+        "และผลที่ตามมาของสลากและผลที่ตามมา"
     )
 
-    st.warning(
-        "การตรงกันในอดีตไม่ได้รับประกันผลในอนาคต "
-    
+    st.markdown(
+        """
+        **ไฟล์ CSV**
+
+        ต้องมี `วันที่`, `ลอตเตอรี่`, `หมวดหมู่`, `หมายเลข`
+
+        ตัวอย่างด้านล่างเป็นข้อมูลสมมติผลสลากจริง):
+
+        ```csv
+        วันที่, ลอตเตอรี่, หมวดหมู่, หมายเลข
+        2026-01-16,Thai,การ์ตูน,123456
+        2026-02-01,Thai,การ์ตูน,000123
+        2026-02-10,ตัวอย่าง,ตัวอย่าง,45
+        ```
+        """
+    )
+
+    uploaded_file = st.file_uploader(
+        "ไฟล์ CSV ผลสลาก",
+        type=["csv"],
+    )
+
+    ถ้า uploaded_file ไม่ใช่ None:
+        historical_df, error = analyze_lottery_csv(uploaded_file)
+
+        หากเกิดข้อผิดพลาด:
+            st.error(ข้อผิดพลาด)
+        elif historical_df is not None:
+            st.success(f" อ่านข้อมูลสำเร็จ {len(historical_df)} รายการ")
+            st.dataframe(
+                historical_df,
+                use_container_width=True,
+                hide_index=True,
+            )
+
+            st.markdown("### อินเทอร์เฟซเว็บเพจ")
+            calculated_df = load_history()
+
+            ถ้า calculated_df ว่างเปล่า:
+                st.info(
+                    "มีองค์ประกอบที่เว็บเพจ"
+                    "ไปที่หน้าหลักเพื่อจัดการและจัดการข้อมูลก่อน"
+                )
+            อื่นๆ:
+                historical_df["date"] = historical_df["date"].astype(str)
+                calculated_df["target_date"] = (
+                    calculated_df["target_date"].astype(str)
+                )
+
+                joined = historical_df.merge(
+                    calculated_df[["target_date", "result_number"]],
+                    left_on="date",
+                    ถูกต้องตาม "target_date"
+                    how="inner",
+                )
+
+                ถ้าเชื่อมต่อแล้วว่างเปล่า:
+                    st.info(
+                        "องค์ประกอบนี้มีผลต่อผลลัพธ์ของหน้าเว็บ"
+                        "กับที่ที่มันทำงานอยู่"
+                    )
+                อื่นๆ:
+                    joined[" ] = (
+                        joined["last_two_digits"] == joined["result_number"]
+                    )
+
+                    hit_count = int(joined["จำนวน"].sum())
+                    อัตรา = เข้าร่วม["ในเรื่อง"].mean() * 100
+
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("ความยาวพอ", len(joined))
+                    m2.metric("จำนวนการเข้าชม", hit_count)
+                    m3.metric(" อัตรา", f"{rate:.2f}%")
+
+                    st.dataframe(
+                        เข้าร่วม[
+                            [
+                                "วันที่", "ลอตเตอรี่", "ประเภท", "หมายเลข",
+                                "result_number", "last_two_digits", "ตัวเลข",
+                            ]
+                        ],
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+
+                    st.caption(
+                        "ใช้เฉพาะแผนที่เท่านั้นที่สามารถใช้งานได้จริง"
+                        " ฝังไว้ก่อนทราบผล ฝัง ฝัง ฝังให้"
+                    )
+
+                    result_csv = joined.to_csv(index=False).encode("utf-8-sig")
+                    st.download_button(
+                        "ดาวน์โหลดตัวอย่าง CSV",
+                        data=result_csv,
+                        file_name="synapse_historical_comparison.csv",
+                        mime="text/csv",
+                    )
+
+
+# ------------------------- หน้าประวัติการคำนวณ -------------------------
+
+elif page == "ประวัติความทรงจำ":
+    st.subheader("💾 ซับเฮดเดอร์")
+
+    history_df = load_history()
+    ถ้า history_df ว่างเปล่า:
+        st.info("ฉันพยายามคำนวณจากหน้าหลักก่อนครับ")
+    อื่นๆ:
+        st.metric("ประวัติย่อ", len(history_df))
+        st.dataframe(history_df, use_container_width=True, hide_index=True)
+
+        csv_data = history_df.to_csv(index=False).encode("utf-8-sig")
+        st.download_button(
+            "สร้างองค์ประกอบเป็น CSV"
+            data=csv_data,
+            file_name="synapse_calculation_history.csv",
+            mime="text/csv",
+        )
+
+
+# ------------------------- เกี่ยวกับหน้า -------------------------
+
+elif page == "เกี่ยวกับระบบ":
+    st.subheader("ℹ️เกี่ยวกับ SYNAPSE MYSTIC NUMBER")
+
+    st.markdown(
+        """
+        ### อินเทอร์เฟซ
+
+        SYNAPSE MYSTIC NUMBER เป็นโครงการทดลองที่นำข้อมูลปฏิทิน
+        ตำแหน่งดาวและสูตรข้อมูลเป็นข้อมูลมาศึกษา
+
+        ### ระบบในเว็บเพจนี้
+
+        - แสดงวันในเว็บเพจจากด้านบน
+        - คำนวณตำแหน่งดาวด้วยข้อมูลชั่วคราวผ่าน Skyfield
+        - จัดการองค์ประกอบนี้ให้อยู่ในรูปแบบที่คล้ายกับจินาดของดาว
+        - สร้างเว็บเพจด้วยสูตรการตัดต่อ
+        - ไฟล์นำเข้า CSV ผลสลากย้อนหลังเพื่อเปรียบเทียบ
+        - จัดเก็บและดาวน์โหลด
+
+        ### สำคัญ
+
+        ตำแหน่งดาวเป็นข้อมูล อัปเดตข้อมูล ตำแหน่งดาวเป็นข้อมูล
+        เป็นสูตรทดสอบการยกขึ้นเอง ของคอมพิวเตอร์ที่ยกขึ้น
+        ฟังก์ชันนี้มีผลสลากที่สามารถทำได้ดีกว่าฟังก์ชันนี้
+
+        ระบบนี้ทำงานโดยมีผลสลากไทย ความถี่และภาษาเวียดนามจากเว็บไซต์
+        เราต้องนำเข้าองค์ประกอบที่สามารถรับและแยกองค์ประกอบ
+        หน้าเว็บเพจ หน้าเว็บเพจและวันที่ออกหน้าเว็บเพจให้
+
+        ### หลัก หลัก
+
+        สร้างผลลัพธ์ที่เพิ่มขึ้นเองและควรค่าแก่การจดจำ
+        ความถี่ที่ความถี่ในการสังเกตก่อนทราบผล
+        และทดสอบกับองค์ประกอบที่พิมพ์สูตร
+        """
+    )
+
+
+# ------------------------- ส่วนท้าย -------------------------
+
+st.markdown("---")
+st.markdown(
+    """
+    <div style="text-align:center; color:#b6a36c; padding:10px;">
+        หมายเลขลึกลับของ SYNAPSE • ห้องปฏิบัติการข้อมูลจักรวาล
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
