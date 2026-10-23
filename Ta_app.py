@@ -170,14 +170,15 @@ def weekday_name(target_date):
     คืนค่า THAI_WEEKDAYS[target_date.weekday()]
 
 
+
 def date_digit_sum(target_date):
-    คืนค่าผลรวมของจำนวนเต็ม (ch) สำหรับ ch ใน target_date.strftime("%Y%m%d"))
+    return sum(int(ch) for ch in target_date.strftime("%Y%m%d"))
 
 
 def digital_root(number):
-    ในขณะที่หมายเลข > 9:
+    while number > 9:
         number = sum(int(ch) for ch in str(number))
-    หมายเลขส่งคืน
+    return number
 
 
 # ------------------------- ดาราศาสตร์ -------------------------
@@ -220,7 +221,7 @@ def calculate_planet_positions(target_date):
         _, ลองจิจูด, _ = apparent.ecliptic_latlon(epoch="date")
         positions[planet] = float(longitude.degrees) % 360.0
 
-    ตำแหน่งการส่งคืน
+    def
 
 
 def angular_separation(longitude_a, longitude_b):
