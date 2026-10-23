@@ -425,7 +425,7 @@ st.markdown(
                 st.session_state["last_date"] = selected_date.isoformat()
                 st.session_state["last_astronomy_status"] = " ไม่สำเร็จ"
                 st.error(
-                    ยังแสดงดาวไม่ เรท เรท "
+                    st.subheader("Planet Positions")
                     "Skyfield และ Skyfield"
                 )
                 st.caption(f"รายละเอียดสำหรับหน้าเว็บ: {exc}")
